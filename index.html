@@ -15,12 +15,9 @@
       --muted: #a8b2cf;
       --accent: #7db7ff;
       --accent-2: #9ce8ff;
-      --good: #8ce2ae;
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
     }
-
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       min-height: 100vh;
@@ -31,33 +28,24 @@
         linear-gradient(180deg, #0b0e15 0%, var(--bg) 100%);
       color: var(--text);
     }
-
     .wrap {
       max-width: 1540px;
       margin: 0 auto;
       padding: 28px 18px 48px;
     }
-
-    .hero {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-
+    .hero { display: grid; gap: 10px; margin-bottom: 18px; }
     .hero h1 {
       margin: 0;
       font-size: clamp(1.7rem, 2.4vw, 2.7rem);
       line-height: 1.05;
       letter-spacing: -0.03em;
     }
-
     .hero p {
       margin: 0;
       color: var(--muted);
       line-height: 1.45;
       max-width: 82ch;
     }
-
     .panel {
       background: rgba(23, 29, 46, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.06);
@@ -65,35 +53,21 @@
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
     }
-
     .controls {
       display: grid;
       gap: 14px;
       padding: 16px;
       margin-bottom: 16px;
     }
-
     .controls-grid {
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(3, minmax(220px, 1fr));
       align-items: end;
     }
-
-    .field {
-      display: grid;
-      gap: 8px;
-    }
-
-    .field label {
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
-    input, button {
-      font: inherit;
-    }
-
+    .field { display: grid; gap: 8px; }
+    .field label { color: var(--muted); font-size: 0.92rem; }
+    input, button { font: inherit; }
     input[type="text"] {
       width: 100%;
       border: 1px solid var(--line);
@@ -103,17 +77,8 @@
       border-radius: 14px;
       outline: none;
     }
-
-    input[type="text"]:focus {
-      border-color: var(--accent);
-    }
-
-    .button-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
+    input[type="text"]:focus { border-color: var(--accent); }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
     button {
       border: 0;
       cursor: pointer;
@@ -123,45 +88,25 @@
       letter-spacing: 0.01em;
       transition: transform 0.16s ease, opacity 0.2s ease;
     }
-
     button.primary {
       color: #08111d;
       background: linear-gradient(135deg, var(--accent-2), var(--accent));
     }
-
     button.secondary {
       color: var(--text);
       background: var(--panel-2);
       border: 1px solid var(--line);
     }
-
     button.danger {
       color: #ffdede;
       background: rgba(255, 120, 120, 0.12);
       border: 1px solid rgba(255, 120, 120, 0.25);
     }
-
     button:hover { transform: translateY(-1px); }
     button:disabled { opacity: 0.7; cursor: wait; transform: none; }
-
-    details {
-      border-top: 1px solid rgba(255,255,255,0.07);
-      padding-top: 10px;
-    }
-
-    summary {
-      cursor: pointer;
-      color: var(--text);
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .tiny {
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.45;
-    }
-
+    details { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 10px; }
+    summary { cursor: pointer; color: var(--text); font-weight: 700; margin-bottom: 10px; }
+    .tiny { color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
     .message {
       display: none;
       margin-bottom: 16px;
@@ -171,54 +116,33 @@
       line-height: 1.45;
       white-space: pre-wrap;
     }
-
     .message.info {
       display: block;
       background: rgba(125, 183, 255, 0.12);
       border-color: rgba(125, 183, 255, 0.28);
     }
-
     .message.error {
       display: block;
       background: rgba(255, 120, 120, 0.12);
       border-color: rgba(255, 120, 120, 0.28);
       color: #ffd6d6;
     }
-
     .summary {
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       margin-bottom: 16px;
     }
-
-    .summary-card {
-      padding: 14px 16px;
-    }
-
-    .summary-label {
-      color: var(--muted);
-      font-size: 0.86rem;
-      margin-bottom: 6px;
-    }
-
-    .summary-value {
-      font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
+    .summary-card { padding: 14px 16px; }
+    .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; }
+    .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
     .board {
       display: grid;
       gap: 14px;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       align-items: start;
     }
-
-    .day-column {
-      padding: 14px;
-    }
-
+    .day-column { padding: 14px; }
     .day-head {
       display: flex;
       justify-content: space-between;
@@ -228,23 +152,9 @@
       margin-bottom: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     }
-
-    .day-name {
-      font-size: 1.02rem;
-      font-weight: 800;
-    }
-
-    .day-count {
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-
-    .time-group {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
+    .day-name { font-size: 1.02rem; font-weight: 800; }
+    .day-count { font-size: 0.82rem; color: var(--muted); }
+    .time-group { display: grid; gap: 8px; margin-bottom: 14px; }
     .time-pill {
       display: inline-flex;
       width: fit-content;
@@ -258,12 +168,7 @@
       font-size: 0.78rem;
       font-weight: 800;
     }
-
-    .entry-list {
-      display: grid;
-      gap: 8px;
-    }
-
+    .entry-list { display: grid; gap: 8px; }
     .entry {
       display: grid;
       grid-template-columns: 38px minmax(0, 1fr);
@@ -273,7 +178,6 @@
       background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
-
     .thumb {
       width: 38px;
       height: 54px;
@@ -282,21 +186,8 @@
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
-
-    .thumb img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .entry-body {
-      min-width: 0;
-      display: grid;
-      gap: 4px;
-      align-content: start;
-    }
-
+    .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
     .entry-title {
       font-size: 0.9rem;
       line-height: 1.3;
@@ -305,16 +196,8 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    .entry-title a {
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    .entry-title a:hover {
-      color: var(--accent-2);
-    }
-
+    .entry-title a { color: var(--text); text-decoration: none; }
+    .entry-title a:hover { color: var(--accent-2); }
     .entry-meta {
       display: flex;
       flex-wrap: wrap;
@@ -323,7 +206,6 @@
       font-size: 0.75rem;
       line-height: 1.35;
     }
-
     .chip {
       display: inline-flex;
       align-items: center;
@@ -335,36 +217,28 @@
       font-size: 0.71rem;
       font-weight: 700;
     }
-
     .chip.rss {
       background: rgba(140, 226, 174, 0.11);
       border-color: rgba(140, 226, 174, 0.18);
       color: #d8ffe7;
     }
-
-    .chip.cache {
+    .chip.shana {
       background: rgba(255, 215, 122, 0.12);
       border-color: rgba(255, 215, 122, 0.18);
       color: #ffe7a6;
     }
-
+    .chip.cache {
+      background: rgba(173, 171, 255, 0.12);
+      border-color: rgba(173, 171, 255, 0.18);
+      color: #e7e5ff;
+    }
     .chip.fallback {
       background: rgba(125, 183, 255, 0.11);
       border-color: rgba(125, 183, 255, 0.18);
       color: #dcebff;
     }
-
-    .footer {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.45;
-    }
-
-    @media (max-width: 980px) {
-      .controls-grid { grid-template-columns: 1fr; }
-    }
-
+    .footer { margin-top: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+    @media (max-width: 980px) { .controls-grid { grid-template-columns: 1fr; } }
     @media (max-width: 720px) {
       .wrap { padding: 18px 12px 36px; }
       .controls { padding: 14px; }
@@ -378,7 +252,7 @@
       <h1>Weekly Airing Board</h1>
       <p>
         Hosted version: AniList gives the watching list, <strong>SubsPlease RSS</strong> is the primary rolling source,
-        <strong>Nyaa</strong> backfills anything that rotated out, and the page keeps learned slots in local browser memory.
+        <strong>Shana Project</strong> is the archive fallback for SubsPlease releases, and the page keeps learned slots in local browser memory.
       </p>
     </section>
 
@@ -409,24 +283,24 @@
         <summary>Optional network helpers</summary>
         <div class="controls-grid">
           <div class="field">
-            <label for="rssProxyTemplate">Proxy template for RSS</label>
+            <label for="rssProxyTemplate">Proxy template for SubsPlease RSS</label>
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
 
           <div class="field">
-            <label for="nyaaProxyTemplate">Proxy template for Nyaa</label>
-            <input id="nyaaProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+            <label for="shanaFeedUrl">Shana feed URL</label>
+            <input id="shanaFeedUrl" type="text" spellcheck="false" value="https://www.shanaproject.com/feeds/subber/SubsPlease/" autocomplete="off" />
           </div>
 
           <div class="field">
-            <label for="rssXml">Manual RSS XML fallback</label>
-            <input id="rssXml" type="text" spellcheck="false" placeholder="Paste raw RSS XML into the box below if you need it" autocomplete="off" />
+            <label for="shanaProxyTemplate">Proxy template for Shana</label>
+            <input id="shanaProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
         </div>
       </details>
 
       <div class="tiny">
-        The page does not remember the AniList username. Local storage is only used for learned slots so shows can stay on the board after they rotate out of the RSS feed.
+        The page does not remember the AniList username. Local storage is only used for learned slots so shows can stay on the board after they rotate out of the live feeds.
       </div>
     </section>
 
@@ -438,17 +312,17 @@
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v1";
+    const SLOT_CACHE_KEY = "anilist-subsplease-shana-slot-cache-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
     const TITLE_STOPWORDS = new Set([
-      "a", "an", "the", "and", "of", "to", "in", "on",
-      "no", "wo", "ga", "wa", "ni", "de", "na", "e", "yo", "mo",
-      "season", "part", "cour", "movie", "tv", "ova", "ona",
-      "s", "s1", "s2", "s3", "s4", "s5", "s6",
-      "1st", "2nd", "3rd", "4th", "5th", "6th",
-      "1", "2", "3", "4", "5", "6"
+      "a","an","the","and","of","to","in","on",
+      "no","wo","ga","wa","ni","de","na","e","yo","mo",
+      "season","part","cour","movie","tv","ova","ona",
+      "s","s1","s2","s3","s4","s5","s6",
+      "1st","2nd","3rd","4th","5th","6th",
+      "1","2","3","4","5","6"
     ]);
 
     const MATCH_OVERRIDES = {
@@ -484,8 +358,8 @@
       timezone: document.getElementById("timezone"),
       rssUrl: document.getElementById("rssUrl"),
       rssProxyTemplate: document.getElementById("rssProxyTemplate"),
-      nyaaProxyTemplate: document.getElementById("nyaaProxyTemplate"),
-      rssXml: document.getElementById("rssXml"),
+      shanaFeedUrl: document.getElementById("shanaFeedUrl"),
+      shanaProxyTemplate: document.getElementById("shanaProxyTemplate"),
       loadBtn: document.getElementById("loadBtn"),
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
       message: document.getElementById("message"),
@@ -518,10 +392,7 @@
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
-        body: JSON.stringify({
-          query: QUERY,
-          variables: { userName }
-        })
+        body: JSON.stringify({ query: QUERY, variables: { userName } })
       });
 
       const data = await response.json().catch(() => ({}));
@@ -532,21 +403,17 @@
 
       const lists = data?.data?.MediaListCollection?.lists || [];
       const entries = [];
-
       for (const list of lists) {
         for (const entry of list.entries || []) {
           if (entry?.media) entries.push(entry);
         }
       }
-
       return entries;
     }
 
     async function fetchTextWithOptionalProxy(url, proxyTemplate) {
       const targets = [];
-      if (proxyTemplate) {
-        targets.push(proxyTemplate.replace("%URL%", encodeURIComponent(url)));
-      }
+      if (proxyTemplate) targets.push(proxyTemplate.replace("%URL%", encodeURIComponent(url)));
       targets.push(url);
 
       let lastError = null;
@@ -560,46 +427,6 @@
         }
       }
       throw lastError || new Error("Network request failed.");
-    }
-
-    async function fetchRssXml() {
-      const pasted = els.rssXml.value.trim();
-      if (pasted) {
-        if (pasted.includes("<rss") || pasted.includes("<feed")) return pasted;
-        throw new Error("The manual RSS field does not look like XML.");
-      }
-
-      const rssUrl = els.rssUrl.value.trim();
-      const proxyTemplate = els.rssProxyTemplate.value.trim();
-
-      if (!rssUrl) throw new Error("Please provide a SubsPlease RSS URL.");
-
-      const targets = [];
-      if (proxyTemplate) {
-        targets.push(proxyTemplate.replace("%URL%", encodeURIComponent(rssUrl)));
-      }
-      targets.push(rssUrl);
-
-      const errors = [];
-      for (const target of targets) {
-        try {
-          const response = await fetch(target, { method: "GET" });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const text = await response.text();
-          if (!text || (!text.includes("<rss") && !text.includes("<feed"))) {
-            throw new Error("Response was not RSS XML.");
-          }
-          return text;
-        } catch (error) {
-          errors.push(`${target} -> ${error.message}`);
-        }
-      }
-
-      throw new Error(
-        "Could not fetch the SubsPlease RSS feed.\n" +
-        errors.join("\n") +
-        "\n\nYou can still continue with Nyaa fallback if those fetches work."
-      );
     }
 
     function normalizeTitle(text) {
@@ -649,7 +476,6 @@
 
     function generateVariants(values) {
       const variants = new Set();
-
       for (const raw of values || []) {
         if (!raw) continue;
         const text = String(raw).trim();
@@ -689,7 +515,6 @@
           });
         }
       }
-
       return Array.from(variants).filter(Boolean);
     }
 
@@ -701,11 +526,7 @@
     }
 
     function tokens(text) {
-      return new Set(
-        normalizeTitle(text)
-          .split(" ")
-          .filter(token => token && !TITLE_STOPWORDS.has(token))
-      );
+      return new Set(normalizeTitle(text).split(" ").filter(token => token && !TITLE_STOPWORDS.has(token)));
     }
 
     function distinctiveTokens(text) {
@@ -720,19 +541,14 @@
         media?.title?.native,
         ...(media?.synonyms || [])
       ];
-
       const variants = new Set(generateVariants(seedTitles));
       const override = MATCH_OVERRIDES[media?.title?.userPreferred] || MATCH_OVERRIDES[media?.title?.english] || MATCH_OVERRIDES[media?.title?.romaji] || null;
-      if (override) {
-        generateVariants([override]).forEach(value => variants.add(value));
-      }
-
+      if (override) generateVariants([override]).forEach(value => variants.add(value));
       return Array.from(variants).filter(Boolean);
     }
 
     function scoreMatch(candidate, variants) {
       let best = 0;
-
       for (const variant of variants) {
         const normalized = normalizeTitle(variant);
         const compact = compactTitle(variant);
@@ -745,22 +561,16 @@
 
           const variantSeason = extractSeasonNumber(normalized);
           const candidateSeason = extractSeasonNumber(candidateNormalized);
-          const seasonPenalty = (
-            variantSeason !== null &&
-            candidateSeason !== null &&
-            variantSeason !== candidateSeason
-          ) ? 5 : 0;
+          const seasonPenalty = (variantSeason !== null && candidateSeason !== null && variantSeason !== candidateSeason) ? 5 : 0;
 
           if (candidateNormalized === normalized) {
             best = Math.max(best, 100 - seasonPenalty);
             continue;
           }
-
           if (candidateCompact && compact && candidateCompact === compact) {
             best = Math.max(best, 98 - seasonPenalty);
             continue;
           }
-
           if (candidateNormalized.includes(normalized) || normalized.includes(candidateNormalized)) {
             if (Math.min(candidateNormalized.length, normalized.length) >= 6) {
               best = Math.max(best, 92 - seasonPenalty);
@@ -812,11 +622,10 @@
           }
         }
       }
-
       return best;
     }
 
-    function parseFeedReleaseTitle(rawTitle) {
+    function parseReleaseTitle(rawTitle) {
       const text = String(rawTitle || "").trim();
       if (!text) return null;
 
@@ -830,16 +639,13 @@
       const episodeToken = match[2].replace(/\s+/g, "");
       if (!showTitle || !episodeToken) return null;
       if (episodeToken.includes("-")) return null;
-
       return { showTitle, episode: episodeToken };
     }
 
     function parseRssXml(xmlText) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlText, "text/xml");
-      if (doc.querySelector("parsererror")) {
-        throw new Error("The fetched RSS data could not be parsed as XML.");
-      }
+      if (doc.querySelector("parsererror")) throw new Error("Feed could not be parsed as XML.");
 
       const rawItems = Array.from(doc.querySelectorAll("item")).map(item => ({
         title: item.querySelector("title")?.textContent?.trim() || "",
@@ -847,24 +653,16 @@
       }));
 
       const deduped = new Map();
-
       for (const item of rawItems) {
-        const parsed = parseFeedReleaseTitle(item.title);
+        const parsed = parseReleaseTitle(item.title);
         if (!parsed) continue;
-
         const date = new Date(item.pubDate);
         if (Number.isNaN(date.getTime())) continue;
 
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
-
         if (!existing || date.getTime() > existing.date.getTime()) {
-          deduped.set(key, {
-            rawTitle: item.title,
-            showTitle: parsed.showTitle,
-            episode: parsed.episode,
-            date
-          });
+          deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
       }
 
@@ -882,18 +680,8 @@
     }
 
     function dateToWeekdayTime(date, timeZone) {
-      const weekday = new Intl.DateTimeFormat("en-US", {
-        weekday: "long",
-        timeZone
-      }).format(date);
-
-      const time = new Intl.DateTimeFormat("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-        timeZone
-      }).format(date);
-
+      const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(date);
+      const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(date);
       return { weekday, time };
     }
 
@@ -912,31 +700,21 @@
       const sorted = [...values].sort((a, b) => a - b);
       const mid = Math.floor(sorted.length / 2);
       if (!sorted.length) return null;
-      if (sorted.length % 2) return sorted[mid];
-      return (sorted[mid - 1] + sorted[mid]) / 2;
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     }
 
     function inferSlotFromReleases(releases, timeZone) {
-      const sample = releases.slice(0, 3);
-      const localized = sample.map(item => {
+      const sample = releases.slice(0, 3).map(item => {
         const { weekday, time } = dateToWeekdayTime(item.date, timeZone);
-        return {
-          weekday,
-          time,
-          minutes: toMinutes(time),
-          date: item.date
-        };
+        return { weekday, time, minutes: toMinutes(time) };
       });
-
-      if (!localized.length) return null;
+      if (!sample.length) return null;
 
       const counts = new Map();
-      localized.forEach(item => counts.set(item.weekday, (counts.get(item.weekday) || 0) + 1));
+      sample.forEach(item => counts.set(item.weekday, (counts.get(item.weekday) || 0) + 1));
 
-      const lastWeekday = localized[0].weekday;
-      let chosenDay = lastWeekday;
-      let bestCount = counts.get(lastWeekday) || 0;
-
+      let chosenDay = sample[0].weekday;
+      let bestCount = counts.get(chosenDay) || 0;
       for (const [day, count] of counts.entries()) {
         if (count > bestCount) {
           bestCount = count;
@@ -944,16 +722,10 @@
         }
       }
 
-      const dayItems = localized.filter(item => item.weekday === chosenDay);
-      const timeItems = dayItems.length ? dayItems : localized;
+      const dayItems = sample.filter(item => item.weekday === chosenDay);
+      const timeItems = dayItems.length ? dayItems : sample;
       const chosenMinutes = median(timeItems.map(item => item.minutes));
-
-      return {
-        day: chosenDay,
-        time: minutesToHHMM(chosenMinutes ?? localized[0].minutes),
-        sampleCount: sample.length,
-        newestRelease: localized[0].date
-      };
+      return { day: chosenDay, time: minutesToHHMM(chosenMinutes ?? sample[0].minutes), sampleCount: sample.length };
     }
 
     function getAniListWeekdayAndTime(unixSeconds, timeZone) {
@@ -961,69 +733,29 @@
       return dateToWeekdayTime(date, timeZone);
     }
 
-    function buildPreliminaryItems(entries, rssCandidates, timeZone) {
-      const results = [];
-      for (const entry of entries) {
-        const media = entry.media;
-        const variants = titleVariants(media);
-
-        let best = null;
-        let bestScore = 0;
-        for (const candidate of rssCandidates) {
-          const score = scoreMatch(candidate, variants);
-          if (score > bestScore) {
-            best = candidate;
-            bestScore = score;
-          }
-        }
-
-        const title =
-          media?.title?.userPreferred ||
-          media?.title?.english ||
-          media?.title?.romaji ||
-          media?.title?.native ||
-          "Untitled";
-
-        const cover = media?.coverImage?.large || media?.coverImage?.medium || "";
-
-        if (best && bestScore >= 70 && best.items.length) {
-          const slot = inferSlotFromReleases(best.items, timeZone);
-          if (slot) {
-            results.push({
-              id: media.id,
-              title,
-              siteUrl: media.siteUrl || "#",
-              cover,
-              day: slot.day,
-              time: slot.time,
-              format: media.format || "",
-              source: "rss",
-              sampleCount: slot.sampleCount,
-              matchedTitle: best.title
-            });
-            continue;
-          }
-        }
-
-        const next = media?.nextAiringEpisode;
-        if (next?.airingAt) {
-          const { weekday, time } = getAniListWeekdayAndTime(next.airingAt, timeZone);
-          results.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: weekday,
-            time,
-            format: media.format || "",
-            source: "fallback",
-            sampleCount: 0,
-            matchedTitle: ""
-          });
+    function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
+      const variants = titleVariants(media);
+      let best = null;
+      let bestScore = 0;
+      for (const candidate of candidates) {
+        const score = scoreMatch(candidate, variants);
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
         }
       }
+      if (!best || bestScore < 70 || !best.items.length) return null;
 
-      return results;
+      const slot = inferSlotFromReleases(best.items, timeZone);
+      if (!slot) return null;
+
+      return {
+        day: slot.day,
+        time: slot.time,
+        source: sourceName,
+        sampleCount: slot.sampleCount || 1,
+        matchedTitle: best.title
+      };
     }
 
     function loadSlotCache() {
@@ -1044,152 +776,78 @@
     }
 
     function clearSlotCache() {
-      try {
-        localStorage.removeItem(SLOT_CACHE_KEY);
-      } catch (_) {}
+      try { localStorage.removeItem(SLOT_CACHE_KEY); } catch (_) {}
     }
 
-    function makeNyaaSearchQueries(media) {
-      const rawTitles = [
-        media?.title?.userPreferred,
-        media?.title?.english,
-        media?.title?.romaji,
-        ...(media?.synonyms || [])
-      ].filter(Boolean).map(value => String(value).trim()).filter(Boolean);
+    function buildItems(entries, primaryCandidates, shanaCandidates, timeZone) {
+      const items = [];
+      for (const entry of entries) {
+        const media = entry.media;
+        const title =
+          media?.title?.userPreferred ||
+          media?.title?.english ||
+          media?.title?.romaji ||
+          media?.title?.native ||
+          "Untitled";
+        const cover = media?.coverImage?.large || media?.coverImage?.medium || "";
 
-      const seen = new Set();
-      const queries = [];
+        const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+        const secondary = primary ? null : tryMatchCandidateSet(media, shanaCandidates, timeZone, "shana");
 
-      function pushOne(value) {
-        const text = String(value || "").trim();
-        if (!text) return;
-        const key = text.toLowerCase();
-        if (seen.has(key)) return;
-        seen.add(key);
-        queries.push(text);
-      }
+        if (primary || secondary) {
+          const chosen = primary || secondary;
+          items.push({
+            id: media.id,
+            title,
+            siteUrl: media.siteUrl || "#",
+            cover,
+            day: chosen.day,
+            time: chosen.time,
+            format: media.format || "",
+            source: chosen.source,
+            sampleCount: chosen.sampleCount || 1,
+            matchedTitle: chosen.matchedTitle || ""
+          });
+          continue;
+        }
 
-      rawTitles.forEach(pushOne);
-
-      rawTitles.forEach(title => {
-        const stripped = stripCommonSuffixes(title);
-        if (stripped && stripped !== title) pushOne(stripped);
-      });
-
-      const override = MATCH_OVERRIDES[media?.title?.userPreferred] || MATCH_OVERRIDES[media?.title?.english] || MATCH_OVERRIDES[media?.title?.romaji] || null;
-      if (override) pushOne(override);
-
-      return queries.slice(0, 6);
-    }
-
-    function parseNyaaListingHtml(htmlText) {
-      const doc = new DOMParser().parseFromString(htmlText, "text/html");
-      const rows = Array.from(doc.querySelectorAll("tr"));
-      const deduped = new Map();
-
-      for (const row of rows) {
-        const links = Array.from(row.querySelectorAll("a"));
-        const nameLink = links.find(link => /^\[SubsPlease\]/i.test((link.textContent || "").trim()));
-        if (!nameLink) continue;
-
-        const title = (nameLink.textContent || "").trim();
-        const parsed = parseFeedReleaseTitle(title);
-        if (!parsed) continue;
-
-        const rowText = (row.textContent || "").replace(/\s+/g, " ").trim();
-        const dateMatch = rowText.match(/\b(20\d{2}-\d{2}-\d{2}\s+\d{2}:\d{2})\b/);
-        if (!dateMatch) continue;
-
-        const date = new Date(dateMatch[1] + " UTC");
-        if (Number.isNaN(date.getTime())) continue;
-
-        const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
-        const existing = deduped.get(key);
-        if (!existing || date.getTime() > existing.date.getTime()) {
-          deduped.set(key, {
-            rawTitle: title,
-            showTitle: parsed.showTitle,
-            episode: parsed.episode,
-            date
+        const next = media?.nextAiringEpisode;
+        if (next?.airingAt) {
+          const { weekday, time } = getAniListWeekdayAndTime(next.airingAt, timeZone);
+          items.push({
+            id: media.id,
+            title,
+            siteUrl: media.siteUrl || "#",
+            cover,
+            day: weekday,
+            time,
+            format: media.format || "",
+            source: "fallback",
+            sampleCount: 0,
+            matchedTitle: ""
           });
         }
       }
-
-      const grouped = new Map();
-      for (const value of deduped.values()) {
-        if (!grouped.has(value.showTitle)) grouped.set(value.showTitle, []);
-        grouped.get(value.showTitle).push(value);
-      }
-
-      return Array.from(grouped.entries()).map(([title, items]) => ({
-        title,
-        variants: generateVariants([title]),
-        items: items.sort((a, b) => b.date.getTime() - a.date.getTime())
-      }));
+      return items;
     }
 
-    async function searchNyaaForMedia(media, timeZone, proxyTemplate) {
-      const queries = makeNyaaSearchQueries(media);
-      const allCandidates = [];
-
-      for (const query of queries) {
-        const url = `https://nyaa.si/?f=0&c=1_2&q=${encodeURIComponent(`[SubsPlease] ${query}`)}&s=id&o=desc`;
-        const htmlText = await fetchTextWithOptionalProxy(url, proxyTemplate);
-        const candidates = parseNyaaListingHtml(htmlText);
-        allCandidates.push(...candidates);
-      }
-
-      if (!allCandidates.length) return null;
-
-      const variants = titleVariants(media);
-      let best = null;
-      let bestScore = 0;
-
-      for (const candidate of allCandidates) {
-        const score = scoreMatch(candidate, variants);
-        if (score > bestScore) {
-          best = candidate;
-          bestScore = score;
-        }
-      }
-
-      if (!best || bestScore < 70 || !best.items.length) return null;
-
-      const slot = inferSlotFromReleases(best.items, timeZone);
-      if (!slot) return null;
-
-      return {
-        ...slot,
-        matchedTitle: best.title,
-        score: bestScore
-      };
-    }
-
-    async function enrichWithCacheAndNyaa(items, entries, timeZone, nyaaProxyTemplate) {
+    function applyCache(items) {
       const cache = loadSlotCache();
-      const byMediaId = new Map(entries.map(entry => [String(entry.media?.id), entry]));
       const output = [];
-      let rssCached = 0;
-      let cacheHits = 0;
-      let nyaaLive = 0;
-      let nyaaMisses = 0;
-      let nyaaErrors = 0;
-      const errorTitles = [];
 
       for (const item of items) {
         const key = String(item.id);
 
-        if (item.source === "rss") {
+        if (item.source === "rss" || item.source === "shana") {
           cache[key] = {
             day: item.day,
             time: item.time,
             sampleCount: item.sampleCount || 1,
             matchedTitle: item.matchedTitle || "",
-            origin: "rss",
+            origin: item.source,
             updatedAt: new Date().toISOString()
           };
           output.push(item);
-          rssCached += 1;
           continue;
         }
 
@@ -1204,59 +862,12 @@
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved"
           });
-          cacheHits += 1;
-          continue;
-        }
-
-        const entry = byMediaId.get(key);
-        if (!entry?.media) {
+        } else {
           output.push(item);
-          continue;
-        }
-
-        try {
-          const result = await searchNyaaForMedia(entry.media, timeZone, nyaaProxyTemplate);
-          if (result) {
-            cache[key] = {
-              day: result.day,
-              time: result.time,
-              sampleCount: result.sampleCount || 1,
-              matchedTitle: result.matchedTitle || "",
-              origin: "nyaa",
-              updatedAt: new Date().toISOString()
-            };
-            output.push({
-              ...item,
-              day: result.day,
-              time: result.time,
-              source: "nyaa_live",
-              sampleCount: result.sampleCount || 1,
-              matchedTitle: result.matchedTitle || "",
-              cacheOrigin: "nyaa"
-            });
-            nyaaLive += 1;
-          } else {
-            output.push(item);
-            nyaaMisses += 1;
-          }
-        } catch (error) {
-          output.push(item);
-          nyaaErrors += 1;
-          if (errorTitles.length < 6) errorTitles.push(item.title);
         }
       }
 
       saveSlotCache(cache);
-
-      enrichWithCacheAndNyaa.lastStats = {
-        rssCached,
-        cacheHits,
-        nyaaLive,
-        nyaaMisses,
-        nyaaErrors,
-        errorTitles
-      };
-
       return output;
     }
 
@@ -1300,23 +911,22 @@
 
         if (slots.length) output.push({ day, slots });
       }
-
       return output;
     }
 
-    function renderSummary(items, rssTitleCount) {
+    function renderSummary(items, primaryCount, shanaCount) {
       const rssCount = items.filter(item => item.source === "rss").length;
+      const shanaUsed = items.filter(item => item.source === "shana").length;
       const cacheCount = items.filter(item => item.source === "cache").length;
-      const nyaaCount = items.filter(item => item.source === "nyaa_live").length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
 
       const cards = [
         { label: "Visible shows", value: String(items.length) },
-        { label: "SubsPlease RSS", value: String(rssCount) },
+        { label: "SubsPlease RSS matches", value: String(rssCount) },
+        { label: "Shana fallback matches", value: String(shanaUsed) },
         { label: "Local memory", value: String(cacheCount) },
-        { label: "Nyaa learned now", value: String(nyaaCount) },
         { label: "AniList fallback", value: String(fallbackCount) },
-        { label: "RSS titles parsed", value: String(rssTitleCount) }
+        { label: "RSS/Shana titles parsed", value: `${primaryCount}/${shanaCount}` }
       ];
 
       els.summary.innerHTML = cards.map(card => `
@@ -1354,10 +964,10 @@
                         ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
                         ${item.source === "rss"
                           ? `<span class="chip rss">SubsPlease RSS · ${item.sampleCount || 1}</span>`
-                          : item.source === "cache"
-                            ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
-                            : item.source === "nyaa_live"
-                              ? `<span class="chip rss">Nyaa learned · ${item.sampleCount || 1}</span>`
+                          : item.source === "shana"
+                            ? `<span class="chip shana">Shana fallback · ${item.sampleCount || 1}</span>`
+                            : item.source === "cache"
+                              ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
                               : `<span class="chip fallback">AniList fallback</span>`}
                       </div>
                     </div>
@@ -1389,53 +999,57 @@
       }
 
       els.loadBtn.disabled = true;
-      showMessage("info", `Loading AniList, SubsPlease RSS, and Nyaa fallback for ${userName}…`);
+      showMessage("info", `Loading AniList, SubsPlease RSS, and Shana fallback for ${userName}…`);
 
       try {
         const entries = await fetchAniListWatching(userName);
 
-        let rssCandidates = [];
-        let rssError = "";
-        try {
-          const rssXml = await fetchRssXml();
-          rssCandidates = parseRssXml(rssXml);
-        } catch (error) {
-          rssError = error.message || String(error);
+        const [primaryResult, shanaResult] = await Promise.allSettled([
+          fetchTextWithOptionalProxy(els.rssUrl.value.trim(), els.rssProxyTemplate.value.trim()),
+          fetchTextWithOptionalProxy(els.shanaFeedUrl.value.trim(), els.shanaProxyTemplate.value.trim())
+        ]);
+
+        let primaryCandidates = [];
+        let shanaCandidates = [];
+        const notes = [];
+
+        if (primaryResult.status === "fulfilled") {
+          try {
+            primaryCandidates = parseRssXml(primaryResult.value);
+          } catch (error) {
+            notes.push(`SubsPlease RSS parse issue: ${error.message}`);
+          }
+        } else {
+          notes.push(`SubsPlease RSS fetch issue: ${primaryResult.reason?.message || primaryResult.reason || "unknown error"}`);
         }
 
-        const preliminary = buildPreliminaryItems(entries, rssCandidates, timeZone);
-        const items = (await enrichWithCacheAndNyaa(
-          preliminary,
-          entries,
-          timeZone,
-          els.nyaaProxyTemplate.value.trim()
-        )).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
+        if (shanaResult.status === "fulfilled") {
+          try {
+            shanaCandidates = parseRssXml(shanaResult.value);
+          } catch (error) {
+            notes.push(`Shana parse issue: ${error.message}`);
+          }
+        } else {
+          notes.push(`Shana fetch issue: ${shanaResult.reason?.message || shanaResult.reason || "unknown error"}`);
+        }
 
-        renderSummary(items, rssCandidates.length);
+        const built = buildItems(entries, primaryCandidates, shanaCandidates, timeZone);
+        const items = applyCache(built).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
+
+        renderSummary(items, primaryCandidates.length, shanaCandidates.length);
         renderBoard(items);
 
-        const stats = enrichWithCacheAndNyaa.lastStats || {
-          cacheHits: 0,
-          nyaaLive: 0,
-          nyaaMisses: 0,
-          nyaaErrors: 0,
-          errorTitles: []
-        };
-
-        const notes = [];
-        if (rssError) notes.push(`RSS note: ${rssError}`);
-        if (stats.nyaaErrors) {
-          notes.push(`Nyaa note: could not reach ${stats.nyaaErrors} fallback search${stats.nyaaErrors === 1 ? "" : "es"}${stats.errorTitles.length ? ` (${stats.errorTitles.join(", ")})` : ""}.`);
-        }
-
         els.footer.textContent =
-          `${items.length} visible shows. ${items.filter(item => item.source === "rss").length} use SubsPlease RSS, ${items.filter(item => item.source === "cache").length} come from local memory, ${items.filter(item => item.source === "nyaa_live").length} were learned from Nyaa just now, and ${items.filter(item => item.source === "fallback").length} still use AniList fallback.` +
+          `${items.length} visible shows. ${items.filter(item => item.source === "rss").length} use SubsPlease RSS, ` +
+          `${items.filter(item => item.source === "shana").length} use Shana fallback, ` +
+          `${items.filter(item => item.source === "cache").length} come from local memory, and ` +
+          `${items.filter(item => item.source === "fallback").length} still use AniList fallback.` +
           (notes.length ? ` ${notes.join(" ")}` : "");
 
         showMessage(
           "info",
-          `Loaded ${entries.length} AniList entries and parsed ${rssCandidates.length} RSS titles.` +
-          (rssError ? `\n\nRSS fetch did not fully work:\n${rssError}` : "")
+          `Loaded ${entries.length} AniList entries.\nParsed ${primaryCandidates.length} SubsPlease RSS titles and ${shanaCandidates.length} Shana titles.` +
+          (notes.length ? `\n\nNotes:\n- ${notes.join("\n- ")}` : "")
         );
       } catch (error) {
         els.summary.innerHTML = "";
@@ -1457,7 +1071,8 @@
     els.timezone.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.nyaaProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.shanaFeedUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.shanaProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
   </script>
 </body>
 </html>
