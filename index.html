@@ -274,12 +274,6 @@
       color: #d8ffe7;
     }
 
-    .chip.tosho {
-      background: rgba(255, 215, 122, 0.12);
-      border-color: rgba(255, 215, 122, 0.18);
-      color: #ffe7a6;
-    }
-
     .chip.cache {
       background: rgba(173, 171, 255, 0.12);
       border-color: rgba(173, 171, 255, 0.18);
@@ -316,10 +310,6 @@
           <input id="username" type="text" value="user" spellcheck="false" autocomplete="off" />
         </div>
 
-        <div class="field">
-          <label for="timezone">Timezone</label>
-          <input id="timezone" type="text" spellcheck="false" />
-        </div>
 
         <div class="button-row">
           <button id="loadBtn" class="primary" type="button">Load</button>
@@ -340,15 +330,6 @@
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
 
-          <div class="field">
-            <label for="animeToshoFeedUrl">AnimeTosho feed URL</label>
-            <input id="animeToshoFeedUrl" type="text" spellcheck="false" placeholder="Paste AnimeTosho RSS2/Atom/JSON feed URL" autocomplete="off" />
-          </div>
-
-          <div class="field">
-            <label for="animeToshoProxyTemplate">AnimeTosho proxy</label>
-            <input id="animeToshoProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
-          </div>
         </div>
 
         <div class="field">
@@ -366,9 +347,9 @@
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const SLOT_CACHE_KEY = "anilist-subsplease-animetosho-slot-cache-v1";
+    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const DEFAULT_TIMEZONE = "Europe/Berlin";
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -409,11 +390,8 @@
 
     const els = {
       username: document.getElementById("username"),
-      timezone: document.getElementById("timezone"),
       rssUrl: document.getElementById("rssUrl"),
       rssProxyTemplate: document.getElementById("rssProxyTemplate"),
-      animeToshoFeedUrl: document.getElementById("animeToshoFeedUrl"),
-      animeToshoProxyTemplate: document.getElementById("animeToshoProxyTemplate"),
       manualScheduleText: document.getElementById("manualScheduleText"),
       loadBtn: document.getElementById("loadBtn"),
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
@@ -423,21 +401,11 @@
       footer: document.getElementById("footer")
     };
 
-    els.timezone.value = DEFAULT_TIMEZONE;
     showMessage("info", "Ready.");
 
     function showMessage(type, text) {
       els.message.className = `message ${type}`;
       els.message.textContent = text;
-    }
-
-    function validateTimeZone(tz) {
-      try {
-        Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date());
-        return true;
-      } catch (_) {
-        return false;
-      }
     }
 
     async function fetchAniListWatching(userName) {
@@ -587,6 +555,8 @@
     }
 
     function scoreMatch(candidate, variants) {
+      if (!candidate || !Array.isArray(candidate.variants)) return 0;
+
       let best = 0;
       for (const variant of variants) {
         const normalized = normalizeTitle(variant);
@@ -767,52 +737,9 @@
       }));
     }
 
-    function parseAnimeToshoJson(jsonText) {
-      let payload;
-      try {
-        payload = JSON.parse(jsonText);
-      } catch (_) {
-        throw new Error("AnimeTosho feed was not valid JSON.");
-      }
-
-      const rows = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
-      const deduped = new Map();
-
-      for (const row of rows) {
-        const title = String(row?.title || row?.file_name || row?.name || "").trim();
-        const parsed = parseReleaseTitle(title);
-        if (!parsed) continue;
-
-        const rawDate = row?.pubDate || row?.date || row?.timestamp || row?.date_submitted || row?.created_at || "";
-        const date = new Date(rawDate);
-        if (Number.isNaN(date.getTime())) continue;
-
-        const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
-        const existing = deduped.get(key);
-        if (!existing || date.getTime() > existing.date.getTime()) {
-          deduped.set(key, { rawTitle: title, showTitle: parsed.showTitle, episode: parsed.episode, date });
-        }
-      }
-
-      const grouped = new Map();
-      for (const value of deduped.values()) {
-        if (!grouped.has(value.showTitle)) grouped.set(value.showTitle, []);
-        grouped.get(value.showTitle).push(value);
-      }
-
-      return Array.from(grouped.entries()).map(([title, items]) => ({
-        title,
-        variants: generateVariants([title]),
-        items: items.sort((a, b) => b.date.getTime() - a.date.getTime())
-      }));
-    }
-
-    function parseGenericFeed(text, kind) {
+    function parseGenericFeed(text) {
       const trimmed = String(text || "").trim();
       if (!trimmed) return [];
-      if (kind === "animetosho" && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
-        return parseAnimeToshoJson(trimmed);
-      }
       return parseXmlFeed(trimmed);
     }
 
@@ -876,9 +803,10 @@
 
     function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
       const variants = titleVariants(media);
+      const safeCandidates = Array.isArray(candidates) ? candidates : [];
       let best = null;
       let bestScore = 0;
-      for (const candidate of candidates) {
+      for (const candidate of safeCandidates) {
         const score = scoreMatch(candidate, variants);
         if (score > bestScore) {
           best = candidate;
@@ -920,7 +848,7 @@
       try { localStorage.removeItem(SLOT_CACHE_KEY); } catch (_) {}
     }
 
-    function buildItems(entries, manualCandidates, primaryCandidates, archiveCandidates, timeZone) {
+    function buildItems(entries, manualCandidates, primaryCandidates, timeZone) {
       const items = [];
       for (const entry of entries) {
         const media = entry.media;
@@ -934,10 +862,9 @@
 
         const manual = tryMatchCandidateSet(media, manualCandidates, timeZone, "manual");
         const primary = manual ? null : tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
-        const archive = (manual || primary) ? null : tryMatchCandidateSet(media, archiveCandidates, timeZone, "animetosho");
 
-        if (manual || primary || archive) {
-          const chosen = manual || primary || archive;
+        if (manual || primary) {
+          const chosen = manual || primary;
           items.push({
             id: media.id,
             title,
@@ -980,7 +907,7 @@
       for (const item of items) {
         const key = String(item.id);
 
-        if (item.source === "manual" || item.source === "rss" || item.source === "animetosho") {
+        if (item.source === "manual" || item.source === "rss") {
           cache[key] = {
             day: item.day,
             time: item.time,
@@ -1056,10 +983,9 @@
       return output;
     }
 
-    function renderSummary(items, primaryCount, archiveCount) {
+    function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
       const rssCount = items.filter(item => item.source === "rss").length;
-      const toshoCount = items.filter(item => item.source === "animetosho").length;
       const cacheCount = items.filter(item => item.source === "cache").length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
 
@@ -1067,10 +993,9 @@
         { label: "Visible", value: String(items.length) },
         { label: "Manual", value: String(manualCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
-        { label: "AnimeTosho", value: String(toshoCount) },
         { label: "Memory", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
-        { label: "Parsed RSS/Tosho", value: `${primaryCount}/${archiveCount}` }
+        { label: "Parsed RSS", value: String(primaryCount) }
       ];
 
       els.summary.innerHTML = cards.map(card => `
@@ -1110,11 +1035,9 @@
                           ? `<span class="chip rss">Manual</span>`
                           : item.source === "rss"
                             ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
-                            : item.source === "animetosho"
-                              ? `<span class="chip tosho">Tosho · ${item.sampleCount || 1}</span>`
-                              : item.source === "cache"
-                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
-                                : `<span class="chip fallback">AniList</span>`}
+                            : item.source === "cache"
+                              ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                              : `<span class="chip fallback">AniList</span>`}
                       </div>
                     </div>
                   </article>
@@ -1132,15 +1055,10 @@
 
     async function loadBoard() {
       const userName = els.username.value.trim();
-      const timeZone = els.timezone.value.trim() || DEFAULT_TIMEZONE;
+      const timeZone = DEFAULT_TIMEZONE;
 
       if (!userName) {
         showMessage("error", "Please enter a username.");
-        return;
-      }
-
-      if (!validateTimeZone(timeZone)) {
-        showMessage("error", "That timezone does not look valid.");
         return;
       }
 
@@ -1150,46 +1068,36 @@
       try {
         const entries = await fetchAniListWatching(userName);
 
-        const [primaryResult, archiveResult] = await Promise.allSettled([
-          fetchTextWithOptionalProxy(els.rssUrl.value.trim(), els.rssProxyTemplate.value.trim()),
-          els.animeToshoFeedUrl.value.trim()
-            ? fetchTextWithOptionalProxy(els.animeToshoFeedUrl.value.trim(), els.animeToshoProxyTemplate.value.trim())
-            : Promise.resolve("")
-        ]);
+        const primaryResult = await fetchTextWithOptionalProxy(
+          els.rssUrl.value.trim(),
+          els.rssProxyTemplate.value.trim()
+        );
 
         let primaryCandidates = [];
-        let archiveCandidates = [];
         const notes = [];
 
-        if (primaryResult.status === "fulfilled" && primaryResult.value.trim()) {
+        const manualResult = parseManualScheduleText(els.manualScheduleText.value);
+        const manualCandidates = manualScheduleCandidates(manualResult.schedule);
+        if (manualResult.errors.length) {
+          notes.push(`Manual schedule: ${manualResult.errors.join(" ")}`);
+        }
+
+        if (primaryResult.trim()) {
           try {
-            primaryCandidates = parseGenericFeed(primaryResult.value, "rss");
+            primaryCandidates = parseGenericFeed(primaryResult);
           } catch (error) {
             notes.push(`SubsPlease: ${error.message}`);
           }
-        } else if (primaryResult.status === "rejected") {
-          notes.push(`SubsPlease: ${primaryResult.reason?.message || primaryResult.reason || "request failed"}`);
         }
 
-        if (archiveResult.status === "fulfilled" && archiveResult.value.trim()) {
-          try {
-            archiveCandidates = parseGenericFeed(archiveResult.value, "animetosho");
-          } catch (error) {
-            notes.push(`AnimeTosho: ${error.message}`);
-          }
-        } else if (archiveResult.status === "rejected") {
-          notes.push(`AnimeTosho: ${archiveResult.reason?.message || archiveResult.reason || "request failed"}`);
-        }
-
-        const built = buildItems(entries, primaryCandidates, archiveCandidates, timeZone);
+        const built = buildItems(entries, manualCandidates, primaryCandidates, timeZone);
         const items = applyCache(built).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
 
-        renderSummary(items, primaryCandidates.length, archiveCandidates.length);
+        renderSummary(items, primaryCandidates.length);
         renderBoard(items);
 
         els.footer.textContent =
           `${items.length} visible. ${items.filter(item => item.source === "rss").length} RSS, ` +
-          `${items.filter(item => item.source === "animetosho").length} AnimeTosho, ` +
           `${items.filter(item => item.source === "cache").length} memory, ` +
           `${items.filter(item => item.source === "fallback").length} fallback.` +
           (notes.length ? ` ${notes.join(" ")}` : "");
@@ -1212,11 +1120,8 @@
     });
 
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.timezone.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.animeToshoFeedUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.animeToshoProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
   </script>
 </body>
 </html>
