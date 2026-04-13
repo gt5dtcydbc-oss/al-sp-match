@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AniList Weekly Airing Board</title>
+  <title>Airing Board</title>
   <style>
     :root {
       color-scheme: dark;
@@ -17,7 +17,9 @@
       --accent-2: #9ce8ff;
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -28,24 +30,19 @@
         linear-gradient(180deg, #0b0e15 0%, var(--bg) 100%);
       color: var(--text);
     }
+
     .wrap {
       max-width: 1540px;
       margin: 0 auto;
-      padding: 28px 18px 48px;
+      padding: 24px 18px 42px;
     }
-    .hero { display: grid; gap: 10px; margin-bottom: 18px; }
-    .hero h1 {
-      margin: 0;
-      font-size: clamp(1.7rem, 2.4vw, 2.7rem);
-      line-height: 1.05;
+
+    .title {
+      margin: 0 0 16px;
+      font-size: clamp(1.5rem, 2vw, 2.2rem);
       letter-spacing: -0.03em;
     }
-    .hero p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.45;
-      max-width: 82ch;
-    }
+
     .panel {
       background: rgba(23, 29, 46, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.06);
@@ -53,22 +50,27 @@
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
     }
+
     .controls {
       display: grid;
       gap: 14px;
       padding: 16px;
       margin-bottom: 16px;
     }
+
     .controls-grid {
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(3, minmax(220px, 1fr));
       align-items: end;
     }
+
     .field { display: grid; gap: 8px; }
     .field label { color: var(--muted); font-size: 0.92rem; }
-    input, button { font: inherit; }
-    input[type="text"] {
+
+    input, textarea, button { font: inherit; }
+
+    input[type="text"], textarea {
       width: 100%;
       border: 1px solid var(--line);
       background: var(--panel-2);
@@ -77,8 +79,22 @@
       border-radius: 14px;
       outline: none;
     }
+
+    input[type="text"] {
+
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      outline: none;
+    }
+
     input[type="text"]:focus { border-color: var(--accent); }
+
     .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
     button {
       border: 0;
       cursor: pointer;
@@ -88,25 +104,40 @@
       letter-spacing: 0.01em;
       transition: transform 0.16s ease, opacity 0.2s ease;
     }
+
     button.primary {
       color: #08111d;
       background: linear-gradient(135deg, var(--accent-2), var(--accent));
     }
+
     button.secondary {
       color: var(--text);
       background: var(--panel-2);
       border: 1px solid var(--line);
     }
+
     button.danger {
       color: #ffdede;
       background: rgba(255, 120, 120, 0.12);
       border: 1px solid rgba(255, 120, 120, 0.25);
     }
+
     button:hover { transform: translateY(-1px); }
     button:disabled { opacity: 0.7; cursor: wait; transform: none; }
-    details { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 10px; }
-    summary { cursor: pointer; color: var(--text); font-weight: 700; margin-bottom: 10px; }
-    .tiny { color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
+
+    details {
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 10px;
+      user-select: none;
+    }
+
     .message {
       display: none;
       margin-bottom: 16px;
@@ -116,33 +147,40 @@
       line-height: 1.45;
       white-space: pre-wrap;
     }
+
     .message.info {
       display: block;
       background: rgba(125, 183, 255, 0.12);
       border-color: rgba(125, 183, 255, 0.28);
     }
+
     .message.error {
       display: block;
       background: rgba(255, 120, 120, 0.12);
       border-color: rgba(255, 120, 120, 0.28);
       color: #ffd6d6;
     }
+
     .summary {
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       margin-bottom: 16px;
     }
+
     .summary-card { padding: 14px 16px; }
     .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; }
     .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+
     .board {
       display: grid;
       gap: 14px;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       align-items: start;
     }
+
     .day-column { padding: 14px; }
+
     .day-head {
       display: flex;
       justify-content: space-between;
@@ -152,9 +190,12 @@
       margin-bottom: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     }
+
     .day-name { font-size: 1.02rem; font-weight: 800; }
     .day-count { font-size: 0.82rem; color: var(--muted); }
+
     .time-group { display: grid; gap: 8px; margin-bottom: 14px; }
+
     .time-pill {
       display: inline-flex;
       width: fit-content;
@@ -168,7 +209,9 @@
       font-size: 0.78rem;
       font-weight: 800;
     }
+
     .entry-list { display: grid; gap: 8px; }
+
     .entry {
       display: grid;
       grid-template-columns: 38px minmax(0, 1fr);
@@ -178,6 +221,7 @@
       background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
+
     .thumb {
       width: 38px;
       height: 54px;
@@ -186,8 +230,11 @@
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
+
     .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
     .entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
+
     .entry-title {
       font-size: 0.9rem;
       line-height: 1.3;
@@ -196,8 +243,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     .entry-title a { color: var(--text); text-decoration: none; }
     .entry-title a:hover { color: var(--accent-2); }
+
     .entry-meta {
       display: flex;
       flex-wrap: wrap;
@@ -206,6 +255,7 @@
       font-size: 0.75rem;
       line-height: 1.35;
     }
+
     .chip {
       display: inline-flex;
       align-items: center;
@@ -217,28 +267,37 @@
       font-size: 0.71rem;
       font-weight: 700;
     }
+
     .chip.rss {
       background: rgba(140, 226, 174, 0.11);
       border-color: rgba(140, 226, 174, 0.18);
       color: #d8ffe7;
     }
-    .chip.shana {
+
+    .chip.tosho {
       background: rgba(255, 215, 122, 0.12);
       border-color: rgba(255, 215, 122, 0.18);
       color: #ffe7a6;
     }
+
     .chip.cache {
       background: rgba(173, 171, 255, 0.12);
       border-color: rgba(173, 171, 255, 0.18);
       color: #e7e5ff;
     }
+
     .chip.fallback {
       background: rgba(125, 183, 255, 0.11);
       border-color: rgba(125, 183, 255, 0.18);
       color: #dcebff;
     }
+
     .footer { margin-top: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
-    @media (max-width: 980px) { .controls-grid { grid-template-columns: 1fr; } }
+
+    @media (max-width: 980px) {
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 720px) {
       .wrap { padding: 18px 12px 36px; }
       .controls { padding: 14px; }
@@ -248,19 +307,13 @@
 </head>
 <body>
   <div class="wrap">
-    <section class="hero">
-      <h1>Weekly Airing Board</h1>
-      <p>
-        Hosted version: AniList gives the watching list, <strong>SubsPlease RSS</strong> is the primary rolling source,
-        <strong>Shana Project</strong> is the archive fallback for SubsPlease releases, and the page keeps learned slots in local browser memory.
-      </p>
-    </section>
+    <h1 class="title">Airing Board</h1>
 
     <section class="panel controls">
       <div class="controls-grid">
         <div class="field">
-          <label for="username">AniList username</label>
-          <input id="username" type="text" value="" spellcheck="false" placeholder="zrr" autocomplete="off" />
+          <label for="username">Username</label>
+          <input id="username" type="text" value="user" spellcheck="false" autocomplete="off" />
         </div>
 
         <div class="field">
@@ -268,40 +321,41 @@
           <input id="timezone" type="text" spellcheck="false" />
         </div>
 
-        <div class="field">
-          <label for="rssUrl">SubsPlease RSS URL</label>
-          <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+        <div class="button-row">
+          <button id="loadBtn" class="primary" type="button">Load</button>
+          <button id="clearMemoryBtn" class="danger" type="button">Clear memory</button>
         </div>
       </div>
 
-      <div class="button-row">
-        <button id="loadBtn" class="primary" type="button">Load board</button>
-        <button id="clearMemoryBtn" class="danger" type="button">Clear learned memory</button>
-      </div>
-
       <details>
-        <summary>Optional network helpers</summary>
+        <summary>Config</summary>
         <div class="controls-grid">
           <div class="field">
-            <label for="rssProxyTemplate">Proxy template for SubsPlease RSS</label>
+            <label for="rssUrl">SubsPlease RSS URL</label>
+            <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label for="rssProxyTemplate">SubsPlease proxy</label>
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
 
           <div class="field">
-            <label for="shanaFeedUrl">Shana feed URL</label>
-            <input id="shanaFeedUrl" type="text" spellcheck="false" value="https://www.shanaproject.com/feeds/subber/SubsPlease/" autocomplete="off" />
+            <label for="animeToshoFeedUrl">AnimeTosho feed URL</label>
+            <input id="animeToshoFeedUrl" type="text" spellcheck="false" placeholder="Paste AnimeTosho RSS2/Atom/JSON feed URL" autocomplete="off" />
           </div>
 
           <div class="field">
-            <label for="shanaProxyTemplate">Proxy template for Shana</label>
-            <input id="shanaProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+            <label for="animeToshoProxyTemplate">AnimeTosho proxy</label>
+            <input id="animeToshoProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
         </div>
-      </details>
 
-      <div class="tiny">
-        The page does not remember the AniList username. Local storage is only used for learned slots so shows can stay on the board after they rotate out of the live feeds.
-      </div>
+        <div class="field">
+          <label for="manualScheduleText">Manual schedule</label>
+          <textarea id="manualScheduleText" spellcheck="false" placeholder="Monday&#10;Show Title	16:00&#10;Another Show	18:30"></textarea>
+        </div>
+      </details>
     </section>
 
     <div id="message" class="message"></div>
@@ -312,7 +366,7 @@
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const SLOT_CACHE_KEY = "anilist-subsplease-shana-slot-cache-v1";
+    const SLOT_CACHE_KEY = "anilist-subsplease-animetosho-slot-cache-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -358,8 +412,9 @@
       timezone: document.getElementById("timezone"),
       rssUrl: document.getElementById("rssUrl"),
       rssProxyTemplate: document.getElementById("rssProxyTemplate"),
-      shanaFeedUrl: document.getElementById("shanaFeedUrl"),
-      shanaProxyTemplate: document.getElementById("shanaProxyTemplate"),
+      animeToshoFeedUrl: document.getElementById("animeToshoFeedUrl"),
+      animeToshoProxyTemplate: document.getElementById("animeToshoProxyTemplate"),
+      manualScheduleText: document.getElementById("manualScheduleText"),
       loadBtn: document.getElementById("loadBtn"),
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
       message: document.getElementById("message"),
@@ -369,7 +424,7 @@
     };
 
     els.timezone.value = DEFAULT_TIMEZONE;
-    showMessage("info", "Enter an AniList username and press Load board.");
+    showMessage("info", "Ready.");
 
     function showMessage(type, text) {
       els.message.className = `message ${type}`;
@@ -498,22 +553,6 @@
         [seasonless, strippedSeasonless, compactSeasonless, compactStrippedSeasonless].forEach(value => {
           if (value) variants.add(value);
         });
-
-        if (normalized.includes(" and ")) variants.add(normalized.replace(/\band\b/g, "").replace(/\s+/g, " ").trim());
-        if (normalized.includes(" the ")) variants.add(normalized.replace(/\bthe\b/g, "").replace(/\s+/g, " ").trim());
-        if (normalized.includes(" no ")) variants.add(normalized.replace(/\bno\b/g, "").replace(/\s+/g, " ").trim());
-        if (normalized.includes(" wo ")) variants.add(normalized.replace(/\bwo\b/g, "").replace(/\s+/g, " ").trim());
-        if (normalized.includes(" ga ")) variants.add(normalized.replace(/\bga\b/g, "").replace(/\s+/g, " ").trim());
-
-        const slashParts = text.split("/");
-        if (slashParts.length > 1) {
-          slashParts.forEach(part => {
-            const n = normalizeTitle(part);
-            const c = compactTitle(part);
-            if (n) variants.add(n);
-            if (c) variants.add(c);
-          });
-        }
       }
       return Array.from(variants).filter(Boolean);
     }
@@ -571,6 +610,7 @@
             best = Math.max(best, 98 - seasonPenalty);
             continue;
           }
+
           if (candidateNormalized.includes(normalized) || normalized.includes(candidateNormalized)) {
             if (Math.min(candidateNormalized.length, normalized.length) >= 6) {
               best = Math.max(best, 92 - seasonPenalty);
@@ -603,32 +643,81 @@
               best = Math.max(best, 74 - seasonPenalty);
             }
           }
-
-          const strippedCandidate = stripCommonSuffixes(candidateNormalized);
-          const strippedVariant = stripCommonSuffixes(normalized);
-          const strippedCandidateTokens = tokens(strippedCandidate);
-          const strippedVariantTokens = tokens(strippedVariant);
-          const strippedOverlap = [...strippedCandidateTokens].filter(token => strippedVariantTokens.has(token)).length;
-          const strippedUnion = new Set([...strippedCandidateTokens, ...strippedVariantTokens]).size || 1;
-          const strippedRatio = strippedOverlap / strippedUnion;
-
-          if (strippedOverlap >= 2 && strippedRatio >= 0.40) {
-            best = Math.max(best, 82 - seasonPenalty);
-          } else if (strippedOverlap === 1) {
-            const onlyToken = [...strippedCandidateTokens].find(token => strippedVariantTokens.has(token));
-            if (onlyToken && onlyToken.length >= 7) {
-              best = Math.max(best, 72 - seasonPenalty);
-            }
-          }
         }
       }
       return best;
     }
 
+
+    function parseManualScheduleText(text) {
+      const lines = String(text || "").split(/\r?\n/);
+      const schedule = {};
+      let currentDay = null;
+      const errors = [];
+
+      for (const day of WEEKDAYS) schedule[day] = [];
+
+      for (let i = 0; i < lines.length; i += 1) {
+        const raw = lines[i];
+        const line = raw.trim();
+        if (!line) continue;
+
+        if (WEEKDAYS.includes(line)) {
+          currentDay = line;
+          continue;
+        }
+
+        if (!currentDay) {
+          errors.push(`Line ${i + 1} is not under a weekday: "${raw}"`);
+          continue;
+        }
+
+        const match = raw.match(/^(.*?)\s+(\d{1,2}:\d{2})\s*$/);
+        if (!match) {
+          errors.push(`Could not parse line ${i + 1}: "${raw}"`);
+          continue;
+        }
+
+        const title = match[1].trim();
+        const time = match[2].padStart(5, "0");
+        if (!title) {
+          errors.push(`Missing title on line ${i + 1}.`);
+          continue;
+        }
+
+        schedule[currentDay].push({
+          title,
+          time
+        });
+      }
+
+      return {
+        schedule,
+        errors,
+        total: Object.values(schedule).reduce((sum, items) => sum + items.length, 0)
+      };
+    }
+
+    function manualScheduleCandidates(schedule) {
+      const candidates = [];
+      for (const [day, items] of Object.entries(schedule || {})) {
+        for (const item of items) {
+          const fakeDate = new Date(`2026-01-06T${String(item.time).padStart(5, "0")}:00Z`);
+          candidates.push({
+            title: item.title,
+            variants: generateVariants([item.title]),
+            items: [{ date: fakeDate }],
+            manualDay: day,
+            manualTime: item.time
+          });
+        }
+      }
+      return candidates;
+    }
+
     function parseReleaseTitle(rawTitle) {
       const text = String(rawTitle || "").trim();
       if (!text) return null;
-
       const cleaned = text.replace(/^\[[^\]]+\]\s*/, "").trim();
       if (/batch/i.test(cleaned)) return null;
 
@@ -637,12 +726,11 @@
 
       const showTitle = match[1].trim();
       const episodeToken = match[2].replace(/\s+/g, "");
-      if (!showTitle || !episodeToken) return null;
-      if (episodeToken.includes("-")) return null;
+      if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
       return { showTitle, episode: episodeToken };
     }
 
-    function parseRssXml(xmlText) {
+    function parseXmlFeed(xmlText) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlText, "text/xml");
       if (doc.querySelector("parsererror")) throw new Error("Feed could not be parsed as XML.");
@@ -679,6 +767,55 @@
       }));
     }
 
+    function parseAnimeToshoJson(jsonText) {
+      let payload;
+      try {
+        payload = JSON.parse(jsonText);
+      } catch (_) {
+        throw new Error("AnimeTosho feed was not valid JSON.");
+      }
+
+      const rows = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
+      const deduped = new Map();
+
+      for (const row of rows) {
+        const title = String(row?.title || row?.file_name || row?.name || "").trim();
+        const parsed = parseReleaseTitle(title);
+        if (!parsed) continue;
+
+        const rawDate = row?.pubDate || row?.date || row?.timestamp || row?.date_submitted || row?.created_at || "";
+        const date = new Date(rawDate);
+        if (Number.isNaN(date.getTime())) continue;
+
+        const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
+        const existing = deduped.get(key);
+        if (!existing || date.getTime() > existing.date.getTime()) {
+          deduped.set(key, { rawTitle: title, showTitle: parsed.showTitle, episode: parsed.episode, date });
+        }
+      }
+
+      const grouped = new Map();
+      for (const value of deduped.values()) {
+        if (!grouped.has(value.showTitle)) grouped.set(value.showTitle, []);
+        grouped.get(value.showTitle).push(value);
+      }
+
+      return Array.from(grouped.entries()).map(([title, items]) => ({
+        title,
+        variants: generateVariants([title]),
+        items: items.sort((a, b) => b.date.getTime() - a.date.getTime())
+      }));
+    }
+
+    function parseGenericFeed(text, kind) {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return [];
+      if (kind === "animetosho" && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
+        return parseAnimeToshoJson(trimmed);
+      }
+      return parseXmlFeed(trimmed);
+    }
+
     function dateToWeekdayTime(date, timeZone) {
       const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(date);
       const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(date);
@@ -704,6 +841,10 @@
     }
 
     function inferSlotFromReleases(releases, timeZone) {
+      if (releases?.[0]?.manualDay && releases?.[0]?.manualTime) {
+        return { day: releases[0].manualDay, time: releases[0].manualTime, sampleCount: 1 };
+      }
+
       const sample = releases.slice(0, 3).map(item => {
         const { weekday, time } = dateToWeekdayTime(item.date, timeZone);
         return { weekday, time, minutes: toMinutes(time) };
@@ -779,7 +920,7 @@
       try { localStorage.removeItem(SLOT_CACHE_KEY); } catch (_) {}
     }
 
-    function buildItems(entries, primaryCandidates, shanaCandidates, timeZone) {
+    function buildItems(entries, manualCandidates, primaryCandidates, archiveCandidates, timeZone) {
       const items = [];
       for (const entry of entries) {
         const media = entry.media;
@@ -791,11 +932,12 @@
           "Untitled";
         const cover = media?.coverImage?.large || media?.coverImage?.medium || "";
 
-        const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
-        const secondary = primary ? null : tryMatchCandidateSet(media, shanaCandidates, timeZone, "shana");
+        const manual = tryMatchCandidateSet(media, manualCandidates, timeZone, "manual");
+        const primary = manual ? null : tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+        const archive = (manual || primary) ? null : tryMatchCandidateSet(media, archiveCandidates, timeZone, "animetosho");
 
-        if (primary || secondary) {
-          const chosen = primary || secondary;
+        if (manual || primary || archive) {
+          const chosen = manual || primary || archive;
           items.push({
             id: media.id,
             title,
@@ -838,7 +980,7 @@
       for (const item of items) {
         const key = String(item.id);
 
-        if (item.source === "rss" || item.source === "shana") {
+        if (item.source === "manual" || item.source === "rss" || item.source === "animetosho") {
           cache[key] = {
             day: item.day,
             time: item.time,
@@ -914,19 +1056,21 @@
       return output;
     }
 
-    function renderSummary(items, primaryCount, shanaCount) {
+    function renderSummary(items, primaryCount, archiveCount) {
+      const manualCount = items.filter(item => item.source === "manual").length;
       const rssCount = items.filter(item => item.source === "rss").length;
-      const shanaUsed = items.filter(item => item.source === "shana").length;
+      const toshoCount = items.filter(item => item.source === "animetosho").length;
       const cacheCount = items.filter(item => item.source === "cache").length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
 
       const cards = [
-        { label: "Visible shows", value: String(items.length) },
-        { label: "SubsPlease RSS matches", value: String(rssCount) },
-        { label: "Shana fallback matches", value: String(shanaUsed) },
-        { label: "Local memory", value: String(cacheCount) },
-        { label: "AniList fallback", value: String(fallbackCount) },
-        { label: "RSS/Shana titles parsed", value: `${primaryCount}/${shanaCount}` }
+        { label: "Visible", value: String(items.length) },
+        { label: "Manual", value: String(manualCount) },
+        { label: "SubsPlease RSS", value: String(rssCount) },
+        { label: "AnimeTosho", value: String(toshoCount) },
+        { label: "Memory", value: String(cacheCount) },
+        { label: "Fallback", value: String(fallbackCount) },
+        { label: "Parsed RSS/Tosho", value: `${primaryCount}/${archiveCount}` }
       ];
 
       els.summary.innerHTML = cards.map(card => `
@@ -944,7 +1088,7 @@
         <section class="panel day-column">
           <div class="day-head">
             <div class="day-name">${escapeHtml(dayBlock.day)}</div>
-            <div class="day-count">${dayBlock.slots.reduce((sum, slot) => sum + slot.items.length, 0)} show${dayBlock.slots.reduce((sum, slot) => sum + slot.items.length, 0) === 1 ? "" : "s"}</div>
+            <div class="day-count">${dayBlock.slots.reduce((sum, slot) => sum + slot.items.length, 0)}</div>
           </div>
 
           ${dayBlock.slots.map(slot => `
@@ -962,13 +1106,15 @@
                       </div>
                       <div class="entry-meta">
                         ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
-                        ${item.source === "rss"
-                          ? `<span class="chip rss">SubsPlease RSS · ${item.sampleCount || 1}</span>`
-                          : item.source === "shana"
-                            ? `<span class="chip shana">Shana fallback · ${item.sampleCount || 1}</span>`
-                            : item.source === "cache"
-                              ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
-                              : `<span class="chip fallback">AniList fallback</span>`}
+                        ${item.source === "manual"
+                          ? `<span class="chip rss">Manual</span>`
+                          : item.source === "rss"
+                            ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
+                            : item.source === "animetosho"
+                              ? `<span class="chip tosho">Tosho · ${item.sampleCount || 1}</span>`
+                              : item.source === "cache"
+                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                                : `<span class="chip fallback">AniList</span>`}
                       </div>
                     </div>
                   </article>
@@ -989,68 +1135,66 @@
       const timeZone = els.timezone.value.trim() || DEFAULT_TIMEZONE;
 
       if (!userName) {
-        showMessage("error", "Please enter an AniList username.");
+        showMessage("error", "Please enter a username.");
         return;
       }
 
       if (!validateTimeZone(timeZone)) {
-        showMessage("error", "That timezone does not look valid. Try something like Europe/Berlin or America/New_York.");
+        showMessage("error", "That timezone does not look valid.");
         return;
       }
 
       els.loadBtn.disabled = true;
-      showMessage("info", `Loading AniList, SubsPlease RSS, and Shana fallback for ${userName}…`);
+      showMessage("info", "Loading…");
 
       try {
         const entries = await fetchAniListWatching(userName);
 
-        const [primaryResult, shanaResult] = await Promise.allSettled([
+        const [primaryResult, archiveResult] = await Promise.allSettled([
           fetchTextWithOptionalProxy(els.rssUrl.value.trim(), els.rssProxyTemplate.value.trim()),
-          fetchTextWithOptionalProxy(els.shanaFeedUrl.value.trim(), els.shanaProxyTemplate.value.trim())
+          els.animeToshoFeedUrl.value.trim()
+            ? fetchTextWithOptionalProxy(els.animeToshoFeedUrl.value.trim(), els.animeToshoProxyTemplate.value.trim())
+            : Promise.resolve("")
         ]);
 
         let primaryCandidates = [];
-        let shanaCandidates = [];
+        let archiveCandidates = [];
         const notes = [];
 
-        if (primaryResult.status === "fulfilled") {
+        if (primaryResult.status === "fulfilled" && primaryResult.value.trim()) {
           try {
-            primaryCandidates = parseRssXml(primaryResult.value);
+            primaryCandidates = parseGenericFeed(primaryResult.value, "rss");
           } catch (error) {
-            notes.push(`SubsPlease RSS parse issue: ${error.message}`);
+            notes.push(`SubsPlease: ${error.message}`);
           }
-        } else {
-          notes.push(`SubsPlease RSS fetch issue: ${primaryResult.reason?.message || primaryResult.reason || "unknown error"}`);
+        } else if (primaryResult.status === "rejected") {
+          notes.push(`SubsPlease: ${primaryResult.reason?.message || primaryResult.reason || "request failed"}`);
         }
 
-        if (shanaResult.status === "fulfilled") {
+        if (archiveResult.status === "fulfilled" && archiveResult.value.trim()) {
           try {
-            shanaCandidates = parseRssXml(shanaResult.value);
+            archiveCandidates = parseGenericFeed(archiveResult.value, "animetosho");
           } catch (error) {
-            notes.push(`Shana parse issue: ${error.message}`);
+            notes.push(`AnimeTosho: ${error.message}`);
           }
-        } else {
-          notes.push(`Shana fetch issue: ${shanaResult.reason?.message || shanaResult.reason || "unknown error"}`);
+        } else if (archiveResult.status === "rejected") {
+          notes.push(`AnimeTosho: ${archiveResult.reason?.message || archiveResult.reason || "request failed"}`);
         }
 
-        const built = buildItems(entries, primaryCandidates, shanaCandidates, timeZone);
+        const built = buildItems(entries, primaryCandidates, archiveCandidates, timeZone);
         const items = applyCache(built).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
 
-        renderSummary(items, primaryCandidates.length, shanaCandidates.length);
+        renderSummary(items, primaryCandidates.length, archiveCandidates.length);
         renderBoard(items);
 
         els.footer.textContent =
-          `${items.length} visible shows. ${items.filter(item => item.source === "rss").length} use SubsPlease RSS, ` +
-          `${items.filter(item => item.source === "shana").length} use Shana fallback, ` +
-          `${items.filter(item => item.source === "cache").length} come from local memory, and ` +
-          `${items.filter(item => item.source === "fallback").length} still use AniList fallback.` +
+          `${items.length} visible. ${items.filter(item => item.source === "rss").length} RSS, ` +
+          `${items.filter(item => item.source === "animetosho").length} AnimeTosho, ` +
+          `${items.filter(item => item.source === "cache").length} memory, ` +
+          `${items.filter(item => item.source === "fallback").length} fallback.` +
           (notes.length ? ` ${notes.join(" ")}` : "");
 
-        showMessage(
-          "info",
-          `Loaded ${entries.length} AniList entries.\nParsed ${primaryCandidates.length} SubsPlease RSS titles and ${shanaCandidates.length} Shana titles.` +
-          (notes.length ? `\n\nNotes:\n- ${notes.join("\n- ")}` : "")
-        );
+        showMessage("info", `Loaded ${entries.length} AniList entries.${notes.length ? `\n\n${notes.join("\n")}` : ""}`);
       } catch (error) {
         els.summary.innerHTML = "";
         els.board.innerHTML = "";
@@ -1064,15 +1208,15 @@
     els.loadBtn.addEventListener("click", loadBoard);
     els.clearMemoryBtn.addEventListener("click", () => {
       clearSlotCache();
-      showMessage("info", "Local learned memory cleared.");
+      showMessage("info", "Memory cleared.");
     });
 
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.timezone.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.shanaFeedUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.shanaProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.animeToshoFeedUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.animeToshoProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
   </script>
 </body>
 </html>
