@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,6 +19,17 @@
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
       --ok: #8ce2ae;
       --warn: #ffd48a;
+    }
+
+    /* 3. Highlight Styling */
+    .highlight-next {
+      background: linear-gradient(135deg, rgba(125, 183, 255, 0.25), rgba(156, 232, 255, 0.15)) !important;
+      border: 1px solid var(--accent) !important;
+      box-shadow: 0 0 15px rgba(125, 183, 255, 0.2);
+    }
+    .highlight-next .time-pill {
+      background: var(--accent) !important;
+      color: #08111d !important;
     }
 
     * { box-sizing: border-box; }
@@ -56,7 +68,7 @@
     .top-stack {
       display: grid;
       gap: 16px;
-      margin-bottom: 16px;
+      margin-top: 32px; /* Added spacing since it's now at bottom */
     }
 
     .controls,
@@ -485,7 +497,7 @@
     .day-name { font-size: 1.02rem; font-weight: 800; }
     .day-count { font-size: 0.82rem; color: var(--muted); }
 
-    .time-group { display: grid; gap: 8px; margin-bottom: 14px; }
+    .time-group { display: grid; gap: 8px; margin-bottom: 14px; border-radius: 16px; padding: 4px; transition: background 0.3s; }
 
     .time-pill {
       display: inline-flex;
@@ -576,6 +588,10 @@
   <div class="wrap">
     <h1 class="title">Airing Board</h1>
 
+    <div id="message" class="message"></div>
+    <section id="summary" class="summary"></section>
+    <section id="board" class="board"></section>
+
     <div class="top-stack">
       <section class="panel controls">
         <div class="toolbar-grid">
@@ -586,7 +602,6 @@
 
           <div class="button-row">
             <button id="loadBtn" class="primary" type="button">Load</button>
-            
           </div>
         </div>
       </section>
@@ -673,9 +688,6 @@
     </details>
     </div>
 
-    <div id="message" class="message"></div>
-    <section id="summary" class="summary"></section>
-    <section id="board" class="board"></section>
     <div id="footer" class="footer"></div>
   </div>
 
@@ -684,7 +696,9 @@
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
-    const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    // 2. Note: Rotation logic depends on Sunday being index 0 in JS Date(), but your list used Monday first.
+    // I re-aligned this to match standard Date.getDay() [Sun, Mon, Tue...]
+    const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const DEFAULT_TIMEZONE = "Europe/Berlin";
 
     const TITLE_STOPWORDS = new Set([
@@ -1391,7 +1405,13 @@
       }
 
       const output = [];
-      for (const day of WEEKDAYS) {
+      // 2. Rotate Schedule Logic: Calculate rotation based on today
+      const todayIdx = new Date().getDay(); // 0 (Sun) - 6 (Sat)
+      
+      for (let i = 0; i < 7; i++) {
+        const dayIdx = (todayIdx + i) % 7;
+        const day = WEEKDAYS[dayIdx];
+        
         const dayMap = grouped.get(day);
         const slots = Array.from(dayMap.entries())
           .map(([time, list]) => ({ time, items: list.sort(sortByTime) }))
@@ -1429,6 +1449,13 @@
 
     function renderBoard(items) {
       const grouped = groupForBoard(items);
+      
+      // 3. Highlight Logic Prep
+      const now = new Date();
+      const todayName = WEEKDAYS[now.getDay()];
+      const currentTimeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+      const currentTimeVal = toMinutes(currentTimeStr);
+      let foundNext = false;
 
       els.board.innerHTML = grouped.map(dayBlock => `
         <section class="panel day-column">
@@ -1437,8 +1464,16 @@
             <div class="day-count">${dayBlock.slots.reduce((sum, slot) => sum + slot.items.length, 0)}</div>
           </div>
 
-          ${dayBlock.slots.map(slot => `
-            <div class="time-group">
+          ${dayBlock.slots.map(slot => {
+            // 3. Check if this is the "Next Airing Show"
+            let highlightClass = "";
+            if (!foundNext && dayBlock.day === todayName && toMinutes(slot.time) > currentTimeVal) {
+               highlightClass = "highlight-next";
+               foundNext = true;
+            }
+
+            return `
+            <div class="time-group ${highlightClass}">
               <div class="time-pill">${escapeHtml(slot.time)} <span style="opacity:.7;">${escapeHtml(to12Hour(slot.time))}</span></div>
               <div class="entry-list">
                 ${slot.items.map(item => `
@@ -1466,7 +1501,7 @@
                 `).join("")}
               </div>
             </div>
-          `).join("")}
+          `}).join("")}
         </section>
       `).join("");
 
@@ -1891,13 +1926,7 @@
     }
 
     els.loadBtn.addEventListener("click", loadBoard);
-    els.clearMemoryBtn.addEventListener("click", () => {
-      const scopedUser = els.username.value.trim() || state.userName;
-      clearSlotCache(scopedUser);
-      showMessage("info", "Memory cleared.");
-      if (state.userName) refreshBoardFromState();
-    });
-
+    
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
@@ -1911,3 +1940,5 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
+```
