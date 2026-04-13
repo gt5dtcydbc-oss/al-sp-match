@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Airing Board</title>
+  <title>Currently airing</title>
   <style>
     :root {
       color-scheme: dark;
@@ -584,7 +584,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1 class="title">Airing Board</h1>
+    <h1 class="title">Currently airing</h1>
 
     <section class="panel controls" style="margin-bottom: 16px;">
       <div class="toolbar-grid">
@@ -595,37 +595,37 @@
 
         <div class="button-row">
           <button id="loadBtn" class="primary" type="button">Load</button>
-          <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
-        </div>
+          </div>
       </div>
     </section>
 
     <div id="message" class="message"></div>
     
-    <details class="panel top-dropdown" style="margin-bottom: 24px;">
-      <summary>
-        <div>
-          <h2 class="section-title">Loaded Entries Overview</h2>
-          <div class="manager-toggle-copy">
-            Expand to see stats on loaded, custom, and cached shows.
-          </div>
-        </div>
-        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-      </summary>
-      <div class="top-dropdown-body">
-        <section id="summary" class="summary"></section>
-      </div>
-    </details>
-
     <section id="board" class="board"></section>
 
     <div class="top-stack" style="margin-top: 32px;">
+      
+      <details class="panel top-dropdown">
+        <summary>
+          <div>
+            <h2 class="section-title">Loaded Entries Overview</h2>
+            <div class="manager-toggle-copy">
+              Expand to see stats on loaded, custom, and cached shows.
+            </div>
+          </div>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
+        <div class="top-dropdown-body">
+          <section id="summary" class="summary"></section>
+        </div>
+      </details>
+
       <details class="panel top-dropdown config-dropdown">
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
             <div class="manager-toggle-copy">
-              Expand to edit the SubsPlease feed and proxy settings.
+              Expand to edit the SubsPlease feed, proxy settings, and memory.
             </div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
@@ -644,7 +644,11 @@
             </div>
           </div>
 
-          <div class="helper">
+          <div class="button-row" style="margin-top: 8px;">
+             <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
+          </div>
+
+          <div class="helper" style="margin-top: 12px;">
             Manual text matching has been replaced with per-show overrides tied to AniList IDs.
             Load the board, pick a current show or search AniList below, then optionally enable a custom day/time.
           </div>
