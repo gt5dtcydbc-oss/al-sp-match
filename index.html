@@ -16,6 +16,8 @@
       --accent: #7db7ff;
       --accent-2: #9ce8ff;
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+      --ok: #8ce2ae;
+      --warn: #ffd48a;
     }
 
     * { box-sizing: border-box; }
@@ -51,7 +53,8 @@
       backdrop-filter: blur(10px);
     }
 
-    .controls {
+    .controls,
+    .manager {
       display: grid;
       gap: 14px;
       padding: 16px;
@@ -65,12 +68,19 @@
       align-items: end;
     }
 
+    .manager-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: start;
+    }
+
     .field { display: grid; gap: 8px; }
     .field label { color: var(--muted); font-size: 0.92rem; }
 
-    input, textarea, button { font: inherit; }
+    input, textarea, button, select { font: inherit; }
 
-    input[type="text"], textarea {
+    input[type="text"], input[type="time"], select, textarea {
       width: 100%;
       border: 1px solid var(--line);
       background: var(--panel-2);
@@ -80,18 +90,12 @@
       outline: none;
     }
 
-    input[type="text"] {
-
-      width: 100%;
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      color: var(--text);
-      padding: 12px 14px;
-      border-radius: 14px;
-      outline: none;
+    input[type="text"]:focus,
+    input[type="time"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
     }
-
-    input[type="text"]:focus { border-color: var(--accent); }
 
     .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
@@ -114,6 +118,12 @@
       color: var(--text);
       background: var(--panel-2);
       border: 1px solid var(--line);
+    }
+
+    button.ghost {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
     button.danger {
@@ -171,6 +181,220 @@
     .summary-card { padding: 14px 16px; }
     .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; }
     .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+
+    .section-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .section-copy {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.9rem;
+      margin-top: 2px;
+    }
+
+    .manager-dropdown {
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .manager-dropdown > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      margin: 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .manager-dropdown > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .manager-toggle-copy {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+
+    .manager-toggle-icon {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(125, 183, 255, 0.11);
+      border: 1px solid rgba(125, 183, 255, 0.16);
+      color: #dcebff;
+      font-size: 1rem;
+      transition: transform 0.16s ease;
+    }
+
+    .manager-dropdown[open] .manager-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .manager-dropdown-body {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .manager-section {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .list-card {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(29, 36, 56, 0.7);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      min-height: 78px;
+    }
+
+    .list-stack {
+      display: grid;
+      gap: 10px;
+      max-height: 420px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .show-row,
+    .override-row,
+    .search-result {
+      display: grid;
+      gap: 10px;
+      padding: 11px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .show-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .search-result {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .override-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .row-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      align-items: center;
+    }
+
+    .row-title {
+      font-size: 0.94rem;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .row-subtitle {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 0.71rem;
+      font-weight: 700;
+    }
+
+    .chip.rss {
+      background: rgba(140, 226, 174, 0.11);
+      border-color: rgba(140, 226, 174, 0.18);
+      color: #d8ffe7;
+    }
+
+    .chip.cache {
+      background: rgba(173, 171, 255, 0.12);
+      border-color: rgba(173, 171, 255, 0.18);
+      color: #e7e5ff;
+    }
+
+    .chip.fallback {
+      background: rgba(125, 183, 255, 0.11);
+      border-color: rgba(125, 183, 255, 0.18);
+      color: #dcebff;
+    }
+
+    .chip.manual {
+      background: rgba(255, 212, 138, 0.11);
+      border-color: rgba(255, 212, 138, 0.18);
+      color: #fff0d6;
+    }
+
+    .chip.added {
+      background: rgba(159, 201, 255, 0.11);
+      border-color: rgba(159, 201, 255, 0.18);
+      color: #e2efff;
+    }
+
+    .override-controls {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 160px 120px minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .toggle input { width: auto; }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+      padding: 4px 0;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
 
     .board {
       display: grid;
@@ -256,46 +480,23 @@
       line-height: 1.35;
     }
 
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 3px 7px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      font-size: 0.71rem;
-      font-weight: 700;
-    }
-
-    .chip.rss {
-      background: rgba(140, 226, 174, 0.11);
-      border-color: rgba(140, 226, 174, 0.18);
-      color: #d8ffe7;
-    }
-
-    .chip.cache {
-      background: rgba(173, 171, 255, 0.12);
-      border-color: rgba(173, 171, 255, 0.18);
-      color: #e7e5ff;
-    }
-
-    .chip.fallback {
-      background: rgba(125, 183, 255, 0.11);
-      border-color: rgba(125, 183, 255, 0.18);
-      color: #dcebff;
-    }
-
     .footer { margin-top: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+
+    @media (max-width: 1180px) {
+      .manager-grid { grid-template-columns: 1fr; }
+    }
 
     @media (max-width: 980px) {
       .controls-grid { grid-template-columns: 1fr; }
+      .override-controls { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 720px) {
       .wrap { padding: 18px 12px 36px; }
-      .controls { padding: 14px; }
+      .controls, .manager { padding: 14px; }
       .board { grid-template-columns: 1fr; }
+      .show-row, .search-result { grid-template-columns: 1fr; }
+      .row-actions { justify-content: flex-start; }
     }
   </style>
 </head>
@@ -309,7 +510,6 @@
           <label for="username">Username</label>
           <input id="username" type="text" value="user" spellcheck="false" autocomplete="off" />
         </div>
-
 
         <div class="button-row">
           <button id="loadBtn" class="primary" type="button">Load</button>
@@ -329,15 +529,64 @@
             <label for="rssProxyTemplate">SubsPlease proxy</label>
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
-
         </div>
 
-        <div class="field">
-          <label for="manualScheduleText">Manual schedule</label>
-          <textarea id="manualScheduleText" spellcheck="false" placeholder="Monday&#10;Show Title	16:00&#10;Another Show	18:30"></textarea>
+        <div class="helper">
+          Manual text matching has been replaced with per-show overrides tied to AniList IDs.
+          Load the board, pick a current show or search AniList below, then optionally enable a custom day/time.
         </div>
       </details>
     </section>
+
+    <details class="panel manager-dropdown">
+      <summary>
+        <div>
+          <h2 class="section-title">Show manager</h2>
+          <div class="manager-toggle-copy">
+            Expand to customize current shows or search AniList to add extra ones.
+          </div>
+        </div>
+        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+      </summary>
+
+      <div class="manager-dropdown-body">
+        <div class="section-copy">
+          Pick a current show to customize, or search AniList to add an extra show to the board.
+          Custom slots now attach to the exact show instead of fuzzy title text.
+        </div>
+
+        <div class="manager-grid">
+          <div class="manager-section">
+            <div class="list-card">
+              <div class="section-title">Current AniList shows</div>
+              <div id="currentShowList" class="list-stack">
+                <div class="empty">Load a username to see current shows.</div>
+              </div>
+            </div>
+
+            <div class="list-card">
+              <div class="section-title">Add show</div>
+              <div class="field">
+                <label for="addShowSearch">Search AniList</label>
+                <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type a show name..." autocomplete="off" />
+              </div>
+              <div id="addShowResults" class="list-stack">
+                <div class="empty">Type at least 2 characters to search AniList.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="manager-section">
+            <div class="list-card">
+              <div class="section-title">Custom schedule</div>
+              <div id="overrideList" class="list-stack">
+                <div class="empty">No custom entries yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
 
     <div id="message" class="message"></div>
     <section id="summary" class="summary"></section>
@@ -348,6 +597,8 @@
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
+    const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
+    const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const DEFAULT_TIMEZONE = "Europe/Berlin";
 
@@ -368,7 +619,7 @@
       "The Apothecary Diaries Season 2": "Kusuriya no Hitorigoto S2"
     };
 
-    const QUERY = `
+    const CURRENT_QUERY = `
       query ($userName: String!) {
         MediaListCollection(userName: $userName, type: ANIME, status: CURRENT) {
           lists {
@@ -377,6 +628,7 @@
                 id
                 siteUrl
                 format
+                status
                 coverImage { large medium }
                 title { userPreferred english romaji native }
                 synonyms
@@ -388,17 +640,51 @@
       }
     `;
 
+    const SEARCH_QUERY = `
+      query ($search: String!) {
+        Page(page: 1, perPage: 10) {
+          media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+            id
+            siteUrl
+            format
+            status
+            coverImage { large medium }
+            title { userPreferred english romaji native }
+            synonyms
+            nextAiringEpisode { episode airingAt }
+          }
+        }
+      }
+    `;
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
       rssProxyTemplate: document.getElementById("rssProxyTemplate"),
-      manualScheduleText: document.getElementById("manualScheduleText"),
       loadBtn: document.getElementById("loadBtn"),
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
+      addShowSearch: document.getElementById("addShowSearch"),
+      addShowResults: document.getElementById("addShowResults"),
+      currentShowList: document.getElementById("currentShowList"),
+      overrideList: document.getElementById("overrideList"),
       message: document.getElementById("message"),
       summary: document.getElementById("summary"),
       board: document.getElementById("board"),
       footer: document.getElementById("footer")
+    };
+
+    const state = {
+      userName: "",
+      currentEntries: [],
+      mergedEntries: [],
+      overrides: {},
+      addedShows: {},
+      primaryCandidates: [],
+      items: [],
+      notes: [],
+      totalAniListEntries: 0,
+      searchResults: [],
+      searchToken: 0
     };
 
     showMessage("info", "Ready.");
@@ -408,14 +694,14 @@
       els.message.textContent = text;
     }
 
-    async function fetchAniListWatching(userName) {
+    async function graphQLRequest(query, variables) {
       const response = await fetch(ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
-        body: JSON.stringify({ query: QUERY, variables: { userName } })
+        body: JSON.stringify({ query, variables })
       });
 
       const data = await response.json().catch(() => ({}));
@@ -423,8 +709,12 @@
         const message = data.errors?.map(err => err.message).join(" | ") || `Request failed (${response.status})`;
         throw new Error(message);
       }
+      return data.data || {};
+    }
 
-      const lists = data?.data?.MediaListCollection?.lists || [];
+    async function fetchAniListWatching(userName) {
+      const data = await graphQLRequest(CURRENT_QUERY, { userName });
+      const lists = data?.MediaListCollection?.lists || [];
       const entries = [];
       for (const list of lists) {
         for (const entry of list.entries || []) {
@@ -432,6 +722,11 @@
         }
       }
       return entries;
+    }
+
+    async function searchAniListShows(search) {
+      const data = await graphQLRequest(SEARCH_QUERY, { search });
+      return data?.Page?.media || [];
     }
 
     async function fetchTextWithOptionalProxy(url, proxyTemplate) {
@@ -618,73 +913,6 @@
       return best;
     }
 
-
-    function parseManualScheduleText(text) {
-      const lines = String(text || "").split(/\r?\n/);
-      const schedule = {};
-      let currentDay = null;
-      const errors = [];
-
-      for (const day of WEEKDAYS) schedule[day] = [];
-
-      for (let i = 0; i < lines.length; i += 1) {
-        const raw = lines[i];
-        const line = raw.trim();
-        if (!line) continue;
-
-        if (WEEKDAYS.includes(line)) {
-          currentDay = line;
-          continue;
-        }
-
-        if (!currentDay) {
-          errors.push(`Line ${i + 1} is not under a weekday: "${raw}"`);
-          continue;
-        }
-
-        const match = raw.match(/^(.*?)\s+(\d{1,2}:\d{2})\s*$/);
-        if (!match) {
-          errors.push(`Could not parse line ${i + 1}: "${raw}"`);
-          continue;
-        }
-
-        const title = match[1].trim();
-        const time = match[2].padStart(5, "0");
-        if (!title) {
-          errors.push(`Missing title on line ${i + 1}.`);
-          continue;
-        }
-
-        schedule[currentDay].push({
-          title,
-          time
-        });
-      }
-
-      return {
-        schedule,
-        errors,
-        total: Object.values(schedule).reduce((sum, items) => sum + items.length, 0)
-      };
-    }
-
-    function manualScheduleCandidates(schedule) {
-      const candidates = [];
-      for (const [day, items] of Object.entries(schedule || {})) {
-        for (const item of items) {
-          const fakeDate = new Date(`2026-01-06T${String(item.time).padStart(5, "0")}:00Z`);
-          candidates.push({
-            title: item.title,
-            variants: generateVariants([item.title]),
-            items: [{ date: fakeDate }],
-            manualDay: day,
-            manualTime: item.time
-          });
-        }
-      }
-      return candidates;
-    }
-
     function parseReleaseTitle(rawTitle) {
       const text = String(rawTitle || "").trim();
       if (!text) return null;
@@ -749,6 +977,11 @@
       return { weekday, time };
     }
 
+    function getAniListWeekdayAndTime(unixSeconds, timeZone) {
+      const date = new Date(unixSeconds * 1000);
+      return dateToWeekdayTime(date, timeZone);
+    }
+
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(":").map(Number);
       return (h * 60) + m;
@@ -768,10 +1001,6 @@
     }
 
     function inferSlotFromReleases(releases, timeZone) {
-      if (releases?.[0]?.manualDay && releases?.[0]?.manualTime) {
-        return { day: releases[0].manualDay, time: releases[0].manualTime, sampleCount: 1 };
-      }
-
       const sample = releases.slice(0, 3).map(item => {
         const { weekday, time } = dateToWeekdayTime(item.date, timeZone);
         return { weekday, time, minutes: toMinutes(time) };
@@ -794,11 +1023,6 @@
       const timeItems = dayItems.length ? dayItems : sample;
       const chosenMinutes = median(timeItems.map(item => item.minutes));
       return { day: chosenDay, time: minutesToHHMM(chosenMinutes ?? sample[0].minutes), sampleCount: sample.length };
-    }
-
-    function getAniListWeekdayAndTime(unixSeconds, timeZone) {
-      const date = new Date(unixSeconds * 1000);
-      return dateToWeekdayTime(date, timeZone);
     }
 
     function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
@@ -827,73 +1051,183 @@
       };
     }
 
-    function loadSlotCache() {
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function titleForMedia(media) {
+      return (
+        media?.title?.userPreferred ||
+        media?.title?.english ||
+        media?.title?.romaji ||
+        media?.title?.native ||
+        "Untitled"
+      );
+    }
+
+    function coverForMedia(media) {
+      return media?.coverImage?.large || media?.coverImage?.medium || "";
+    }
+
+    function slotCacheScopeKey(userName) {
+      return `${SLOT_CACHE_KEY}:${String(userName || "").trim().toLowerCase() || "default"}`;
+    }
+
+    function scopedKey(base, userName) {
+      return `${base}:${String(userName || "").trim().toLowerCase() || "default"}`;
+    }
+
+    function loadJSON(key, fallback) {
       try {
-        const raw = localStorage.getItem(SLOT_CACHE_KEY);
-        if (!raw) return {};
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
         const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === "object" ? parsed : {};
+        return parsed && typeof parsed === "object" ? parsed : fallback;
       } catch (_) {
-        return {};
+        return fallback;
       }
     }
 
-    function saveSlotCache(cache) {
+    function saveJSON(key, value) {
       try {
-        localStorage.setItem(SLOT_CACHE_KEY, JSON.stringify(cache));
+        localStorage.setItem(key, JSON.stringify(value));
       } catch (_) {}
     }
 
-    function clearSlotCache() {
-      try { localStorage.removeItem(SLOT_CACHE_KEY); } catch (_) {}
+    function loadSlotCache(userName) {
+      return loadJSON(slotCacheScopeKey(userName), {});
     }
 
-    function buildItems(entries, manualCandidates, primaryCandidates, timeZone) {
+    function saveSlotCache(userName, cache) {
+      saveJSON(slotCacheScopeKey(userName), cache);
+    }
+
+    function clearSlotCache(userName) {
+      try { localStorage.removeItem(slotCacheScopeKey(userName)); } catch (_) {}
+    }
+
+    function loadOverrides(userName) {
+      return loadJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), {});
+    }
+
+    function saveOverrides(userName, overrides) {
+      saveJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides);
+    }
+
+    function loadAddedShows(userName) {
+      return loadJSON(scopedKey(ADDED_SHOWS_KEY, userName), {});
+    }
+
+    function saveAddedShows(userName, addedShows) {
+      saveJSON(scopedKey(ADDED_SHOWS_KEY, userName), addedShows);
+    }
+
+    function makeEntryFromMedia(media) {
+      return { media };
+    }
+
+    function dedupeEntriesById(entries) {
+      const map = new Map();
+      for (const entry of entries || []) {
+        const id = entry?.media?.id;
+        if (!id) continue;
+        if (!map.has(id)) map.set(id, entry);
+      }
+      return Array.from(map.values());
+    }
+
+    function mediaCatalog() {
+      const map = new Map();
+      for (const entry of state.currentEntries || []) {
+        if (entry?.media?.id) map.set(String(entry.media.id), entry.media);
+      }
+      for (const value of Object.values(state.addedShows || {})) {
+        if (value?.id) map.set(String(value.id), value);
+      }
+      for (const media of state.searchResults || []) {
+        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
+      }
+      return map;
+    }
+
+    function isValidTime(value) {
+      return /^\d{2}:\d{2}$/.test(String(value || ""));
+    }
+
+    function overrideForMediaId(mediaId) {
+      const override = state.overrides?.[String(mediaId)];
+      if (!override) return null;
+      return {
+        enabled: Boolean(override.enabled),
+        day: WEEKDAYS.includes(override.day) ? override.day : "Monday",
+        time: isValidTime(override.time) ? override.time : "18:00"
+      };
+    }
+
+    function detectDefaultSlot(media, primaryCandidates, timeZone) {
+      const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+      if (primary) return primary;
+
+      const next = media?.nextAiringEpisode;
+      if (next?.airingAt) {
+        const { weekday, time } = getAniListWeekdayAndTime(next.airingAt, timeZone);
+        return {
+          day: weekday,
+          time,
+          source: "fallback",
+          sampleCount: 0,
+          matchedTitle: ""
+        };
+      }
+      return null;
+    }
+
+    function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
       for (const entry of entries) {
         const media = entry.media;
-        const title =
-          media?.title?.userPreferred ||
-          media?.title?.english ||
-          media?.title?.romaji ||
-          media?.title?.native ||
-          "Untitled";
-        const cover = media?.coverImage?.large || media?.coverImage?.medium || "";
+        if (!media?.id) continue;
 
-        const manual = tryMatchCandidateSet(media, manualCandidates, timeZone, "manual");
-        const primary = manual ? null : tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+        const title = titleForMedia(media);
+        const cover = coverForMedia(media);
+        const override = overrides?.[String(media.id)];
 
-        if (manual || primary) {
-          const chosen = manual || primary;
+        if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
             id: media.id,
             title,
             siteUrl: media.siteUrl || "#",
             cover,
-            day: chosen.day,
-            time: chosen.time,
+            day: override.day,
+            time: override.time,
             format: media.format || "",
-            source: chosen.source,
-            sampleCount: chosen.sampleCount || 1,
-            matchedTitle: chosen.matchedTitle || ""
+            source: "manual",
+            sampleCount: 1,
+            matchedTitle: "",
+            isAdded: Boolean(state.addedShows[String(media.id)])
           });
           continue;
         }
 
-        const next = media?.nextAiringEpisode;
-        if (next?.airingAt) {
-          const { weekday, time } = getAniListWeekdayAndTime(next.airingAt, timeZone);
+        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
+        if (primary) {
           items.push({
             id: media.id,
             title,
             siteUrl: media.siteUrl || "#",
             cover,
-            day: weekday,
-            time,
+            day: primary.day,
+            time: primary.time,
             format: media.format || "",
-            source: "fallback",
-            sampleCount: 0,
-            matchedTitle: ""
+            source: primary.source,
+            sampleCount: primary.sampleCount || 1,
+            matchedTitle: primary.matchedTitle || "",
+            isAdded: Boolean(state.addedShows[String(media.id)])
           });
         }
       }
@@ -901,7 +1235,7 @@
     }
 
     function applyCache(items) {
-      const cache = loadSlotCache();
+      const cache = loadSlotCache(state.userName);
       const output = [];
 
       for (const item of items) {
@@ -936,7 +1270,7 @@
         }
       }
 
-      saveSlotCache(cache);
+      saveSlotCache(state.userName, cache);
       return output;
     }
 
@@ -949,15 +1283,6 @@
       const suffix = hRaw >= 12 ? "PM" : "AM";
       const h = ((hRaw + 11) % 12) + 1;
       return `${h}:${String(m).padStart(2, "0")} ${suffix}`;
-    }
-
-    function escapeHtml(text) {
-      return String(text)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
     }
 
     function groupForBoard(items) {
@@ -987,11 +1312,13 @@
       const manualCount = items.filter(item => item.source === "manual").length;
       const rssCount = items.filter(item => item.source === "rss").length;
       const cacheCount = items.filter(item => item.source === "cache").length;
+      const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
 
       const cards = [
         { label: "Visible", value: String(items.length) },
-        { label: "Manual", value: String(manualCount) },
+        { label: "Custom", value: String(manualCount) },
+        { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
         { label: "Memory", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
@@ -1031,8 +1358,9 @@
                       </div>
                       <div class="entry-meta">
                         ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
+                        ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                         ${item.source === "manual"
-                          ? `<span class="chip rss">Manual</span>`
+                          ? `<span class="chip manual">Custom</span>`
                           : item.source === "rss"
                             ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
                             : item.source === "cache"
@@ -1053,60 +1381,402 @@
       }
     }
 
+    function slotTextForItem(item) {
+      if (!item) return "No detected slot yet";
+      return `${item.day} · ${item.time}`;
+    }
+
+    function itemMap() {
+      const map = new Map();
+      for (const item of state.items || []) map.set(String(item.id), item);
+      return map;
+    }
+
+    function currentEntriesSorted() {
+      return [...(state.currentEntries || [])].sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
+    }
+
+    function overrideEntriesForDisplay() {
+      const catalog = mediaCatalog();
+      const ids = new Set([
+        ...Object.keys(state.overrides || {}),
+        ...Object.keys(state.addedShows || {})
+      ]);
+      return Array.from(ids)
+        .map(id => ({ id: String(id), media: catalog.get(String(id)), override: overrideForMediaId(id), added: Boolean(state.addedShows[String(id)]) }))
+        .filter(entry => entry.media)
+        .sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
+    }
+
+    function renderCurrentShows() {
+      const itemsById = itemMap();
+      const rows = currentEntriesSorted();
+
+      if (!rows.length) {
+        els.currentShowList.innerHTML = `<div class="empty">Load a username to see current shows.</div>`;
+        return;
+      }
+
+      els.currentShowList.innerHTML = rows.map(entry => {
+        const media = entry.media;
+        const id = String(media.id);
+        const item = itemsById.get(id);
+        const hasOverride = Boolean(state.overrides[id]);
+        return `
+          <div class="show-row">
+            <div>
+              <div class="row-head">
+                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
+                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
+                ${hasOverride ? `<span class="chip manual">Custom saved</span>` : ""}
+              </div>
+              <div class="row-subtitle">${escapeHtml(slotTextForItem(item))}</div>
+            </div>
+            <div class="row-actions">
+              <button class="secondary" type="button" data-action="customize-current" data-id="${escapeHtml(id)}">${hasOverride ? "Edit custom" : "Customize"}</button>
+              ${hasOverride ? `<button class="ghost" type="button" data-action="clear-current-override" data-id="${escapeHtml(id)}">Clear custom</button>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderSearchResults() {
+      const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
+      const addedIds = new Set(Object.keys(state.addedShows || {}));
+
+      if (!state.searchResults.length) {
+        const text = els.addShowSearch.value.trim().length >= 2
+          ? "No AniList matches found."
+          : "Type at least 2 characters to search AniList.";
+        els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
+        return;
+      }
+
+      els.addShowResults.innerHTML = state.searchResults.map(media => {
+        const id = String(media.id);
+        const current = currentIds.has(id);
+        const added = addedIds.has(id);
+        const existingOverride = Boolean(state.overrides[id]);
+        return `
+          <div class="search-result">
+            <div>
+              <div class="row-head">
+                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
+                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
+                ${current ? `<span class="chip rss">Current</span>` : ""}
+                ${added ? `<span class="chip added">Added</span>` : ""}
+              </div>
+              <div class="row-subtitle">${escapeHtml(media.status || "Unknown status")}</div>
+            </div>
+            <div class="row-actions">
+              ${current
+                ? `<button class="secondary" type="button" data-action="customize-current" data-id="${escapeHtml(id)}">${existingOverride ? "Edit custom" : "Customize"}</button>`
+                : added
+                  ? `<button class="secondary" type="button" data-action="focus-override" data-id="${escapeHtml(id)}">Manage</button>`
+                  : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderOverrideList() {
+      const rows = overrideEntriesForDisplay();
+      const itemsById = itemMap();
+
+      if (!rows.length) {
+        els.overrideList.innerHTML = `<div class="empty">No custom entries yet.</div>`;
+        return;
+      }
+
+      els.overrideList.innerHTML = rows.map(entry => {
+        const media = entry.media;
+        const id = entry.id;
+        const override = entry.override || { enabled: false, day: "Monday", time: "18:00" };
+        const currentItem = itemsById.get(id);
+        const suggested = currentItem ? `${currentItem.day} · ${currentItem.time}` : "No detected slot";
+        return `
+          <div class="override-row" id="override-${escapeHtml(id)}">
+            <div>
+              <div class="row-head">
+                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
+                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
+                ${entry.added ? `<span class="chip added">Added show</span>` : `<span class="chip rss">Current show</span>`}
+              </div>
+              <div class="row-subtitle">Detected: ${escapeHtml(suggested)}</div>
+            </div>
+
+            <div class="override-controls">
+              <label class="toggle">
+                <input type="checkbox" data-action="toggle-override" data-id="${escapeHtml(id)}" ${override.enabled ? "checked" : ""} />
+                Use custom slot
+              </label>
+
+              <select data-action="set-day" data-id="${escapeHtml(id)}" ${override.enabled ? "" : "disabled"}>
+                ${WEEKDAYS.map(day => `<option value="${escapeHtml(day)}" ${day === override.day ? "selected" : ""}>${escapeHtml(day)}</option>`).join("")}
+              </select>
+
+              <div class="row-actions">
+                <input type="time" data-action="set-time" data-id="${escapeHtml(id)}" value="${escapeHtml(override.time)}" ${override.enabled ? "" : "disabled"} />
+                <button class="ghost" type="button" data-action="reset-to-detected" data-id="${escapeHtml(id)}">Use detected</button>
+                <button class="danger" type="button" data-action="${entry.added ? "remove-added-show" : "remove-current-override"}" data-id="${escapeHtml(id)}">${entry.added ? "Remove show" : "Clear custom"}</button>
+              </div>
+            </div>
+
+            <div class="helper">
+              ${override.enabled
+                ? "Custom slot is active and will override RSS / AniList for this show."
+                : "Custom slot is off. This show currently follows RSS, cache, or AniList detection."}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderManager() {
+      renderCurrentShows();
+      renderSearchResults();
+      renderOverrideList();
+    }
+
+    function refreshBoardFromState() {
+      const currentEntries = state.currentEntries || [];
+      const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
+      state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
+
+      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
+      state.items = applyCache(built).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
+
+      renderSummary(state.items, state.primaryCandidates.length);
+      renderBoard(state.items);
+      renderManager();
+
+      const customCount = state.items.filter(item => item.source === "manual").length;
+      const addedCount = state.items.filter(item => item.isAdded).length;
+      const rssCount = state.items.filter(item => item.source === "rss").length;
+      const cacheCount = state.items.filter(item => item.source === "cache").length;
+      const fallbackCount = state.items.filter(item => item.source === "fallback").length;
+
+      els.footer.textContent =
+        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
+    }
+
+    function persistState() {
+      saveOverrides(state.userName, state.overrides);
+      saveAddedShows(state.userName, state.addedShows);
+    }
+
+    function ensureOverrideForMedia(media, options = {}) {
+      if (!media?.id) return;
+      const id = String(media.id);
+      const current = overrideForMediaId(id);
+      const existingEnabled = current?.enabled ?? false;
+      const defaultSlot = itemMap().get(id) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+      const nextOverride = {
+        enabled: options.enable ?? existingEnabled,
+        day: options.day || current?.day || defaultSlot?.day || "Monday",
+        time: options.time || current?.time || defaultSlot?.time || "18:00"
+      };
+      state.overrides[id] = nextOverride;
+      persistState();
+      refreshBoardFromState();
+      focusOverride(id);
+    }
+
+    function focusOverride(id) {
+      const el = document.getElementById(`override-${CSS.escape(String(id))}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function addShowFromSearch(media) {
+      if (!media?.id) return;
+      state.addedShows[String(media.id)] = media;
+      if (!state.overrides[String(media.id)]) {
+        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        state.overrides[String(media.id)] = {
+          enabled: Boolean(suggested),
+          day: suggested?.day || "Monday",
+          time: suggested?.time || "18:00"
+        };
+      }
+      persistState();
+      refreshBoardFromState();
+      focusOverride(media.id);
+    }
+
+    function clearOverride(id) {
+      delete state.overrides[String(id)];
+      persistState();
+      refreshBoardFromState();
+    }
+
+    function removeAddedShow(id) {
+      delete state.addedShows[String(id)];
+      delete state.overrides[String(id)];
+      persistState();
+      refreshBoardFromState();
+    }
+
+    function mediaById(id) {
+      return mediaCatalog().get(String(id)) || null;
+    }
+
+    async function handleSearchInput() {
+      const query = els.addShowSearch.value.trim();
+      const token = ++state.searchToken;
+
+      if (query.length < 2) {
+        state.searchResults = [];
+        renderSearchResults();
+        return;
+      }
+
+      els.addShowResults.innerHTML = `<div class="empty">Searching AniList…</div>`;
+
+      try {
+        const results = await searchAniListShows(query);
+        if (token !== state.searchToken) return;
+        state.searchResults = Array.isArray(results) ? results : [];
+        renderSearchResults();
+      } catch (error) {
+        if (token !== state.searchToken) return;
+        state.searchResults = [];
+        els.addShowResults.innerHTML = `<div class="empty">Search failed: ${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    let searchDebounceTimer = null;
+    els.addShowSearch.addEventListener("input", () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(handleSearchInput, 250);
+    });
+
+    els.currentShowList.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      const media = mediaById(id);
+      if (!media) return;
+
+      if (button.dataset.action === "customize-current") {
+        ensureOverrideForMedia(media, { enable: true });
+      } else if (button.dataset.action === "clear-current-override") {
+        clearOverride(id);
+      }
+    });
+
+    els.addShowResults.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      const media = mediaById(id);
+      if (!media) return;
+
+      if (button.dataset.action === "add-search-show") {
+        addShowFromSearch(media);
+      } else if (button.dataset.action === "customize-current") {
+        ensureOverrideForMedia(media, { enable: true });
+      } else if (button.dataset.action === "focus-override") {
+        focusOverride(id);
+      }
+    });
+
+    els.overrideList.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = String(button.dataset.id || "");
+      const media = mediaById(id);
+
+      if (button.dataset.action === "remove-added-show") {
+        removeAddedShow(id);
+      } else if (button.dataset.action === "remove-current-override") {
+        clearOverride(id);
+      } else if (button.dataset.action === "reset-to-detected" && media) {
+        const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        if (detected) {
+          state.overrides[id] = {
+            enabled: false,
+            day: detected.day,
+            time: detected.time
+          };
+        } else if (state.overrides[id]) {
+          state.overrides[id].enabled = false;
+        }
+        persistState();
+        refreshBoardFromState();
+      }
+    });
+
+    els.overrideList.addEventListener("change", event => {
+      const target = event.target;
+      const action = target.dataset.action;
+      const id = String(target.dataset.id || "");
+      if (!action || !id || !state.overrides[id]) return;
+
+      if (action === "toggle-override") {
+        state.overrides[id].enabled = Boolean(target.checked);
+      } else if (action === "set-day") {
+        state.overrides[id].day = WEEKDAYS.includes(target.value) ? target.value : state.overrides[id].day;
+      } else if (action === "set-time") {
+        state.overrides[id].time = isValidTime(target.value) ? target.value : state.overrides[id].time;
+      }
+
+      persistState();
+      refreshBoardFromState();
+    });
+
     async function loadBoard() {
       const userName = els.username.value.trim();
-      const timeZone = DEFAULT_TIMEZONE;
 
       if (!userName) {
         showMessage("error", "Please enter a username.");
         return;
       }
 
+      state.userName = userName;
+      state.overrides = loadOverrides(userName);
+      state.addedShows = loadAddedShows(userName);
+      state.notes = [];
+
       els.loadBtn.disabled = true;
       showMessage("info", "Loading…");
 
       try {
         const entries = await fetchAniListWatching(userName);
+        state.currentEntries = dedupeEntriesById(entries);
+        state.totalAniListEntries = state.currentEntries.length;
 
         const primaryResult = await fetchTextWithOptionalProxy(
           els.rssUrl.value.trim(),
           els.rssProxyTemplate.value.trim()
         );
 
-        let primaryCandidates = [];
-        const notes = [];
-
-        const manualResult = parseManualScheduleText(els.manualScheduleText.value);
-        const manualCandidates = manualScheduleCandidates(manualResult.schedule);
-        if (manualResult.errors.length) {
-          notes.push(`Manual schedule: ${manualResult.errors.join(" ")}`);
-        }
-
+        state.primaryCandidates = [];
         if (primaryResult.trim()) {
           try {
-            primaryCandidates = parseGenericFeed(primaryResult);
+            state.primaryCandidates = parseGenericFeed(primaryResult);
           } catch (error) {
-            notes.push(`SubsPlease: ${error.message}`);
+            state.notes.push(`SubsPlease: ${error.message}`);
           }
         }
 
-        const built = buildItems(entries, manualCandidates, primaryCandidates, timeZone);
-        const items = applyCache(built).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
+        refreshBoardFromState();
 
-        renderSummary(items, primaryCandidates.length);
-        renderBoard(items);
-
-        els.footer.textContent =
-          `${items.length} visible. ${items.filter(item => item.source === "rss").length} RSS, ` +
-          `${items.filter(item => item.source === "cache").length} memory, ` +
-          `${items.filter(item => item.source === "fallback").length} fallback.` +
-          (notes.length ? ` ${notes.join(" ")}` : "");
-
-        showMessage("info", `Loaded ${entries.length} AniList entries.${notes.length ? `\n\n${notes.join("\n")}` : ""}`);
+        showMessage(
+          "info",
+          `Loaded ${state.totalAniListEntries} AniList entries.` +
+          (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
+        );
       } catch (error) {
+        state.currentEntries = [];
+        state.primaryCandidates = [];
+        state.items = [];
         els.summary.innerHTML = "";
         els.board.innerHTML = "";
         els.footer.textContent = "";
+        renderManager();
         showMessage("error", `Could not load the board: ${error.message}`);
       } finally {
         els.loadBtn.disabled = false;
@@ -1115,13 +1785,16 @@
 
     els.loadBtn.addEventListener("click", loadBoard);
     els.clearMemoryBtn.addEventListener("click", () => {
-      clearSlotCache();
+      const scopedUser = els.username.value.trim() || state.userName;
+      clearSlotCache(scopedUser);
       showMessage("info", "Memory cleared.");
+      if (state.userName) refreshBoardFromState();
     });
 
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.addShowSearch.addEventListener("keydown", event => { if (event.key === "Enter") handleSearchInput(); });
   </script>
 </body>
 </html>
