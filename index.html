@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,17 +18,6 @@
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
       --ok: #8ce2ae;
       --warn: #ffd48a;
-    }
-
-    /* 3. Highlight Styling */
-    .highlight-next {
-      background: linear-gradient(135deg, rgba(125, 183, 255, 0.25), rgba(156, 232, 255, 0.15)) !important;
-      border: 1px solid var(--accent) !important;
-      box-shadow: 0 0 15px rgba(125, 183, 255, 0.2);
-    }
-    .highlight-next .time-pill {
-      background: var(--accent) !important;
-      color: #08111d !important;
     }
 
     * { box-sizing: border-box; }
@@ -68,7 +56,7 @@
     .top-stack {
       display: grid;
       gap: 16px;
-      margin-top: 32px; /* Added spacing since it's now at bottom */
+      margin-bottom: 16px;
     }
 
     .controls,
@@ -199,7 +187,6 @@
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      margin-bottom: 16px;
     }
 
     .summary-card { padding: 14px 16px; }
@@ -497,7 +484,7 @@
     .day-name { font-size: 1.02rem; font-weight: 800; }
     .day-count { font-size: 0.82rem; color: var(--muted); }
 
-    .time-group { display: grid; gap: 8px; margin-bottom: 14px; border-radius: 16px; padding: 4px; transition: background 0.3s; }
+    .time-group { display: grid; gap: 8px; margin-bottom: 14px; padding: 6px; border-radius: 12px; transition: background 0.2s; }
 
     .time-pill {
       display: inline-flex;
@@ -511,6 +498,17 @@
       color: #dcebff;
       font-size: 0.78rem;
       font-weight: 800;
+    }
+
+    /* Show Highlights */
+    .highlight-next {
+      background: linear-gradient(135deg, rgba(125, 183, 255, 0.25), rgba(156, 232, 255, 0.15)) !important;
+      border: 1px solid var(--accent) !important;
+      box-shadow: 0 0 15px rgba(125, 183, 255, 0.2);
+    }
+    .highlight-next .time-pill {
+      background: var(--accent) !important;
+      color: #08111d !important;
     }
 
     .entry-list { display: grid; gap: 8px; }
@@ -588,24 +586,40 @@
   <div class="wrap">
     <h1 class="title">Airing Board</h1>
 
+    <section class="panel controls" style="margin-bottom: 16px;">
+      <div class="toolbar-grid">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
+        </div>
+
+        <div class="button-row">
+          <button id="loadBtn" class="primary" type="button">Load</button>
+          <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
+        </div>
+      </div>
+    </section>
+
     <div id="message" class="message"></div>
-    <section id="summary" class="summary"></section>
-    <section id="board" class="board"></section>
-
-    <div class="top-stack">
-      <section class="panel controls">
-        <div class="toolbar-grid">
-          <div class="field">
-            <label for="username">Username</label>
-            <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
-          </div>
-
-          <div class="button-row">
-            <button id="loadBtn" class="primary" type="button">Load</button>
+    
+    <details class="panel top-dropdown" style="margin-bottom: 24px;">
+      <summary>
+        <div>
+          <h2 class="section-title">Loaded Entries Overview</h2>
+          <div class="manager-toggle-copy">
+            Expand to see stats on loaded, custom, and cached shows.
           </div>
         </div>
-      </section>
+        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+      </summary>
+      <div class="top-dropdown-body">
+        <section id="summary" class="summary"></section>
+      </div>
+    </details>
 
+    <section id="board" class="board"></section>
+
+    <div class="top-stack" style="margin-top: 32px;">
       <details class="panel top-dropdown config-dropdown">
         <summary>
           <div>
@@ -638,54 +652,54 @@
       </details>
 
       <details class="panel manager-dropdown">
-      <summary>
-        <div>
-          <h2 class="section-title">Show manager</h2>
-          <div class="manager-toggle-copy">
-            Expand to customize current shows or search AniList to add extra currently airing ones.
+        <summary>
+          <div>
+            <h2 class="section-title">Show manager</h2>
+            <div class="manager-toggle-copy">
+              Expand to customize current shows or search AniList to add extra currently airing ones.
+            </div>
           </div>
-        </div>
-        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-      </summary>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
 
-      <div class="manager-dropdown-body">
-        <div class="section-copy">
-          Pick a current show to customize, or search AniList to add an extra currently airing show to the board.
-          Custom slots now attach to the exact show instead of fuzzy title text.
-        </div>
+        <div class="manager-dropdown-body">
+          <div class="section-copy">
+            Pick a current show to customize, or search AniList to add an extra currently airing show to the board.
+            Custom slots now attach to the exact show instead of fuzzy title text.
+          </div>
 
-        <div class="manager-grid">
-          <div class="manager-section">
-            <div class="list-card">
-              <div class="section-title">Current AniList shows</div>
-              <div id="currentShowList" class="list-stack">
-                <div class="empty">Load a username to see current shows.</div>
+          <div class="manager-grid">
+            <div class="manager-section">
+              <div class="list-card">
+                <div class="section-title">Current AniList shows</div>
+                <div id="currentShowList" class="list-stack">
+                  <div class="empty">Load a username to see current shows.</div>
+                </div>
+              </div>
+
+              <div class="list-card">
+                <div class="section-title">Add currently airing show</div>
+                <div class="field">
+                  <label for="addShowSearch">Search currently airing AniList shows</label>
+                  <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+                </div>
+                <div id="addShowResults" class="list-stack">
+                  <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
+                </div>
               </div>
             </div>
 
-            <div class="list-card">
-              <div class="section-title">Add currently airing show</div>
-              <div class="field">
-                <label for="addShowSearch">Search currently airing AniList shows</label>
-                <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
-              </div>
-              <div id="addShowResults" class="list-stack">
-                <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="manager-section">
-            <div class="list-card">
-              <div class="section-title">Custom schedule</div>
-              <div id="overrideList" class="list-stack">
-                <div class="empty">No custom entries yet.</div>
+            <div class="manager-section">
+              <div class="list-card">
+                <div class="section-title">Custom schedule</div>
+                <div id="overrideList" class="list-stack">
+                  <div class="empty">No custom entries yet.</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </details>
+      </details>
     </div>
 
     <div id="footer" class="footer"></div>
@@ -696,9 +710,7 @@
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
-    // 2. Note: Rotation logic depends on Sunday being index 0 in JS Date(), but your list used Monday first.
-    // I re-aligned this to match standard Date.getDay() [Sun, Mon, Tue...]
-    const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const DEFAULT_TIMEZONE = "Europe/Berlin";
 
     const TITLE_STOPWORDS = new Set([
@@ -1405,9 +1417,11 @@
       }
 
       const output = [];
-      // 2. Rotate Schedule Logic: Calculate rotation based on today
-      const todayIdx = new Date().getDay(); // 0 (Sun) - 6 (Sat)
-      
+
+      // Determine today's index in the WEEKDAYS array
+      const jsDay = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const todayIdx = jsDay === 0 ? 6 : jsDay - 1; // Map to WEEKDAYS (Monday is 0)
+
       for (let i = 0; i < 7; i++) {
         const dayIdx = (todayIdx + i) % 7;
         const day = WEEKDAYS[dayIdx];
@@ -1450,9 +1464,9 @@
     function renderBoard(items) {
       const grouped = groupForBoard(items);
       
-      // 3. Highlight Logic Prep
       const now = new Date();
-      const todayName = WEEKDAYS[now.getDay()];
+      const jsDay = now.getDay();
+      const todayName = WEEKDAYS[jsDay === 0 ? 6 : jsDay - 1];
       const currentTimeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
       const currentTimeVal = toMinutes(currentTimeStr);
       let foundNext = false;
@@ -1465,13 +1479,11 @@
           </div>
 
           ${dayBlock.slots.map(slot => {
-            // 3. Check if this is the "Next Airing Show"
             let highlightClass = "";
             if (!foundNext && dayBlock.day === todayName && toMinutes(slot.time) > currentTimeVal) {
                highlightClass = "highlight-next";
                foundNext = true;
             }
-
             return `
             <div class="time-group ${highlightClass}">
               <div class="time-pill">${escapeHtml(slot.time)} <span style="opacity:.7;">${escapeHtml(to12Hour(slot.time))}</span></div>
@@ -1927,6 +1939,16 @@
 
     els.loadBtn.addEventListener("click", loadBoard);
     
+    // Safety check just in case clearMemoryBtn exists in the DOM context
+    if(els.clearMemoryBtn) {
+      els.clearMemoryBtn.addEventListener("click", () => {
+        const scopedUser = els.username.value.trim() || state.userName;
+        clearSlotCache(scopedUser);
+        showMessage("info", "Memory cleared.");
+        if (state.userName) refreshBoardFromState();
+      });
+    }
+
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
@@ -1937,8 +1959,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (loadBtn) loadBtn.click();
 });
 
-</script>
+  </script>
 </body>
 </html>
-
-```
