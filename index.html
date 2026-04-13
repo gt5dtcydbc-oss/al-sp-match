@@ -53,18 +53,31 @@
       backdrop-filter: blur(10px);
     }
 
+    .top-stack {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
     .controls,
     .manager {
       display: grid;
       gap: 14px;
-      padding: 16px;
-      margin-bottom: 16px;
+      padding: 18px 20px;
+      margin: 0;
     }
 
-    .controls-grid {
+    .toolbar-grid {
       display: grid;
       gap: 12px;
-      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      grid-template-columns: minmax(260px, 1fr) auto;
+      align-items: end;
+    }
+
+    .config-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
       align-items: end;
     }
 
@@ -136,15 +149,14 @@
     button:disabled { opacity: 0.7; cursor: wait; transform: none; }
 
     details {
-      border-top: 1px solid rgba(255,255,255,0.07);
-      padding-top: 10px;
+      margin: 0;
     }
 
     summary {
       cursor: pointer;
       color: var(--text);
       font-weight: 700;
-      margin-bottom: 10px;
+      margin: 0;
       user-select: none;
     }
 
@@ -193,26 +205,32 @@
       color: var(--muted);
       line-height: 1.45;
       font-size: 0.9rem;
-      margin-top: 2px;
+      margin: 0;
     }
 
+    .top-dropdown,
     .manager-dropdown {
-      margin-bottom: 16px;
+      margin: 0;
       overflow: hidden;
+      border-top: 0;
+      padding-top: 0;
     }
 
+    .top-dropdown > summary,
     .manager-dropdown > summary {
       list-style: none;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 16px 18px;
-      margin: 0;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      gap: 16px;
+      padding: 18px 20px;
+      min-height: 82px;
+      background: linear-gradient(180deg, rgba(31, 39, 60, 0.96), rgba(24, 31, 48, 0.96));
     }
 
-    .manager-dropdown > summary::-webkit-details-marker {
+    .top-dropdown > summary::-webkit-details-marker,
+    .manager-dropdown > summary::-webkit-details-marker,
+    .task-dropdown > summary::-webkit-details-marker {
       display: none;
     }
 
@@ -221,12 +239,14 @@
       font-size: 0.9rem;
       font-weight: 500;
       line-height: 1.45;
+      margin-top: 4px;
+      max-width: 62ch;
     }
 
     .manager-toggle-icon {
       flex: 0 0 auto;
-      width: 34px;
-      height: 34px;
+      width: 36px;
+      height: 36px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -235,33 +255,40 @@
       border: 1px solid rgba(125, 183, 255, 0.16);
       color: #dcebff;
       font-size: 1rem;
-      transition: transform 0.16s ease;
+      transition: transform 0.16s ease, background 0.16s ease;
     }
 
-    .manager-dropdown[open] .manager-toggle-icon {
+    .top-dropdown[open] .manager-toggle-icon,
+    .manager-dropdown[open] .manager-toggle-icon,
+    .task-dropdown[open] .manager-toggle-icon {
       transform: rotate(180deg);
+      background: rgba(156, 232, 255, 0.12);
     }
 
+    .top-dropdown-body,
     .manager-dropdown-body {
       display: grid;
-      gap: 14px;
-      padding: 16px;
+      gap: 16px;
+      padding: 18px 20px 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(19, 25, 40, 0.38);
     }
 
     .manager-section {
       display: grid;
-      gap: 12px;
+      gap: 14px;
       min-width: 0;
     }
 
     .list-card {
       display: grid;
-      gap: 10px;
-      padding: 12px;
-      background: rgba(29, 36, 56, 0.7);
+      gap: 12px;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(29, 36, 56, 0.82), rgba(24, 31, 47, 0.82));
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px;
-      min-height: 78px;
+      border-radius: 18px;
+      min-height: 86px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .list-stack {
@@ -277,17 +304,14 @@
     .search-result {
       display: grid;
       gap: 10px;
-      padding: 11px;
-      border-radius: 14px;
+      padding: 12px;
+      border-radius: 16px;
       background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
       border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
     }
 
-    .show-row {
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-    }
-
+    .show-row,
     .search-result {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
@@ -295,6 +319,48 @@
 
     .override-row {
       grid-template-columns: minmax(0, 1fr);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .task-dropdown {
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+
+    .task-dropdown > summary {
+      list-style: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+    }
+
+    .task-dropdown-body {
+      display: grid;
+      gap: 12px;
+      padding: 0 16px 16px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(17, 23, 37, 0.2);
+    }
+
+    .task-summary-main {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .task-summary-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.4;
     }
 
     .row-head {
@@ -321,6 +387,7 @@
       gap: 8px;
       flex-wrap: wrap;
       justify-content: flex-end;
+      align-items: center;
     }
 
     .chip {
@@ -368,7 +435,7 @@
     .override-controls {
       display: grid;
       gap: 10px;
-      grid-template-columns: 160px 120px minmax(0, 1fr);
+      grid-template-columns: 170px 140px minmax(220px, 1fr);
       align-items: center;
     }
 
@@ -487,13 +554,18 @@
     }
 
     @media (max-width: 980px) {
-      .controls-grid { grid-template-columns: 1fr; }
+      .toolbar-grid,
+      .config-grid,
       .override-controls { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 720px) {
       .wrap { padding: 18px 12px 36px; }
-      .controls, .manager { padding: 14px; }
+      .controls, .manager { padding: 16px; }
+      .top-dropdown > summary,
+      .manager-dropdown > summary,
+      .top-dropdown-body,
+      .manager-dropdown-body { padding-left: 16px; padding-right: 16px; }
       .board { grid-template-columns: 1fr; }
       .show-row, .search-result { grid-template-columns: 1fr; }
       .row-actions { justify-content: flex-start; }
@@ -504,46 +576,58 @@
   <div class="wrap">
     <h1 class="title">Airing Board</h1>
 
-    <section class="panel controls">
-      <div class="controls-grid">
-        <div class="field">
-          <label for="username">Username</label>
-          <input id="username" type="text" value="user" spellcheck="false" autocomplete="off" />
-        </div>
-
-        <div class="button-row">
-          <button id="loadBtn" class="primary" type="button">Load</button>
-          <button id="clearMemoryBtn" class="danger" type="button">Clear memory</button>
-        </div>
-      </div>
-
-      <details>
-        <summary>Config</summary>
-        <div class="controls-grid">
+    <div class="top-stack">
+      <section class="panel controls">
+        <div class="toolbar-grid">
           <div class="field">
-            <label for="rssUrl">SubsPlease RSS URL</label>
-            <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+            <label for="username">Username</label>
+            <input id="username" type="text" value="user" spellcheck="false" autocomplete="off" />
           </div>
 
-          <div class="field">
-            <label for="rssProxyTemplate">SubsPlease proxy</label>
-            <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+          <div class="button-row">
+            <button id="loadBtn" class="primary" type="button">Load</button>
+            <button id="clearMemoryBtn" class="danger" type="button">Clear memory</button>
           </div>
         </div>
+      </section>
 
-        <div class="helper">
-          Manual text matching has been replaced with per-show overrides tied to AniList IDs.
-          Load the board, pick a current show or search AniList below, then optionally enable a custom day/time.
+      <details class="panel top-dropdown config-dropdown">
+        <summary>
+          <div>
+            <h2 class="section-title">Config</h2>
+            <div class="manager-toggle-copy">
+              Expand to edit the SubsPlease feed and proxy settings.
+            </div>
+          </div>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
+
+        <div class="top-dropdown-body">
+          <div class="config-grid">
+            <div class="field">
+              <label for="rssUrl">SubsPlease RSS URL</label>
+              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+            </div>
+
+            <div class="field">
+              <label for="rssProxyTemplate">SubsPlease proxy</label>
+              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="helper">
+            Manual text matching has been replaced with per-show overrides tied to AniList IDs.
+            Load the board, pick a current show or search AniList below, then optionally enable a custom day/time.
+          </div>
         </div>
       </details>
-    </section>
 
-    <details class="panel manager-dropdown">
+      <details class="panel manager-dropdown">
       <summary>
         <div>
           <h2 class="section-title">Show manager</h2>
           <div class="manager-toggle-copy">
-            Expand to customize current shows or search AniList to add extra ones.
+            Expand to customize current shows or search AniList to add extra currently airing ones.
           </div>
         </div>
         <span class="manager-toggle-icon" aria-hidden="true">▾</span>
@@ -551,7 +635,7 @@
 
       <div class="manager-dropdown-body">
         <div class="section-copy">
-          Pick a current show to customize, or search AniList to add an extra show to the board.
+          Pick a current show to customize, or search AniList to add an extra currently airing show to the board.
           Custom slots now attach to the exact show instead of fuzzy title text.
         </div>
 
@@ -565,13 +649,13 @@
             </div>
 
             <div class="list-card">
-              <div class="section-title">Add show</div>
+              <div class="section-title">Add currently airing show</div>
               <div class="field">
-                <label for="addShowSearch">Search AniList</label>
-                <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type a show name..." autocomplete="off" />
+                <label for="addShowSearch">Search currently airing AniList shows</label>
+                <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
               </div>
               <div id="addShowResults" class="list-stack">
-                <div class="empty">Type at least 2 characters to search AniList.</div>
+                <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
               </div>
             </div>
           </div>
@@ -587,6 +671,7 @@
         </div>
       </div>
     </details>
+    </div>
 
     <div id="message" class="message"></div>
     <section id="summary" class="summary"></section>
@@ -643,7 +728,7 @@
     const SEARCH_QUERY = `
       query ($search: String!) {
         Page(page: 1, perPage: 10) {
-          media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+          media(search: $search, type: ANIME, status: RELEASING, sort: SEARCH_MATCH) {
             id
             siteUrl
             format
@@ -726,7 +811,7 @@
 
     async function searchAniListShows(search) {
       const data = await graphQLRequest(SEARCH_QUERY, { search });
-      return data?.Page?.media || [];
+      return (data?.Page?.media || []).filter(media => media?.status === "RELEASING");
     }
 
     async function fetchTextWithOptionalProxy(url, proxyTemplate) {
@@ -1171,11 +1256,19 @@
 
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
-      if (primary) return primary;
-
       const next = media?.nextAiringEpisode;
+
       if (next?.airingAt) {
         const { weekday, time } = getAniListWeekdayAndTime(next.airingAt, timeZone);
+        if (primary?.time) {
+          return {
+            day: weekday,
+            time: primary.time,
+            source: "rss",
+            sampleCount: primary.sampleCount || 1,
+            matchedTitle: primary.matchedTitle || ""
+          };
+        }
         return {
           day: weekday,
           time,
@@ -1184,6 +1277,8 @@
           matchedTitle: ""
         };
       }
+
+      if (primary) return primary;
       return null;
     }
 
@@ -1255,10 +1350,9 @@
         }
 
         const remembered = cache[key];
-        if (remembered && remembered.day && remembered.time) {
+        if (remembered && remembered.time) {
           output.push({
             ...item,
-            day: remembered.day,
             time: remembered.time,
             source: "cache",
             sampleCount: remembered.sampleCount || 1,
@@ -1447,8 +1541,8 @@
 
       if (!state.searchResults.length) {
         const text = els.addShowSearch.value.trim().length >= 2
-          ? "No AniList matches found."
-          : "Type at least 2 characters to search AniList.";
+          ? "No currently airing AniList matches found."
+          : "Type at least 2 characters to search currently airing AniList shows.";
         els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
         return;
       }
@@ -1467,7 +1561,7 @@
                 ${current ? `<span class="chip rss">Current</span>` : ""}
                 ${added ? `<span class="chip added">Added</span>` : ""}
               </div>
-              <div class="row-subtitle">${escapeHtml(media.status || "Unknown status")}</div>
+              <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : (media.status || "Unknown status"))}</div>
             </div>
             <div class="row-actions">
               ${current
@@ -1496,40 +1590,51 @@
         const override = entry.override || { enabled: false, day: "Monday", time: "18:00" };
         const currentItem = itemsById.get(id);
         const suggested = currentItem ? `${currentItem.day} · ${currentItem.time}` : "No detected slot";
+        const customText = `${override.day} · ${override.time}`;
         return `
-          <div class="override-row" id="override-${escapeHtml(id)}">
-            <div>
-              <div class="row-head">
-                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
-                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
-                ${entry.added ? `<span class="chip added">Added show</span>` : `<span class="chip rss">Current show</span>`}
+          <details class="override-row task-dropdown" id="override-${escapeHtml(id)}" ${override.enabled ? "open" : ""}>
+            <summary>
+              <div class="task-summary-main">
+                <div class="row-head">
+                  <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
+                  ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
+                  ${entry.added ? `<span class="chip added">Added show</span>` : `<span class="chip rss">Current show</span>`}
+                  ${override.enabled ? `<span class="chip manual">Custom active</span>` : ""}
+                </div>
+                <div class="task-summary-meta">
+                  <span>Detected: ${escapeHtml(suggested)}</span>
+                  <span>•</span>
+                  <span>${override.enabled ? `Using custom: ${escapeHtml(customText)}` : "Using detected slot"}</span>
+                </div>
               </div>
-              <div class="row-subtitle">Detected: ${escapeHtml(suggested)}</div>
-            </div>
+              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+            </summary>
 
-            <div class="override-controls">
-              <label class="toggle">
-                <input type="checkbox" data-action="toggle-override" data-id="${escapeHtml(id)}" ${override.enabled ? "checked" : ""} />
-                Use custom slot
-              </label>
+            <div class="task-dropdown-body">
+              <div class="override-controls">
+                <label class="toggle">
+                  <input type="checkbox" data-action="toggle-override" data-id="${escapeHtml(id)}" ${override.enabled ? "checked" : ""} />
+                  Use custom slot
+                </label>
 
-              <select data-action="set-day" data-id="${escapeHtml(id)}" ${override.enabled ? "" : "disabled"}>
-                ${WEEKDAYS.map(day => `<option value="${escapeHtml(day)}" ${day === override.day ? "selected" : ""}>${escapeHtml(day)}</option>`).join("")}
-              </select>
+                <select data-action="set-day" data-id="${escapeHtml(id)}" ${override.enabled ? "" : "disabled"}>
+                  ${WEEKDAYS.map(day => `<option value="${escapeHtml(day)}" ${day === override.day ? "selected" : ""}>${escapeHtml(day)}</option>`).join("")}
+                </select>
 
-              <div class="row-actions">
-                <input type="time" data-action="set-time" data-id="${escapeHtml(id)}" value="${escapeHtml(override.time)}" ${override.enabled ? "" : "disabled"} />
-                <button class="ghost" type="button" data-action="reset-to-detected" data-id="${escapeHtml(id)}">Use detected</button>
-                <button class="danger" type="button" data-action="${entry.added ? "remove-added-show" : "remove-current-override"}" data-id="${escapeHtml(id)}">${entry.added ? "Remove show" : "Clear custom"}</button>
+                <div class="row-actions">
+                  <input type="time" data-action="set-time" data-id="${escapeHtml(id)}" value="${escapeHtml(override.time)}" ${override.enabled ? "" : "disabled"} />
+                  <button class="ghost" type="button" data-action="reset-to-detected" data-id="${escapeHtml(id)}">Use detected</button>
+                  <button class="danger" type="button" data-action="${entry.added ? "remove-added-show" : "remove-current-override"}" data-id="${escapeHtml(id)}">${entry.added ? "Remove show" : "Clear custom"}</button>
+                </div>
+              </div>
+
+              <div class="helper">
+                ${override.enabled
+                  ? "Custom slot is active and will override RSS / AniList for this show."
+                  : "Custom slot is off. Weekday comes from AniList when available, with SubsPlease used for release time."}
               </div>
             </div>
-
-            <div class="helper">
-              ${override.enabled
-                ? "Custom slot is active and will override RSS / AniList for this show."
-                : "Custom slot is off. This show currently follows RSS, cache, or AniList detection."}
-            </div>
-          </div>
+          </details>
         `;
       }).join("");
     }
@@ -1587,7 +1692,9 @@
 
     function focusOverride(id) {
       const el = document.getElementById(`override-${CSS.escape(String(id))}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (!el) return;
+      if ("open" in el) el.open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     function addShowFromSearch(media) {
@@ -1638,7 +1745,7 @@
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
-        state.searchResults = Array.isArray(results) ? results : [];
+        state.searchResults = (Array.isArray(results) ? results : []).filter(media => media?.status === "RELEASING");
         renderSearchResults();
       } catch (error) {
         if (token !== state.searchToken) return;
