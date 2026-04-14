@@ -586,13 +586,126 @@
       .show-row, .search-result { grid-template-columns: 1fr; }
       .row-actions { justify-content: flex-start; }
     }
+
+    @media (max-width: 480px) {
+      .wrap {
+        padding: 10px 8px 20px;
+      }
+
+      .title {
+        margin-bottom: 10px;
+        font-size: 1.25rem;
+      }
+
+      .panel.controls {
+        margin-bottom: 10px !important;
+      }
+
+      .controls,
+      .manager,
+      .day-column {
+        padding: 10px;
+      }
+
+      .top-stack {
+        margin-top: 18px !important;
+        gap: 10px;
+      }
+
+      .top-dropdown > summary,
+      .manager-dropdown > summary,
+      .top-dropdown-body,
+      .manager-dropdown-body {
+        padding: 12px;
+        min-height: auto;
+      }
+
+      .manager-toggle-copy {
+        font-size: 0.8rem;
+        margin-top: 2px;
+      }
+
+      .day-head {
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+      }
+
+      .day-name {
+        font-size: 0.92rem;
+      }
+
+      .day-count {
+        font-size: 0.72rem;
+      }
+
+      .time-group {
+        gap: 6px;
+        margin-bottom: 8px;
+        padding: 3px;
+      }
+
+      .time-pill {
+        padding: 3px 8px;
+        font-size: 0.7rem;
+      }
+
+      .entry-list {
+        gap: 5px;
+      }
+
+      .entry {
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        padding: 6px;
+        border-radius: 10px;
+      }
+
+      .thumb {
+        width: 28px;
+        height: 40px;
+        border-radius: 6px;
+      }
+
+      .entry-body {
+        gap: 2px;
+      }
+
+      .entry-title {
+        font-size: 0.78rem;
+        line-height: 1.2;
+      }
+
+      .entry-meta {
+        gap: 4px;
+        font-size: 0.65rem;
+      }
+
+      .chip {
+        padding: 2px 5px;
+        font-size: 0.62rem;
+      }
+
+      .footer {
+        margin-top: 10px;
+        font-size: 0.74rem;
+      }
+
+      .message {
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 0.82rem;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="title">Currently airing</h1>
 
-    <section class="panel controls" style="margin-bottom: 16px;">
+    <section id="board" class="board"></section>
+
+    <section class="panel controls" style="margin-top: 16px; margin-bottom: 16px;">
       <div class="toolbar-grid">
         <div class="field">
           <label for="username">Username</label>
@@ -601,16 +714,14 @@
 
         <div class="button-row">
           <button id="loadBtn" class="primary" type="button">Load</button>
-          </div>
+        </div>
       </div>
     </section>
 
     <div id="message" class="message" aria-live="polite"></div>
-    
-    <section id="board" class="board"></section>
 
     <div class="top-stack" style="margin-top: 32px;">
-      
+
       <details class="panel top-dropdown">
         <summary>
           <div>
@@ -1623,7 +1734,7 @@
       for (let i = 0; i < 7; i++) {
         const dayIdx = (todayIdx + i) % 7;
         const day = WEEKDAYS[dayIdx];
-        
+
         const dayMap = grouped.get(day);
         const slots = Array.from(dayMap.entries())
           .map(([time, list]) => ({ time, items: list.sort(sortByTime) }))
@@ -2170,7 +2281,7 @@
     }
 
     els.loadBtn.addEventListener("click", () => loadBoard());
-    
+
     // Safety check just in case clearMemoryBtn exists in the DOM context
     if(els.clearMemoryBtn) {
       els.clearMemoryBtn.addEventListener("click", () => {
