@@ -796,7 +796,6 @@ summary {
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const VARYG_RSS_URL = "https://nyaa.si/?page=rss&q=varyg&c=0_0&f=0";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
@@ -888,7 +887,6 @@ summary {
       overrides: {},
       addedShows: {},
       primaryCandidates: [],
-      varygCandidates: [],
       items: [],
       notes: [],
       totalAniListEntries: 0,
@@ -1303,7 +1301,6 @@ summary {
         userName: state.userName,
         currentEntries: state.currentEntries,
         primaryCandidates: state.primaryCandidates,
-        varygCandidates: state.varygCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
         rssUrl: els.rssUrl.value.trim(),
@@ -1324,7 +1321,6 @@ summary {
       state.addedShows = loadAddedShows(state.userName);
       state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
-      state.varygCandidates = Array.isArray(snapshot.varygCandidates) ? snapshot.varygCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       const snapshotSavedAt = Number(snapshot.savedAt);
@@ -1395,13 +1391,8 @@ summary {
      * - Falls back to AniList time + 60 minutes when RSS is an outlier or absent.
      * - If AniList has no airing data at all, trusts the RSS median blindly.
      */
-    function detectDefaultSlot(media, primaryCandidates, varygCandidates, timeZone) {
+    function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
-      if (primary) return primary;
-
-      const secondary = tryMatchCandidateSet(media, varygCandidates, timeZone, "varyg");
-      if (secondary) return secondary;
-
       const next = media?.nextAiringEpisode;
 
       if (next?.airingAt) {
@@ -1410,6 +1401,35 @@ summary {
           const { weekday: aniDay, time: aniTime } = airingSlot;
           const aniMinutes = toMinutes(aniTime);
 
+          if (primary?.time) {
+            const rssMinutes = toMinutes(primary.time);
+            // Difference accounting for 24-hour wrap-around
+            let diff = rssMinutes - aniMinutes;
+            if (diff > 720) diff -= 1440;
+            if (diff < -720) diff += 1440;
+
+            if (Math.abs(diff) <= 210) {
+              // RSS is within the expected release window — use it
+              return {
+                day: aniDay,
+                time: primary.time,
+                source: "rss",
+                sampleCount: primary.sampleCount || 1,
+                matchedTitle: primary.matchedTitle || ""
+              };
+            } else {
+              // RSS is an outlier (screening, delay, etc.) — fall back
+              return {
+                day: aniDay,
+                time: minutesToHHMM(aniMinutes + 60),
+                source: "fallback",
+                sampleCount: 0,
+                matchedTitle: ""
+              };
+            }
+          }
+
+          // No RSS data yet — fall back to AniList time + 1 hour
           return {
             day: aniDay,
             time: minutesToHHMM(aniMinutes + 60),
@@ -1420,10 +1440,11 @@ summary {
         }
       }
 
-      return null;
+      // AniList has no airing schedule — trust RSS blindly
+      return primary || null;
     }
 
-    function buildItems(entries, overrides, primaryCandidates, varygCandidates, timeZone) {
+    function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
       for (const entry of entries) {
         const media = entry.media;
@@ -1440,7 +1461,7 @@ summary {
           });
           continue;
         }
-        const primary = detectDefaultSlot(media, primaryCandidates, varygCandidates, timeZone);
+        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover,
@@ -1459,7 +1480,7 @@ summary {
       const output = [];
       for (const item of items) {
         const key = String(item.id);
-        if (item.source === "manual" || item.source === "rss" || item.source === "varyg") {
+        if (item.source === "manual" || item.source === "rss") {
           cache[key] = {
             day: item.day, time: item.time, sampleCount: item.sampleCount || 1,
             matchedTitle: item.matchedTitle || "", origin: item.source,
@@ -1591,7 +1612,6 @@ summary {
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
       const rssCount = items.filter(item => item.source === "rss").length;
-      const varygCount = items.filter(item => item.source === "varyg").length;
       const cacheCount = items.filter(item => item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
@@ -1600,7 +1620,6 @@ summary {
         { label: "Custom", value: String(manualCount) },
         { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
-        { label: "Varyg RSS", value: String(varygCount) },
         { label: "Memory", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
         { label: "Parsed RSS", value: String(primaryCount) }
@@ -1648,12 +1667,10 @@ summary {
                           ${item.source === "manual"
                             ? `<span class="chip manual">Custom</span>`
                             : item.source === "rss"
-                              ? `<span class="chip rss">SubsPlease · ${item.sampleCount || 1}</span>`
-                              : item.source === "varyg"
-                                ? `<span class="chip rss">Varyg · ${item.sampleCount || 1}</span>`
-                                : item.source === "cache"
-                                  ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
-                                  : `<span class="chip fallback">AniList</span>`}
+                              ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
+                              : item.source === "cache"
+                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                                : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
                     </article>
@@ -1838,7 +1855,7 @@ summary {
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
-      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, state.varygCandidates, DEFAULT_TIMEZONE);
+      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       state.items = applyCache(built).sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
@@ -1848,13 +1865,12 @@ summary {
       const customCount = state.items.filter(item => item.source === "manual").length;
       const addedCount = state.items.filter(item => item.isAdded).length;
       const rssCount = state.items.filter(item => item.source === "rss").length;
-      const varygCount = state.items.filter(item => item.source === "varyg").length;
       const cacheCount = state.items.filter(item => item.source === "cache").length;
       const fallbackCount = state.items.filter(item => item.source === "fallback").length;
       const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
       const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
       els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} SubsPlease, ${varygCount} Varyg, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
         updatedLabel +
         (state.notes.length ? ` ${state.notes.join(" ")}` : "");
     }
@@ -1869,7 +1885,7 @@ summary {
       const id = String(media.id);
       const current = overrideForMediaId(id);
       const existingEnabled = current?.enabled ?? false;
-      const defaultSlot = itemMap().get(id) || detectDefaultSlot(media, state.primaryCandidates, state.varygCandidates, DEFAULT_TIMEZONE);
+      const defaultSlot = itemMap().get(id) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
       const nextOverride = {
         enabled: options.enable ?? existingEnabled,
         day: options.day || current?.day || defaultSlot?.day || "Monday",
@@ -1892,7 +1908,7 @@ summary {
       if (!media?.id) return;
       state.addedShows[String(media.id)] = media;
       if (!state.overrides[String(media.id)]) {
-        const suggested = detectDefaultSlot(media, state.primaryCandidates, state.varygCandidates, DEFAULT_TIMEZONE);
+        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
         state.overrides[String(media.id)] = {
           enabled: Boolean(suggested),
           day: suggested?.day || "Monday",
@@ -1986,7 +2002,7 @@ summary {
       } else if (button.dataset.action === "remove-current-override") {
         clearOverride(id);
       } else if (button.dataset.action === "reset-to-detected" && media) {
-        const detected = detectDefaultSlot(media, state.primaryCandidates, state.varygCandidates, DEFAULT_TIMEZONE);
+        const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
         if (detected) {
           state.overrides[id] = { enabled: false, day: detected.day, time: detected.time };
         } else if (state.overrides[id]) {
@@ -2031,26 +2047,11 @@ summary {
         const entries = await fetchAniListWatching(userName);
         const nextCurrentEntries = dedupeEntriesById(entries);
         const nextTotalAniListEntries = nextCurrentEntries.length;
-        const [primaryResult, varygResult] = await Promise.all([
-          fetchTextWithOptionalProxy(
-            els.rssUrl.value.trim(),
-            els.rssProxyTemplate.value.trim()
-          ).catch(error => {
-            nextNotes.push(`SubsPlease: ${error.message}`);
-            return "";
-          }),
-          fetchTextWithOptionalProxy(
-            VARYG_RSS_URL,
-            els.rssProxyTemplate.value.trim()
-          ).catch(error => {
-            nextNotes.push(`Varyg: ${error.message}`);
-            return "";
-          })
-        ]);
-
+        const primaryResult = await fetchTextWithOptionalProxy(
+          els.rssUrl.value.trim(),
+          els.rssProxyTemplate.value.trim()
+        );
         let nextPrimaryCandidates = [];
-        let nextVarygCandidates = [];
-
         if (primaryResult.trim()) {
           try {
             nextPrimaryCandidates = parseGenericFeed(primaryResult);
@@ -2058,19 +2059,9 @@ summary {
             nextNotes.push(`SubsPlease: ${error.message}`);
           }
         }
-
-        if (varygResult.trim()) {
-          try {
-            nextVarygCandidates = parseGenericFeed(varygResult);
-          } catch (error) {
-            nextNotes.push(`Varyg: ${error.message}`);
-          }
-        }
-
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextTotalAniListEntries;
         state.primaryCandidates = nextPrimaryCandidates;
-        state.varygCandidates = nextVarygCandidates;
         state.notes = nextNotes;
         state.lastSuccessfulLoadAt = Date.now();
         refreshBoardFromState();
