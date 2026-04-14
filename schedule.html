@@ -1790,8 +1790,8 @@
             return `
             <div class="time-group ${isNext ? "highlight-next" : ""}">
               <div class="time-pill">
-                ${escapeHtml(slot.time)} <span style="opacity:.7;">${escapeHtml(to12Hour(slot.time))}</span>
-                ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
+              ${escapeHtml(slot.time)}
+              ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
               </div>
               <div class="entry-list">
                 ${slot.items.map(item => `
