@@ -1101,13 +1101,19 @@
     }
 
     function dateToWeekdayTime(date, timeZone) {
-      const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(date);
-      const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(date);
+      const safeDate = date instanceof Date ? date : new Date(date);
+      if (!Number.isFinite(safeDate.getTime())) return null;
+
+      const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(safeDate);
+      const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(safeDate);
       return { weekday, time };
     }
 
     function getAniListWeekdayAndTime(unixSeconds, timeZone) {
-      const date = new Date(unixSeconds * 1000);
+      const safeUnixSeconds = Number(unixSeconds);
+      if (!Number.isFinite(safeUnixSeconds)) return null;
+
+      const date = new Date(safeUnixSeconds * 1000);
       return dateToWeekdayTime(date, timeZone);
     }
 
@@ -1377,23 +1383,26 @@
       const next = media?.nextAiringEpisode;
 
       if (next?.airingAt) {
-        const { weekday, time } = getAniListWeekdayAndTime(next.airingAt, timeZone);
-        if (primary?.time) {
+        const airingSlot = getAniListWeekdayAndTime(next.airingAt, timeZone);
+        if (airingSlot) {
+          const { weekday, time } = airingSlot;
+          if (primary?.time) {
+            return {
+              day: weekday,
+              time: primary.time,
+              source: "rss",
+              sampleCount: primary.sampleCount || 1,
+              matchedTitle: primary.matchedTitle || ""
+            };
+          }
           return {
             day: weekday,
-            time: primary.time,
-            source: "rss",
-            sampleCount: primary.sampleCount || 1,
-            matchedTitle: primary.matchedTitle || ""
+            time,
+            source: "fallback",
+            sampleCount: 0,
+            matchedTitle: ""
           };
         }
-        return {
-          day: weekday,
-          time,
-          source: "fallback",
-          sampleCount: 0,
-          matchedTitle: ""
-        };
       }
 
       if (primary) return primary;
@@ -1893,7 +1902,8 @@
       const rssCount = state.items.filter(item => item.source === "rss").length;
       const cacheCount = state.items.filter(item => item.source === "cache").length;
       const fallbackCount = state.items.filter(item => item.source === "fallback").length;
-      const updatedLabel = state.lastSuccessfulLoadAt ? ` Last updated ${formatSavedAt(state.lastSuccessfulLoadAt)}.` : "";
+      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+      const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
 
       els.footer.textContent =
         `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
