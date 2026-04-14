@@ -431,11 +431,10 @@
       color: #e2efff;
     }
 
-    .countdown-chip {
-      background: rgba(255, 212, 138, 0.11);
-      border: 1px solid rgba(255, 212, 138, 0.2);
-      color: #fff0d6;
-      margin-left: 6px;
+    .countdown-inline {
+      display: inline;
+      opacity: 0.92;
+      font-weight: 800;
     }
 
     .override-controls {
@@ -1652,7 +1651,7 @@
             <div class="time-group ${isNext ? "highlight-next" : ""}">
               <div class="time-pill">
                 ${escapeHtml(slot.time)} <span style="opacity:.7;">${escapeHtml(to12Hour(slot.time))}</span>
-                ${countdownText ? `<span class="chip countdown-chip">${escapeHtml(countdownText)}</span>` : ""}
+                ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
               </div>
               <div class="entry-list">
                 ${slot.items.map(item => `
