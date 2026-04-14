@@ -2171,14 +2171,40 @@
       maybeRefreshBoard("refresh");
     });
 
-    window.addEventListener("DOMContentLoaded", () => {
-      applySavedSettings();
-      const hydrated = hydrateBoardSnapshot();
-      startAutoRefresh();
-      if (els.username.value.trim()) {
-        loadBoard({ reason: hydrated ? "refresh" : "load" });
+    let autoRefreshStarted = false;
+    let bootCompleted = false;
+
+    function bootPage() {
+      if (bootCompleted) return;
+      bootCompleted = true;
+
+      try {
+        applySavedSettings();
+        const hydrated = hydrateBoardSnapshot();
+
+        if (!els.username.value.trim()) {
+          els.username.value = "zrr";
+        }
+
+        if (!autoRefreshStarted) {
+          startAutoRefresh();
+          autoRefreshStarted = true;
+        }
+
+        if (els.username.value.trim()) {
+          loadBoard({ reason: hydrated ? "refresh" : "load" });
+        }
+      } catch (error) {
+        console.error("Boot failed:", error);
+        showMessage("error", `Startup failed: ${error.message}`);
       }
-    });
+    }
+
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", bootPage, { once: true });
+    } else {
+      bootPage();
+    }
 
   </script>
 </body>
