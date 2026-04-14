@@ -1253,6 +1253,12 @@
       return snapshot && typeof snapshot === "object" ? snapshot : null;
     }
 
+    function clearBoardSnapshot() {
+      try {
+        localStorage.removeItem(BOARD_SNAPSHOT_KEY);
+      } catch (_) {}
+    }
+
     function saveBoardSnapshot() {
       const snapshot = {
         savedAt: Date.now(),
@@ -1283,7 +1289,14 @@
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
-      state.lastSuccessfulLoadAt = Number(snapshot.savedAt) || 0;
+      const snapshotSavedAt = Number(snapshot.savedAt);
+      state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
+      if (!Number.isFinite(snapshotSavedAt)) {
+        try {
+          const repairedSnapshot = { ...snapshot, savedAt: 0 };
+          localStorage.setItem(BOARD_SNAPSHOT_KEY, JSON.stringify(repairedSnapshot));
+        } catch (_) {}
+      }
 
       refreshBoardFromState();
       return true;
@@ -1570,13 +1583,18 @@
     }
 
     function formatSavedAt(timestamp, timeZone = DEFAULT_TIMEZONE) {
-      if (!timestamp) return "";
+      const safeTimestamp = Number(timestamp);
+      if (!Number.isFinite(safeTimestamp)) return "";
+
+      const safeDate = new Date(safeTimestamp);
+      if (!Number.isFinite(safeDate.getTime())) return "";
+
       return new Intl.DateTimeFormat("en-GB", {
         timeZone,
         weekday: "short",
         hour: "2-digit",
         minute: "2-digit"
-      }).format(new Date(timestamp));
+      }).format(safeDate);
     }
 
     function groupForBoard(items) {
@@ -1646,7 +1664,7 @@
           ${dayBlock.slots.map(slot => {
             const slotKey = `${dayBlock.day}::${slot.time}`;
             const isNext = nextSlot?.key === slotKey;
-            const countdownText = isNext ? formatCountdownLabel(nextSlot.status) : "";
+            const countdownText = isNext ? "Airing Next" : "";
             return `
             <div class="time-group ${isNext ? "highlight-next" : ""}">
               <div class="time-pill">
@@ -2196,6 +2214,8 @@
         }
       } catch (error) {
         console.error("Boot failed:", error);
+        clearBoardSnapshot();
+        state.lastSuccessfulLoadAt = 0;
         showMessage("error", `Startup failed: ${error.message}`);
       }
     }
