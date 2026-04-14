@@ -1399,7 +1399,7 @@ summary {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       if (primary) return primary;
 
-      const secondary = tryMatchCandidateSet(media, varygCandidates, timeZone, "rss");
+      const secondary = tryMatchCandidateSet(media, varygCandidates, timeZone, "varyg");
       if (secondary) return secondary;
 
       const next = media?.nextAiringEpisode;
@@ -1459,7 +1459,7 @@ summary {
       const output = [];
       for (const item of items) {
         const key = String(item.id);
-        if (item.source === "manual" || item.source === "rss") {
+        if (item.source === "manual" || item.source === "rss" || item.source === "varyg") {
           cache[key] = {
             day: item.day, time: item.time, sampleCount: item.sampleCount || 1,
             matchedTitle: item.matchedTitle || "", origin: item.source,
@@ -1591,6 +1591,7 @@ summary {
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
       const rssCount = items.filter(item => item.source === "rss").length;
+      const varygCount = items.filter(item => item.source === "varyg").length;
       const cacheCount = items.filter(item => item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
@@ -1599,6 +1600,7 @@ summary {
         { label: "Custom", value: String(manualCount) },
         { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
+        { label: "Varyg RSS", value: String(varygCount) },
         { label: "Memory", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
         { label: "Parsed RSS", value: String(primaryCount) }
@@ -1646,10 +1648,12 @@ summary {
                           ${item.source === "manual"
                             ? `<span class="chip manual">Custom</span>`
                             : item.source === "rss"
-                              ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
-                              : item.source === "cache"
-                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
-                                : `<span class="chip fallback">AniList</span>`}
+                              ? `<span class="chip rss">SubsPlease · ${item.sampleCount || 1}</span>`
+                              : item.source === "varyg"
+                                ? `<span class="chip rss">Varyg · ${item.sampleCount || 1}</span>`
+                                : item.source === "cache"
+                                  ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                                  : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
                     </article>
@@ -1844,12 +1848,13 @@ summary {
       const customCount = state.items.filter(item => item.source === "manual").length;
       const addedCount = state.items.filter(item => item.isAdded).length;
       const rssCount = state.items.filter(item => item.source === "rss").length;
+      const varygCount = state.items.filter(item => item.source === "varyg").length;
       const cacheCount = state.items.filter(item => item.source === "cache").length;
       const fallbackCount = state.items.filter(item => item.source === "fallback").length;
       const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
       const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
       els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} SubsPlease, ${varygCount} Varyg, ${cacheCount} memory, ${fallbackCount} fallback.` +
         updatedLabel +
         (state.notes.length ? ` ${state.notes.join(" ")}` : "");
     }
