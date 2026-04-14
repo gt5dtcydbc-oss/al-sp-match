@@ -1345,7 +1345,6 @@
       } catch (_) {}
     }
 
-
     function loadPageSettings() {
       return loadJSON(PAGE_SETTINGS_KEY, {});
     }
@@ -1681,6 +1680,7 @@
       return `Airing in ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
     }
 
+    /* FIXED: only future slots can be "Airing Next" */
     function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
       let best = null;
 
@@ -1688,12 +1688,14 @@
         for (const slot of dayBlock.slots) {
           const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
           if (!status) continue;
-          const rank = status.isNow ? -1 : status.minutesUntil;
-          if (!best || rank < best.rank) {
+
+          // Once the slot time is reached, stop considering it as "next".
+          if (status.isNow || status.minutesUntil <= 0) continue;
+
+          if (!best || status.minutesUntil < best.status.minutesUntil) {
             best = {
               key: `${dayBlock.day}::${slot.time}`,
-              status,
-              rank
+              status
             };
           }
         }
@@ -2246,7 +2248,8 @@
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
-        );        return true;
+        );
+        return true;
       } catch (error) {
         const fallbackTime = state.lastSuccessfulLoadAt ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.` : "";
         if (!preserveBoard) renderManager();
@@ -2282,8 +2285,7 @@
 
     els.loadBtn.addEventListener("click", () => loadBoard());
 
-    // Safety check just in case clearMemoryBtn exists in the DOM context
-    if(els.clearMemoryBtn) {
+    if (els.clearMemoryBtn) {
       els.clearMemoryBtn.addEventListener("click", () => {
         const scopedUser = els.username.value.trim() || state.userName;
         clearSlotCache(scopedUser);
@@ -2346,7 +2348,6 @@
     } else {
       bootPage();
     }
-
   </script>
 </body>
 </html>
