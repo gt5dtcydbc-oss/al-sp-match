@@ -506,12 +506,12 @@
       font-weight: 800;
     }
 
-    /* Show Highlights */
     .highlight-next {
       background: linear-gradient(135deg, rgba(125, 183, 255, 0.25), rgba(156, 232, 255, 0.15)) !important;
       border: 1px solid var(--accent) !important;
       box-shadow: 0 0 15px rgba(125, 183, 255, 0.2);
     }
+
     .highlight-next .time-pill {
       background: var(--accent) !important;
       color: #08111d !important;
@@ -564,6 +564,64 @@
     }
 
     .footer { margin-top: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+
+    .update-indicator {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 10px rgba(255, 255, 255, 0.12);
+      z-index: 9999;
+      opacity: 0.9;
+      pointer-events: auto;
+      animation: indicatorBreathe 2.2s ease-in-out infinite;
+    }
+
+    .update-indicator.flash {
+      animation:
+        indicatorBreathe 2.2s ease-in-out infinite,
+        indicatorFlash 0.95s ease;
+    }
+
+    @keyframes indicatorBreathe {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.72;
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.10),
+          0 0 8px rgba(255, 255, 255, 0.08);
+      }
+      50% {
+        transform: scale(1.12);
+        opacity: 0.98;
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.16),
+          0 0 14px rgba(255, 255, 255, 0.18);
+      }
+    }
+
+    @keyframes indicatorFlash {
+      0% {
+        box-shadow:
+          0 0 0 0 rgba(255, 255, 255, 0.55),
+          0 0 10px rgba(255, 255, 255, 0.18);
+      }
+      45% {
+        box-shadow:
+          0 0 0 10px rgba(255, 255, 255, 0),
+          0 0 20px rgba(255, 255, 255, 0.28);
+      }
+      100% {
+        box-shadow:
+          0 0 0 0 rgba(255, 255, 255, 0),
+          0 0 10px rgba(255, 255, 255, 0.12);
+      }
+    }
 
     @media (max-width: 1180px) {
       .manager-grid { grid-template-columns: 1fr; }
@@ -696,6 +754,13 @@
         border-radius: 12px;
         font-size: 0.8rem;
       }
+
+      .update-indicator {
+        top: 9px;
+        right: 9px;
+        width: 8px;
+        height: 8px;
+      }
     }
   </style>
 </head>
@@ -826,6 +891,8 @@
     <div id="footer" class="footer"></div>
   </div>
 
+  <div id="updateIndicator" class="update-indicator" title="Waiting for first update"></div>
+
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
@@ -908,7 +975,8 @@
       message: document.getElementById("message"),
       summary: document.getElementById("summary"),
       board: document.getElementById("board"),
-      footer: document.getElementById("footer")
+      footer: document.getElementById("footer"),
+      updateIndicator: document.getElementById("updateIndicator")
     };
 
     const state = {
@@ -1248,9 +1316,10 @@
 
     function inferSlotFromReleases(releases, timeZone) {
       const sample = releases.slice(0, 3).map(item => {
-        const { weekday, time } = dateToWeekdayTime(item.date, timeZone);
-        return { weekday, time, minutes: toMinutes(time) };
-      });
+        const slot = dateToWeekdayTime(item.date, timeZone);
+        return slot ? { weekday: slot.weekday, time: slot.time, minutes: toMinutes(slot.time) } : null;
+      }).filter(Boolean);
+
       if (!sample.length) return null;
 
       const counts = new Map();
@@ -1268,7 +1337,12 @@
       const dayItems = sample.filter(item => item.weekday === chosenDay);
       const timeItems = dayItems.length ? dayItems : sample;
       const chosenMinutes = median(timeItems.map(item => item.minutes));
-      return { day: chosenDay, time: minutesToHHMM(chosenMinutes ?? sample[0].minutes), sampleCount: sample.length };
+
+      return {
+        day: chosenDay,
+        time: minutesToHHMM(chosenMinutes ?? sample[0].minutes),
+        sampleCount: sample.length
+      };
     }
 
     function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
@@ -1276,6 +1350,7 @@
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
       let best = null;
       let bestScore = 0;
+
       for (const candidate of safeCandidates) {
         const score = scoreMatch(candidate, variants);
         if (score > bestScore) {
@@ -1283,6 +1358,7 @@
           bestScore = score;
         }
       }
+
       if (!best || bestScore < 70 || !best.items.length) return null;
 
       const slot = inferSlotFromReleases(best.items, timeZone);
@@ -1405,8 +1481,10 @@
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
+
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
+
       if (!Number.isFinite(snapshotSavedAt)) {
         try {
           const repairedSnapshot = { ...snapshot, savedAt: 0 };
@@ -1415,6 +1493,7 @@
       }
 
       refreshBoardFromState();
+      updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
 
@@ -1609,13 +1688,6 @@
       return toMinutes(a.time) - toMinutes(b.time) || a.title.localeCompare(b.title);
     }
 
-    function to12Hour(hhmm) {
-      const [hRaw, m] = String(hhmm).split(":").map(Number);
-      const suffix = hRaw >= 12 ? "PM" : "AM";
-      const h = ((hRaw + 11) % 12) + 1;
-      return `${h}:${String(m).padStart(2, "0")} ${suffix}`;
-    }
-
     function getTimeZoneParts(date, timeZone) {
       const formatter = new Intl.DateTimeFormat("en-GB", {
         timeZone,
@@ -1671,16 +1743,6 @@
       return { isNow, minutesUntil };
     }
 
-    function formatCountdownLabel(status) {
-      if (!status) return "";
-      if (status.isNow) return "Airing now";
-      const totalMinutes = Math.max(0, Math.ceil(status.minutesUntil));
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return `Airing in ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-    }
-
-    /* FIXED: only future slots can be "Airing Next" */
     function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
       let best = null;
 
@@ -1689,7 +1751,6 @@
           const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
           if (!status) continue;
 
-          // Once the slot time is reached, stop considering it as "next".
           if (status.isNow || status.minutesUntil <= 0) continue;
 
           if (!best || status.minutesUntil < best.status.minutesUntil) {
@@ -1717,6 +1778,21 @@
         hour: "2-digit",
         minute: "2-digit"
       }).format(safeDate);
+    }
+
+    function updateIndicatorTitle(timestamp) {
+      if (!els.updateIndicator) return;
+      const label = formatSavedAt(timestamp);
+      els.updateIndicator.title = label ? `Last updated ${label}` : "Waiting for first update";
+    }
+
+    function pulseUpdateIndicator() {
+      if (!els.updateIndicator) return;
+
+      els.updateIndicator.classList.remove("flash");
+      void els.updateIndicator.offsetWidth;
+      els.updateIndicator.classList.add("flash");
+      updateIndicatorTitle(Date.now());
     }
 
     function groupForBoard(items) {
@@ -1787,39 +1863,42 @@
             const slotKey = `${dayBlock.day}::${slot.time}`;
             const isNext = nextSlot?.key === slotKey;
             const countdownText = isNext ? "Airing Next" : "";
+
             return `
-            <div class="time-group ${isNext ? "highlight-next" : ""}">
-              <div class="time-pill">
-              ${escapeHtml(slot.time)}
-              ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
-              </div>
-              <div class="entry-list">
-                ${slot.items.map(item => `
-                  <article class="entry">
-                    <div class="thumb">
-                      ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="">` : ""}
-                    </div>
-                    <div class="entry-body">
-                      <div class="entry-title">
-                        <a href="${escapeHtml(item.siteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
+              <div class="time-group ${isNext ? "highlight-next" : ""}">
+                <div class="time-pill">
+                  ${escapeHtml(slot.time)}
+                  ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
+                </div>
+
+                <div class="entry-list">
+                  ${slot.items.map(item => `
+                    <article class="entry">
+                      <div class="thumb">
+                        ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="">` : ""}
                       </div>
-                      <div class="entry-meta">
-                        ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
-                        ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
-                        ${item.source === "manual"
-                          ? `<span class="chip manual">Custom</span>`
-                          : item.source === "rss"
-                            ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
-                            : item.source === "cache"
-                              ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
-                              : `<span class="chip fallback">AniList</span>`}
+                      <div class="entry-body">
+                        <div class="entry-title">
+                          <a href="${escapeHtml(item.siteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
+                        </div>
+                        <div class="entry-meta">
+                          ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
+                          ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
+                          ${item.source === "manual"
+                            ? `<span class="chip manual">Custom</span>`
+                            : item.source === "rss"
+                              ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
+                              : item.source === "cache"
+                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                                : `<span class="chip fallback">AniList</span>`}
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                `).join("")}
+                    </article>
+                  `).join("")}
+                </div>
               </div>
-            </div>
-          `}).join("")}
+            `;
+          }).join("")}
         </section>
       `).join("");
 
@@ -1849,8 +1928,14 @@
         ...Object.keys(state.overrides || {}),
         ...Object.keys(state.addedShows || {})
       ]);
+
       return Array.from(ids)
-        .map(id => ({ id: String(id), media: catalog.get(String(id)), override: overrideForMediaId(id), added: Boolean(state.addedShows[String(id)]) }))
+        .map(id => ({
+          id: String(id),
+          media: catalog.get(String(id)),
+          override: overrideForMediaId(id),
+          added: Boolean(state.addedShows[String(id)])
+        }))
         .filter(entry => entry.media)
         .sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
     }
@@ -1869,6 +1954,7 @@
         const id = String(media.id);
         const item = itemsById.get(id);
         const hasOverride = Boolean(state.overrides[id]);
+
         return `
           <div class="show-row">
             <div>
@@ -1905,6 +1991,7 @@
         const current = currentIds.has(id);
         const added = addedIds.has(id);
         const existingOverride = Boolean(state.overrides[id]);
+
         return `
           <div class="search-result">
             <div>
@@ -1944,6 +2031,7 @@
         const currentItem = itemsById.get(id);
         const suggested = currentItem ? `${currentItem.day} · ${currentItem.time}` : "No detected slot";
         const customText = `${override.day} · ${override.time}`;
+
         return `
           <details class="override-row task-dropdown" id="override-${escapeHtml(id)}" ${override.enabled ? "open" : ""}>
             <summary>
@@ -2004,7 +2092,9 @@
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
-      state.items = applyCache(built).sort((a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b));
+      state.items = applyCache(built).sort((a, b) =>
+        WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
+      );
 
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
@@ -2031,15 +2121,18 @@
 
     function ensureOverrideForMedia(media, options = {}) {
       if (!media?.id) return;
+
       const id = String(media.id);
       const current = overrideForMediaId(id);
       const existingEnabled = current?.enabled ?? false;
       const defaultSlot = itemMap().get(id) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+
       const nextOverride = {
         enabled: options.enable ?? existingEnabled,
         day: options.day || current?.day || defaultSlot?.day || "Monday",
         time: options.time || current?.time || defaultSlot?.time || "18:00"
       };
+
       state.overrides[id] = nextOverride;
       persistState();
       refreshBoardFromState();
@@ -2055,6 +2148,7 @@
 
     function addShowFromSearch(media) {
       if (!media?.id) return;
+
       state.addedShows[String(media.id)] = media;
       if (!state.overrides[String(media.id)]) {
         const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
@@ -2064,6 +2158,7 @@
           time: suggested?.time || "18:00"
         };
       }
+
       persistState();
       refreshBoardFromState();
       focusOverride(media.id);
@@ -2119,6 +2214,7 @@
     els.currentShowList.addEventListener("click", event => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
+
       const id = button.dataset.id;
       const media = mediaById(id);
       if (!media) return;
@@ -2133,6 +2229,7 @@
     els.addShowResults.addEventListener("click", event => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
+
       const id = button.dataset.id;
       const media = mediaById(id);
       if (!media) return;
@@ -2149,6 +2246,7 @@
     els.overrideList.addEventListener("click", event => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
+
       const id = String(button.dataset.id || "");
       const media = mediaById(id);
 
@@ -2167,6 +2265,7 @@
         } else if (state.overrides[id]) {
           state.overrides[id].enabled = false;
         }
+
         persistState();
         refreshBoardFromState();
       }
@@ -2204,9 +2303,7 @@
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
-      const loadingText = options.reason === "refresh"
-        ? "Refreshing…"
-        : "Loading…";
+      const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
 
       state.userName = userName;
       state.overrides = loadOverrides(userName);
@@ -2243,16 +2340,22 @@
 
         refreshBoardFromState();
         saveBoardSnapshot();
+        pulseUpdateIndicator();
 
         showMessage(
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
         );
+
         return true;
       } catch (error) {
-        const fallbackTime = state.lastSuccessfulLoadAt ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.` : "";
+        const fallbackTime = state.lastSuccessfulLoadAt
+          ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
+          : "";
+
         if (!preserveBoard) renderManager();
+        updateIndicatorTitle(state.lastSuccessfulLoadAt);
         showMessage("error", `Could not refresh the board: ${error.message}.${fallbackTime}`.trim());
         return false;
       } finally {
@@ -2334,11 +2437,14 @@
 
         if (els.username.value.trim()) {
           loadBoard({ reason: hydrated ? "refresh" : "load" });
+        } else {
+          updateIndicatorTitle(0);
         }
       } catch (error) {
         console.error("Boot failed:", error);
         clearBoardSnapshot();
         state.lastSuccessfulLoadAt = 0;
+        updateIndicatorTitle(0);
         showMessage("error", `Startup failed: ${error.message}`);
       }
     }
