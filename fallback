@@ -59,8 +59,7 @@
       margin-bottom: 16px;
     }
 
-    .controls,
-    .manager {
+    .controls {
       display: grid;
       gap: 14px;
       padding: 18px 20px;
@@ -79,13 +78,6 @@
       gap: 12px;
       grid-template-columns: repeat(2, minmax(240px, 1fr));
       align-items: end;
-    }
-
-    .manager-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: 1.1fr 0.9fr;
-      align-items: start;
     }
 
     .field { display: grid; gap: 8px; }
@@ -203,23 +195,14 @@
       letter-spacing: -0.02em;
     }
 
-    .section-copy {
-      color: var(--muted);
-      line-height: 1.45;
-      font-size: 0.9rem;
-      margin: 0;
-    }
-
-    .top-dropdown,
-    .manager-dropdown {
+    .top-dropdown {
       margin: 0;
       overflow: hidden;
       border-top: 0;
       padding-top: 0;
     }
 
-    .top-dropdown > summary,
-    .manager-dropdown > summary {
+    .top-dropdown > summary {
       list-style: none;
       display: flex;
       align-items: center;
@@ -230,9 +213,7 @@
       background: linear-gradient(180deg, rgba(22, 22, 22, 0.98), rgba(14, 14, 14, 0.98));
     }
 
-    .top-dropdown > summary::-webkit-details-marker,
-    .manager-dropdown > summary::-webkit-details-marker,
-    .task-dropdown > summary::-webkit-details-marker {
+    .top-dropdown > summary::-webkit-details-marker {
       display: none;
     }
 
@@ -260,37 +241,17 @@
       transition: transform 0.16s ease, background 0.16s ease;
     }
 
-    .top-dropdown[open] .manager-toggle-icon,
-    .manager-dropdown[open] .manager-toggle-icon,
-    .task-dropdown[open] .manager-toggle-icon {
+    .top-dropdown[open] .manager-toggle-icon {
       transform: rotate(180deg);
       background: rgba(255, 255, 255, 0.08);
     }
 
-    .top-dropdown-body,
-    .manager-dropdown-body {
+    .top-dropdown-body {
       display: grid;
       gap: 16px;
       padding: 18px 20px 20px;
       border-top: 1px solid rgba(255,255,255,0.07);
       background: rgba(14, 14, 14, 0.55);
-    }
-
-    .manager-section {
-      display: grid;
-      gap: 14px;
-      min-width: 0;
-    }
-
-    .list-card {
-      display: grid;
-      gap: 12px;
-      padding: 16px;
-      background: linear-gradient(180deg, rgba(24, 24, 24, 0.95), rgba(16, 16, 16, 0.95));
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      min-height: 86px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .list-stack {
@@ -301,8 +262,6 @@
       padding-right: 4px;
     }
 
-    .show-row,
-    .override-row,
     .search-result {
       display: grid;
       gap: 10px;
@@ -311,58 +270,8 @@
       background: linear-gradient(180deg, rgba(28, 28, 28, 0.98), rgba(20, 20, 20, 0.98));
       border: 1px solid rgba(255, 255, 255, 0.05);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-    }
-
-    .show-row,
-    .search-result {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-    }
-
-    .override-row {
-      grid-template-columns: minmax(0, 1fr);
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .task-dropdown {
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 16px;
-      background: linear-gradient(180deg, rgba(28, 28, 28, 0.98), rgba(20, 20, 20, 0.98));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-    }
-
-    .task-dropdown > summary {
-      list-style: none;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 14px;
-      align-items: center;
-      padding: 14px 16px;
-    }
-
-    .task-dropdown-body {
-      display: grid;
-      gap: 12px;
-      padding: 0 16px 16px;
-      border-top: 1px solid rgba(255,255,255,0.07);
-      background: rgba(10, 10, 10, 0.35);
-    }
-
-    .task-summary-main {
-      min-width: 0;
-      display: grid;
-      gap: 8px;
-    }
-
-    .task-summary-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      color: var(--muted);
-      font-size: 0.8rem;
-      line-height: 1.4;
     }
 
     .row-head {
@@ -428,13 +337,6 @@
       display: inline;
       opacity: 0.92;
       font-weight: 800;
-    }
-
-    .override-controls {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 170px 140px minmax(220px, 1fr);
-      align-items: center;
     }
 
     .toggle {
@@ -568,6 +470,20 @@
       color: var(--muted);
       font-size: 0.75rem;
       line-height: 1.35;
+    }
+
+    .entry-extra {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+
+    .final-episode {
+      color: #fff0d6;
+      font-weight: 700;
     }
 
     .entry-settings-btn {
@@ -811,46 +727,9 @@
       }
     }
 
-    @media (max-width: 1180px) {
-      .manager-grid { grid-template-columns: 1fr; }
-    }
-
     @media (max-width: 980px) {
       .toolbar-grid,
       .config-grid { grid-template-columns: 1fr; }
-
-      .override-controls {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 12px;
-        scroll-snap-type: x mandatory;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-      }
-
-      .override-controls > * {
-        flex: 0 0 auto;
-        scroll-snap-align: start;
-      }
-
-      .override-controls::-webkit-scrollbar {
-        height: 6px;
-      }
-
-      .override-controls::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .override-controls::-webkit-scrollbar-thumb {
-        background-color: rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-      }
-
-      .override-controls .row-actions {
-        flex-wrap: nowrap;
-      }
 
       .modal-grid {
         grid-template-columns: 1fr;
@@ -862,18 +741,16 @@
         padding: 18px 12px 36px;
       }
 
-      .controls, .manager { padding: 16px; }
+      .controls { padding: 16px; }
 
       .top-dropdown > summary,
-      .manager-dropdown > summary,
-      .top-dropdown-body,
-      .manager-dropdown-body {
+      .top-dropdown-body {
         padding-left: 16px;
         padding-right: 16px;
       }
 
       .board { grid-template-columns: 1fr; }
-      .show-row, .search-result { grid-template-columns: 1fr; }
+      .search-result { grid-template-columns: 1fr; }
       .row-actions { justify-content: flex-start; }
 
       .modal {
@@ -922,13 +799,11 @@
       .wrap { padding: 8px 7px 16px; }
       .title { margin-bottom: 10px; font-size: 1.25rem; }
       .panel.controls { margin-bottom: 10px !important; }
-      .controls, .manager, .day-column { padding: 8px; }
+      .controls, .day-column { padding: 8px; }
       .top-stack { margin-top: 14px !important; gap: 8px; }
 
       .top-dropdown > summary,
-      .manager-dropdown > summary,
-      .top-dropdown-body,
-      .manager-dropdown-body {
+      .top-dropdown-body {
         padding: 12px;
         min-height: auto;
       }
@@ -950,6 +825,7 @@
       .entry-body { gap: 2px; }
       .entry-title { font-size: 0.84rem; line-height: 1.22; }
       .entry-meta { gap: 4px; font-size: 0.64rem; }
+      .entry-extra { font-size: 0.62rem; }
       .chip { padding: 2px 4px; font-size: 0.6rem; }
       .footer { margin-top: 8px; font-size: 0.72rem; }
       .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
@@ -1157,6 +1033,7 @@
                 siteUrl
                 format
                 status
+                episodes
                 coverImage { large medium }
                 title { userPreferred english romaji native }
                 synonyms
@@ -1176,6 +1053,7 @@
             siteUrl
             format
             status
+            episodes
             coverImage { large medium }
             title { userPreferred english romaji native }
             synonyms
@@ -1502,9 +1380,10 @@
     }
 
     function minutesToHHMM(total) {
-      const normalized = ((total % 1440) + 1440) % 1440;
+      const rounded = Math.round(Number(total) || 0);
+      const normalized = ((rounded % 1440) + 1440) % 1440;
       const h = Math.floor(normalized / 60);
-      const m = Math.round(normalized % 60);
+      const m = normalized % 60;
       return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     }
 
@@ -1580,6 +1459,18 @@
 
     function coverForMedia(media) {
       return media?.coverImage?.large || media?.coverImage?.medium || "";
+    }
+
+    function isUpcomingFinalEpisode(media) {
+      const nextEpisode = Number(media?.nextAiringEpisode?.episode);
+      const totalEpisodes = Number(media?.episodes);
+      return (
+        Number.isFinite(nextEpisode) &&
+        nextEpisode > 0 &&
+        Number.isFinite(totalEpisodes) &&
+        totalEpisodes > 0 &&
+        nextEpisode === totalEpisodes
+      );
     }
 
     function slotCacheScopeKey(userName) {
@@ -1868,13 +1759,15 @@
         if (!media?.id) continue;
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
+        const isFinalEpisode = isUpcomingFinalEpisode(media);
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover,
             day: override.day, time: override.time, format: media.format || "",
             source: "manual", sampleCount: 1, matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)])
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            isFinalEpisode
           });
           continue;
         }
@@ -1885,7 +1778,8 @@
             day: primary.day, time: primary.time, format: media.format || "",
             source: primary.source, sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
-            isAdded: Boolean(state.addedShows[String(media.id)])
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            isFinalEpisode
           });
         }
       }
@@ -1910,7 +1804,7 @@
           continue;
         }
         const remembered = cache[key];
-        if (remembered && remembered.time && remembered.origin !== "manual") {
+        if (remembered && isValidTime(remembered.time) && remembered.origin !== "manual") {
           output.push({
             ...item,
             time: remembered.time,
@@ -2094,6 +1988,7 @@
                                 ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())}</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
+                        ${item.isFinalEpisode ? `<div class="entry-extra"><span class="final-episode">Final Episode</span></div>` : ""}
                       </div>
                       <button
                         class="entry-settings-btn"
@@ -2322,15 +2217,20 @@
 
     function addShowFromSearch(media) {
       if (!media?.id) return;
-      state.addedShows[String(media.id)] = media;
-      if (!state.overrides[String(media.id)]) {
+      const id = String(media.id);
+      state.addedShows[id] = media;
+
+      if (!state.overrides[id]) {
         const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-        state.overrides[String(media.id)] = {
-          enabled: Boolean(suggested),
-          day: suggested?.day || "Monday",
-          time: suggested?.time || "18:00"
-        };
+        if (suggested) {
+          state.overrides[id] = {
+            enabled: false,
+            day: suggested.day,
+            time: suggested.time
+          };
+        }
       }
+
       persistState();
       refreshBoardFromState();
       closeAddShowModal();
@@ -2400,43 +2300,68 @@
     }
 
     async function loadBoard(options = {}) {
-      const userName = els.username.value.trim();
-      if (!userName) { showMessage("error", "Please enter a username."); return false; }
+      const userName = String(options.userName ?? els.username.value).trim();
+      if (!userName) {
+        showMessage("error", "Please enter a username.");
+        return false;
+      }
       if (state.isLoading) return false;
+
       state.isLoading = true;
       savePageSettings();
+
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
-      state.userName = userName;
-      state.overrides = loadOverrides(userName);
-      state.addedShows = loadAddedShows(userName);
+      const nextOverrides = loadOverrides(userName);
+      const nextAddedShows = loadAddedShows(userName);
+
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
+
       try {
-        const nextNotes = [];
-        const entries = await fetchAniListWatching(userName);
-        const nextCurrentEntries = dedupeEntriesById(entries);
-        const nextTotalAniListEntries = nextCurrentEntries.length;
-        const primaryResult = await fetchTextWithOptionalProxy(
-          els.rssUrl.value.trim(),
-          els.rssProxyTemplate.value.trim()
-        );
-        let nextPrimaryCandidates = [];
-        if (primaryResult.trim()) {
-          try {
-            nextPrimaryCandidates = parseGenericFeed(primaryResult);
-          } catch (error) {
-            nextNotes.push(`SubsPlease: ${error.message}`);
-          }
+        const [aniListResult, rssResult] = await Promise.allSettled([
+          fetchAniListWatching(userName),
+          fetchTextWithOptionalProxy(
+            els.rssUrl.value.trim(),
+            els.rssProxyTemplate.value.trim()
+          )
+        ]);
+
+        if (aniListResult.status !== "fulfilled") {
+          const reason = aniListResult.reason;
+          throw (reason instanceof Error ? reason : new Error(String(reason || "AniList request failed.")));
         }
+
+        const nextNotes = [];
+        const nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+        let nextPrimaryCandidates = [];
+
+        if (rssResult.status === "fulfilled") {
+          const primaryResult = String(rssResult.value || "").trim();
+          if (primaryResult) {
+            try {
+              nextPrimaryCandidates = parseGenericFeed(primaryResult);
+            } catch (error) {
+              nextNotes.push(`SubsPlease: ${error.message}`);
+            }
+          }
+        } else {
+          nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
+        }
+
+        state.userName = userName;
+        state.overrides = nextOverrides;
+        state.addedShows = nextAddedShows;
         state.currentEntries = nextCurrentEntries;
-        state.totalAniListEntries = nextTotalAniListEntries;
+        state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
         state.notes = nextNotes;
         state.lastSuccessfulLoadAt = Date.now();
+
         refreshBoardFromState();
         saveBoardSnapshot();
         pulseUpdateIndicator();
+
         showMessage(
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
@@ -2444,12 +2369,16 @@
         );
         return true;
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
+
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
+
         if (!preserveBoard) renderSearchResults();
-        showMessage("error", `Could not refresh the board: ${error.message}.${fallbackTime}`.trim());
+
+        showMessage("error", `Could not refresh the board: ${message}.${fallbackTime}`.trim());
         return false;
       } finally {
         state.isLoading = false;
@@ -2464,9 +2393,9 @@
     function maybeRefreshBoard(reason = "refresh") {
       if (document.visibilityState === "hidden") return;
       if (state.isLoading) return;
-      if (!els.username.value.trim()) return;
+      if (!state.userName) return;
       if (!boardIsStale()) return;
-      loadBoard({ reason });
+      loadBoard({ reason, userName: state.userName });
     }
 
     function startAutoRefresh() {
@@ -2519,7 +2448,8 @@
 
     if (els.clearMemoryBtn) {
       els.clearMemoryBtn.addEventListener("click", () => {
-        const scopedUser = els.username.value.trim() || state.userName;
+        const scopedUser = state.userName || els.username.value.trim();
+        if (!scopedUser) return;
         clearSlotCache(scopedUser);
         showMessage("info", "MEMORY cleared.");
         if (state.userName) refreshBoardFromState();
