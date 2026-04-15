@@ -33,6 +33,10 @@
       color: var(--text);
     }
 
+    body.modal-open {
+      overflow: hidden;
+    }
+
     .wrap {
       max-width: 1540px;
       margin: 0 auto;
@@ -293,7 +297,7 @@
     .list-stack {
       display: grid;
       gap: 10px;
-      max-height: 420px;
+      max-height: clamp(320px, 55vh, 720px);
       overflow: auto;
       padding-right: 4px;
     }
@@ -490,7 +494,14 @@
     .day-name { font-size: 1.02rem; font-weight: 800; }
     .day-count { font-size: 0.82rem; color: var(--muted); }
 
-    .time-group { display: grid; gap: 8px; margin-bottom: 14px; padding: 6px; border-radius: 12px; transition: background 0.2s; }
+    .time-group {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 6px;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
 
     .time-pill {
       display: inline-flex;
@@ -521,8 +532,9 @@
 
     .entry {
       display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
+      grid-template-columns: 38px minmax(0, 1fr) auto;
       gap: 10px;
+      align-items: start;
       padding: 9px;
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
@@ -538,7 +550,12 @@
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
     .entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
 
@@ -563,7 +580,43 @@
       line-height: 1.35;
     }
 
-    .footer { margin-top: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+    .entry-settings-btn {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      padding: 0;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      line-height: 1;
+    }
+
+    .entry-settings-btn:hover {
+      background: rgba(125, 183, 255, 0.12);
+      border-color: rgba(125, 183, 255, 0.22);
+    }
+
+    .footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .board-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 18px;
+    }
+
+    .board-actions .secondary {
+      min-width: 180px;
+    }
 
     .update-indicator {
       position: fixed;
@@ -623,52 +676,272 @@
       }
     }
 
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(3, 6, 12, 0.72);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      width: min(680px, 100%);
+      max-height: min(86vh, 900px);
+      display: grid;
+      gap: 0;
+      background: rgba(23, 29, 46, 0.96);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .modal.open .modal-dialog {
+      animation: modalIn 0.18s ease-out;
+    }
+
+    .modal-sheet-handle {
+      display: none;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(180deg, rgba(31, 39, 60, 0.96), rgba(24, 31, 48, 0.96));
+    }
+
+    .modal-title {
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-subtitle {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.45;
+      margin-top: 4px;
+    }
+
+    .modal-close {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      padding: 16px 20px 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(17, 23, 37, 0.2);
+    }
+
+    .modal-note {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .modal-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+      align-items: end;
+    }
+
+    @keyframes modalIn {
+      from {
+        transform: translateY(8px);
+        opacity: 0.85;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes sheetIn {
+      from {
+        transform: translateY(28px);
+        opacity: 0.82;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
     @media (max-width: 1180px) {
       .manager-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 980px) {
       .toolbar-grid,
-      .config-grid,
-      .override-controls { grid-template-columns: 1fr; }
+      .config-grid { grid-template-columns: 1fr; }
+
+      .override-controls {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 12px;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+
+      .override-controls > * {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+      }
+
+      .override-controls::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .override-controls::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .override-controls::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+      }
+
+      .override-controls .row-actions {
+        flex-wrap: nowrap;
+      }
+
+      .modal-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 720px) {
-      .wrap { padding: 18px 12px 36px; }
+      .wrap {
+        padding: 18px 12px calc(108px + env(safe-area-inset-bottom)) 36px;
+      }
+
       .controls, .manager { padding: 16px; }
+
       .top-dropdown > summary,
       .manager-dropdown > summary,
       .top-dropdown-body,
-      .manager-dropdown-body { padding-left: 16px; padding-right: 16px; }
+      .manager-dropdown-body {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
       .board { grid-template-columns: 1fr; }
       .show-row, .search-result { grid-template-columns: 1fr; }
       .row-actions { justify-content: flex-start; }
+
+      .board-actions {
+        position: fixed;
+        right: max(14px, env(safe-area-inset-right));
+        bottom: calc(14px + env(safe-area-inset-bottom));
+        z-index: 9998;
+        margin: 0;
+        justify-content: flex-end;
+        pointer-events: none;
+      }
+
+      .board-actions .secondary {
+        min-width: 0;
+        width: auto;
+        padding: 14px 18px;
+        border-radius: 999px;
+        box-shadow: var(--shadow);
+        pointer-events: auto;
+        background: rgba(29, 36, 56, 0.92);
+        border: 1px solid rgba(255,255,255,0.12);
+        backdrop-filter: blur(10px);
+      }
+
+      .modal {
+        align-items: flex-end;
+        justify-content: stretch;
+        padding: 0;
+      }
+
+      .modal-dialog {
+        width: 100%;
+        max-height: min(90vh, 900px);
+        border-radius: 22px 22px 0 0;
+        border-bottom: 0;
+      }
+
+      .modal.open .modal-dialog {
+        animation: sheetIn 0.22s ease-out;
+      }
+
+      .modal-sheet-handle {
+        display: block;
+        width: 42px;
+        height: 5px;
+        margin: 10px auto 2px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.22);
+      }
+
+      .modal-head {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+
+      .modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        background: rgba(17, 23, 37, 0.92);
+        backdrop-filter: blur(12px);
+      }
     }
 
     @media (max-width: 480px) {
-      .wrap {
-        padding: 8px 7px 16px;
-      }
-
-      .title {
-        margin-bottom: 10px;
-        font-size: 1.25rem;
-      }
-
-      .panel.controls {
-        margin-bottom: 10px !important;
-      }
-
-      .controls,
-      .manager,
-      .day-column {
-        padding: 8px;
-      }
-
-      .top-stack {
-        margin-top: 14px !important;
-        gap: 8px;
-      }
+      .wrap { padding: 8px 7px calc(104px + env(safe-area-inset-bottom)) 16px; }
+      .title { margin-bottom: 10px; font-size: 1.25rem; }
+      .panel.controls { margin-bottom: 10px !important; }
+      .controls, .manager, .day-column { padding: 8px; }
+      .top-stack { margin-top: 14px !important; gap: 8px; }
 
       .top-dropdown > summary,
       .manager-dropdown > summary,
@@ -678,88 +951,43 @@
         min-height: auto;
       }
 
-      .manager-toggle-copy {
-        font-size: 0.8rem;
-        margin-top: 2px;
-      }
-
-      .day-head {
-        padding-bottom: 5px;
-        margin-bottom: 6px;
-      }
-
-      .day-name {
-        font-size: 0.92rem;
-      }
-
-      .day-count {
-        font-size: 0.72rem;
-      }
-
-      .time-group {
-        gap: 5px;
-        margin-bottom: 6px;
-        padding: 2px;
-      }
-
-      .time-pill {
-        padding: 3px 7px;
-        font-size: 0.68rem;
-      }
-
-      .entry-list {
-        gap: 4px;
-      }
-
+      .manager-toggle-copy { font-size: 0.8rem; margin-top: 2px; }
+      .day-head { padding-bottom: 5px; margin-bottom: 6px; }
+      .day-name { font-size: 0.92rem; }
+      .day-count { font-size: 0.72rem; }
+      .time-group { gap: 5px; margin-bottom: 6px; padding: 2px; }
+      .time-pill { padding: 3px 7px; font-size: 0.68rem; }
+      .entry-list { gap: 4px; }
       .entry {
-        grid-template-columns: 40px minmax(0, 1fr);
+        grid-template-columns: 40px minmax(0, 1fr) auto;
         gap: 8px;
         padding: 5px;
         border-radius: 12px;
       }
+      .thumb { width: 40px; height: 58px; border-radius: 7px; }
+      .entry-body { gap: 2px; }
+      .entry-title { font-size: 0.84rem; line-height: 1.22; }
+      .entry-meta { gap: 4px; font-size: 0.64rem; }
+      .chip { padding: 2px 4px; font-size: 0.6rem; }
+      .footer { margin-top: 8px; font-size: 0.72rem; }
+      .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
+      .update-indicator { top: 9px; right: 9px; width: 8px; height: 8px; }
 
-      .thumb {
-        width: 40px;
-        height: 58px;
-        border-radius: 7px;
+      .entry-settings-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
       }
 
-      .entry-body {
-        gap: 2px;
+      .modal-head,
+      .modal-body,
+      .modal-footer {
+        padding-left: 14px;
+        padding-right: 14px;
       }
 
-      .entry-title {
-        font-size: 0.84rem;
-        line-height: 1.22;
-      }
-
-      .entry-meta {
-        gap: 4px;
-        font-size: 0.64rem;
-      }
-
-      .chip {
-        padding: 2px 4px;
-        font-size: 0.6rem;
-      }
-
-      .footer {
-        margin-top: 8px;
-        font-size: 0.72rem;
-      }
-
-      .message {
-        margin-bottom: 8px;
-        padding: 9px 11px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-      }
-
-      .update-indicator {
-        top: 9px;
-        right: 9px;
-        width: 8px;
-        height: 8px;
+      .board-actions .secondary {
+        padding: 13px 16px;
       }
     }
   </style>
@@ -776,7 +1004,6 @@
           <label for="username">Username</label>
           <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
         </div>
-
         <div class="button-row">
           <button id="loadBtn" class="primary" type="button">Load</button>
         </div>
@@ -786,14 +1013,11 @@
     <div id="message" class="message" aria-live="polite"></div>
 
     <div class="top-stack" style="margin-top: 32px;">
-
       <details class="panel top-dropdown">
         <summary>
           <div>
             <h2 class="section-title">Loaded Entries Overview</h2>
-            <div class="manager-toggle-copy">
-              Expand to see stats on loaded, custom, and cached shows.
-            </div>
+            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -806,92 +1030,115 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">
-              Expand to edit the SubsPlease feed, proxy settings, and memory.
-            </div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
-
         <div class="top-dropdown-body">
           <div class="config-grid">
             <div class="field">
               <label for="rssUrl">SubsPlease RSS URL</label>
               <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
             </div>
-
             <div class="field">
               <label for="rssProxyTemplate">SubsPlease proxy</label>
               <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
             </div>
           </div>
-
           <div class="button-row" style="margin-top: 8px;">
-             <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
+            <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
           </div>
-
           <div class="helper" style="margin-top: 12px;">
-            Manual text matching has been replaced with per-show overrides tied to AniList IDs.
-            Load the board, pick a current show or search AniList below, then optionally enable a custom day/time.
-          </div>
-        </div>
-      </details>
-
-      <details class="panel manager-dropdown">
-        <summary>
-          <div>
-            <h2 class="section-title">Show manager</h2>
-            <div class="manager-toggle-copy">
-              Expand to customize current shows or search AniList to add extra currently airing ones.
-            </div>
-          </div>
-          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-        </summary>
-
-        <div class="manager-dropdown-body">
-          <div class="section-copy">
-            Pick a current show to customize, or search AniList to add an extra currently airing show to the board.
-            Custom slots now attach to the exact show instead of fuzzy title text.
-          </div>
-
-          <div class="manager-grid">
-            <div class="manager-section">
-              <div class="list-card">
-                <div class="section-title">Current AniList shows</div>
-                <div id="currentShowList" class="list-stack">
-                  <div class="empty">Load a username to see current shows.</div>
-                </div>
-              </div>
-
-              <div class="list-card">
-                <div class="section-title">Add currently airing show</div>
-                <div class="field">
-                  <label for="addShowSearch">Search currently airing AniList shows</label>
-                  <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
-                </div>
-                <div id="addShowResults" class="list-stack">
-                  <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="manager-section">
-              <div class="list-card">
-                <div class="section-title">Custom schedule</div>
-                <div id="overrideList" class="list-stack">
-                  <div class="empty">No custom entries yet.</div>
-                </div>
-              </div>
-            </div>
+            Per-show customization now lives on each card. Use the small gear icon on a show to adjust its slot, or use the Add show button below the board.
           </div>
         </div>
       </details>
     </div>
 
     <div id="footer" class="footer"></div>
+
+    <section class="board-actions">
+      <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
+    </section>
   </div>
 
   <div id="updateIndicator" class="update-indicator" title="Waiting for first update"></div>
+
+  <div id="showSettingsModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <div>
+          <div id="showSettingsTitle" class="modal-title">Show settings</div>
+          <div id="showSettingsSubtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="closeShowSettingsBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="toggle">
+          <input id="modalUseCustom" type="checkbox" />
+          Use custom slot
+        </label>
+
+        <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
+
+        <div class="modal-grid">
+          <div class="field">
+            <label for="modalDay">Day</label>
+            <select id="modalDay">
+              <option>Monday</option>
+              <option>Tuesday</option>
+              <option>Wednesday</option>
+              <option>Thursday</option>
+              <option>Friday</option>
+              <option>Saturday</option>
+              <option>Sunday</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="modalTime">Time</label>
+            <input id="modalTime" type="time" value="18:00" />
+          </div>
+        </div>
+
+        <div id="modalCustomHelper" class="helper">
+          Custom slot is off. Turn it on to set your own day and time.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modalUseDetectedBtn" class="ghost" type="button">Use detected</button>
+        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear custom</button>
+        <button id="modalSaveBtn" class="primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addShowModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Add currently airing show</div>
+          <div class="modal-subtitle">Search AniList and add an extra airing show to your board.</div>
+        </div>
+        <button id="closeAddShowBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label for="addShowSearch">Search currently airing AniList shows</label>
+          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+        </div>
+
+        <div id="addShowResults" class="list-stack">
+          <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
@@ -970,13 +1217,26 @@
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
       addShowSearch: document.getElementById("addShowSearch"),
       addShowResults: document.getElementById("addShowResults"),
-      currentShowList: document.getElementById("currentShowList"),
-      overrideList: document.getElementById("overrideList"),
       message: document.getElementById("message"),
       summary: document.getElementById("summary"),
       board: document.getElementById("board"),
       footer: document.getElementById("footer"),
-      updateIndicator: document.getElementById("updateIndicator")
+      updateIndicator: document.getElementById("updateIndicator"),
+      openAddShowBtn: document.getElementById("openAddShowBtn"),
+      addShowModal: document.getElementById("addShowModal"),
+      closeAddShowBtn: document.getElementById("closeAddShowBtn"),
+      showSettingsModal: document.getElementById("showSettingsModal"),
+      closeShowSettingsBtn: document.getElementById("closeShowSettingsBtn"),
+      showSettingsTitle: document.getElementById("showSettingsTitle"),
+      showSettingsSubtitle: document.getElementById("showSettingsSubtitle"),
+      modalUseCustom: document.getElementById("modalUseCustom"),
+      modalDetectedSlot: document.getElementById("modalDetectedSlot"),
+      modalDay: document.getElementById("modalDay"),
+      modalTime: document.getElementById("modalTime"),
+      modalCustomHelper: document.getElementById("modalCustomHelper"),
+      modalUseDetectedBtn: document.getElementById("modalUseDetectedBtn"),
+      modalClearOrRemoveBtn: document.getElementById("modalClearOrRemoveBtn"),
+      modalSaveBtn: document.getElementById("modalSaveBtn")
     };
 
     const state = {
@@ -992,7 +1252,8 @@
       searchResults: [],
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
-      isLoading: false
+      isLoading: false,
+      activeSettingsId: null
     };
 
     showMessage("info", "Ready.");
@@ -1005,13 +1266,9 @@
     async function graphQLRequest(query, variables) {
       const response = await fetch(ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ query, variables })
       });
-
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.errors) {
         const message = data.errors?.map(err => err.message).join(" | ") || `Request failed (${response.status})`;
@@ -1041,7 +1298,6 @@
       const targets = [];
       if (proxyTemplate) targets.push(proxyTemplate.replace("%URL%", encodeURIComponent(url)));
       targets.push(url);
-
       let lastError = null;
       for (const target of targets) {
         try {
@@ -1082,7 +1338,6 @@
         .replace(/\bpart\b/g, " ")
         .replace(/\bmovie\b/g, " ")
         .replace(/\bthe animation\b/g, " ")
-        .replace(/\b(tv|ona|ova)\b/g, " ")
         .replace(/[\/|:;,.!?"()[\]{}\-]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
@@ -1106,17 +1361,14 @@
         if (!raw) continue;
         const text = String(raw).trim();
         if (!text) continue;
-
         const normalized = normalizeTitle(text);
         const compact = compactTitle(text);
         const stripped = stripCommonSuffixes(text);
         const strippedNormalized = normalizeTitle(stripped);
         const strippedCompact = compactTitle(stripped);
-
         [text, normalized, compact, stripped, strippedNormalized, strippedCompact].forEach(value => {
           if (value) variants.add(value);
         });
-
         const seasonless = normalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
         const strippedSeasonless = strippedNormalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
         const compactSeasonless = seasonless.replace(/\s+/g, "");
@@ -1159,52 +1411,35 @@
 
     function scoreMatch(candidate, variants) {
       if (!candidate || !Array.isArray(candidate.variants)) return 0;
-
       let best = 0;
       for (const variant of variants) {
         const normalized = normalizeTitle(variant);
         const compact = compactTitle(variant);
         if (!normalized) continue;
-
         for (const candidateVariant of candidate.variants) {
           const candidateNormalized = normalizeTitle(candidateVariant);
           const candidateCompact = compactTitle(candidateVariant);
           if (!candidateNormalized) continue;
-
           const variantSeason = extractSeasonNumber(normalized);
           const candidateSeason = extractSeasonNumber(candidateNormalized);
           const seasonPenalty = (variantSeason !== null && candidateSeason !== null && variantSeason !== candidateSeason) ? 5 : 0;
-
-          if (candidateNormalized === normalized) {
-            best = Math.max(best, 100 - seasonPenalty);
-            continue;
-          }
-          if (candidateCompact && compact && candidateCompact === compact) {
-            best = Math.max(best, 98 - seasonPenalty);
-            continue;
-          }
-
+          if (candidateNormalized === normalized) { best = Math.max(best, 100 - seasonPenalty); continue; }
+          if (candidateCompact && compact && candidateCompact === compact) { best = Math.max(best, 98 - seasonPenalty); continue; }
           if (candidateNormalized.includes(normalized) || normalized.includes(candidateNormalized)) {
-            if (Math.min(candidateNormalized.length, normalized.length) >= 6) {
-              best = Math.max(best, 92 - seasonPenalty);
-            }
+            if (Math.min(candidateNormalized.length, normalized.length) >= 6) best = Math.max(best, 92 - seasonPenalty);
           }
-
           const a = tokens(candidateNormalized);
           const b = tokens(normalized);
           const overlapTokens = [...a].filter(token => b.has(token));
           const overlap = overlapTokens.length;
           const union = new Set([...a, ...b]).size || 1;
           const ratio = overlap / union;
-
           if (overlap >= 2 && ratio >= 0.70) best = Math.max(best, 90 - seasonPenalty);
           else if (overlap >= 2 && ratio >= 0.50) best = Math.max(best, 84 - seasonPenalty);
           else if (overlap >= 2 && ratio >= 0.34) best = Math.max(best, 78 - seasonPenalty);
-
           const candidateDistinctive = distinctiveTokens(candidateNormalized);
           const variantDistinctive = distinctiveTokens(normalized);
           const distinctiveOverlap = candidateDistinctive.filter(token => variantDistinctive.includes(token));
-
           if (distinctiveOverlap.length >= 2) {
             best = Math.max(best, 86 - seasonPenalty);
           } else if (distinctiveOverlap.length === 1) {
@@ -1212,9 +1447,7 @@
             const longEnough = token.length >= 6;
             const compactNear = candidateCompact.includes(token) && compact.includes(token);
             const shortTitle = Math.min(candidateDistinctive.length, variantDistinctive.length) <= 2;
-            if (longEnough && (compactNear || shortTitle)) {
-              best = Math.max(best, 74 - seasonPenalty);
-            }
+            if (longEnough && (compactNear || shortTitle)) best = Math.max(best, 74 - seasonPenalty);
           }
         }
       }
@@ -1226,10 +1459,8 @@
       if (!text) return null;
       const cleaned = text.replace(/^\[[^\]]+\]\s*/, "").trim();
       if (/batch/i.test(cleaned)) return null;
-
       const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
       if (!match) return null;
-
       const showTitle = match[1].trim();
       const episodeToken = match[2].replace(/\s+/g, "");
       if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
@@ -1240,32 +1471,27 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlText, "text/xml");
       if (doc.querySelector("parsererror")) throw new Error("Feed could not be parsed as XML.");
-
       const rawItems = Array.from(doc.querySelectorAll("item")).map(item => ({
         title: item.querySelector("title")?.textContent?.trim() || "",
         pubDate: item.querySelector("pubDate")?.textContent?.trim() || ""
       }));
-
       const deduped = new Map();
       for (const item of rawItems) {
         const parsed = parseReleaseTitle(item.title);
         if (!parsed) continue;
         const date = new Date(item.pubDate);
         if (Number.isNaN(date.getTime())) continue;
-
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
         if (!existing || date.getTime() > existing.date.getTime()) {
           deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
       }
-
       const grouped = new Map();
       for (const value of deduped.values()) {
         if (!grouped.has(value.showTitle)) grouped.set(value.showTitle, []);
         grouped.get(value.showTitle).push(value);
       }
-
       return Array.from(grouped.entries()).map(([title, items]) => ({
         title,
         variants: generateVariants([title]),
@@ -1282,7 +1508,6 @@
     function dateToWeekdayTime(date, timeZone) {
       const safeDate = date instanceof Date ? date : new Date(date);
       if (!Number.isFinite(safeDate.getTime())) return null;
-
       const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(safeDate);
       const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(safeDate);
       return { weekday, time };
@@ -1291,7 +1516,6 @@
     function getAniListWeekdayAndTime(unixSeconds, timeZone) {
       const safeUnixSeconds = Number(unixSeconds);
       if (!Number.isFinite(safeUnixSeconds)) return null;
-
       const date = new Date(safeUnixSeconds * 1000);
       return dateToWeekdayTime(date, timeZone);
     }
@@ -1302,8 +1526,9 @@
     }
 
     function minutesToHHMM(total) {
-      const h = Math.floor(total / 60) % 24;
-      const m = Math.round(total % 60);
+      const normalized = ((total % 1440) + 1440) % 1440;
+      const h = Math.floor(normalized / 60);
+      const m = Math.round(normalized % 60);
       return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     }
 
@@ -1319,25 +1544,17 @@
         const slot = dateToWeekdayTime(item.date, timeZone);
         return slot ? { weekday: slot.weekday, time: slot.time, minutes: toMinutes(slot.time) } : null;
       }).filter(Boolean);
-
       if (!sample.length) return null;
-
       const counts = new Map();
       sample.forEach(item => counts.set(item.weekday, (counts.get(item.weekday) || 0) + 1));
-
       let chosenDay = sample[0].weekday;
       let bestCount = counts.get(chosenDay) || 0;
       for (const [day, count] of counts.entries()) {
-        if (count > bestCount) {
-          bestCount = count;
-          chosenDay = day;
-        }
+        if (count > bestCount) { bestCount = count; chosenDay = day; }
       }
-
       const dayItems = sample.filter(item => item.weekday === chosenDay);
       const timeItems = dayItems.length ? dayItems : sample;
       const chosenMinutes = median(timeItems.map(item => item.minutes));
-
       return {
         day: chosenDay,
         time: minutesToHHMM(chosenMinutes ?? sample[0].minutes),
@@ -1350,20 +1567,13 @@
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
       let best = null;
       let bestScore = 0;
-
       for (const candidate of safeCandidates) {
         const score = scoreMatch(candidate, variants);
-        if (score > bestScore) {
-          best = candidate;
-          bestScore = score;
-        }
+        if (score > bestScore) { best = candidate; bestScore = score; }
       }
-
       if (!best || bestScore < 70 || !best.items.length) return null;
-
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
-
       return {
         day: slot.day,
         time: slot.time,
@@ -1410,20 +1620,14 @@
         if (!raw) return fallback;
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === "object" ? parsed : fallback;
-      } catch (_) {
-        return fallback;
-      }
+      } catch (_) { return fallback; }
     }
 
     function saveJSON(key, value) {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch (_) {}
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
     }
 
-    function loadPageSettings() {
-      return loadJSON(PAGE_SETTINGS_KEY, {});
-    }
+    function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
 
     function savePageSettings() {
       saveJSON(PAGE_SETTINGS_KEY, {
@@ -1446,9 +1650,7 @@
     }
 
     function clearBoardSnapshot() {
-      try {
-        localStorage.removeItem(BOARD_SNAPSHOT_KEY);
-      } catch (_) {}
+      try { localStorage.removeItem(BOARD_SNAPSHOT_KEY); } catch (_) {}
     }
 
     function saveBoardSnapshot() {
@@ -1469,65 +1671,37 @@
     function hydrateBoardSnapshot() {
       const snapshot = loadBoardSnapshot();
       if (!snapshot?.userName) return false;
-
       state.userName = String(snapshot.userName).trim();
       els.username.value = state.userName;
       if (snapshot.rssUrl) els.rssUrl.value = snapshot.rssUrl;
       if (snapshot.rssProxyTemplate) els.rssProxyTemplate.value = snapshot.rssProxyTemplate;
-
       state.overrides = loadOverrides(state.userName);
       state.addedShows = loadAddedShows(state.userName);
       state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
-
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
-
       if (!Number.isFinite(snapshotSavedAt)) {
         try {
           const repairedSnapshot = { ...snapshot, savedAt: 0 };
           localStorage.setItem(BOARD_SNAPSHOT_KEY, JSON.stringify(repairedSnapshot));
         } catch (_) {}
       }
-
       refreshBoardFromState();
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
 
-    function loadSlotCache(userName) {
-      return loadJSON(slotCacheScopeKey(userName), {});
-    }
-
-    function saveSlotCache(userName, cache) {
-      saveJSON(slotCacheScopeKey(userName), cache);
-    }
-
-    function clearSlotCache(userName) {
-      try { localStorage.removeItem(slotCacheScopeKey(userName)); } catch (_) {}
-    }
-
-    function loadOverrides(userName) {
-      return loadJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), {});
-    }
-
-    function saveOverrides(userName, overrides) {
-      saveJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides);
-    }
-
-    function loadAddedShows(userName) {
-      return loadJSON(scopedKey(ADDED_SHOWS_KEY, userName), {});
-    }
-
-    function saveAddedShows(userName, addedShows) {
-      saveJSON(scopedKey(ADDED_SHOWS_KEY, userName), addedShows);
-    }
-
-    function makeEntryFromMedia(media) {
-      return { media };
-    }
+    function loadSlotCache(userName) { return loadJSON(slotCacheScopeKey(userName), {}); }
+    function saveSlotCache(userName, cache) { saveJSON(slotCacheScopeKey(userName), cache); }
+    function clearSlotCache(userName) { try { localStorage.removeItem(slotCacheScopeKey(userName)); } catch (_) {} }
+    function loadOverrides(userName) { return loadJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), {}); }
+    function saveOverrides(userName, overrides) { saveJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides); }
+    function loadAddedShows(userName) { return loadJSON(scopedKey(ADDED_SHOWS_KEY, userName), {}); }
+    function saveAddedShows(userName, addedShows) { saveJSON(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
+    function makeEntryFromMedia(media) { return { media }; }
 
     function dedupeEntriesById(entries) {
       const map = new Map();
@@ -1574,19 +1748,37 @@
       if (next?.airingAt) {
         const airingSlot = getAniListWeekdayAndTime(next.airingAt, timeZone);
         if (airingSlot) {
-          const { weekday, time } = airingSlot;
+          const { weekday: aniDay, time: aniTime } = airingSlot;
+          const aniMinutes = toMinutes(aniTime);
+
           if (primary?.time) {
-            return {
-              day: weekday,
-              time: primary.time,
-              source: "rss",
-              sampleCount: primary.sampleCount || 1,
-              matchedTitle: primary.matchedTitle || ""
-            };
+            const rssMinutes = toMinutes(primary.time);
+            let diff = rssMinutes - aniMinutes;
+            if (diff > 720) diff -= 1440;
+            if (diff < -720) diff += 1440;
+
+            if (Math.abs(diff) <= 210) {
+              return {
+                day: aniDay,
+                time: primary.time,
+                source: "rss",
+                sampleCount: primary.sampleCount || 1,
+                matchedTitle: primary.matchedTitle || ""
+              };
+            } else {
+              return {
+                day: aniDay,
+                time: minutesToHHMM(aniMinutes + 60),
+                source: "fallback",
+                sampleCount: 0,
+                matchedTitle: ""
+              };
+            }
           }
+
           return {
-            day: weekday,
-            time,
+            day: aniDay,
+            time: minutesToHHMM(aniMinutes + 60),
             source: "fallback",
             sampleCount: 0,
             matchedTitle: ""
@@ -1594,8 +1786,7 @@
         }
       }
 
-      if (primary) return primary;
-      return null;
+      return primary || null;
     }
 
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
@@ -1603,40 +1794,24 @@
       for (const entry of entries) {
         const media = entry.media;
         if (!media?.id) continue;
-
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
         const override = overrides?.[String(media.id)];
-
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: override.day,
-            time: override.time,
-            format: media.format || "",
-            source: "manual",
-            sampleCount: 1,
-            matchedTitle: "",
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover,
+            day: override.day, time: override.time, format: media.format || "",
+            source: "manual", sampleCount: 1, matchedTitle: "",
             isAdded: Boolean(state.addedShows[String(media.id)])
           });
           continue;
         }
-
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: primary.day,
-            time: primary.time,
-            format: media.format || "",
-            source: primary.source,
-            sampleCount: primary.sampleCount || 1,
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover,
+            day: primary.day, time: primary.time, format: media.format || "",
+            source: primary.source, sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
             isAdded: Boolean(state.addedShows[String(media.id)])
           });
@@ -1648,29 +1823,21 @@
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
-
       for (const item of items) {
         const key = String(item.id);
-
         if (item.source === "manual" || item.source === "rss") {
           cache[key] = {
-            day: item.day,
-            time: item.time,
-            sampleCount: item.sampleCount || 1,
-            matchedTitle: item.matchedTitle || "",
-            origin: item.source,
+            day: item.day, time: item.time, sampleCount: item.sampleCount || 1,
+            matchedTitle: item.matchedTitle || "", origin: item.source,
             updatedAt: new Date().toISOString()
           };
           output.push(item);
           continue;
         }
-
         const remembered = cache[key];
         if (remembered && remembered.time) {
           output.push({
-            ...item,
-            time: remembered.time,
-            source: "cache",
+            ...item, time: remembered.time, source: "cache",
             sampleCount: remembered.sampleCount || 1,
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved"
@@ -1679,7 +1846,6 @@
           output.push(item);
         }
       }
-
       saveSlotCache(state.userName, cache);
       return output;
     }
@@ -1690,30 +1856,17 @@
 
     function getTimeZoneParts(date, timeZone) {
       const formatter = new Intl.DateTimeFormat("en-GB", {
-        timeZone,
-        weekday: "long",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false
+        timeZone, weekday: "long", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
       });
-
       const parts = {};
       for (const part of formatter.formatToParts(date)) {
         if (part.type !== "literal") parts[part.type] = part.value;
       }
-
       return {
         weekday: parts.weekday,
-        year: Number(parts.year),
-        month: Number(parts.month),
-        day: Number(parts.day),
-        hour: Number(parts.hour),
-        minute: Number(parts.minute),
-        second: Number(parts.second)
+        year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
+        hour: Number(parts.hour), minute: Number(parts.minute), second: Number(parts.second)
       };
     }
 
@@ -1730,53 +1883,37 @@
     function getSlotStatus(day, time, timeZone = DEFAULT_TIMEZONE) {
       const dayIndex = WEEKDAYS.indexOf(day);
       if (dayIndex < 0 || !isValidTime(time)) return null;
-
       const now = getNowContext(timeZone);
       const targetMinutes = toMinutes(time);
       const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
       const immediateMinutesUntil = (dayOffset * 1440) + targetMinutes - now.totalMinutes;
       const isNow = dayOffset === 0 && now.totalMinutes >= targetMinutes && now.totalMinutes < (targetMinutes + AIRING_NOW_WINDOW_MINUTES);
-      const minutesUntil = isNow
-        ? 0
-        : (immediateMinutesUntil >= 0 ? immediateMinutesUntil : immediateMinutesUntil + (7 * 24 * 60));
-
+      const minutesUntil = isNow ? 0 : (immediateMinutesUntil >= 0 ? immediateMinutesUntil : immediateMinutesUntil + (7 * 24 * 60));
       return { isNow, minutesUntil };
     }
 
     function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
       let best = null;
-
       for (const dayBlock of grouped) {
         for (const slot of dayBlock.slots) {
           const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
           if (!status) continue;
-
           if (status.isNow || status.minutesUntil <= 0) continue;
-
           if (!best || status.minutesUntil < best.status.minutesUntil) {
-            best = {
-              key: `${dayBlock.day}::${slot.time}`,
-              status
-            };
+            best = { key: `${dayBlock.day}::${slot.time}`, status };
           }
         }
       }
-
       return best;
     }
 
     function formatSavedAt(timestamp, timeZone = DEFAULT_TIMEZONE) {
       const safeTimestamp = Number(timestamp);
       if (!Number.isFinite(safeTimestamp)) return "";
-
       const safeDate = new Date(safeTimestamp);
       if (!Number.isFinite(safeDate.getTime())) return "";
-
       return new Intl.DateTimeFormat("en-GB", {
-        timeZone,
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit"
+        timeZone, weekday: "short", hour: "2-digit", minute: "2-digit"
       }).format(safeDate);
     }
 
@@ -1788,7 +1925,6 @@
 
     function pulseUpdateIndicator() {
       if (!els.updateIndicator) return;
-
       els.updateIndicator.classList.remove("flash");
       void els.updateIndicator.offsetWidth;
       els.updateIndicator.classList.add("flash");
@@ -1798,26 +1934,21 @@
     function groupForBoard(items) {
       const grouped = new Map();
       for (const day of WEEKDAYS) grouped.set(day, new Map());
-
       for (const item of items) {
         if (!grouped.has(item.day)) grouped.set(item.day, new Map());
         const dayMap = grouped.get(item.day);
         if (!dayMap.has(item.time)) dayMap.set(item.time, []);
         dayMap.get(item.time).push(item);
       }
-
       const output = [];
       const todayIdx = getNowContext(DEFAULT_TIMEZONE).dayIndex;
-
       for (let i = 0; i < 7; i++) {
         const dayIdx = (todayIdx + i) % 7;
         const day = WEEKDAYS[dayIdx];
-
         const dayMap = grouped.get(day);
         const slots = Array.from(dayMap.entries())
           .map(([time, list]) => ({ time, items: list.sort(sortByTime) }))
           .sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
-
         if (slots.length) output.push({ day, slots });
       }
       return output;
@@ -1829,7 +1960,6 @@
       const cacheCount = items.filter(item => item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
-
       const cards = [
         { label: "Visible", value: String(items.length) },
         { label: "Custom", value: String(manualCount) },
@@ -1839,7 +1969,6 @@
         { label: "Fallback", value: String(fallbackCount) },
         { label: "Parsed RSS", value: String(primaryCount) }
       ];
-
       els.summary.innerHTML = cards.map(card => `
         <article class="panel summary-card">
           <div class="summary-label">${escapeHtml(card.label)}</div>
@@ -1851,26 +1980,22 @@
     function renderBoard(items) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
-
       els.board.innerHTML = grouped.map(dayBlock => `
         <section class="panel day-column">
           <div class="day-head">
             <div class="day-name">${escapeHtml(dayBlock.day)}</div>
             <div class="day-count">${dayBlock.slots.reduce((sum, slot) => sum + slot.items.length, 0)}</div>
           </div>
-
           ${dayBlock.slots.map(slot => {
             const slotKey = `${dayBlock.day}::${slot.time}`;
             const isNext = nextSlot?.key === slotKey;
             const countdownText = isNext ? "Airing Next" : "";
-
             return `
               <div class="time-group ${isNext ? "highlight-next" : ""}">
                 <div class="time-pill">
                   ${escapeHtml(slot.time)}
                   ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
                 </div>
-
                 <div class="entry-list">
                   ${slot.items.map(item => `
                     <article class="entry">
@@ -1893,6 +2018,14 @@
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
+                      <button
+                        class="entry-settings-btn"
+                        type="button"
+                        data-action="open-show-settings"
+                        data-id="${escapeHtml(String(item.id))}"
+                        aria-label="Adjust ${escapeHtml(item.title)}"
+                        title="Adjust show"
+                      >⚙</button>
                     </article>
                   `).join("")}
                 </div>
@@ -1901,15 +2034,9 @@
           }).join("")}
         </section>
       `).join("");
-
       if (!grouped.length) {
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
-    }
-
-    function slotTextForItem(item) {
-      if (!item) return "No detected slot yet";
-      return `${item.day} · ${item.time}`;
     }
 
     function itemMap() {
@@ -1918,63 +2045,206 @@
       return map;
     }
 
-    function currentEntriesSorted() {
-      return [...(state.currentEntries || [])].sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
+    function refreshBoardFromState() {
+      const currentEntries = state.currentEntries || [];
+      const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
+      state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
+      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
+      state.items = applyCache(built).sort((a, b) =>
+        WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
+      );
+      renderSummary(state.items, state.primaryCandidates.length);
+      renderBoard(state.items);
+      renderSearchResults();
+      const customCount = state.items.filter(item => item.source === "manual").length;
+      const addedCount = state.items.filter(item => item.isAdded).length;
+      const rssCount = state.items.filter(item => item.source === "rss").length;
+      const cacheCount = state.items.filter(item => item.source === "cache").length;
+      const fallbackCount = state.items.filter(item => item.source === "fallback").length;
+      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+      const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
+      els.footer.textContent =
+        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        updatedLabel +
+        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
     }
 
-    function overrideEntriesForDisplay() {
-      const catalog = mediaCatalog();
-      const ids = new Set([
-        ...Object.keys(state.overrides || {}),
-        ...Object.keys(state.addedShows || {})
-      ]);
-
-      return Array.from(ids)
-        .map(id => ({
-          id: String(id),
-          media: catalog.get(String(id)),
-          override: overrideForMediaId(id),
-          added: Boolean(state.addedShows[String(id)])
-        }))
-        .filter(entry => entry.media)
-        .sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
+    function persistState() {
+      saveOverrides(state.userName, state.overrides);
+      saveAddedShows(state.userName, state.addedShows);
     }
 
-    function renderCurrentShows() {
-      const itemsById = itemMap();
-      const rows = currentEntriesSorted();
+    function mediaById(id) {
+      const map = new Map();
+      for (const entry of state.currentEntries || []) {
+        if (entry?.media?.id) map.set(String(entry.media.id), entry.media);
+      }
+      for (const value of Object.values(state.addedShows || {})) {
+        if (value?.id) map.set(String(value.id), value);
+      }
+      for (const media of state.searchResults || []) {
+        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
+      }
+      return map.get(String(id)) || null;
+    }
 
-      if (!rows.length) {
-        els.currentShowList.innerHTML = `<div class="empty">Load a username to see current shows.</div>`;
+    function detectSlotForModal(media) {
+      return itemMap().get(String(media.id)) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+    }
+
+    function syncSettingsModalState() {
+      const enabled = Boolean(els.modalUseCustom.checked);
+      els.modalDay.disabled = !enabled;
+      els.modalTime.disabled = !enabled;
+      els.modalCustomHelper.textContent = enabled
+        ? "Custom slot is active and will override RSS / AniList for this show."
+        : "Custom slot is off. Turn it on to set your own day and time.";
+    }
+
+    function openModal(modal) {
+      if (!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeModal(modal) {
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      if (!document.querySelector(".modal.open")) {
+        document.body.classList.remove("modal-open");
+      }
+    }
+
+    function populateShowSettingsModal() {
+      const media = mediaById(state.activeSettingsId);
+      if (!media) return;
+
+      const id = String(media.id);
+      const override = overrideForMediaId(id);
+      const detected = detectSlotForModal(media);
+      const initialDay = override?.day || detected?.day || "Monday";
+      const initialTime = override?.time || detected?.time || "18:00";
+
+      els.showSettingsTitle.textContent = titleForMedia(media);
+      els.showSettingsSubtitle.textContent = [
+        media.format || "",
+        state.addedShows[id] ? "Added show" : "Current show"
+      ].filter(Boolean).join(" · ");
+
+      els.modalDetectedSlot.textContent = detected
+        ? `Detected: ${detected.day} · ${detected.time}`
+        : "Detected: No slot found yet";
+
+      els.modalUseCustom.checked = Boolean(override?.enabled);
+      els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
+      els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
+      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove show" : "Clear custom";
+
+      syncSettingsModalState();
+    }
+
+    function openSettingsModalForId(id) {
+      const media = mediaById(id);
+      if (!media) return;
+      state.activeSettingsId = String(id);
+      populateShowSettingsModal();
+      openModal(els.showSettingsModal);
+    }
+
+    function closeSettingsModal() {
+      state.activeSettingsId = null;
+      closeModal(els.showSettingsModal);
+    }
+
+    function openAddShowModal() {
+      openModal(els.addShowModal);
+      renderSearchResults();
+      requestAnimationFrame(() => els.addShowSearch.focus());
+    }
+
+    function closeAddShowModal() {
+      closeModal(els.addShowModal);
+    }
+
+    function saveSettingsFromModal() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      state.overrides[id] = {
+        enabled: Boolean(els.modalUseCustom.checked),
+        day: WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday",
+        time: isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00"
+      };
+
+      persistState();
+      refreshBoardFromState();
+      closeSettingsModal();
+    }
+
+    function useDetectedForActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      const media = mediaById(id);
+      if (!media) return;
+
+      const detected = detectSlotForModal(media);
+      if (detected) {
+        state.overrides[id] = {
+          enabled: false,
+          day: detected.day,
+          time: detected.time
+        };
+      } else {
+        delete state.overrides[id];
+      }
+
+      persistState();
+      refreshBoardFromState();
+      populateShowSettingsModal();
+    }
+
+    function clearOrRemoveActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      if (state.addedShows[id]) {
+        delete state.addedShows[id];
+        delete state.overrides[id];
+        persistState();
+        refreshBoardFromState();
+        closeSettingsModal();
         return;
       }
 
-      els.currentShowList.innerHTML = rows.map(entry => {
-        const media = entry.media;
-        const id = String(media.id);
-        const item = itemsById.get(id);
-        const hasOverride = Boolean(state.overrides[id]);
+      delete state.overrides[id];
+      persistState();
+      refreshBoardFromState();
+      closeSettingsModal();
+    }
 
-        return `
-          <div class="show-row">
-            <div>
-              <div class="row-head">
-                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
-                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
-                ${hasOverride ? `<span class="chip manual">Custom saved</span>` : ""}
-              </div>
-              <div class="row-subtitle">${escapeHtml(slotTextForItem(item))}</div>
-            </div>
-            <div class="row-actions">
-              <button class="secondary" type="button" data-action="customize-current" data-id="${escapeHtml(id)}">${hasOverride ? "Edit custom" : "Customize"}</button>
-              ${hasOverride ? `<button class="ghost" type="button" data-action="clear-current-override" data-id="${escapeHtml(id)}">Clear custom</button>` : ""}
-            </div>
-          </div>
-        `;
-      }).join("");
+    function addShowFromSearch(media) {
+      if (!media?.id) return;
+      state.addedShows[String(media.id)] = media;
+      if (!state.overrides[String(media.id)]) {
+        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        state.overrides[String(media.id)] = {
+          enabled: Boolean(suggested),
+          day: suggested?.day || "Monday",
+          time: suggested?.time || "18:00"
+        };
+      }
+      persistState();
+      refreshBoardFromState();
+      closeAddShowModal();
+      openSettingsModalForId(media.id);
     }
 
     function renderSearchResults() {
+      if (!els.addShowResults) return;
+
       const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
       const addedIds = new Set(Object.keys(state.addedShows || {}));
 
@@ -1990,7 +2260,7 @@
         const id = String(media.id);
         const current = currentIds.has(id);
         const added = addedIds.has(id);
-        const existingOverride = Boolean(state.overrides[id]);
+        const manageable = current || added;
 
         return `
           <div class="search-result">
@@ -2004,195 +2274,24 @@
               <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : (media.status || "Unknown status"))}</div>
             </div>
             <div class="row-actions">
-              ${current
-                ? `<button class="secondary" type="button" data-action="customize-current" data-id="${escapeHtml(id)}">${existingOverride ? "Edit custom" : "Customize"}</button>`
-                : added
-                  ? `<button class="secondary" type="button" data-action="focus-override" data-id="${escapeHtml(id)}">Manage</button>`
-                  : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
+              ${manageable
+                ? `<button class="secondary" type="button" data-action="open-show-settings" data-id="${escapeHtml(id)}">Manage</button>`
+                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
             </div>
           </div>
         `;
       }).join("");
     }
 
-    function renderOverrideList() {
-      const rows = overrideEntriesForDisplay();
-      const itemsById = itemMap();
-
-      if (!rows.length) {
-        els.overrideList.innerHTML = `<div class="empty">No custom entries yet.</div>`;
-        return;
-      }
-
-      els.overrideList.innerHTML = rows.map(entry => {
-        const media = entry.media;
-        const id = entry.id;
-        const override = entry.override || { enabled: false, day: "Monday", time: "18:00" };
-        const currentItem = itemsById.get(id);
-        const suggested = currentItem ? `${currentItem.day} · ${currentItem.time}` : "No detected slot";
-        const customText = `${override.day} · ${override.time}`;
-
-        return `
-          <details class="override-row task-dropdown" id="override-${escapeHtml(id)}" ${override.enabled ? "open" : ""}>
-            <summary>
-              <div class="task-summary-main">
-                <div class="row-head">
-                  <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
-                  ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
-                  ${entry.added ? `<span class="chip added">Added show</span>` : `<span class="chip rss">Current show</span>`}
-                  ${override.enabled ? `<span class="chip manual">Custom active</span>` : ""}
-                </div>
-                <div class="task-summary-meta">
-                  <span>Detected: ${escapeHtml(suggested)}</span>
-                  <span>•</span>
-                  <span>${override.enabled ? `Using custom: ${escapeHtml(customText)}` : "Using detected slot"}</span>
-                </div>
-              </div>
-              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-            </summary>
-
-            <div class="task-dropdown-body">
-              <div class="override-controls">
-                <label class="toggle">
-                  <input type="checkbox" data-action="toggle-override" data-id="${escapeHtml(id)}" ${override.enabled ? "checked" : ""} />
-                  Use custom slot
-                </label>
-
-                <select data-action="set-day" data-id="${escapeHtml(id)}" ${override.enabled ? "" : "disabled"}>
-                  ${WEEKDAYS.map(day => `<option value="${escapeHtml(day)}" ${day === override.day ? "selected" : ""}>${escapeHtml(day)}</option>`).join("")}
-                </select>
-
-                <div class="row-actions">
-                  <input type="time" data-action="set-time" data-id="${escapeHtml(id)}" value="${escapeHtml(override.time)}" ${override.enabled ? "" : "disabled"} />
-                  <button class="ghost" type="button" data-action="reset-to-detected" data-id="${escapeHtml(id)}">Use detected</button>
-                  <button class="danger" type="button" data-action="${entry.added ? "remove-added-show" : "remove-current-override"}" data-id="${escapeHtml(id)}">${entry.added ? "Remove show" : "Clear custom"}</button>
-                </div>
-              </div>
-
-              <div class="helper">
-                ${override.enabled
-                  ? "Custom slot is active and will override RSS / AniList for this show."
-                  : "Custom slot is off. Weekday comes from AniList when available, with SubsPlease used for release time."}
-              </div>
-            </div>
-          </details>
-        `;
-      }).join("");
-    }
-
-    function renderManager() {
-      renderCurrentShows();
-      renderSearchResults();
-      renderOverrideList();
-    }
-
-    function refreshBoardFromState() {
-      const currentEntries = state.currentEntries || [];
-      const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
-      state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
-
-      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
-      state.items = applyCache(built).sort((a, b) =>
-        WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
-      );
-
-      renderSummary(state.items, state.primaryCandidates.length);
-      renderBoard(state.items);
-      renderManager();
-
-      const customCount = state.items.filter(item => item.source === "manual").length;
-      const addedCount = state.items.filter(item => item.isAdded).length;
-      const rssCount = state.items.filter(item => item.source === "rss").length;
-      const cacheCount = state.items.filter(item => item.source === "cache").length;
-      const fallbackCount = state.items.filter(item => item.source === "fallback").length;
-      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
-      const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
-
-      els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
-        updatedLabel +
-        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
-    }
-
-    function persistState() {
-      saveOverrides(state.userName, state.overrides);
-      saveAddedShows(state.userName, state.addedShows);
-    }
-
-    function ensureOverrideForMedia(media, options = {}) {
-      if (!media?.id) return;
-
-      const id = String(media.id);
-      const current = overrideForMediaId(id);
-      const existingEnabled = current?.enabled ?? false;
-      const defaultSlot = itemMap().get(id) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-
-      const nextOverride = {
-        enabled: options.enable ?? existingEnabled,
-        day: options.day || current?.day || defaultSlot?.day || "Monday",
-        time: options.time || current?.time || defaultSlot?.time || "18:00"
-      };
-
-      state.overrides[id] = nextOverride;
-      persistState();
-      refreshBoardFromState();
-      focusOverride(id);
-    }
-
-    function focusOverride(id) {
-      const el = document.getElementById(`override-${CSS.escape(String(id))}`);
-      if (!el) return;
-      if ("open" in el) el.open = true;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-
-    function addShowFromSearch(media) {
-      if (!media?.id) return;
-
-      state.addedShows[String(media.id)] = media;
-      if (!state.overrides[String(media.id)]) {
-        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-        state.overrides[String(media.id)] = {
-          enabled: Boolean(suggested),
-          day: suggested?.day || "Monday",
-          time: suggested?.time || "18:00"
-        };
-      }
-
-      persistState();
-      refreshBoardFromState();
-      focusOverride(media.id);
-    }
-
-    function clearOverride(id) {
-      delete state.overrides[String(id)];
-      persistState();
-      refreshBoardFromState();
-    }
-
-    function removeAddedShow(id) {
-      delete state.addedShows[String(id)];
-      delete state.overrides[String(id)];
-      persistState();
-      refreshBoardFromState();
-    }
-
-    function mediaById(id) {
-      return mediaCatalog().get(String(id)) || null;
-    }
-
     async function handleSearchInput() {
       const query = els.addShowSearch.value.trim();
       const token = ++state.searchToken;
-
       if (query.length < 2) {
         state.searchResults = [];
         renderSearchResults();
         return;
       }
-
       els.addShowResults.innerHTML = `<div class="empty">Searching AniList…</div>`;
-
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
@@ -2205,124 +2304,28 @@
       }
     }
 
-    let searchDebounceTimer = null;
-    els.addShowSearch.addEventListener("input", () => {
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(handleSearchInput, 250);
-    });
-
-    els.currentShowList.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-
-      const id = button.dataset.id;
-      const media = mediaById(id);
-      if (!media) return;
-
-      if (button.dataset.action === "customize-current") {
-        ensureOverrideForMedia(media, { enable: true });
-      } else if (button.dataset.action === "clear-current-override") {
-        clearOverride(id);
-      }
-    });
-
-    els.addShowResults.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-
-      const id = button.dataset.id;
-      const media = mediaById(id);
-      if (!media) return;
-
-      if (button.dataset.action === "add-search-show") {
-        addShowFromSearch(media);
-      } else if (button.dataset.action === "customize-current") {
-        ensureOverrideForMedia(media, { enable: true });
-      } else if (button.dataset.action === "focus-override") {
-        focusOverride(id);
-      }
-    });
-
-    els.overrideList.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-
-      const id = String(button.dataset.id || "");
-      const media = mediaById(id);
-
-      if (button.dataset.action === "remove-added-show") {
-        removeAddedShow(id);
-      } else if (button.dataset.action === "remove-current-override") {
-        clearOverride(id);
-      } else if (button.dataset.action === "reset-to-detected" && media) {
-        const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-        if (detected) {
-          state.overrides[id] = {
-            enabled: false,
-            day: detected.day,
-            time: detected.time
-          };
-        } else if (state.overrides[id]) {
-          state.overrides[id].enabled = false;
-        }
-
-        persistState();
-        refreshBoardFromState();
-      }
-    });
-
-    els.overrideList.addEventListener("change", event => {
-      const target = event.target;
-      const action = target.dataset.action;
-      const id = String(target.dataset.id || "");
-      if (!action || !id || !state.overrides[id]) return;
-
-      if (action === "toggle-override") {
-        state.overrides[id].enabled = Boolean(target.checked);
-      } else if (action === "set-day") {
-        state.overrides[id].day = WEEKDAYS.includes(target.value) ? target.value : state.overrides[id].day;
-      } else if (action === "set-time") {
-        state.overrides[id].time = isValidTime(target.value) ? target.value : state.overrides[id].time;
-      }
-
-      persistState();
-      refreshBoardFromState();
-    });
-
     async function loadBoard(options = {}) {
       const userName = els.username.value.trim();
-
-      if (!userName) {
-        showMessage("error", "Please enter a username.");
-        return false;
-      }
-
+      if (!userName) { showMessage("error", "Please enter a username."); return false; }
       if (state.isLoading) return false;
-
       state.isLoading = true;
       savePageSettings();
-
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
-
       state.userName = userName;
       state.overrides = loadOverrides(userName);
       state.addedShows = loadAddedShows(userName);
-
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
-
       try {
         const nextNotes = [];
         const entries = await fetchAniListWatching(userName);
         const nextCurrentEntries = dedupeEntriesById(entries);
         const nextTotalAniListEntries = nextCurrentEntries.length;
-
         const primaryResult = await fetchTextWithOptionalProxy(
           els.rssUrl.value.trim(),
           els.rssProxyTemplate.value.trim()
         );
-
         let nextPrimaryCandidates = [];
         if (primaryResult.trim()) {
           try {
@@ -2331,31 +2334,26 @@
             nextNotes.push(`SubsPlease: ${error.message}`);
           }
         }
-
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextTotalAniListEntries;
         state.primaryCandidates = nextPrimaryCandidates;
         state.notes = nextNotes;
         state.lastSuccessfulLoadAt = Date.now();
-
         refreshBoardFromState();
         saveBoardSnapshot();
         pulseUpdateIndicator();
-
         showMessage(
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
         );
-
         return true;
       } catch (error) {
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
-
-        if (!preserveBoard) renderManager();
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        if (!preserveBoard) renderSearchResults();
         showMessage("error", `Could not refresh the board: ${error.message}.${fallbackTime}`.trim());
         return false;
       } finally {
@@ -2377,15 +2375,51 @@
     }
 
     function startAutoRefresh() {
-      setInterval(() => {
-        maybeRefreshBoard("refresh");
-      }, REFRESH_INTERVAL_MS);
-
-      setInterval(() => {
-        if (state.items.length) renderBoard(state.items);
-      }, COUNTDOWN_TICK_MS);
+      setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
+      setInterval(() => { if (state.items.length) renderBoard(state.items); }, COUNTDOWN_TICK_MS);
     }
 
+    let searchDebounceTimer = null;
+    els.addShowSearch.addEventListener("input", () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(handleSearchInput, 250);
+    });
+
+    els.addShowSearch.addEventListener("keydown", event => {
+      if (event.key === "Enter") handleSearchInput();
+    });
+
+    els.board.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      if (button.dataset.action === "open-show-settings") {
+        openSettingsModalForId(id);
+      }
+    });
+
+    els.addShowResults.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      const media = mediaById(id);
+      if (!media) return;
+
+      if (button.dataset.action === "add-search-show") {
+        addShowFromSearch(media);
+      } else if (button.dataset.action === "open-show-settings") {
+        closeAddShowModal();
+        openSettingsModalForId(id);
+      }
+    });
+
+    els.openAddShowBtn.addEventListener("click", openAddShowModal);
+    els.closeAddShowBtn.addEventListener("click", closeAddShowModal);
+    els.closeShowSettingsBtn.addEventListener("click", closeSettingsModal);
+    els.modalUseCustom.addEventListener("change", syncSettingsModalState);
+    els.modalSaveBtn.addEventListener("click", saveSettingsFromModal);
+    els.modalUseDetectedBtn.addEventListener("click", useDetectedForActiveShow);
+    els.modalClearOrRemoveBtn.addEventListener("click", clearOrRemoveActiveShow);
     els.loadBtn.addEventListener("click", () => loadBoard());
 
     if (els.clearMemoryBtn) {
@@ -2397,10 +2431,22 @@
       });
     }
 
+    [els.addShowModal, els.showSettingsModal].forEach(modal => {
+      modal.addEventListener("click", event => {
+        if (event.target === modal) closeModal(modal);
+      });
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeSettingsModal();
+        closeAddShowModal();
+      }
+    });
+
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.addShowSearch.addEventListener("keydown", event => { if (event.key === "Enter") handleSearchInput(); });
 
     [els.username, els.rssUrl, els.rssProxyTemplate].forEach(el => {
       el.addEventListener("change", savePageSettings);
@@ -2411,9 +2457,7 @@
       if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
     });
 
-    window.addEventListener("focus", () => {
-      maybeRefreshBoard("refresh");
-    });
+    window.addEventListener("focus", () => { maybeRefreshBoard("refresh"); });
 
     let autoRefreshStarted = false;
     let bootCompleted = false;
@@ -2421,20 +2465,11 @@
     function bootPage() {
       if (bootCompleted) return;
       bootCompleted = true;
-
       try {
         applySavedSettings();
         const hydrated = hydrateBoardSnapshot();
-
-        if (!els.username.value.trim()) {
-          els.username.value = "zrr";
-        }
-
-        if (!autoRefreshStarted) {
-          startAutoRefresh();
-          autoRefreshStarted = true;
-        }
-
+        if (!els.username.value.trim()) els.username.value = "zrr";
+        if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
         if (els.username.value.trim()) {
           loadBoard({ reason: hydrated ? "refresh" : "load" });
         } else {
