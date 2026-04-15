@@ -1008,7 +1008,7 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and MEMORY.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -1024,7 +1024,7 @@
             </div>
           </div>
           <div class="button-row" style="margin-top: 8px;">
-            <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
+            <button id="clearMemoryBtn" class="secondary" type="button">Clear MEMORY</button>
             <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
           </div>
           <div class="helper" style="margin-top: 12px;">
@@ -1128,6 +1128,7 @@
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const AIRING_NOW_WINDOW_MINUTES = 15;
+    const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -1684,6 +1685,96 @@
       saveSlotCache(state.userName, cache);
     }
 
+    function parseStoredTimestamp(value) {
+      const ms = Date.parse(String(value || ""));
+      return Number.isFinite(ms) ? ms : NaN;
+    }
+
+    function pruneOrphanedStoredState(userName, validMediaIds) {
+      if (!userName) return;
+
+      const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+
+      const cache = loadSlotCache(userName);
+      let cacheChanged = false;
+
+      for (const id of Object.keys(cache)) {
+        const entry = cache[id];
+
+        if (!entry || typeof entry !== "object") {
+          delete cache[id];
+          cacheChanged = true;
+          continue;
+        }
+
+        if (validIds.has(id)) {
+          if (entry.missingSince) {
+            delete entry.missingSince;
+            cacheChanged = true;
+          }
+          continue;
+        }
+
+        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
+        if (!Number.isFinite(missingSinceMs)) {
+          entry.missingSince = nowIso;
+          cacheChanged = true;
+          continue;
+        }
+
+        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
+          delete cache[id];
+          cacheChanged = true;
+        }
+      }
+
+      if (cacheChanged) {
+        saveSlotCache(userName, cache);
+      }
+
+      const overrides = state.overrides && typeof state.overrides === "object"
+        ? { ...state.overrides }
+        : {};
+      let overridesChanged = false;
+
+      for (const id of Object.keys(overrides)) {
+        const entry = overrides[id];
+
+        if (!entry || typeof entry !== "object") {
+          delete overrides[id];
+          overridesChanged = true;
+          continue;
+        }
+
+        if (validIds.has(id)) {
+          if (entry.missingSince) {
+            delete entry.missingSince;
+            overridesChanged = true;
+          }
+          continue;
+        }
+
+        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
+        if (!Number.isFinite(missingSinceMs)) {
+          entry.missingSince = nowIso;
+          overridesChanged = true;
+          continue;
+        }
+
+        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
+          delete overrides[id];
+          overridesChanged = true;
+        }
+      }
+
+      if (overridesChanged) {
+        state.overrides = overrides;
+        saveOverrides(userName, overrides);
+      }
+    }
+
     function dedupeEntriesById(entries) {
       const map = new Map();
       for (const entry of entries || []) {
@@ -1808,8 +1899,11 @@
         const key = String(item.id);
         if (item.source === "manual" || item.source === "rss") {
           cache[key] = {
-            day: item.day, time: item.time, sampleCount: item.sampleCount || 1,
-            matchedTitle: item.matchedTitle || "", origin: item.source,
+            day: item.day,
+            time: item.time,
+            sampleCount: item.sampleCount || 1,
+            matchedTitle: item.matchedTitle || "",
+            origin: item.source,
             updatedAt: new Date().toISOString()
           };
           output.push(item);
@@ -1818,7 +1912,9 @@
         const remembered = cache[key];
         if (remembered && remembered.time && remembered.origin !== "manual") {
           output.push({
-            ...item, time: remembered.time, source: "cache",
+            ...item,
+            time: remembered.time,
+            source: "cache",
             sampleCount: remembered.sampleCount || 1,
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved"
@@ -1946,7 +2042,7 @@
         { label: "Custom", value: String(manualCount) },
         { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
-        { label: "Memory", value: String(cacheCount) },
+        { label: "MEMORY", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
         { label: "Parsed RSS", value: String(primaryCount) }
       ];
@@ -1991,11 +2087,11 @@
                           ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
-                            ? `<span class="chip manual">Custom</span>`
+                            ? `<span class="chip manual">CUSTOM</span>`
                             : item.source === "rss"
                               ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
                               : item.source === "cache"
-                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())}</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
@@ -2037,6 +2133,12 @@
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
+
+      pruneOrphanedStoredState(
+        state.userName,
+        state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
+      );
+
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       state.items = applyCache(built).sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
@@ -2052,7 +2154,7 @@
       const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
       const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
       els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} MEMORY, ${fallbackCount} fallback.` +
         updatedLabel +
         (state.notes.length ? ` ${state.notes.join(" ")}` : "");
     }
@@ -2419,7 +2521,7 @@
       els.clearMemoryBtn.addEventListener("click", () => {
         const scopedUser = els.username.value.trim() || state.userName;
         clearSlotCache(scopedUser);
-        showMessage("info", "Memory cleared.");
+        showMessage("info", "MEMORY cleared.");
         if (state.userName) refreshBoardFromState();
       });
     }
