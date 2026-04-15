@@ -1417,6 +1417,9 @@
       };
     }
 
+    /**
+     * UPDATED: Returns the episode token so applyCache can track history.
+     */
     function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
       const variants = titleVariants(media);
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
@@ -1434,7 +1437,8 @@
         time: slot.time,
         source: sourceName,
         sampleCount: slot.sampleCount || 1,
-        matchedTitle: best.title
+        matchedTitle: best.title,
+        matchedEpisode: best.items[0]?.episode || null // Track this episode
       };
     }
 
@@ -1704,6 +1708,9 @@
       };
     }
 
+    /**
+     * UPDATED: Passes matchedEpisode through.
+     */
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
@@ -1726,7 +1733,8 @@
                 time: primary.time,
                 source: "rss",
                 sampleCount: primary.sampleCount || 1,
-                matchedTitle: primary.matchedTitle || ""
+                matchedTitle: primary.matchedTitle || "",
+                matchedEpisode: primary.matchedEpisode || null
               };
             } else {
               return {
@@ -1752,6 +1760,9 @@
       return primary || null;
     }
 
+    /**
+     * UPDATED: Includes matchedEpisode in build.
+     */
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
       for (const entry of entries) {
@@ -1778,6 +1789,7 @@
             day: primary.day, time: primary.time, format: media.format || "",
             source: primary.source, sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
+            matchedEpisode: primary.matchedEpisode || null, // Attach this
             isAdded: Boolean(state.addedShows[String(media.id)]),
             isFinalEpisode
           });
@@ -1786,30 +1798,74 @@
       return items;
     }
 
+    /**
+     * UPDATED: Persistent History Logic.
+     * This checks the episode ID and builds a history over time in localStorage.
+     */
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
       for (const item of items) {
         const key = String(item.id);
-        if (item.source === "manual" || item.source === "rss") {
+
+        if (item.source === "rss") {
+          let entry = cache[key];
+          // Upgrade old cache structure if it doesn't have history
+          if (!entry || !entry.history) {
+            entry = { history: [], origin: "rss" };
+          }
+
+          const currentEpisode = item.matchedEpisode;
+          const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
+
+          // Only add to history if it's a new episode found in the feed
+          if (currentEpisode && !alreadySawThisEpisode) {
+            entry.history.push({
+              day: item.day,
+              time: item.time,
+              mins: toMinutes(item.time),
+              episode: currentEpisode
+            });
+            // Keep rolling window of last 10 releases for median
+            if (entry.history.length > 10) entry.history.shift();
+          }
+
+          // Use the historical median to decide the time
+          if (entry.history.length > 0) {
+            const allMins = entry.history.map(h => h.mins);
+            const medMins = median(allMins);
+            item.time = minutesToHHMM(medMins);
+            item.sampleCount = entry.history.length;
+            // Set the day to the most recent one we've seen
+            item.day = entry.history[entry.history.length - 1].day;
+          }
+
           cache[key] = {
-            day: item.day,
-            time: item.time,
-            sampleCount: item.sampleCount || 1,
-            matchedTitle: item.matchedTitle || "",
-            origin: item.source,
+            ...entry,
             updatedAt: new Date().toISOString()
           };
           output.push(item);
           continue;
         }
+
+        // Handle normal manual/fallback/cache lookups
         const remembered = cache[key];
-        if (remembered && isValidTime(remembered.time) && remembered.origin !== "manual") {
+        if (item.source === "manual") {
+          cache[key] = {
+            day: item.day,
+            time: item.time,
+            sampleCount: 1,
+            origin: "manual",
+            updatedAt: new Date().toISOString()
+          };
+          output.push(item);
+        } else if (remembered && isValidTime(remembered.time)) {
           output.push({
             ...item,
+            day: remembered.day || item.day,
             time: remembered.time,
             source: "cache",
-            sampleCount: remembered.sampleCount || 1,
+            sampleCount: remembered.history ? remembered.history.length : (remembered.sampleCount || 1),
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved"
           });
@@ -1985,7 +2041,7 @@
                             : item.source === "rss"
                               ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
                               : item.source === "cache"
-                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())}</span>`
+                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${item.sampleCount || 1})</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
                         ${item.isFinalEpisode ? `<div class="entry-extra"><span class="final-episode">Final Episode</span></div>` : ""}
