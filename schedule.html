@@ -776,11 +776,25 @@
     }
 
     .modal-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(160px, 1fr));
-      align-items: end;
-    }
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.modal-grid > * {
+  min-width: 0;
+}
+
+#modalTime {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.modal-body {
+  overflow-x: hidden;
+}
 
     @keyframes modalIn {
       from {
