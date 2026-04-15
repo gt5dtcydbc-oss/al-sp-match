@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,823 +6,1114 @@
   <title>Currently airing</title>
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #0d1017;
-      --panel: #171d2e;
-      --panel-2: #1d2438;
-      --line: #27314c;
-      --text: #edf2ff;
-      --muted: #a8b2cf;
-      --accent: #7db7ff;
-      --accent-2: #9ce8ff;
+      --bg: #080808;
+      --panel: #111111;
+      --panel-2: #181818;
+      --line: #2a2a2a;
+      --text: #f5f5f5;
+      --muted: #9a9a9a;
+      --accent: #ffffff;
+      --accent-2: #d9d9d9;
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
       --ok: #8ce2ae;
       --warn: #ffd48a;
     }
 
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top right, rgba(125, 183, 255, 0.14), transparent 28%),
-    radial-gradient(circle at bottom left, rgba(156, 232, 255, 0.10), transparent 24%),
-    linear-gradient(180deg, #0b0e15 0%, var(--bg) 100%);
-  color: var(--text);
-}
-
-.wrap {
-  max-width: 1540px;
-  margin: 0 auto;
-  padding: 24px 18px 42px;
-}
-
-.title {
-  margin: 0 0 16px;
-  font-size: clamp(1.5rem, 2vw, 2.2rem);
-  letter-spacing: -0.03em;
-}
-
-.panel {
-  background: rgba(23, 29, 46, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
-}
-
-.top-stack {
-  display: grid;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.controls,
-.manager {
-  display: grid;
-  gap: 14px;
-  padding: 18px 20px;
-  margin: 0;
-}
-
-.toolbar-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(260px, 1fr) auto;
-  align-items: end;
-}
-
-.config-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
-  align-items: end;
-}
-
-.manager-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: 1.1fr 0.9fr;
-  align-items: start;
-}
-
-.field { display: grid; gap: 8px; }
-.field label { color: var(--muted); font-size: 0.92rem; }
-
-input, textarea, button, select { font: inherit; }
-
-input[type="text"], input[type="time"], select, textarea {
-  width: 100%;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-  color: var(--text);
-  padding: 12px 14px;
-  border-radius: 14px;
-  outline: none;
-}
-
-input[type="text"]:focus,
-input[type="time"]:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--accent);
-}
-
-.button-row { display: flex; gap: 10px; flex-wrap: wrap; }
-
-button {
-  border: 0;
-  cursor: pointer;
-  padding: 12px 18px;
-  border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  transition: transform 0.16s ease, opacity 0.2s ease;
-}
-
-button.primary {
-  color: #08111d;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-}
-
-button.secondary {
-  color: var(--text);
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-}
-
-button.ghost {
-  color: var(--text);
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-button.danger {
-  color: #ffdede;
-  background: rgba(255, 120, 120, 0.12);
-  border: 1px solid rgba(255, 120, 120, 0.25);
-}
-
-button:hover { transform: translateY(-1px); }
-button:disabled { opacity: 0.7; cursor: wait; transform: none; }
-
-details {
-  margin: 0;
-}
-
-summary {
-  cursor: pointer;
-  color: var(--text);
-  font-weight: 700;
-  margin: 0;
-  user-select: none;
-}
-
-.message {
-  display: none;
-  margin-bottom: 16px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid transparent;
-  line-height: 1.45;
-  white-space: pre-wrap;
-}
-
-.message.info {
-  display: block;
-  background: rgba(125, 183, 255, 0.12);
-  border-color: rgba(125, 183, 255, 0.28);
-}
-
-.message.error {
-  display: block;
-  background: rgba(255, 120, 120, 0.12);
-  border-color: rgba(255, 120, 120, 0.28);
-  color: #ffd6d6;
-}
-
-.summary {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.summary-card { padding: 14px 16px; }
-.summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; }
-.summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
-
-.section-title {
-  margin: 0;
-  font-size: 1.02rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.section-copy {
-  color: var(--muted);
-  line-height: 1.45;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.top-dropdown,
-.manager-dropdown {
-  margin: 0;
-  overflow: hidden;
-  border-top: 0;
-  padding-top: 0;
-}
-
-.top-dropdown > summary,
-.manager-dropdown > summary {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
-  min-height: 82px;
-  background: linear-gradient(180deg, rgba(31, 39, 60, 0.96), rgba(24, 31, 48, 0.96));
-}
-
-.top-dropdown > summary::-webkit-details-marker,
-.manager-dropdown > summary::-webkit-details-marker,
-.task-dropdown > summary::-webkit-details-marker {
-  display: none;
-}
-
-.manager-toggle-copy {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-  line-height: 1.45;
-  margin-top: 4px;
-  max-width: 62ch;
-}
-
-.manager-toggle-icon {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(125, 183, 255, 0.11);
-  border: 1px solid rgba(125, 183, 255, 0.16);
-  color: #dcebff;
-  font-size: 1rem;
-  transition: transform 0.16s ease, background 0.16s ease;
-}
-
-.top-dropdown[open] .manager-toggle-icon,
-.manager-dropdown[open] .manager-toggle-icon,
-.task-dropdown[open] .manager-toggle-icon {
-  transform: rotate(180deg);
-  background: rgba(156, 232, 255, 0.12);
-}
-
-.top-dropdown-body,
-.manager-dropdown-body {
-  display: grid;
-  gap: 16px;
-  padding: 18px 20px 20px;
-  border-top: 1px solid rgba(255,255,255,0.07);
-  background: rgba(19, 25, 40, 0.38);
-}
-
-.manager-section {
-  display: grid;
-  gap: 14px;
-  min-width: 0;
-}
-
-.list-card {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  background: linear-gradient(180deg, rgba(29, 36, 56, 0.82), rgba(24, 31, 47, 0.82));
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 18px;
-  min-height: 86px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-}
-
-.list-stack {
-  display: grid;
-  gap: 10px;
-  max-height: clamp(420px, 60vh, 800px);
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.show-row,
-.override-row,
-.search-result {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-}
-
-.show-row,
-.search-result {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.override-row {
-  grid-template-columns: minmax(0, 1fr);
-  padding: 0;
-  overflow: hidden;
-}
-
-.task-dropdown {
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-}
-
-.task-dropdown > summary {
-  list-style: none;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 14px 16px;
-}
-
-.task-dropdown-body {
-  display: grid;
-  gap: 12px;
-  padding: 0 16px 16px;
-  border-top: 1px solid rgba(255,255,255,0.07);
-  background: rgba(17, 23, 37, 0.2);
-}
-
-.task-summary-main {
-  min-width: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.task-summary-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.row-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-  align-items: center;
-}
-
-.row-title {
-  font-size: 0.94rem;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.row-subtitle {
-  color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.row-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px 7px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  font-size: 0.71rem;
-  font-weight: 700;
-}
-
-.chip.rss {
-  background: rgba(140, 226, 174, 0.11);
-  border-color: rgba(140, 226, 174, 0.18);
-  color: #d8ffe7;
-}
-
-.chip.cache {
-  background: rgba(173, 171, 255, 0.12);
-  border-color: rgba(173, 171, 255, 0.18);
-  color: #e7e5ff;
-}
-
-.chip.fallback {
-  background: rgba(125, 183, 255, 0.11);
-  border-color: rgba(125, 183, 255, 0.18);
-  color: #dcebff;
-}
-
-.chip.manual {
-  background: rgba(255, 212, 138, 0.11);
-  border-color: rgba(255, 212, 138, 0.18);
-  color: #fff0d6;
-}
-
-.chip.added {
-  background: rgba(159, 201, 255, 0.11);
-  border-color: rgba(159, 201, 255, 0.18);
-  color: #e2efff;
-}
-
-.countdown-inline {
-  display: inline;
-  opacity: 0.92;
-  font-weight: 800;
-}
-
-.override-controls {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 170px 140px minmax(220px, 1fr);
-  align-items: center;
-}
-
-.toggle {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--text);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.toggle input { width: auto; }
-
-.empty {
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
-  padding: 4px 0;
-}
-
-.helper {
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.board {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  align-items: start;
-}
-
-.day-column { padding: 14px; }
-
-.day-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.day-name { font-size: 1.02rem; font-weight: 800; }
-.day-count { font-size: 0.82rem; color: var(--muted); }
-
-.time-group { display: grid; gap: 8px; margin-bottom: 14px; padding: 6px; border-radius: 12px; transition: background 0.2s; }
-
-.time-pill {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 5px 10px;
-  background: rgba(125, 183, 255, 0.11);
-  border: 1px solid rgba(125, 183, 255, 0.16);
-  color: #dcebff;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.highlight-next {
-  background: linear-gradient(135deg, rgba(125, 183, 255, 0.25), rgba(156, 232, 255, 0.15)) !important;
-  border: 1px solid var(--accent) !important;
-  box-shadow: 0 0 15px rgba(125, 183, 255, 0.2);
-}
-
-.highlight-next .time-pill {
-  background: var(--accent) !important;
-  color: #08111d !important;
-}
-
-.entry-list { display: grid; gap: 8px; }
-
-.entry {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 10px;
-  padding: 9px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(36, 45, 69, 0.95), rgba(28, 35, 53, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.thumb {
-  width: 38px;
-  height: 54px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
-
-.entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
-
-.entry-title {
-  font-size: 0.9rem;
-  line-height: 1.3;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.entry-title a { color: var(--text); text-decoration: none; }
-.entry-title a:hover { color: var(--accent-2); }
-
-.entry-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.35;
-}
-
-.footer { margin-top: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
-
-.update-indicator {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 10px rgba(255, 255, 255, 0.12);
-  z-index: 9999;
-  opacity: 0.9;
-  pointer-events: auto;
-  animation: indicatorBreathe 2.2s ease-in-out infinite;
-}
-
-.update-indicator.flash {
-  animation:
-    indicatorBreathe 2.2s ease-in-out infinite,
-    indicatorFlash 0.95s ease;
-}
-
-@keyframes indicatorBreathe {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.72;
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.10),
-      0 0 8px rgba(255, 255, 255, 0.08);
-  }
-  50% {
-    transform: scale(1.12);
-    opacity: 0.98;
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.16),
-      0 0 14px rgba(255, 255, 255, 0.18);
-  }
-}
-
-@keyframes indicatorFlash {
-  0% {
-    box-shadow:
-      0 0 0 0 rgba(255, 255, 255, 0.55),
-      0 0 10px rgba(255, 255, 255, 0.18);
-  }
-  45% {
-    box-shadow:
-      0 0 0 10px rgba(255, 255, 255, 0),
-      0 0 20px rgba(255, 255, 255, 0.28);
-  }
-  100% {
-    box-shadow:
-      0 0 0 0 rgba(255, 255, 255, 0),
-      0 0 10px rgba(255, 255, 255, 0.12);
-  }
-}
-
-@media (max-width: 1180px) {
-  .manager-grid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 980px) {
-  .toolbar-grid,
-  .config-grid { grid-template-columns: 1fr; }
-
-  /* Converted to a swipeable horizontal layout for mobile UX */
-  .override-controls {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 12px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
-
-  .override-controls > * {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-  }
-
-  .override-controls::-webkit-scrollbar {
-    height: 6px;
-  }
-  .override-controls::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .override-controls::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-  }
-
-  .override-controls .row-actions {
-    flex-wrap: nowrap;
-  }
-}
-
-@media (max-width: 720px) {
-  .wrap { padding: 18px 12px 36px; }
-  .controls, .manager { padding: 16px; }
-  .top-dropdown > summary,
-  .manager-dropdown > summary,
-  .top-dropdown-body,
-  .manager-dropdown-body { padding-left: 16px; padding-right: 16px; }
-  .board { grid-template-columns: 1fr; }
-  .show-row, .search-result { grid-template-columns: 1fr; }
-  .row-actions { justify-content: flex-start; }
-}
-
-@media (max-width: 480px) {
-  .wrap { padding: 8px 7px 16px; }
-  .title { margin-bottom: 10px; font-size: 1.25rem; }
-  .panel.controls { margin-bottom: 10px !important; }
-  .controls, .manager, .day-column { padding: 8px; }
-  .top-stack { margin-top: 14px !important; gap: 8px; }
-  .top-dropdown > summary,
-  .manager-dropdown > summary,
-  .top-dropdown-body,
-  .manager-dropdown-body { padding: 12px; min-height: auto; }
-  .manager-toggle-copy { font-size: 0.8rem; margin-top: 2px; }
-  .day-head { padding-bottom: 5px; margin-bottom: 6px; }
-  .day-name { font-size: 0.92rem; }
-  .day-count { font-size: 0.72rem; }
-  .time-group { gap: 5px; margin-bottom: 6px; padding: 2px; }
-  .time-pill { padding: 3px 7px; font-size: 0.68rem; }
-  .entry-list { gap: 4px; }
-  .entry { grid-template-columns: 40px minmax(0, 1fr); gap: 8px; padding: 5px; border-radius: 12px; }
-  .thumb { width: 40px; height: 58px; border-radius: 7px; }
-  .entry-body { gap: 2px; }
-  .entry-title { font-size: 0.84rem; line-height: 1.22; }
-  .entry-meta { gap: 4px; font-size: 0.64rem; }
-  .chip { padding: 2px 4px; font-size: 0.6rem; }
-  .footer { margin-top: 8px; font-size: 0.72rem; }
-  .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
-  .update-indicator { top: 9px; right: 9px; width: 8px; height: 8px; }
-}
-
-
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #050505 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    .wrap {
+      max-width: 1540px;
+      margin: 0 auto;
+      padding: 24px 18px 42px;
+    }
+
+    .title {
+      margin: 0 0 16px;
+      font-size: clamp(1.5rem, 2vw, 2.2rem);
+      letter-spacing: -0.03em;
+    }
+
+    .panel {
+      background: rgba(17, 17, 17, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .top-stack {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .controls,
+    .manager {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+      margin: 0;
+    }
+
+    .toolbar-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(260px, 1fr) auto;
+      align-items: end;
+    }
+
+    .config-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      align-items: end;
+    }
+
+    .manager-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: start;
+    }
+
+    .field { display: grid; gap: 8px; }
+    .field label { color: var(--muted); font-size: 0.92rem; }
+
+    input, textarea, button, select { font: inherit; }
+
+    input[type="text"], input[type="time"], select, textarea {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      outline: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="time"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: transform 0.16s ease, opacity 0.2s ease;
+    }
+
+    button.primary {
+      color: #0a0a0a;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    button.ghost {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    button.danger {
+      color: #ffdede;
+      background: rgba(255, 120, 120, 0.12);
+      border: 1px solid rgba(255, 120, 120, 0.25);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.7; cursor: wait; transform: none; }
+
+    details {
+      margin: 0;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 700;
+      margin: 0;
+      user-select: none;
+    }
+
+    .message {
+      display: none;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .message.info {
+      display: block;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+    }
+
+    .message.error {
+      display: block;
+      background: rgba(255, 120, 120, 0.12);
+      border-color: rgba(255, 120, 120, 0.28);
+      color: #ffd6d6;
+    }
+
+    .summary {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .summary-card { padding: 14px 16px; }
+    .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; }
+    .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+
+    .section-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .section-copy {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .top-dropdown,
+    .manager-dropdown {
+      margin: 0;
+      overflow: hidden;
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .top-dropdown > summary,
+    .manager-dropdown > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      min-height: 82px;
+      background: linear-gradient(180deg, rgba(22, 22, 22, 0.98), rgba(14, 14, 14, 0.98));
+    }
+
+    .top-dropdown > summary::-webkit-details-marker,
+    .manager-dropdown > summary::-webkit-details-marker,
+    .task-dropdown > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .manager-toggle-copy {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.45;
+      margin-top: 4px;
+      max-width: 62ch;
+    }
+
+    .manager-toggle-icon {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: #ededed;
+      font-size: 1rem;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .top-dropdown[open] .manager-toggle-icon,
+    .manager-dropdown[open] .manager-toggle-icon,
+    .task-dropdown[open] .manager-toggle-icon {
+      transform: rotate(180deg);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .top-dropdown-body,
+    .manager-dropdown-body {
+      display: grid;
+      gap: 16px;
+      padding: 18px 20px 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(14, 14, 14, 0.55);
+    }
+
+    .manager-section {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .list-card {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(24, 24, 24, 0.95), rgba(16, 16, 16, 0.95));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      min-height: 86px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .list-stack {
+      display: grid;
+      gap: 10px;
+      max-height: clamp(320px, 55vh, 720px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .show-row,
+    .override-row,
+    .search-result {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(28, 28, 28, 0.98), rgba(20, 20, 20, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+
+    .show-row,
+    .search-result {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .override-row {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .task-dropdown {
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(28, 28, 28, 0.98), rgba(20, 20, 20, 0.98));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+
+    .task-dropdown > summary {
+      list-style: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+    }
+
+    .task-dropdown-body {
+      display: grid;
+      gap: 12px;
+      padding: 0 16px 16px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(10, 10, 10, 0.35);
+    }
+
+    .task-summary-main {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .task-summary-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .row-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      align-items: center;
+    }
+
+    .row-title {
+      font-size: 0.94rem;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .row-subtitle {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 0.71rem;
+      font-weight: 700;
+    }
+
+    .chip.rss,
+    .chip.cache {
+      background: rgba(140, 226, 174, 0.11);
+      border-color: rgba(140, 226, 174, 0.18);
+      color: #d8ffe7;
+    }
+
+    .chip.fallback,
+    .chip.manual {
+      background: rgba(255, 212, 138, 0.11);
+      border-color: rgba(255, 212, 138, 0.18);
+      color: #fff0d6;
+    }
+
+    .chip.added {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+    }
+
+    .countdown-inline {
+      display: inline;
+      opacity: 0.92;
+      font-weight: 800;
+    }
+
+    .override-controls {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 170px 140px minmax(220px, 1fr);
+      align-items: center;
+    }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .toggle input { width: auto; }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+      padding: 4px 0;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .board {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      align-items: start;
+    }
+
+    .day-column { padding: 14px; }
+
+    .day-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .day-name { font-size: 1.02rem; font-weight: 800; }
+    .day-count { font-size: 0.82rem; color: var(--muted); }
+
+    .time-group {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 6px;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+
+    .time-pill {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f0f0f0;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .highlight-next {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)) !important;
+      border: 1px solid rgba(255,255,255,0.18) !important;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+    }
+
+    .highlight-next .time-pill {
+      background: var(--accent) !important;
+      color: #0a0a0a !important;
+      border-color: rgba(255,255,255,0.9);
+    }
+
+    .entry-list { display: grid; gap: 8px; }
+
+    .entry {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 9px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(18, 18, 18, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .thumb {
+      width: 38px;
+      height: 54px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
+
+    .entry-title {
+      font-size: 0.9rem;
+      line-height: 1.3;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-title a { color: var(--text); text-decoration: none; }
+    .entry-title a:hover { color: var(--accent-2); }
+
+    .entry-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+    .entry-settings-btn {
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f0f0f0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .entry-settings-btn svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+
+    .entry-settings-btn:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+    }
+
+    .footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .update-indicator {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 10px rgba(255, 255, 255, 0.12);
+      z-index: 9999;
+      opacity: 0.9;
+      pointer-events: auto;
+      animation: indicatorBreathe 2.2s ease-in-out infinite;
+    }
+
+    .update-indicator.flash {
+      animation:
+        indicatorBreathe 2.2s ease-in-out infinite,
+        indicatorFlash 0.95s ease;
+    }
+
+    @keyframes indicatorBreathe {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.72;
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.10),
+          0 0 8px rgba(255, 255, 255, 0.08);
+      }
+      50% {
+        transform: scale(1.12);
+        opacity: 0.98;
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.16),
+          0 0 14px rgba(255, 255, 255, 0.18);
+      }
+    }
+
+    @keyframes indicatorFlash {
+      0% {
+        box-shadow:
+          0 0 0 0 rgba(255, 255, 255, 0.55),
+          0 0 10px rgba(255, 255, 255, 0.18);
+      }
+      45% {
+        box-shadow:
+          0 0 0 10px rgba(255, 255, 255, 0),
+          0 0 20px rgba(255, 255, 255, 0.28);
+      }
+      100% {
+        box-shadow:
+          0 0 0 0 rgba(255, 255, 255, 0),
+          0 0 10px rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      width: min(680px, 100%);
+      max-height: min(86vh, 900px);
+      display: grid;
+      gap: 0;
+      background: rgba(15, 15, 15, 0.97);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .modal.open .modal-dialog {
+      animation: modalIn 0.18s ease-out;
+    }
+
+    .modal-sheet-handle {
+      display: none;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.98));
+    }
+
+    .modal-title {
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-subtitle {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.45;
+      margin-top: 4px;
+    }
+
+    .modal-close {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+      overflow: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      min-width: 0;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      padding: 16px 20px 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(10, 10, 10, 0.65);
+    }
+
+    .modal-note {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .modal-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: end;
+      min-width: 0;
+    }
+
+    .modal-grid > * {
+      min-width: 0;
+    }
+
+    .modal-grid > .field {
+      min-width: 0;
+    }
+
+    #modalTime {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    @keyframes modalIn {
+      from {
+        transform: translateY(8px);
+        opacity: 0.85;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes sheetIn {
+      from {
+        transform: translateY(28px);
+        opacity: 0.82;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .manager-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 980px) {
+      .toolbar-grid,
+      .config-grid { grid-template-columns: 1fr; }
+
+      .override-controls {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 12px;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+
+      .override-controls > * {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+      }
+
+      .override-controls::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .override-controls::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .override-controls::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+      }
+
+      .override-controls .row-actions {
+        flex-wrap: nowrap;
+      }
+
+      .modal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        padding: 18px 12px 36px;
+      }
+
+      .controls, .manager { padding: 16px; }
+
+      .top-dropdown > summary,
+      .manager-dropdown > summary,
+      .top-dropdown-body,
+      .manager-dropdown-body {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .board { grid-template-columns: 1fr; }
+      .show-row, .search-result { grid-template-columns: 1fr; }
+      .row-actions { justify-content: flex-start; }
+
+      .modal {
+        align-items: flex-end;
+        justify-content: stretch;
+        padding: 0;
+      }
+
+      .modal-dialog {
+        width: 100%;
+        max-height: min(90vh, 900px);
+        border-radius: 22px 22px 0 0;
+        border-bottom: 0;
+      }
+
+      .modal.open .modal-dialog {
+        animation: sheetIn 0.22s ease-out;
+      }
+
+      .modal-sheet-handle {
+        display: block;
+        width: 42px;
+        height: 5px;
+        margin: 10px auto 2px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.22);
+      }
+
+      .modal-head {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+
+      .modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        background: rgba(10, 10, 10, 0.92);
+        backdrop-filter: blur(12px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .wrap { padding: 8px 7px 16px; }
+      .title { margin-bottom: 10px; font-size: 1.25rem; }
+      .panel.controls { margin-bottom: 10px !important; }
+      .controls, .manager, .day-column { padding: 8px; }
+      .top-stack { margin-top: 14px !important; gap: 8px; }
+
+      .top-dropdown > summary,
+      .manager-dropdown > summary,
+      .top-dropdown-body,
+      .manager-dropdown-body {
+        padding: 12px;
+        min-height: auto;
+      }
+
+      .manager-toggle-copy { font-size: 0.8rem; margin-top: 2px; }
+      .day-head { padding-bottom: 5px; margin-bottom: 6px; }
+      .day-name { font-size: 0.92rem; }
+      .day-count { font-size: 0.72rem; color: var(--muted); }
+      .time-group { gap: 5px; margin-bottom: 6px; padding: 2px; }
+      .time-pill { padding: 3px 7px; font-size: 0.68rem; }
+      .entry-list { gap: 4px; }
+      .entry {
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 5px;
+        border-radius: 12px;
+      }
+      .thumb { width: 40px; height: 58px; border-radius: 7px; }
+      .entry-body { gap: 2px; }
+      .entry-title { font-size: 0.84rem; line-height: 1.22; }
+      .entry-meta { gap: 4px; font-size: 0.64rem; }
+      .chip { padding: 2px 4px; font-size: 0.6rem; }
+      .footer { margin-top: 8px; font-size: 0.72rem; }
+      .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
+      .update-indicator { top: 9px; right: 9px; width: 8px; height: 8px; }
+
+      .entry-settings-btn {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+      }
+
+      .modal-head,
+      .modal-body,
+      .modal-footer {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="title">Currently airing</h1>
 
+    <section id="board" class="board"></section>
 
-<section id="board" class="board"></section>
-
-<section class="panel controls" style="margin-top: 16px; margin-bottom: 16px;">
-  <div class="toolbar-grid">
-    <div class="field">
-      <label for="username">Username</label>
-      <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
-    </div>
-    <div class="button-row">
-      <button id="loadBtn" class="primary" type="button">Load</button>
-    </div>
-  </div>
-</section>
-
-<div id="message" class="message" aria-live="polite"></div>
-
-<div class="top-stack" style="margin-top: 32px;">
-
-  <details class="panel top-dropdown">
-    <summary>
-      <div>
-        <h2 class="section-title">Loaded Entries Overview</h2>
-        <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
-      </div>
-      <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-    </summary>
-    <div class="top-dropdown-body">
-      <section id="summary" class="summary"></section>
-    </div>
-  </details>
-
-  <details class="panel top-dropdown config-dropdown">
-    <summary>
-      <div>
-        <h2 class="section-title">Config</h2>
-        <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
-      </div>
-      <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-    </summary>
-    <div class="top-dropdown-body">
-      <div class="config-grid">
+    <section class="panel controls" style="margin-top: 16px; margin-bottom: 16px;">
+      <div class="toolbar-grid">
         <div class="field">
-          <label for="rssUrl">SubsPlease RSS URL</label>
-          <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+          <label for="username">Username</label>
+          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
         </div>
-        <div class="field">
-          <label for="rssProxyTemplate">SubsPlease proxy</label>
-          <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+        <div class="button-row">
+          <button id="loadBtn" class="primary" type="button">Load</button>
         </div>
       </div>
-      <div class="button-row" style="margin-top: 8px;">
-        <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
-      </div>
-      <div class="helper" style="margin-top: 12px;">
-        Manual text matching has been replaced with per-show overrides tied to AniList IDs.
-        Load the board, pick a current show or search AniList below, then optionally enable a custom day/time.
-      </div>
-    </div>
-  </details>
+    </section>
 
-  <details class="panel manager-dropdown">
-    <summary>
-      <div>
-        <h2 class="section-title">Show manager</h2>
-        <div class="manager-toggle-copy">Expand to customize current shows or search AniList to add extra currently airing ones.</div>
-      </div>
-      <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-    </summary>
-    <div class="manager-dropdown-body">
-      <div class="section-copy">
-        Pick a current show to customize, or search AniList to add an extra currently airing show to the board.
-        Custom slots now attach to the exact show instead of fuzzy title text.
-      </div>
-      <div class="manager-grid">
-        <div class="manager-section">
-          <div class="list-card">
-            <div class="section-title">Current AniList shows</div>
-            <div id="currentShowList" class="list-stack">
-              <div class="empty">Load a username to see current shows.</div>
-            </div>
+    <div id="message" class="message" aria-live="polite"></div>
+
+    <div class="top-stack" style="margin-top: 32px;">
+      <details class="panel top-dropdown">
+        <summary>
+          <div>
+            <h2 class="section-title">Loaded Entries Overview</h2>
+            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
           </div>
-          <div class="list-card">
-            <div class="section-title">Add currently airing show</div>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
+        <div class="top-dropdown-body">
+          <section id="summary" class="summary"></section>
+        </div>
+      </details>
+
+      <details class="panel top-dropdown config-dropdown">
+        <summary>
+          <div>
+            <h2 class="section-title">Config</h2>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
+          </div>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
+        <div class="top-dropdown-body">
+          <div class="config-grid">
             <div class="field">
-              <label for="addShowSearch">Search currently airing AniList shows</label>
-              <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+              <label for="rssUrl">SubsPlease RSS URL</label>
+              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
             </div>
-            <div id="addShowResults" class="list-stack">
-              <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
-            </div>
-          </div>
-        </div>
-        <div class="manager-section">
-          <div class="list-card">
-            <div class="section-title">Custom schedule</div>
-            <div id="overrideList" class="list-stack">
-              <div class="empty">No custom entries yet.</div>
+            <div class="field">
+              <label for="rssProxyTemplate">SubsPlease proxy</label>
+              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
             </div>
           </div>
+          <div class="button-row" style="margin-top: 8px;">
+            <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
+            <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
+          </div>
+          <div class="helper" style="margin-top: 12px;">
+            Per-show customization now lives on each card. Use the small settings icon on a show to adjust its slot, or use Add show here to add extra currently airing entries.
+          </div>
         </div>
-      </div>
+      </details>
     </div>
-  </details>
-</div>
 
-<div id="footer" class="footer"></div>
-
-
+    <div id="footer" class="footer"></div>
   </div>
 
   <div id="updateIndicator" class="update-indicator" title="Waiting for first update"></div>
+
+  <div id="showSettingsModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <div>
+          <div id="showSettingsTitle" class="modal-title">Show settings</div>
+          <div id="showSettingsSubtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="closeShowSettingsBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="toggle">
+          <input id="modalUseCustom" type="checkbox" />
+          Use custom slot
+        </label>
+
+        <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
+
+        <div class="modal-grid">
+          <div class="field">
+            <label for="modalDay">Day</label>
+            <select id="modalDay">
+              <option>Monday</option>
+              <option>Tuesday</option>
+              <option>Wednesday</option>
+              <option>Thursday</option>
+              <option>Friday</option>
+              <option>Saturday</option>
+              <option>Sunday</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="modalTime">Time</label>
+            <input id="modalTime" type="text" value="18:00" inputmode="numeric" placeholder="HH:MM" />
+          </div>
+        </div>
+
+        <div id="modalCustomHelper" class="helper">
+          Custom slot is off. Turn it on to set your own day and time.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modalUseDetectedBtn" class="ghost" type="button">Use detected</button>
+        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear custom</button>
+        <button id="modalSaveBtn" class="primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addShowModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Add currently airing show</div>
+          <div class="modal-subtitle">Search AniList and add an extra airing show to your board.</div>
+        </div>
+        <button id="closeAddShowBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label for="addShowSearch">Search currently airing AniList shows</label>
+          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+        </div>
+
+        <div id="addShowResults" class="list-stack">
+          <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
@@ -902,13 +1192,26 @@ summary {
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
       addShowSearch: document.getElementById("addShowSearch"),
       addShowResults: document.getElementById("addShowResults"),
-      currentShowList: document.getElementById("currentShowList"),
-      overrideList: document.getElementById("overrideList"),
       message: document.getElementById("message"),
       summary: document.getElementById("summary"),
       board: document.getElementById("board"),
       footer: document.getElementById("footer"),
-      updateIndicator: document.getElementById("updateIndicator")
+      updateIndicator: document.getElementById("updateIndicator"),
+      openAddShowBtn: document.getElementById("openAddShowBtn"),
+      addShowModal: document.getElementById("addShowModal"),
+      closeAddShowBtn: document.getElementById("closeAddShowBtn"),
+      showSettingsModal: document.getElementById("showSettingsModal"),
+      closeShowSettingsBtn: document.getElementById("closeShowSettingsBtn"),
+      showSettingsTitle: document.getElementById("showSettingsTitle"),
+      showSettingsSubtitle: document.getElementById("showSettingsSubtitle"),
+      modalUseCustom: document.getElementById("modalUseCustom"),
+      modalDetectedSlot: document.getElementById("modalDetectedSlot"),
+      modalDay: document.getElementById("modalDay"),
+      modalTime: document.getElementById("modalTime"),
+      modalCustomHelper: document.getElementById("modalCustomHelper"),
+      modalUseDetectedBtn: document.getElementById("modalUseDetectedBtn"),
+      modalClearOrRemoveBtn: document.getElementById("modalClearOrRemoveBtn"),
+      modalSaveBtn: document.getElementById("modalSaveBtn")
     };
 
     const state = {
@@ -924,7 +1227,8 @@ summary {
       searchResults: [],
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
-      isLoading: false
+      isLoading: false,
+      activeSettingsId: null
     };
 
     showMessage("info", "Ready.");
@@ -987,7 +1291,7 @@ summary {
         .normalize("NFKD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
-        .replace(/[''`]/g, "")
+        .replace(/['’`]/g, "")
         .replace(/&/g, " and ")
         .replace(/[×x]([0-9])/g, " x $1")
         .replace(/\bsecond\b/g, "2nd")
@@ -1197,7 +1501,6 @@ summary {
     }
 
     function minutesToHHMM(total) {
-      // Handles values outside 0–1439 (e.g. AniList time + 60 wrapping past midnight)
       const normalized = ((total % 1440) + 1440) % 1440;
       const h = Math.floor(normalized / 60);
       const m = Math.round(normalized % 60);
@@ -1375,6 +1678,12 @@ summary {
     function saveAddedShows(userName, addedShows) { saveJSON(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
     function makeEntryFromMedia(media) { return { media }; }
 
+    function clearCachedSlotForShow(showId) {
+      const cache = loadSlotCache(state.userName);
+      delete cache[String(showId)];
+      saveSlotCache(state.userName, cache);
+    }
+
     function dedupeEntriesById(entries) {
       const map = new Map();
       for (const entry of entries || []) {
@@ -1413,14 +1722,6 @@ summary {
       };
     }
 
-    /**
-     * Detects the best time slot using RSS data with an AniList sanity filter.
-     * - Uses AniList's nextAiringEpisode day as ground truth for the weekday.
-     * - Uses the RSS median time if it is within 210 minutes of the AniList time
-     * (handles the Japan broadcast → fansub release delay window).
-     * - Falls back to AniList time + 60 minutes when RSS is an outlier or absent.
-     * - If AniList has no airing data at all, trusts the RSS median blindly.
-     */
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
@@ -1433,13 +1734,11 @@ summary {
 
           if (primary?.time) {
             const rssMinutes = toMinutes(primary.time);
-            // Difference accounting for 24-hour wrap-around
             let diff = rssMinutes - aniMinutes;
             if (diff > 720) diff -= 1440;
             if (diff < -720) diff += 1440;
 
             if (Math.abs(diff) <= 210) {
-              // RSS is within the expected release window — use it
               return {
                 day: aniDay,
                 time: primary.time,
@@ -1448,7 +1747,6 @@ summary {
                 matchedTitle: primary.matchedTitle || ""
               };
             } else {
-              // RSS is an outlier (screening, delay, etc.) — fall back
               return {
                 day: aniDay,
                 time: minutesToHHMM(aniMinutes + 60),
@@ -1459,7 +1757,6 @@ summary {
             }
           }
 
-          // No RSS data yet — fall back to AniList time + 1 hour
           return {
             day: aniDay,
             time: minutesToHHMM(aniMinutes + 60),
@@ -1470,7 +1767,6 @@ summary {
         }
       }
 
-      // AniList has no airing schedule — trust RSS blindly
       return primary || null;
     }
 
@@ -1520,7 +1816,7 @@ summary {
           continue;
         }
         const remembered = cache[key];
-        if (remembered && remembered.time) {
+        if (remembered && remembered.time && remembered.origin !== "manual") {
           output.push({
             ...item, time: remembered.time, source: "cache",
             sampleCount: remembered.sampleCount || 1,
@@ -1703,6 +1999,21 @@ summary {
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
+                      <button
+                        class="entry-settings-btn"
+                        type="button"
+                        data-action="open-show-settings"
+                        data-id="${escapeHtml(String(item.id))}"
+                        aria-label="Adjust ${escapeHtml(item.title)}"
+                        title="Adjust show"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                          <path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                          <circle cx="17" cy="7" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                          <circle cx="9" cy="17" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                        </svg>
+                      </button>
                     </article>
                   `).join("")}
                 </div>
@@ -1716,169 +2027,10 @@ summary {
       }
     }
 
-    function slotTextForItem(item) {
-      if (!item) return "No detected slot yet";
-      return `${item.day} · ${item.time}`;
-    }
-
     function itemMap() {
       const map = new Map();
       for (const item of state.items || []) map.set(String(item.id), item);
       return map;
-    }
-
-    function currentEntriesSorted() {
-      return [...(state.currentEntries || [])].sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
-    }
-
-    function overrideEntriesForDisplay() {
-      const catalog = mediaCatalog();
-      const ids = new Set([
-        ...Object.keys(state.overrides || {}),
-        ...Object.keys(state.addedShows || {})
-      ]);
-      return Array.from(ids)
-        .map(id => ({
-          id: String(id),
-          media: catalog.get(String(id)),
-          override: overrideForMediaId(id),
-          added: Boolean(state.addedShows[String(id)])
-        }))
-        .filter(entry => entry.media)
-        .sort((a, b) => titleForMedia(a.media).localeCompare(titleForMedia(b.media)));
-    }
-
-    function renderCurrentShows() {
-      const itemsById = itemMap();
-      const rows = currentEntriesSorted();
-      if (!rows.length) {
-        els.currentShowList.innerHTML = `<div class="empty">Load a username to see current shows.</div>`;
-        return;
-      }
-      els.currentShowList.innerHTML = rows.map(entry => {
-        const media = entry.media;
-        const id = String(media.id);
-        const item = itemsById.get(id);
-        const hasOverride = Boolean(state.overrides[id]);
-        return `
-          <div class="show-row">
-            <div>
-              <div class="row-head">
-                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
-                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
-                ${hasOverride ? `<span class="chip manual">Custom saved</span>` : ""}
-              </div>
-              <div class="row-subtitle">${escapeHtml(slotTextForItem(item))}</div>
-            </div>
-            <div class="row-actions">
-              <button class="secondary" type="button" data-action="customize-current" data-id="${escapeHtml(id)}">${hasOverride ? "Edit custom" : "Customize"}</button>
-              ${hasOverride ? `<button class="ghost" type="button" data-action="clear-current-override" data-id="${escapeHtml(id)}">Clear custom</button>` : ""}
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function renderSearchResults() {
-      const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
-      const addedIds = new Set(Object.keys(state.addedShows || {}));
-      if (!state.searchResults.length) {
-        const text = els.addShowSearch.value.trim().length >= 2
-          ? "No currently airing AniList matches found."
-          : "Type at least 2 characters to search currently airing AniList shows.";
-        els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
-        return;
-      }
-      els.addShowResults.innerHTML = state.searchResults.map(media => {
-        const id = String(media.id);
-        const current = currentIds.has(id);
-        const added = addedIds.has(id);
-        const existingOverride = Boolean(state.overrides[id]);
-        return `
-          <div class="search-result">
-            <div>
-              <div class="row-head">
-                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
-                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
-                ${current ? `<span class="chip rss">Current</span>` : ""}
-                ${added ? `<span class="chip added">Added</span>` : ""}
-              </div>
-              <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : (media.status || "Unknown status"))}</div>
-            </div>
-            <div class="row-actions">
-              ${current
-                ? `<button class="secondary" type="button" data-action="customize-current" data-id="${escapeHtml(id)}">${existingOverride ? "Edit custom" : "Customize"}</button>`
-                : added
-                  ? `<button class="secondary" type="button" data-action="focus-override" data-id="${escapeHtml(id)}">Manage</button>`
-                  : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function renderOverrideList() {
-      const rows = overrideEntriesForDisplay();
-      const itemsById = itemMap();
-      if (!rows.length) {
-        els.overrideList.innerHTML = `<div class="empty">No custom entries yet.</div>`;
-        return;
-      }
-      els.overrideList.innerHTML = rows.map(entry => {
-        const media = entry.media;
-        const id = entry.id;
-        const override = entry.override || { enabled: false, day: "Monday", time: "18:00" };
-        const currentItem = itemsById.get(id);
-        const suggested = currentItem ? `${currentItem.day} · ${currentItem.time}` : "No detected slot";
-        const customText = `${override.day} · ${override.time}`;
-        return `
-          <details class="override-row task-dropdown" id="override-${escapeHtml(id)}" ${override.enabled ? "open" : ""}>
-            <summary>
-              <div class="task-summary-main">
-                <div class="row-head">
-                  <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
-                  ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
-                  ${entry.added ? `<span class="chip added">Added show</span>` : `<span class="chip rss">Current show</span>`}
-                  ${override.enabled ? `<span class="chip manual">Custom active</span>` : ""}
-                </div>
-                <div class="task-summary-meta">
-                  <span>Detected: ${escapeHtml(suggested)}</span>
-                  <span>•</span>
-                  <span>${override.enabled ? `Using custom: ${escapeHtml(customText)}` : "Using detected slot"}</span>
-                </div>
-              </div>
-              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-            </summary>
-            <div class="task-dropdown-body">
-              <div class="override-controls">
-                <label class="toggle">
-                  <input type="checkbox" data-action="toggle-override" data-id="${escapeHtml(id)}" ${override.enabled ? "checked" : ""} />
-                  Use custom slot
-                </label>
-                <select data-action="set-day" data-id="${escapeHtml(id)}" ${override.enabled ? "" : "disabled"}>
-                  ${WEEKDAYS.map(day => `<option value="${escapeHtml(day)}" ${day === override.day ? "selected" : ""}>${escapeHtml(day)}</option>`).join("")}
-                </select>
-                <div class="row-actions">
-                  <input type="time" data-action="set-time" data-id="${escapeHtml(id)}" value="${escapeHtml(override.time)}" ${override.enabled ? "" : "disabled"} />
-                  <button class="ghost" type="button" data-action="reset-to-detected" data-id="${escapeHtml(id)}">Use detected</button>
-                  <button class="danger" type="button" data-action="${entry.added ? "remove-added-show" : "remove-current-override"}" data-id="${escapeHtml(id)}">${entry.added ? "Remove show" : "Clear custom"}</button>
-                </div>
-              </div>
-              <div class="helper">
-                ${override.enabled
-                  ? "Custom slot is active and will override RSS / AniList for this show."
-                  : "Custom slot is off. Weekday comes from AniList when available, with SubsPlease used for release time."}
-              </div>
-            </div>
-          </details>
-        `;
-      }).join("");
-    }
-
-    function renderManager() {
-      renderCurrentShows();
-      renderSearchResults();
-      renderOverrideList();
     }
 
     function refreshBoardFromState() {
@@ -1891,7 +2043,7 @@ summary {
       );
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
-      renderManager();
+      renderSearchResults();
       const customCount = state.items.filter(item => item.source === "manual").length;
       const addedCount = state.items.filter(item => item.isAdded).length;
       const rssCount = state.items.filter(item => item.source === "rss").length;
@@ -1910,28 +2062,160 @@ summary {
       saveAddedShows(state.userName, state.addedShows);
     }
 
-    function ensureOverrideForMedia(media, options = {}) {
-      if (!media?.id) return;
-      const id = String(media.id);
-      const current = overrideForMediaId(id);
-      const existingEnabled = current?.enabled ?? false;
-      const defaultSlot = itemMap().get(id) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-      const nextOverride = {
-        enabled: options.enable ?? existingEnabled,
-        day: options.day || current?.day || defaultSlot?.day || "Monday",
-        time: options.time || current?.time || defaultSlot?.time || "18:00"
-      };
-      state.overrides[id] = nextOverride;
-      persistState();
-      refreshBoardFromState();
-      focusOverride(id);
+    function mediaById(id) {
+      const map = new Map();
+      for (const entry of state.currentEntries || []) {
+        if (entry?.media?.id) map.set(String(entry.media.id), entry.media);
+      }
+      for (const value of Object.values(state.addedShows || {})) {
+        if (value?.id) map.set(String(value.id), value);
+      }
+      for (const media of state.searchResults || []) {
+        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
+      }
+      return map.get(String(id)) || null;
     }
 
-    function focusOverride(id) {
-      const el = document.getElementById(`override-${CSS.escape(String(id))}`);
-      if (!el) return;
-      if ("open" in el) el.open = true;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    function detectSlotForModal(media) {
+      return itemMap().get(String(media.id)) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+    }
+
+    function syncSettingsModalState() {
+      const enabled = Boolean(els.modalUseCustom.checked);
+      els.modalDay.disabled = !enabled;
+      els.modalTime.disabled = !enabled;
+      els.modalCustomHelper.textContent = enabled
+        ? "Custom slot is active and will override RSS / AniList for this show."
+        : "Custom slot is off. Turn it on to set your own day and time.";
+    }
+
+    function openModal(modal) {
+      if (!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeModal(modal) {
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      if (!document.querySelector(".modal.open")) {
+        document.body.classList.remove("modal-open");
+      }
+    }
+
+    function populateShowSettingsModal() {
+      const media = mediaById(state.activeSettingsId);
+      if (!media) return;
+
+      const id = String(media.id);
+      const override = overrideForMediaId(id);
+      const detected = detectSlotForModal(media);
+      const initialDay = override?.day || detected?.day || "Monday";
+      const initialTime = override?.time || detected?.time || "18:00";
+
+      els.showSettingsTitle.textContent = titleForMedia(media);
+      els.showSettingsSubtitle.textContent = [
+        media.format || "",
+        state.addedShows[id] ? "Added show" : "Current show"
+      ].filter(Boolean).join(" · ");
+
+      els.modalDetectedSlot.textContent = detected
+        ? `Detected: ${detected.day} · ${detected.time}`
+        : "Detected: No slot found yet";
+
+      els.modalUseCustom.checked = Boolean(override?.enabled);
+      els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
+      els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
+      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove show" : "Clear custom";
+
+      syncSettingsModalState();
+    }
+
+    function openSettingsModalForId(id) {
+      const media = mediaById(id);
+      if (!media) return;
+      state.activeSettingsId = String(id);
+      populateShowSettingsModal();
+      openModal(els.showSettingsModal);
+    }
+
+    function closeSettingsModal() {
+      state.activeSettingsId = null;
+      closeModal(els.showSettingsModal);
+    }
+
+    function openAddShowModal() {
+      openModal(els.addShowModal);
+      renderSearchResults();
+      requestAnimationFrame(() => els.addShowSearch.focus());
+    }
+
+    function closeAddShowModal() {
+      closeModal(els.addShowModal);
+    }
+
+    function saveSettingsFromModal() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      state.overrides[id] = {
+        enabled: Boolean(els.modalUseCustom.checked),
+        day: WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday",
+        time: isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00"
+      };
+
+      persistState();
+      refreshBoardFromState();
+      closeSettingsModal();
+    }
+
+    function useDetectedForActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      const media = mediaById(id);
+      if (!media) return;
+
+      const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+
+      clearCachedSlotForShow(id);
+
+      if (detected) {
+        state.overrides[id] = {
+          enabled: false,
+          day: detected.day,
+          time: detected.time
+        };
+      } else {
+        delete state.overrides[id];
+      }
+
+      persistState();
+      refreshBoardFromState();
+      populateShowSettingsModal();
+    }
+
+    function clearOrRemoveActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      clearCachedSlotForShow(id);
+
+      if (state.addedShows[id]) {
+        delete state.addedShows[id];
+        delete state.overrides[id];
+        persistState();
+        refreshBoardFromState();
+        closeSettingsModal();
+        return;
+      }
+
+      delete state.overrides[id];
+      persistState();
+      refreshBoardFromState();
+      closeSettingsModal();
     }
 
     function addShowFromSearch(media) {
@@ -1947,24 +2231,49 @@ summary {
       }
       persistState();
       refreshBoardFromState();
-      focusOverride(media.id);
+      closeAddShowModal();
+      openSettingsModalForId(media.id);
     }
 
-    function clearOverride(id) {
-      delete state.overrides[String(id)];
-      persistState();
-      refreshBoardFromState();
-    }
+    function renderSearchResults() {
+      if (!els.addShowResults) return;
 
-    function removeAddedShow(id) {
-      delete state.addedShows[String(id)];
-      delete state.overrides[String(id)];
-      persistState();
-      refreshBoardFromState();
-    }
+      const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
+      const addedIds = new Set(Object.keys(state.addedShows || {}));
 
-    function mediaById(id) {
-      return mediaCatalog().get(String(id)) || null;
+      if (!state.searchResults.length) {
+        const text = els.addShowSearch.value.trim().length >= 2
+          ? "No currently airing AniList matches found."
+          : "Type at least 2 characters to search currently airing AniList shows.";
+        els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
+        return;
+      }
+
+      els.addShowResults.innerHTML = state.searchResults.map(media => {
+        const id = String(media.id);
+        const current = currentIds.has(id);
+        const added = addedIds.has(id);
+        const manageable = current || added;
+
+        return `
+          <div class="search-result">
+            <div>
+              <div class="row-head">
+                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
+                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
+                ${current ? `<span class="chip rss">Current</span>` : ""}
+                ${added ? `<span class="chip added">Added</span>` : ""}
+              </div>
+              <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : (media.status || "Unknown status"))}</div>
+            </div>
+            <div class="row-actions">
+              ${manageable
+                ? `<button class="secondary" type="button" data-action="open-show-settings" data-id="${escapeHtml(id)}">Manage</button>`
+                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
+            </div>
+          </div>
+        `;
+      }).join("");
     }
 
     async function handleSearchInput() {
@@ -1987,77 +2296,6 @@ summary {
         els.addShowResults.innerHTML = `<div class="empty">Search failed: ${escapeHtml(error.message)}</div>`;
       }
     }
-
-    let searchDebounceTimer = null;
-    els.addShowSearch.addEventListener("input", () => {
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(handleSearchInput, 250);
-    });
-
-    els.currentShowList.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-      const id = button.dataset.id;
-      const media = mediaById(id);
-      if (!media) return;
-      if (button.dataset.action === "customize-current") {
-        ensureOverrideForMedia(media, { enable: true });
-      } else if (button.dataset.action === "clear-current-override") {
-        clearOverride(id);
-      }
-    });
-
-    els.addShowResults.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-      const id = button.dataset.id;
-      const media = mediaById(id);
-      if (!media) return;
-      if (button.dataset.action === "add-search-show") {
-        addShowFromSearch(media);
-      } else if (button.dataset.action === "customize-current") {
-        ensureOverrideForMedia(media, { enable: true });
-      } else if (button.dataset.action === "focus-override") {
-        focusOverride(id);
-      }
-    });
-
-    els.overrideList.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-      const id = String(button.dataset.id || "");
-      const media = mediaById(id);
-      if (button.dataset.action === "remove-added-show") {
-        removeAddedShow(id);
-      } else if (button.dataset.action === "remove-current-override") {
-        clearOverride(id);
-      } else if (button.dataset.action === "reset-to-detected" && media) {
-        const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-        if (detected) {
-          state.overrides[id] = { enabled: false, day: detected.day, time: detected.time };
-        } else if (state.overrides[id]) {
-          state.overrides[id].enabled = false;
-        }
-        persistState();
-        refreshBoardFromState();
-      }
-    });
-
-    els.overrideList.addEventListener("change", event => {
-      const target = event.target;
-      const action = target.dataset.action;
-      const id = String(target.dataset.id || "");
-      if (!action || !id || !state.overrides[id]) return;
-      if (action === "toggle-override") {
-        state.overrides[id].enabled = Boolean(target.checked);
-      } else if (action === "set-day") {
-        state.overrides[id].day = WEEKDAYS.includes(target.value) ? target.value : state.overrides[id].day;
-      } else if (action === "set-time") {
-        state.overrides[id].time = isValidTime(target.value) ? target.value : state.overrides[id].time;
-      }
-      persistState();
-      refreshBoardFromState();
-    });
 
     async function loadBoard(options = {}) {
       const userName = els.username.value.trim();
@@ -2107,8 +2345,8 @@ summary {
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
-        if (!preserveBoard) renderManager();
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        if (!preserveBoard) renderSearchResults();
         showMessage("error", `Could not refresh the board: ${error.message}.${fallbackTime}`.trim());
         return false;
       } finally {
@@ -2134,6 +2372,47 @@ summary {
       setInterval(() => { if (state.items.length) renderBoard(state.items); }, COUNTDOWN_TICK_MS);
     }
 
+    let searchDebounceTimer = null;
+    els.addShowSearch.addEventListener("input", () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(handleSearchInput, 250);
+    });
+
+    els.addShowSearch.addEventListener("keydown", event => {
+      if (event.key === "Enter") handleSearchInput();
+    });
+
+    els.board.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      if (button.dataset.action === "open-show-settings") {
+        openSettingsModalForId(id);
+      }
+    });
+
+    els.addShowResults.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      const media = mediaById(id);
+      if (!media) return;
+
+      if (button.dataset.action === "add-search-show") {
+        addShowFromSearch(media);
+      } else if (button.dataset.action === "open-show-settings") {
+        closeAddShowModal();
+        openSettingsModalForId(id);
+      }
+    });
+
+    els.openAddShowBtn.addEventListener("click", openAddShowModal);
+    els.closeAddShowBtn.addEventListener("click", closeAddShowModal);
+    els.closeShowSettingsBtn.addEventListener("click", closeSettingsModal);
+    els.modalUseCustom.addEventListener("change", syncSettingsModalState);
+    els.modalSaveBtn.addEventListener("click", saveSettingsFromModal);
+    els.modalUseDetectedBtn.addEventListener("click", useDetectedForActiveShow);
+    els.modalClearOrRemoveBtn.addEventListener("click", clearOrRemoveActiveShow);
     els.loadBtn.addEventListener("click", () => loadBoard());
 
     if (els.clearMemoryBtn) {
@@ -2145,10 +2424,22 @@ summary {
       });
     }
 
+    [els.addShowModal, els.showSettingsModal].forEach(modal => {
+      modal.addEventListener("click", event => {
+        if (event.target === modal) closeModal(modal);
+      });
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeSettingsModal();
+        closeAddShowModal();
+      }
+    });
+
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.addShowSearch.addEventListener("keydown", event => { if (event.key === "Enter") handleSearchInput(); });
 
     [els.username, els.rssUrl, els.rssProxyTemplate].forEach(el => {
       el.addEventListener("change", savePageSettings);
@@ -2192,6 +2483,5 @@ summary {
       bootPage();
     }
   </script>
-
 </body>
 </html>
