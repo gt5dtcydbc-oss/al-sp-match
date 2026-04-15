@@ -1,13 +1,3 @@
-This is a very common issue with long-running shows like *Re:Zero* or *Bleach*.
-The problem is **Absolute vs. Relative numbering**. SubsPlease (the RSS feed) often numbers episodes continuously from the very first season (e.g., Re:Zero Season 3 Episode 5 is listed in the RSS as Episode 55). However, AniList resets the counter for each new season (so it expects a total of 12 episodes, not 60+).
-When the UI tries to merge these, you end up with weird text like **Ep 55/12**, which breaks the "Final Episode" calculation entirely.
-### The Fix
-To solve this, I have **decoupled** the episode numbers.
- * The app will still use the RSS episode number *internally* to track time changes in its memory.
- * However, the **UI will now strictly ignore the RSS number** and ONLY display the episode number and total count directly from AniList's database.
-Because both numbers now come directly from AniList, long-running shows will perfectly display their current season's relative episode number (e.g., **Ep 5/12**), and the "Final Episode" flag will trigger flawlessly.
-Here is the updated, complete code to replace your current file:
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2599,5 +2589,3 @@ Here is the updated, complete code to replace your current file:
   </script>
 </body>
 </html>
-
-```
