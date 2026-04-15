@@ -472,6 +472,20 @@
       line-height: 1.35;
     }
 
+    .entry-extra {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+
+    .final-episode {
+      color: #fff0d6;
+      font-weight: 700;
+    }
+
     .entry-settings-btn {
       width: 30px;
       height: 30px;
@@ -811,6 +825,7 @@
       .entry-body { gap: 2px; }
       .entry-title { font-size: 0.84rem; line-height: 1.22; }
       .entry-meta { gap: 4px; font-size: 0.64rem; }
+      .entry-extra { font-size: 0.62rem; }
       .chip { padding: 2px 4px; font-size: 0.6rem; }
       .footer { margin-top: 8px; font-size: 0.72rem; }
       .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
@@ -1018,6 +1033,7 @@
                 siteUrl
                 format
                 status
+                episodes
                 coverImage { large medium }
                 title { userPreferred english romaji native }
                 synonyms
@@ -1037,6 +1053,7 @@
             siteUrl
             format
             status
+            episodes
             coverImage { large medium }
             title { userPreferred english romaji native }
             synonyms
@@ -1444,6 +1461,18 @@
       return media?.coverImage?.large || media?.coverImage?.medium || "";
     }
 
+    function isUpcomingFinalEpisode(media) {
+      const nextEpisode = Number(media?.nextAiringEpisode?.episode);
+      const totalEpisodes = Number(media?.episodes);
+      return (
+        Number.isFinite(nextEpisode) &&
+        nextEpisode > 0 &&
+        Number.isFinite(totalEpisodes) &&
+        totalEpisodes > 0 &&
+        nextEpisode === totalEpisodes
+      );
+    }
+
     function slotCacheScopeKey(userName) {
       return `${SLOT_CACHE_KEY}:${String(userName || "").trim().toLowerCase() || "default"}`;
     }
@@ -1730,13 +1759,15 @@
         if (!media?.id) continue;
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
+        const isFinalEpisode = isUpcomingFinalEpisode(media);
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover,
             day: override.day, time: override.time, format: media.format || "",
             source: "manual", sampleCount: 1, matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)])
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            isFinalEpisode
           });
           continue;
         }
@@ -1747,7 +1778,8 @@
             day: primary.day, time: primary.time, format: media.format || "",
             source: primary.source, sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
-            isAdded: Boolean(state.addedShows[String(media.id)])
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            isFinalEpisode
           });
         }
       }
@@ -1956,6 +1988,7 @@
                                 ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())}</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
+                        ${item.isFinalEpisode ? `<div class="entry-extra"><span class="final-episode">Final Episode</span></div>` : ""}
                       </div>
                       <button
                         class="entry-settings-btn"
