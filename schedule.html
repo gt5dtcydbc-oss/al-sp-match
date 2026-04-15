@@ -99,6 +99,8 @@
 
     input[type="text"], input[type="time"], select, textarea {
       width: 100%;
+      min-width: 0;
+      max-width: 100%;
       border: 1px solid var(--line);
       background: var(--panel-2);
       color: var(--text);
@@ -752,7 +754,9 @@
       gap: 14px;
       padding: 18px 20px;
       overflow: auto;
+      overflow-x: hidden;
       overscroll-behavior: contain;
+      min-width: 0;
     }
 
     .modal-footer {
@@ -776,25 +780,26 @@
     }
 
     .modal-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: end;
-}
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: end;
+      min-width: 0;
+    }
 
-.modal-grid > * {
-  min-width: 0;
-}
+    .modal-grid > * {
+      min-width: 0;
+    }
 
-#modalTime {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
+    .modal-grid > .field {
+      min-width: 0;
+    }
 
-.modal-body {
-  overflow-x: hidden;
-}
+    #modalTime {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
 
     @keyframes modalIn {
       from {
@@ -1685,6 +1690,12 @@
     function saveAddedShows(userName, addedShows) { saveJSON(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
     function makeEntryFromMedia(media) { return { media }; }
 
+    function clearCachedSlotForShow(showId) {
+      const cache = loadSlotCache(state.userName);
+      delete cache[String(showId)];
+      saveSlotCache(state.userName, cache);
+    }
+
     function dedupeEntriesById(entries) {
       const map = new Map();
       for (const entry of entries || []) {
@@ -1817,7 +1828,7 @@
           continue;
         }
         const remembered = cache[key];
-        if (remembered && remembered.time) {
+        if (remembered && remembered.time && remembered.origin !== "manual") {
           output.push({
             ...item, time: remembered.time, source: "cache",
             sampleCount: remembered.sampleCount || 1,
@@ -2179,7 +2190,10 @@
       const media = mediaById(id);
       if (!media) return;
 
-      const detected = detectSlotForModal(media);
+      const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+
+      clearCachedSlotForShow(id);
+
       if (detected) {
         state.overrides[id] = {
           enabled: false,
@@ -2198,6 +2212,8 @@
     function clearOrRemoveActiveShow() {
       const id = String(state.activeSettingsId || "");
       if (!id) return;
+
+      clearCachedSlotForShow(id);
 
       if (state.addedShows[id]) {
         delete state.addedShows[id];
