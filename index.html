@@ -2050,7 +2050,7 @@
                     return `
                     <article class="entry">
                       <div class="thumb">
-                        ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="">` : ""}
+                       ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
                       <div class="entry-body">
                         <div class="entry-title">
