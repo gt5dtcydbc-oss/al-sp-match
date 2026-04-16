@@ -321,7 +321,8 @@
     }
 
     .chip.fallback,
-    .chip.manual {
+    .chip.manual,
+    .chip.moved {
       background: rgba(255, 212, 138, 0.11);
       border-color: rgba(255, 212, 138, 0.18);
       color: #fff0d6;
@@ -469,15 +470,6 @@
       gap: 6px;
       color: var(--muted);
       font-size: 0.75rem;
-      line-height: 1.35;
-    }
-
-    .entry-extra {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 0.72rem;
       line-height: 1.35;
     }
 
@@ -820,7 +812,6 @@
       .entry-body { gap: 2px; }
       .entry-title { font-size: 0.84rem; line-height: 1.22; }
       .entry-meta { gap: 4px; font-size: 0.64rem; }
-      .entry-extra { font-size: 0.62rem; }
       .chip { padding: 2px 4px; font-size: 0.6rem; }
       .footer { margin-top: 8px; font-size: 0.72rem; }
       .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
@@ -1000,6 +991,7 @@
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+    const SCHEDULE_MOVED_THRESHOLD_SECONDS = (7 * 24 * 60 * 60) + (5 * 60 * 60);
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -1412,9 +1404,6 @@
       };
     }
 
-    /**
-     * Returns the episode token so applyCache can track history internally.
-     */
     function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
       const variants = titleVariants(media);
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
@@ -1663,20 +1652,6 @@
       return Array.from(map.values());
     }
 
-    function mediaCatalog() {
-      const map = new Map();
-      for (const entry of state.currentEntries || []) {
-        if (entry?.media?.id) map.set(String(entry.media.id), entry.media);
-      }
-      for (const value of Object.values(state.addedShows || {})) {
-        if (value?.id) map.set(String(value.id), value);
-      }
-      for (const media of state.searchResults || []) {
-        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
-      }
-      return map;
-    }
-
     function isValidTime(value) {
       return /^\d{2}:\d{2}$/.test(String(value || ""));
     }
@@ -1691,9 +1666,6 @@
       };
     }
 
-    /**
-     * Passes matchedEpisode through for internal tracking.
-     */
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
@@ -1743,53 +1715,74 @@
       return primary || null;
     }
 
-    /**
-     * Includes matchedEpisode for caching, but calculates displayEpisode strictly from AniList.
-     */
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
       for (const entry of entries) {
         const media = entry.media;
         if (!media?.id) continue;
+
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
-
         const nextEpisodeNumber = Number(media?.nextAiringEpisode?.episode);
+        const nextAiringAt = Number(media?.nextAiringEpisode?.airingAt);
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        const isScheduleMoved =
+          hasNextAiring &&
+          Number.isFinite(nextAiringAt) &&
+          nextAiringAt > nowSeconds &&
+          (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
-            id: media.id, title, siteUrl: media.siteUrl || "#", cover,
-            day: override.day, time: override.time, format: media.format || "",
-            source: "manual", sampleCount: 1, matchedTitle: "",
+            id: media.id,
+            title,
+            siteUrl: media.siteUrl || "#",
+            cover,
+            day: override.day,
+            time: override.time,
+            format: media.format || "",
+            source: "manual",
+            sampleCount: 1,
+            matchedTitle: "",
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring, totalEpisodes, displayEpisode
+            hasNextAiring,
+            totalEpisodes,
+            displayEpisode,
+            isScheduleMoved
           });
           continue;
         }
+
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           items.push({
-            id: media.id, title, siteUrl: media.siteUrl || "#", cover,
-            day: primary.day, time: primary.time, format: media.format || "",
-            source: primary.source, sampleCount: primary.sampleCount || 1,
+            id: media.id,
+            title,
+            siteUrl: media.siteUrl || "#",
+            cover,
+            day: primary.day,
+            time: primary.time,
+            format: media.format || "",
+            source: primary.source,
+            sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
             matchedEpisode: primary.matchedEpisode || null,
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring, totalEpisodes, displayEpisode
+            hasNextAiring,
+            totalEpisodes,
+            displayEpisode,
+            isScheduleMoved
           });
         }
       }
       return items;
     }
 
-    /**
-     * Persistent History Logic.
-     * Uses RSS matchedEpisode internally to build time history, but does not touch displayEpisode.
-     */
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
@@ -2023,6 +2016,7 @@
                         <div class="entry-meta">
                           ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
                           ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
+                          ${item.isScheduleMoved ? `<span class="chip moved">Schedule Moved</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
