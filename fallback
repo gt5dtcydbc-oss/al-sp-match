@@ -481,11 +481,6 @@
       line-height: 1.35;
     }
 
-    .final-episode {
-      color: #fff0d6;
-      font-weight: 700;
-    }
-
     .entry-settings-btn {
       width: 30px;
       height: 30px;
@@ -1438,7 +1433,7 @@
         source: sourceName,
         sampleCount: slot.sampleCount || 1,
         matchedTitle: best.title,
-        matchedEpisode: best.items[0]?.episode || null // Track this episode
+        matchedEpisode: best.items[0]?.episode || null
       };
     }
 
@@ -1463,18 +1458,6 @@
 
     function coverForMedia(media) {
       return media?.coverImage?.large || media?.coverImage?.medium || "";
-    }
-
-    function isUpcomingFinalEpisode(media) {
-      const nextEpisode = Number(media?.nextAiringEpisode?.episode);
-      const totalEpisodes = Number(media?.episodes);
-      return (
-        Number.isFinite(nextEpisode) &&
-        nextEpisode > 0 &&
-        Number.isFinite(totalEpisodes) &&
-        totalEpisodes > 0 &&
-        nextEpisode === totalEpisodes
-      );
     }
 
     function slotCacheScopeKey(userName) {
@@ -1761,7 +1744,7 @@
     }
 
     /**
-     * Includes matchedEpisode for caching, but calculates displayEpisode STRICTLY from AniList
+     * Includes matchedEpisode for caching, but calculates displayEpisode strictly from AniList.
      */
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
@@ -1770,11 +1753,11 @@
         if (!media?.id) continue;
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
-        const isFinalEpisode = isUpcomingFinalEpisode(media);
 
-        // ALWAYS pull display episode strictly from AniList
+        const nextEpisodeNumber = Number(media?.nextAiringEpisode?.episode);
+        const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
-        const displayEpisode = media.nextAiringEpisode?.episode || (media.episodes ? media.episodes : "?");
+        const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
@@ -1783,7 +1766,7 @@
             day: override.day, time: override.time, format: media.format || "",
             source: "manual", sampleCount: 1, matchedTitle: "",
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            isFinalEpisode, totalEpisodes, displayEpisode
+            hasNextAiring, totalEpisodes, displayEpisode
           });
           continue;
         }
@@ -1794,9 +1777,9 @@
             day: primary.day, time: primary.time, format: media.format || "",
             source: primary.source, sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
-            matchedEpisode: primary.matchedEpisode || null, // Keep for internal caching
+            matchedEpisode: primary.matchedEpisode || null,
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            isFinalEpisode, totalEpisodes, displayEpisode
+            hasNextAiring, totalEpisodes, displayEpisode
           });
         }
       }
@@ -1805,7 +1788,7 @@
 
     /**
      * Persistent History Logic.
-     * Uses RSS matchedEpisode internally to build time history, but DOES NOT touch displayEpisode.
+     * Uses RSS matchedEpisode internally to build time history, but does not touch displayEpisode.
      */
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
@@ -1815,15 +1798,13 @@
 
         if (item.source === "rss") {
           let entry = cache[key];
-          // Upgrade old cache structure if it doesn't have history
           if (!entry || !entry.history) {
             entry = { history: [], origin: "rss" };
           }
 
-          const currentEpisode = item.matchedEpisode; // Absolute RSS episode number for tracking only
+          const currentEpisode = item.matchedEpisode;
           const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
 
-          // Only add to history if it's a new absolute episode found in the feed
           if (currentEpisode && !alreadySawThisEpisode) {
             entry.history.push({
               day: item.day,
@@ -1831,17 +1812,14 @@
               mins: toMinutes(item.time),
               episode: currentEpisode
             });
-            // Keep rolling window of last 10 releases for median
             if (entry.history.length > 10) entry.history.shift();
           }
 
-          // Use the historical median to decide the time
           if (entry.history.length > 0) {
             const allMins = entry.history.map(h => h.mins);
             const medMins = median(allMins);
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
-            // Set the day to the most recent one we've seen
             item.day = entry.history[entry.history.length - 1].day;
           }
 
@@ -1853,7 +1831,6 @@
           continue;
         }
 
-        // Handle normal manual/fallback/cache lookups
         const remembered = cache[key];
         if (item.source === "manual") {
           cache[key] = {
@@ -2030,13 +2007,9 @@
                 </div>
                 <div class="entry-list">
                   ${slot.items.map(item => {
-                    // Ep string comes entirely from AniList now
-                    const epStr = (item.displayEpisode !== "?" || item.totalEpisodes !== "?") 
-                      ? `Ep ${item.displayEpisode}/${item.totalEpisodes}` 
+                    const epStr = item.hasNextAiring
+                      ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
                       : "";
-
-                    // Final episode is accurate because both sides of equation are from AniList
-                    const isActuallyFinal = (item.displayEpisode !== "?" && item.displayEpisode == item.totalEpisodes) || item.isFinalEpisode;
 
                     return `
                     <article class="entry">
@@ -2059,7 +2032,6 @@
                                 ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${item.sampleCount || 1})</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
-                        ${isActuallyFinal ? `<div class="entry-extra"><span class="final-episode">Final Episode</span></div>` : ""}
                       </div>
                       <button
                         class="entry-settings-btn"
