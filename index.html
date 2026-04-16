@@ -507,22 +507,35 @@
       font-size: 0.86rem;
       line-height: 1.45;
     }
+.footer-status-healthy {
+  color: var(--ok);
+  font-weight: 700;
+}
 
+.footer-status-unhealthy {
+  color: #ff8a8a;
+  font-weight: 700;
+}
     .update-indicator {
+      --indicator-rgb: 255, 255, 255;
       position: fixed;
       top: 12px;
       right: 12px;
       width: 9px;
       height: 9px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(var(--indicator-rgb), 0.92);
       box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.12),
-        0 0 10px rgba(255, 255, 255, 0.12);
+        0 0 0 1px rgba(var(--indicator-rgb), 0.12),
+        0 0 10px rgba(var(--indicator-rgb), 0.12);
       z-index: 9999;
       opacity: 0.9;
       pointer-events: auto;
       animation: indicatorBreathe 2.2s ease-in-out infinite;
+    }
+
+    .update-indicator.error {
+      --indicator-rgb: 255, 90, 90;
     }
 
     .update-indicator.flash {
@@ -536,33 +549,33 @@
         transform: scale(1);
         opacity: 0.72;
         box-shadow:
-          0 0 0 1px rgba(255, 255, 255, 0.10),
-          0 0 8px rgba(255, 255, 255, 0.08);
+          0 0 0 1px rgba(var(--indicator-rgb), 0.10),
+          0 0 8px rgba(var(--indicator-rgb), 0.08);
       }
       50% {
         transform: scale(1.12);
         opacity: 0.98;
         box-shadow:
-          0 0 0 1px rgba(255, 255, 255, 0.16),
-          0 0 14px rgba(255, 255, 255, 0.18);
+          0 0 0 1px rgba(var(--indicator-rgb), 0.16),
+          0 0 14px rgba(var(--indicator-rgb), 0.18);
       }
     }
 
     @keyframes indicatorFlash {
       0% {
         box-shadow:
-          0 0 0 0 rgba(255, 255, 255, 0.55),
-          0 0 10px rgba(255, 255, 255, 0.18);
+          0 0 0 0 rgba(var(--indicator-rgb), 0.55),
+          0 0 10px rgba(var(--indicator-rgb), 0.18);
       }
       45% {
         box-shadow:
-          0 0 0 10px rgba(255, 255, 255, 0),
-          0 0 20px rgba(255, 255, 255, 0.28);
+          0 0 0 10px rgba(var(--indicator-rgb), 0),
+          0 0 20px rgba(var(--indicator-rgb), 0.28);
       }
       100% {
         box-shadow:
-          0 0 0 0 rgba(255, 255, 255, 0),
-          0 0 10px rgba(255, 255, 255, 0.12);
+          0 0 0 0 rgba(var(--indicator-rgb), 0),
+          0 0 10px rgba(var(--indicator-rgb), 0.12);
       }
     }
 
@@ -856,7 +869,7 @@
       <details class="panel top-dropdown">
         <summary>
           <div>
-            <h2 class="section-title">Loaded Entries Overview</h2>
+            <h2 class="section-title">Fetched Entries</h2>
             <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
@@ -1094,15 +1107,42 @@
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
       isLoading: false,
-      activeSettingsId: null
+      activeSettingsId: null,
+      healthStatus: "healthy"
     };
 
     showMessage("info", "Ready.");
+    setUpdateIndicatorStatus("ok");
 
     function showMessage(type, text) {
       els.message.className = `message ${type}`;
       els.message.textContent = text;
     }
+
+    function setUpdateIndicatorStatus(status = "ok") {
+      if (!els.updateIndicator) return;
+      els.updateIndicator.classList.toggle("error", status === "error");
+    }
+
+    function renderFooterStatus() {
+  const isUnhealthy = state.healthStatus === "unhealthy";
+  const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
+  const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
+  const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+
+  let extra = "";
+  if (formattedSavedAt) {
+    extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
+  } else {
+    extra += " · Waiting for first update";
+  }
+
+  if (isUnhealthy && state.notes.length) {
+    extra += ` · ${escapeHtml(state.notes.join(" "))}`;
+  }
+
+  els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
+}
 
     async function graphQLRequest(query, variables) {
       const response = await fetch(ENDPOINT, {
@@ -1504,6 +1544,7 @@
         primaryCandidates: state.primaryCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
+        healthStatus: state.healthStatus,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -1524,6 +1565,7 @@
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
+      state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       if (!Number.isFinite(snapshotSavedAt)) {
@@ -1533,6 +1575,7 @@
         } catch (_) {}
       }
       refreshBoardFromState();
+      setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
@@ -2079,17 +2122,7 @@
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
-      const customCount = state.items.filter(item => item.source === "manual").length;
-      const addedCount = state.items.filter(item => item.isAdded).length;
-      const rssCount = state.items.filter(item => item.source === "rss").length;
-      const cacheCount = state.items.filter(item => item.source === "cache").length;
-      const fallbackCount = state.items.filter(item => item.source === "fallback").length;
-      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
-      const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
-      els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} MEMORY, ${fallbackCount} fallback.` +
-        updatedLabel +
-        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
+      renderFooterStatus();
     }
 
     function persistState() {
@@ -2340,6 +2373,10 @@
     async function loadBoard(options = {}) {
       const userName = String(options.userName ?? els.username.value).trim();
       if (!userName) {
+        state.healthStatus = "unhealthy";
+        state.notes = ["Please enter a username."];
+        setUpdateIndicatorStatus("error");
+        renderFooterStatus();
         showMessage("error", "Please enter a username.");
         return false;
       }
@@ -2394,7 +2431,9 @@
         state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
         state.notes = nextNotes;
+        state.healthStatus = nextNotes.length ? "unhealthy" : "healthy";
         state.lastSuccessfulLoadAt = Date.now();
+        setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
 
         refreshBoardFromState();
         saveBoardSnapshot();
@@ -2412,7 +2451,11 @@
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
 
+        state.healthStatus = "unhealthy";
+        state.notes = [`AniList: ${message}`];
+        setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        renderFooterStatus();
 
         if (!preserveBoard) renderSearchResults();
 
@@ -2536,13 +2579,20 @@
         if (els.username.value.trim()) {
           loadBoard({ reason: hydrated ? "refresh" : "load" });
         } else {
+          state.healthStatus = "healthy";
+          setUpdateIndicatorStatus("ok");
           updateIndicatorTitle(0);
+          renderFooterStatus();
         }
       } catch (error) {
         console.error("Boot failed:", error);
         clearBoardSnapshot();
         state.lastSuccessfulLoadAt = 0;
+        state.healthStatus = "unhealthy";
+        state.notes = [`Startup: ${error.message}`];
+        setUpdateIndicatorStatus("error");
         updateIndicatorTitle(0);
+        renderFooterStatus();
         showMessage("error", `Startup failed: ${error.message}`);
       }
     }
