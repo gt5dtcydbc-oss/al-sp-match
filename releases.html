@@ -3,185 +3,157 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>releases.moe watchlist</title>
+  <title>Anime Releases Tracker</title>
   <style>
     :root {
       --bg: #0b1020;
-      --panel: #121a30;
-      --panel-2: #18213c;
-      --text: #edf2ff;
-      --muted: #a7b0c9;
-      --accent: #7c9cff;
-      --accent-2: #9d7cff;
-      --ok: #3ddc97;
-      --warn: #ffcc66;
-      --bad: #ff7b7b;
-      --border: rgba(255,255,255,0.09);
-      --shadow: 0 24px 60px rgba(0,0,0,0.35);
-      --radius: 18px;
+      --bg-soft: #121933;
+      --panel: #11182d;
+      --panel-soft: #18213d;
+      --card: #131b31;
+      --text: #eef2ff;
+      --muted: #98a6cc;
+      --line: rgba(255,255,255,0.08);
+      --line-strong: rgba(255,255,255,0.12);
+      --accent: #8c9eff;
+      --accent-soft: rgba(140,158,255,0.16);
+      --ok: #4adea8;
+      --ok-soft: rgba(74,222,168,0.14);
+      --warn: #ffd479;
+      --warn-soft: rgba(255,212,121,0.14);
+      --bad: #ff8d8d;
+      --bad-soft: rgba(255,141,141,0.14);
+      --shadow: 0 20px 50px rgba(0,0,0,0.28);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 12px;
     }
 
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(124,156,255,0.18), transparent 28%),
-        radial-gradient(circle at top right, rgba(157,124,255,0.18), transparent 22%),
-        linear-gradient(180deg, #0a0f1d 0%, #0b1020 100%);
       color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(140,158,255,0.18), transparent 26%),
+        radial-gradient(circle at top right, rgba(123,92,255,0.14), transparent 22%),
+        linear-gradient(180deg, #090e1c 0%, #0b1020 100%);
       min-height: 100vh;
     }
 
-    a { color: inherit; }
-
-    .wrap {
-      width: min(1200px, calc(100vw - 32px));
-      margin: 32px auto 56px;
+    a { color: inherit; text-decoration: none; }
+    code {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 0.92em;
     }
 
-    .hero {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: 1.25fr 0.9fr;
-      align-items: stretch;
-      margin-bottom: 24px;
+    .app {
+      width: min(1120px, calc(100vw - 24px));
+      margin: 20px auto 40px;
     }
 
-    .panel {
+    .shell {
       background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border: 1px solid var(--line);
       box-shadow: var(--shadow);
+      border-radius: 28px;
+      overflow: hidden;
       backdrop-filter: blur(14px);
     }
 
-    .hero-card {
-      padding: 28px;
+    .hero {
+      padding: 22px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
     }
 
     .eyebrow {
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: 10px;
-      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
     }
 
     h1 {
-      margin: 0 0 10px;
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1.06;
+      margin: 0;
+      font-size: clamp(28px, 3.7vw, 42px);
+      line-height: 1.04;
     }
 
     .sub {
-      margin: 0;
+      margin: 10px 0 0;
       color: var(--muted);
+      max-width: 64ch;
       line-height: 1.55;
-      max-width: 68ch;
+      font-size: 14px;
     }
 
-    .settings {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      margin-top: 22px;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
-    }
-
-    .field.full {
-      grid-column: 1 / -1;
-    }
-
-    label {
-      font-size: 13px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    input, select, button {
-      font: inherit;
-    }
-
-    input {
-      width: 100%;
-      background: rgba(255,255,255,0.05);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 12px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: rgba(124,156,255,0.65);
-      box-shadow: 0 0 0 4px rgba(124,156,255,0.14);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
       gap: 10px;
-      margin-top: 4px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
     }
 
-    button {
-      border: 0;
-      border-radius: 12px;
-      padding: 12px 15px;
-      cursor: pointer;
-      font-weight: 700;
-      transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
+      flex: 0 0 auto;
     }
-
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.65; cursor: progress; transform: none; }
-
-    .primary {
-      color: white;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow: 0 10px 28px rgba(124,156,255,0.34);
-    }
-
-    .secondary {
-      color: var(--text);
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.09);
-    }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
+    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      padding: 22px;
-      height: 100%;
-      align-content: start;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
     }
 
     .stat {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px;
-      padding: 16px;
-      min-height: 108px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-height: 96px;
     }
 
     .stat-label {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       margin-bottom: 8px;
     }
 
     .stat-value {
-      font-size: 30px;
-      font-weight: 800;
+      font-size: 28px;
       line-height: 1;
-      margin-bottom: 7px;
+      font-weight: 800;
+      margin-bottom: 6px;
     }
 
     .stat-help {
@@ -190,20 +162,145 @@
       line-height: 1.45;
     }
 
-    .toolbar {
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.username { grid-column: span 3; }
+    .field.list { grid-column: span 3; }
+    .field.api { grid-column: span 4; }
+    .field.search { grid-column: span 7; }
+    .field.filter { grid-column: span 3; }
+    .field.actions { grid-column: span 2; }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input, button, .segmented {
+      font: inherit;
+    }
+
+    input {
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(140,158,255,0.65);
+      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
+    }
+
+    .segmented {
+      display: inline-flex;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+      min-height: 48px;
+    }
+
+    .segmented button,
+    .ghost-btn,
+    .primary-btn,
+    .link-btn,
+    .mini-link {
+      border: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .segmented button {
+      flex: 1;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
+    .segmented button.active {
+      background: rgba(140,158,255,0.18);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .primary-btn,
+    .ghost-btn {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 800;
+      width: 100%;
+    }
+
+    .primary-btn {
+      color: white;
+      background: linear-gradient(135deg, #8c9eff, #a479ff);
+      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
+    }
+
+    .ghost-btn {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+    }
+
+    .primary-btn:hover,
+    .ghost-btn:hover,
+    .link-btn:hover,
+    .mini-link:hover,
+    .segmented button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-btn:disabled,
+    .ghost-btn:disabled {
+      opacity: 0.7;
+      cursor: progress;
+      transform: none;
+    }
+
+    .bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin: 6px 0 18px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
       flex-wrap: wrap;
     }
 
-    .meta {
+    .bar-left,
+    .bar-right {
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .chip {
@@ -212,161 +309,216 @@
       gap: 8px;
       padding: 10px 12px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
       color: var(--muted);
       font-size: 13px;
     }
 
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(124,156,255,0.14);
-    }
-
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(61,220,151,0.12); }
-    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,204,102,0.14); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,123,123,0.14); }
-
     .notice {
+      margin: 18px 22px 0;
       padding: 14px 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      border: 1px solid var(--line);
       background: rgba(255,255,255,0.04);
       color: var(--muted);
-      margin-bottom: 18px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .notice.error {
-      color: #ffd1d1;
-      background: rgba(255,123,123,0.08);
-      border-color: rgba(255,123,123,0.18);
+      color: #ffd8d8;
+      background: rgba(255,141,141,0.08);
+      border-color: rgba(255,141,141,0.18);
     }
 
     .notice.success {
-      color: #d5ffeb;
-      background: rgba(61,220,151,0.09);
-      border-color: rgba(61,220,151,0.2);
+      color: #d8ffef;
+      background: rgba(74,222,168,0.08);
+      border-color: rgba(74,222,168,0.18);
     }
 
-    .grid {
+    .content {
+      padding: 18px 22px 22px;
+    }
+
+    .list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 16px;
+      gap: 14px;
     }
 
-    .card {
-      overflow: hidden;
+    .item {
       display: grid;
-      grid-template-columns: 110px 1fr;
-      min-height: 260px;
+      grid-template-columns: 84px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      border: 1px solid var(--line);
+      border-radius: 20px;
     }
 
-    .cover {
-      background: rgba(255,255,255,0.04);
-      position: relative;
+    .poster {
+      width: 84px;
+      aspect-ratio: 2 / 3;
+      border-radius: 14px;
       overflow: hidden;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+      flex: 0 0 auto;
     }
 
-    .cover img {
+    .poster img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
-    .cover-fallback {
+    .poster-fallback {
       width: 100%;
       height: 100%;
       display: grid;
       place-items: center;
-      color: rgba(255,255,255,0.38);
-      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      font-size: 11px;
       text-align: center;
       padding: 8px;
     }
 
-    .content {
-      padding: 18px;
+    .item-main {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .title-row {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
       gap: 12px;
+      align-items: start;
+      flex-wrap: wrap;
+    }
+
+    .title-block {
       min-width: 0;
     }
 
     .title {
-      font-size: 18px;
-      font-weight: 800;
-      line-height: 1.28;
       margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+      font-weight: 800;
     }
 
     .alt-title {
+      margin-top: 4px;
       color: var(--muted);
       font-size: 13px;
-      margin-top: 4px;
-      line-height: 1.4;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    .status-row {
+    .badges {
       display: flex;
-      align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+      align-items: center;
     }
 
     .pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
-      font-weight: 700;
       border-radius: 999px;
       padding: 7px 10px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid transparent;
+      white-space: nowrap;
     }
 
-    .pill.ok { color: #d5ffeb; background: rgba(61,220,151,0.08); border-color: rgba(61,220,151,0.18); }
-    .pill.warn { color: #fff0c4; background: rgba(255,204,102,0.08); border-color: rgba(255,204,102,0.18); }
-    .pill.bad { color: #ffd6d6; background: rgba(255,123,123,0.08); border-color: rgba(255,123,123,0.18); }
-    .pill.info { color: #d7e2ff; background: rgba(124,156,255,0.08); border-color: rgba(124,156,255,0.18); }
+    .pill.ok { color: #d8ffef; background: var(--ok-soft); border-color: rgba(74,222,168,0.18); }
+    .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
+    .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
+    .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
 
-    .stack {
+    .meta-grid {
       display: grid;
-      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .meta-card {
+      padding: 12px 13px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      min-width: 0;
+    }
+
+    .meta-label {
       color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .meta-value {
       font-size: 13px;
       line-height: 1.5;
+      color: var(--text);
+      word-break: break-word;
     }
 
-    .links {
+    .meta-value.muted { color: var(--muted); }
+
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .actions-row {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: auto;
+      align-items: center;
     }
 
-    .link-btn {
+    .link-btn,
+    .mini-link {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 10px 12px;
+      font-weight: 800;
       border-radius: 12px;
-      text-decoration: none;
-      font-weight: 700;
+      border: 1px solid var(--line);
+    }
+
+    .link-btn {
+      min-height: 42px;
+      padding: 10px 12px;
       background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
       color: var(--text);
     }
 
-    .link-btn.primary-link {
-      background: linear-gradient(135deg, rgba(124,156,255,0.18), rgba(157,124,255,0.15));
-      border-color: rgba(124,156,255,0.22);
+    .link-btn.primary {
+      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
+      border-color: rgba(140,158,255,0.24);
+    }
+
+    .mini-link {
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 12px;
     }
 
     details {
@@ -378,26 +530,20 @@
 
     summary {
       cursor: pointer;
-      font-weight: 700;
-      color: #dbe4ff;
+      color: #dce4ff;
+      font-weight: 800;
+      font-size: 13px;
     }
 
     .torrent-list {
       display: grid;
       gap: 10px;
-      margin-top: 10px;
-    }
-
-    .mirror-note {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-      margin-top: 8px;
+      margin-top: 12px;
     }
 
     .torrent {
-      padding: 10px 11px;
-      border-radius: 12px;
+      border-radius: 14px;
+      padding: 11px 12px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
     }
@@ -405,225 +551,232 @@
     .torrent-top {
       display: flex;
       justify-content: space-between;
-      gap: 10px;
-      align-items: start;
+      gap: 8px;
+      align-items: flex-start;
+      flex-wrap: wrap;
       margin-bottom: 6px;
     }
 
     .torrent-name {
-      font-weight: 700;
-      color: var(--text);
-      line-height: 1.35;
+      font-weight: 800;
+      line-height: 1.4;
     }
 
     .torrent-meta {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.45;
       display: flex;
-      flex-wrap: wrap;
       gap: 8px;
-    }
-
-    .empty {
-      text-align: center;
-      color: var(--muted);
-      padding: 48px 20px;
-    }
-
-    .footer-note {
+      flex-wrap: wrap;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.5;
-      margin-top: 14px;
+      margin-bottom: 8px;
     }
 
-    @media (max-width: 900px) {
-      .wrap { width: min(100vw - 24px, 1200px); }
-      .hero {
-        grid-template-columns: 1fr;
-      }
-      .stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .toolbar {
-        align-items: stretch;
-      }
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .empty {
+      padding: 40px 16px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(255,255,255,0.1);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    @media (max-width: 920px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .field.username,
+      .field.list,
+      .field.api,
+      .field.search,
+      .field.filter,
+      .field.actions { grid-column: span 6; }
     }
 
     @media (max-width: 680px) {
-      body {
-        padding-bottom: 28px;
+      .app {
+        width: min(100vw - 12px, 1120px);
+        margin: 8px auto 18px;
       }
-      .wrap {
-        width: min(100vw - 16px, 1200px);
-        margin-top: 12px;
-        margin-bottom: 28px;
+
+      .shell { border-radius: 22px; }
+      .hero,
+      .bar,
+      .content { padding-left: 14px; padding-right: 14px; }
+      .hero { padding-top: 16px; padding-bottom: 16px; }
+      .bar { padding-top: 12px; padding-bottom: 12px; }
+      .content { padding-top: 14px; padding-bottom: 14px; }
+      .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .stat { padding: 12px; min-height: 0; }
+      .stat-value { font-size: 24px; }
+      .controls { grid-template-columns: 1fr; }
+      .field.username,
+      .field.list,
+      .field.api,
+      .field.search,
+      .field.filter,
+      .field.actions { grid-column: auto; }
+      .item {
+        grid-template-columns: 64px 1fr;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 18px;
       }
-      .hero-card,
-      .stats {
-        padding: 16px;
+      .poster {
+        width: 64px;
+        border-radius: 12px;
       }
-      .settings,
-      .stats,
-      .grid {
-        grid-template-columns: 1fr;
-      }
-      .stat {
-        min-height: 0;
-      }
-      .toolbar,
-      .meta,
-      .actions,
-      .links,
-      .torrent-top {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .chip,
-      .link-btn,
-      button,
-      input {
-        width: 100%;
-      }
-      .card {
-        grid-template-columns: 1fr;
-        min-height: 0;
-      }
-      .cover {
-        min-height: 220px;
-      }
-      .content {
-        padding: 16px;
-      }
-      .title {
-        font-size: 20px;
-      }
-      .status-row {
-        align-items: stretch;
-      }
-      .pill {
-        justify-content: center;
-      }
+      .title { font-size: 16px; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .actions-row,
+      .torrent-top,
+      .torrent-meta,
+      .bar-left,
+      .bar-right,
+      .button-row,
+      .title-row { align-items: stretch; }
+      .actions-row .link-btn,
+      .actions-row .mini-link,
+      .button-row .primary-btn,
+      .button-row .ghost-btn { width: 100%; }
+      .pill { white-space: normal; }
+      .notice { margin-left: 14px; margin-right: 14px; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <section class="hero">
-      <div class="panel hero-card">
-        <div class="eyebrow">AniList → releases.moe</div>
-        <h1>Watch AniList custom list entries for SeaDex releases</h1>
-        <p class="sub">
-          This page reads a public AniList custom list, matches each AniList anime ID against releases.moe,
-          and updates the cards with the SeaDex entry link plus torrent details whenever a release exists.
-        </p>
+  <div class="app">
+    <div class="shell">
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <div class="eyebrow">AniList + releases.moe</div>
+            <h1>Anime Releases Tracker</h1>
+            <p class="sub">
+              Pull a public AniList custom list, match each anime by AniList ID on releases.moe,
+              and show the SeaDex entry plus best torrent info when it exists. This version only checks on page load or when you refresh manually.
+            </p>
+          </div>
+          <div class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></div>
+        </div>
 
-        <div class="settings">
-          <div class="field">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Anime in list</div>
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Found on releases.moe</div>
+            <div class="stat-value" id="statFound">0</div>
+            <div class="stat-help">Entries with a SeaDex page.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Still waiting</div>
+            <div class="stat-value" id="statWaiting">0</div>
+            <div class="stat-help">Tracked shows that are not listed yet.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Last checked</div>
+            <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+            <div class="stat-help">No background polling.</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="field username">
             <label for="username">AniList username</label>
             <input id="username" value="zrr" autocomplete="off" />
           </div>
-          <div class="field">
+          <div class="field list">
             <label for="listName">Custom list name</label>
             <input id="listName" value="releases" autocomplete="off" />
           </div>
-          <div class="field">
-            <label for="interval">Auto-refresh interval (minutes)</label>
-            <input id="interval" type="number" min="1" step="1" value="15" />
-          </div>
-          <div class="field">
+          <div class="field api">
             <label for="apiBase">releases.moe API base</label>
             <input id="apiBase" value="https://releases.moe" autocomplete="off" />
           </div>
-          <div class="field full">
-            <div class="actions">
-              <button id="refreshBtn" class="primary">Refresh now</button>
-              <button id="togglePollingBtn" class="secondary">Pause auto-refresh</button>
-              <button id="resetBtn" class="secondary">Reset defaults</button>
+          <div class="field search">
+            <label for="searchInput">Filter anime</label>
+            <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
+          </div>
+          <div class="field filter">
+            <label>Status view</label>
+            <div class="segmented" id="statusFilter">
+              <button type="button" data-filter="all" class="active">All</button>
+              <button type="button" data-filter="found">Found</button>
+              <button type="button" data-filter="waiting">Waiting</button>
+            </div>
+          </div>
+          <div class="field actions">
+            <label>Actions</label>
+            <div class="button-row">
+              <button id="refreshBtn" class="primary-btn">Reload</button>
+              <button id="resetBtn" class="ghost-btn">Reset</button>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <aside class="panel stats">
-        <div class="stat">
-          <div class="stat-label">Anime in list</div>
-          <div class="stat-value" id="statTotal">0</div>
-          <div class="stat-help">Entries found inside the chosen AniList custom list.</div>
+      <section class="bar">
+        <div class="bar-left">
+          <div class="chip"><strong id="watchingListLabel">zrr / releases</strong></div>
+          <div class="chip">Updates appear on refresh only</div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Found on releases.moe</div>
-          <div class="stat-value" id="statFound">0</div>
-          <div class="stat-help">Items with a matching SeaDex entry by AniList ID.</div>
+        <div class="bar-right">
+          <div class="chip" id="visibleCountChip">Showing 0 titles</div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Still waiting</div>
-          <div class="stat-value" id="statWaiting">0</div>
-          <div class="stat-help">AniList entries that do not currently have a SeaDex page.</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Last checked</div>
-          <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-          <div class="stat-help">Automatic refresh only runs while this tab stays open.</div>
-        </div>
-      </aside>
-    </section>
+      </section>
 
-    <div class="toolbar">
-      <div class="meta">
-        <div class="chip"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></div>
-        <div class="chip">Watching <strong id="watchingListLabel">zrr / releases</strong></div>
-      </div>
-      <div class="meta">
-        <div class="chip" id="nextRefreshChip">Next refresh: waiting to start</div>
-      </div>
-    </div>
+      <div id="notice" class="notice" hidden></div>
 
-    <div id="notice" class="notice" hidden></div>
-    <div id="grid" class="grid"></div>
-    <div id="emptyState" class="panel empty" hidden>No entries yet.</div>
-    <div class="footer-note">
-      If this page works inconsistently when opened directly as a <code>file://</code> URL, serve it from a tiny local web server instead
-      (for example with <code>python -m http.server</code>) so the browser treats it like a normal site.
+      <section class="content">
+        <div id="list" class="list"></div>
+        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
+        <div class="footer-note">
+          If direct <code>file://</code> opening behaves oddly in your browser, serve this file from a tiny local web server instead,
+          for example <code>python -m http.server</code> in the folder that contains it.
+        </div>
+      </section>
     </div>
   </div>
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v1';
+    const STORAGE_KEY = 'releases-watchlist-settings-v2';
     const DEFAULTS = {
       username: 'zrr',
       listName: 'releases',
-      intervalMinutes: 15,
       apiBase: 'https://releases.moe'
     };
 
     const state = {
       items: [],
       lastCheckedAt: null,
-      nextRefreshAt: null,
-      autoRefreshEnabled: true,
-      intervalId: null,
-      countdownId: null,
       isLoading: false,
-      consecutiveErrors: 0
+      filter: 'all',
+      search: ''
     };
 
     const els = {
       username: document.getElementById('username'),
       listName: document.getElementById('listName'),
-      interval: document.getElementById('interval'),
       apiBase: document.getElementById('apiBase'),
+      searchInput: document.getElementById('searchInput'),
       refreshBtn: document.getElementById('refreshBtn'),
-      togglePollingBtn: document.getElementById('togglePollingBtn'),
       resetBtn: document.getElementById('resetBtn'),
       statusDot: document.getElementById('statusDot'),
       statusText: document.getElementById('statusText'),
       watchingListLabel: document.getElementById('watchingListLabel'),
-      nextRefreshChip: document.getElementById('nextRefreshChip'),
+      visibleCountChip: document.getElementById('visibleCountChip'),
+      statusFilter: document.getElementById('statusFilter'),
       notice: document.getElementById('notice'),
-      grid: document.getElementById('grid'),
+      list: document.getElementById('list'),
       emptyState: document.getElementById('emptyState'),
       statTotal: document.getElementById('statTotal'),
       statFound: document.getElementById('statFound'),
@@ -642,16 +795,10 @@
       }
     }
 
-    function saveSettings() {
-      const settings = getSettings();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    }
-
     function getSettings() {
       return {
         username: els.username.value.trim() || DEFAULTS.username,
         listName: els.listName.value.trim() || DEFAULTS.listName,
-        intervalMinutes: Math.max(1, Number(els.interval.value) || DEFAULTS.intervalMinutes),
         apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
       };
     }
@@ -659,9 +806,21 @@
     function applySettings(settings) {
       els.username.value = settings.username;
       els.listName.value = settings.listName;
-      els.interval.value = settings.intervalMinutes;
       els.apiBase.value = settings.apiBase;
       els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
+    }
+
+    function saveSettings() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
     function setStatus(kind, text) {
@@ -678,40 +837,18 @@
 
     function clearNotice() {
       els.notice.hidden = true;
-      els.notice.textContent = '';
       els.notice.className = 'notice';
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      els.notice.innerHTML = '';
     }
 
     function formatDateTime(value) {
-      if (!value) return '—';
+      if (!value) return 'Never';
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return '—';
       return new Intl.DateTimeFormat(undefined, {
         year: 'numeric', month: 'short', day: '2-digit',
         hour: '2-digit', minute: '2-digit'
       }).format(date);
-    }
-
-    function formatRelativeTime(date) {
-      if (!date) return 'Never';
-      const diffMs = date.getTime() - Date.now();
-      const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-      const abs = Math.abs(diffMs);
-      const minute = 60_000;
-      const hour = 60 * minute;
-      const day = 24 * hour;
-      if (abs < hour) return rtf.format(Math.round(diffMs / minute), 'minute');
-      if (abs < day) return rtf.format(Math.round(diffMs / hour), 'hour');
-      return rtf.format(Math.round(diffMs / day), 'day');
     }
 
     function formatBytes(bytes) {
@@ -908,7 +1045,7 @@
     function pickBestTorrent(entry) {
       const torrents = dedupeTorrents(entry?.expand?.trs || []);
       if (!torrents.length) return null;
-      const sorted = [...torrents].sort((a, b) => {
+      return [...torrents].sort((a, b) => {
         const score = (torrent) => {
           let n = 0;
           if (torrent?.isBest) n += 100;
@@ -918,8 +1055,7 @@
           return n;
         };
         return score(b) - score(a);
-      });
-      return sorted[0];
+      })[0];
     }
 
     function buildViewModel(media, entry) {
@@ -927,8 +1063,12 @@
       const comparisons = entry?.comparison
         ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
         : [];
-
-      const dedupedTorrents = dedupeTorrents(entry?.expand?.trs || []);
+      const torrents = dedupeTorrents(entry?.expand?.trs || []);
+      const bestSize = bestTorrent
+        ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
+        : '—';
+      const rawTorrentCount = (entry?.expand?.trs || []).length;
+      const duplicateTorrentCount = Math.max(0, rawTorrentCount - torrents.length);
 
       return {
         id: media.id,
@@ -943,58 +1083,98 @@
         notes: entry?.notes || '',
         theoreticalBest: entry?.theoreticalBest || '',
         updatedAt: entry?.updated || '',
-        createdAt: entry?.created || '',
         comparisons,
         bestTorrent,
-        torrents: dedupedTorrents,
-        rawTorrentCount: (entry?.expand?.trs || []).length,
-        duplicateTorrentCount: Math.max(0, (entry?.expand?.trs || []).length - dedupedTorrents.length)
+        bestSize,
+        torrents,
+        rawTorrentCount,
+        duplicateTorrentCount,
+        searchBlob: [
+          normalizeTitle(media),
+          getAltTitle(media),
+          entry?.notes || '',
+          bestTorrent?.releaseGroup || '',
+          (bestTorrent?.tags || []).join(' ')
+        ].join(' ').toLowerCase()
       };
     }
 
+    function getVisibleItems() {
+      const term = state.search.trim().toLowerCase();
+      return state.items.filter((item) => {
+        if (state.filter === 'found' && !item.hasSeaDex) return false;
+        if (state.filter === 'waiting' && item.hasSeaDex) return false;
+        if (term && !item.searchBlob.includes(term)) return false;
+        return true;
+      });
+    }
+
     function render() {
-      const items = state.items;
-      els.grid.innerHTML = '';
-      els.emptyState.hidden = items.length > 0;
-      els.statTotal.textContent = String(items.length);
-      els.statFound.textContent = String(items.filter((item) => item.hasSeaDex).length);
-      els.statWaiting.textContent = String(items.filter((item) => !item.hasSeaDex).length);
+      const visibleItems = getVisibleItems();
+      els.list.innerHTML = '';
+      els.emptyState.hidden = visibleItems.length > 0;
+      els.statTotal.textContent = String(state.items.length);
+      els.statFound.textContent = String(state.items.filter((item) => item.hasSeaDex).length);
+      els.statWaiting.textContent = String(state.items.filter((item) => !item.hasSeaDex).length);
       els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
+      els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
 
-      if (!items.length) return;
+      if (!visibleItems.length) return;
 
-      for (const item of items) {
-        const card = document.createElement('article');
-        card.className = 'panel card';
+      for (const item of visibleItems) {
+        const article = document.createElement('article');
+        article.className = 'item';
 
-        const cover = item.cover
+        const poster = item.cover
           ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
-          : `<div class="cover-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+          : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
 
-        const statusPills = item.hasSeaDex
+        const statusBadges = item.hasSeaDex
           ? `
-            <span class="pill ok">Found on releases.moe</span>
-            ${item.incomplete ? '<span class="pill warn">Entry incomplete</span>' : ''}
-            ${item.bestTorrent?.dualAudio ? '<span class="pill info">Best torrent dual audio</span>' : ''}
+            <span class="pill ok">On releases.moe</span>
+            ${item.incomplete ? '<span class="pill warn">Incomplete entry</span>' : ''}
+            ${item.bestTorrent?.dualAudio ? '<span class="pill info">Dual audio</span>' : ''}
           `
-          : `<span class="pill bad">Not on releases.moe yet</span>`;
+          : `<span class="pill bad">Waiting</span>`;
 
-        const comparisons = item.comparisons.length
-          ? `<div><strong>Comparisons:</strong> ${item.comparisons.map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">link</a>`).join(' • ')}</div>`
+        const notesBlock = item.notes
+          ? `<div class="meta-card"><div class="meta-label">SeaDex notes</div><div class="meta-value line-clamp-3">${escapeHtml(item.notes)}</div></div>`
           : '';
 
-        const bestTorrentBlock = item.bestTorrent
+        const theoreticalBlock = item.theoreticalBest
+          ? `<div class="meta-card"><div class="meta-label">Theoretical best</div><div class="meta-value line-clamp-3">${escapeHtml(item.theoreticalBest)}</div></div>`
+          : '';
+
+        const bestTorrentBlock = item.hasSeaDex
           ? `
-            <div><strong>Best torrent:</strong> ${escapeHtml(item.bestTorrent.releaseGroup || 'Unknown group')}</div>
-            <div>
-              <strong>Tracker:</strong> ${escapeHtml(item.bestTorrent.tracker || 'Unknown')}
-              ${item.bestTorrent.tags?.length ? ` • <strong>Tags:</strong> ${escapeHtml(item.bestTorrent.tags.join(', '))}` : ''}
+            <div class="meta-card">
+              <div class="meta-label">Best release</div>
+              <div class="meta-value">
+                ${escapeHtml(item.bestTorrent?.releaseGroup || 'No preferred torrent flagged')}
+                ${item.bestTorrent?.tags?.length ? `<br><span class="meta-value muted">${escapeHtml(item.bestTorrent.tags.join(', '))}</span>` : ''}
+              </div>
             </div>
-            <div>
-              <strong>Size:</strong> ${formatBytes(item.bestTorrent.files?.reduce((sum, file) => sum + (Number(file?.length) || 0), 0))}
-              ${item.bestTorrent.groupedUrl ? ' • grouped link available' : ''}
+            <div class="meta-card">
+              <div class="meta-label">Tracker / size</div>
+              <div class="meta-value">
+                ${escapeHtml(item.bestTorrent?.tracker || '—')} • ${escapeHtml(item.bestSize)}
+                ${item.duplicateTorrentCount ? `<br><span class="meta-value muted">${item.torrents.length} unique of ${item.rawTorrentCount} raw torrents</span>` : ''}
+              </div>
             </div>
           `
+          : `
+            <div class="meta-card">
+              <div class="meta-label">Status</div>
+              <div class="meta-value muted">No SeaDex entry yet for this AniList ID.</div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">AniList ID</div>
+              <div class="meta-value">${item.id}</div>
+            </div>
+          `;
+
+        const comparisons = item.comparisons.length
+          ? `<div class="actions-row">${item.comparisons.map((url) => `<a class="mini-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Comparison</a>`).join('')}</div>`
           : '';
 
         const torrentsDetails = item.torrents.length
@@ -1008,90 +1188,67 @@
                     <div class="torrent">
                       <div class="torrent-top">
                         <div class="torrent-name">${escapeHtml(torrent.releaseGroup || 'Unknown group')}</div>
-                        <div class="status-row">
+                        <div class="badges">
                           ${torrent.isBest ? '<span class="pill ok">Best</span>' : ''}
                           ${torrent.dualAudio ? '<span class="pill info">Dual audio</span>' : ''}
                         </div>
                       </div>
                       <div class="torrent-meta">
                         <span>Tracker: ${escapeHtml(torrent.tracker || 'Unknown')}</span>
-                        <span>Size: ${torrentSize}</span>
+                        <span>Size: ${escapeHtml(torrentSize)}</span>
                         ${torrent.tags?.length ? `<span>Tags: ${escapeHtml(torrent.tags.join(', '))}</span>` : ''}
                       </div>
-                      <div class="links" style="margin-top:10px;">
-                        ${torrent.url ? `<a class="link-btn" href="${escapeHtml(torrent.url)}" target="_blank" rel="noreferrer">Torrent page</a>` : ''}
-                        ${torrent.groupedUrl ? `<a class="link-btn" href="${escapeHtml(torrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
+                      <div class="actions-row">
+                        ${torrent.url ? `<a class="mini-link" href="${escapeHtml(torrent.url)}" target="_blank" rel="noreferrer">Torrent page</a>` : ''}
+                        ${torrent.groupedUrl ? `<a class="mini-link" href="${escapeHtml(torrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
                       </div>
                     </div>
                   `;
                 }).join('')}
               </div>
-              ${item.duplicateTorrentCount ? `<div class="mirror-note">Collapsed ${item.duplicateTorrentCount} duplicate or mirrored torrent entr${item.duplicateTorrentCount === 1 ? 'y' : 'ies'} from releases.moe.</div>` : ''}
             </details>
           `
           : '';
 
-        const notes = item.notes ? `<div><strong>Notes:</strong> ${escapeHtml(item.notes)}</div>` : '';
-        const theoreticalBest = item.theoreticalBest ? `<div><strong>Theoretical best:</strong> ${escapeHtml(item.theoreticalBest)}</div>` : '';
-
-        card.innerHTML = `
-          <div class="cover">${cover}</div>
-          <div class="content">
-            <div>
-              <h2 class="title">${escapeHtml(item.title)}</h2>
-              ${item.altTitle ? `<div class="alt-title">${escapeHtml(item.altTitle)}</div>` : ''}
+        article.innerHTML = `
+          <div class="poster">${poster}</div>
+          <div class="item-main">
+            <div class="title-row">
+              <div class="title-block">
+                <h2 class="title">${escapeHtml(item.title)}</h2>
+                ${item.altTitle ? `<div class="alt-title">${escapeHtml(item.altTitle)}</div>` : ''}
+              </div>
+              <div class="badges">${statusBadges}</div>
             </div>
 
-            <div class="status-row">${statusPills}</div>
-
-            <div class="stack">
-              <div><strong>AniList ID:</strong> ${item.id}</div>
-              ${item.hasSeaDex ? `<div><strong>SeaDex updated:</strong> ${formatDateTime(item.updatedAt)}</div>` : '<div>Waiting for a SeaDex entry.</div>'}
-              ${notes}
-              ${theoreticalBest}
-              ${comparisons}
+            <div class="meta-grid">
+              <div class="meta-card">
+                <div class="meta-label">Updated</div>
+                <div class="meta-value">${item.hasSeaDex ? escapeHtml(formatDateTime(item.updatedAt)) : '—'}</div>
+              </div>
+              <div class="meta-card">
+                <div class="meta-label">AniList ID</div>
+                <div class="meta-value">${item.id}</div>
+              </div>
               ${bestTorrentBlock}
+              ${notesBlock}
+              ${theoreticalBlock}
             </div>
 
-            <div class="links">
+            <div class="actions-row">
               <a class="link-btn" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
-              ${item.hasSeaDex ? `<a class="link-btn primary-link" href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">SeaDex entry</a>` : ''}
+              ${item.hasSeaDex ? `<a class="link-btn primary" href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">SeaDex entry</a>` : ''}
               ${item.bestTorrent?.url ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.url)}" target="_blank" rel="noreferrer">Best torrent</a>` : ''}
               ${item.bestTorrent?.groupedUrl ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
             </div>
 
+            ${comparisons}
             ${torrentsDetails}
           </div>
         `;
 
-        els.grid.appendChild(card);
+        els.list.appendChild(article);
       }
-    }
-
-    function updateNextRefreshUi() {
-      if (!state.autoRefreshEnabled || !state.nextRefreshAt) {
-        els.nextRefreshChip.textContent = 'Next refresh: paused';
-        return;
-      }
-      els.nextRefreshChip.textContent = `Next refresh: ${formatRelativeTime(state.nextRefreshAt)} (${formatDateTime(state.nextRefreshAt)})`;
-    }
-
-    function scheduleAutoRefresh() {
-      clearInterval(state.intervalId);
-      clearInterval(state.countdownId);
-
-      if (!state.autoRefreshEnabled) {
-        state.nextRefreshAt = null;
-        updateNextRefreshUi();
-        return;
-      }
-
-      const settings = getSettings();
-      const ms = Math.max(1, settings.intervalMinutes) * 60 * 1000;
-      state.nextRefreshAt = new Date(Date.now() + ms);
-      state.intervalId = setInterval(() => runRefresh(false), ms);
-      state.countdownId = setInterval(updateNextRefreshUi, 1000);
-      updateNextRefreshUi();
     }
 
     async function runRefresh(showSuccess = true) {
@@ -1099,7 +1256,6 @@
       const settings = getSettings();
       saveSettings();
       applySettings(settings);
-
       state.isLoading = true;
       els.refreshBtn.disabled = true;
       setStatus('', 'Refreshing…');
@@ -1111,63 +1267,73 @@
         state.items = anime
           .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null))
           .sort((a, b) => Number(b.hasSeaDex) - Number(a.hasSeaDex) || a.title.localeCompare(b.title));
-
         state.lastCheckedAt = new Date();
-        state.consecutiveErrors = 0;
+        setStatus('ok', 'Ready');
         render();
-        setStatus('ok', 'Watching');
 
         if (showSuccess) {
           const found = state.items.filter((item) => item.hasSeaDex).length;
           showNotice(
             `Loaded <strong>${state.items.length}</strong> anime from <strong>${escapeHtml(settings.username)}</strong> / <strong>${escapeHtml(settings.listName)}</strong>. ` +
-            `<strong>${found}</strong> ${found === 1 ? 'entry is' : 'entries are'} currently on releases.moe.`,
+            `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe.`,
             'success'
           );
         }
       } catch (error) {
-        state.consecutiveErrors += 1;
         setStatus('bad', 'Error');
         const message = error instanceof Error ? error.message : String(error);
         showNotice(
           `Refresh failed. ${message}<br><br>` +
-          `If AniList loads but releases.moe does not, the likely next step is to put a tiny proxy in front of the releases.moe API and point the API base field at that proxy.`,
+          `If AniList works but releases.moe is blocked in your browser, the next step is a tiny proxy in front of the releases.moe API and pointing the API base field at that proxy.`,
           'error'
         );
       } finally {
         state.isLoading = false;
         els.refreshBtn.disabled = false;
-        scheduleAutoRefresh();
       }
-    }
-
-    function toggleAutoRefresh() {
-      state.autoRefreshEnabled = !state.autoRefreshEnabled;
-      els.togglePollingBtn.textContent = state.autoRefreshEnabled ? 'Pause auto-refresh' : 'Resume auto-refresh';
-      setStatus(state.autoRefreshEnabled ? 'ok' : 'warn', state.autoRefreshEnabled ? 'Watching' : 'Paused');
-      scheduleAutoRefresh();
     }
 
     function resetDefaults() {
       applySettings(DEFAULTS);
+      state.search = '';
+      state.filter = 'all';
+      els.searchInput.value = '';
+      updateFilterButtons();
       saveSettings();
-      state.autoRefreshEnabled = true;
-      els.togglePollingBtn.textContent = 'Pause auto-refresh';
       runRefresh(true);
+    }
+
+    function updateFilterButtons() {
+      [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
+        button.classList.toggle('active', button.dataset.filter === state.filter);
+      });
     }
 
     function init() {
       applySettings(loadSettings());
+      updateFilterButtons();
+
       els.refreshBtn.addEventListener('click', () => runRefresh(true));
-      els.togglePollingBtn.addEventListener('click', toggleAutoRefresh);
       els.resetBtn.addEventListener('click', resetDefaults);
-      [els.username, els.listName, els.interval, els.apiBase].forEach((el) => {
+      els.searchInput.addEventListener('input', (event) => {
+        state.search = event.target.value || '';
+        render();
+      });
+      els.statusFilter.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button) return;
+        state.filter = button.dataset.filter;
+        updateFilterButtons();
+        render();
+      });
+
+      [els.username, els.listName, els.apiBase].forEach((el) => {
         el.addEventListener('change', () => {
           saveSettings();
           applySettings(getSettings());
-          scheduleAutoRefresh();
         });
       });
+
       render();
       runRefresh(false);
     }
