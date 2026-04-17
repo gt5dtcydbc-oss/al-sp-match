@@ -507,15 +507,17 @@
       font-size: 0.86rem;
       line-height: 1.45;
     }
-.footer-status-healthy {
-  color: var(--ok);
-  font-weight: 700;
-}
 
-.footer-status-unhealthy {
-  color: #ff8a8a;
-  font-weight: 700;
-}
+    .footer-status-healthy {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .footer-status-unhealthy {
+      color: #ff8a8a;
+      font-weight: 700;
+    }
+
     .update-indicator {
       --indicator-rgb: 255, 255, 255;
       position: fixed;
@@ -903,7 +905,6 @@
             <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
           </div>
           <div class="helper" style="margin-top: 12px;">
-           
           </div>
         </div>
       </details>
@@ -992,7 +993,7 @@
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
+    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -1125,24 +1126,24 @@
     }
 
     function renderFooterStatus() {
-  const isUnhealthy = state.healthStatus === "unhealthy";
-  const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
-  const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
-  const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+      const isUnhealthy = state.healthStatus === "unhealthy";
+      const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
+      const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
+      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
 
-  let extra = "";
-  if (formattedSavedAt) {
-    extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
-  } else {
-    extra += " · Waiting for first update";
-  }
+      let extra = "";
+      if (formattedSavedAt) {
+        extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
+      } else {
+        extra += " · Waiting for first update";
+      }
 
-  if (isUnhealthy && state.notes.length) {
-    extra += ` · ${escapeHtml(state.notes.join(" "))}`;
-  }
+      if (isUnhealthy && state.notes.length) {
+        extra += ` · ${escapeHtml(state.notes.join(" "))}`;
+      }
 
-  els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
-}
+      els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
+    }
 
     async function graphQLRequest(query, variables) {
       const response = await fetch(ENDPOINT, {
@@ -1454,15 +1455,22 @@
         if (score > bestScore) { best = candidate; bestScore = score; }
       }
       if (!best || bestScore < 70 || !best.items.length) return null;
+
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
+
+      const latestRelease = best.items[0];
+      const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
+
       return {
         day: slot.day,
         time: slot.time,
         source: sourceName,
         sampleCount: slot.sampleCount || 1,
         matchedTitle: best.title,
-        matchedEpisode: best.items[0]?.episode || null
+        matchedEpisode: latestRelease?.episode || null,
+        latestReleaseDay: latestSlot?.weekday || null,
+        latestReleaseTime: latestSlot?.time || null
       };
     }
 
@@ -1732,7 +1740,9 @@
                 source: "rss",
                 sampleCount: primary.sampleCount || 1,
                 matchedTitle: primary.matchedTitle || "",
-                matchedEpisode: primary.matchedEpisode || null
+                matchedEpisode: primary.matchedEpisode || null,
+                latestReleaseDay: primary.latestReleaseDay || null,
+                latestReleaseTime: primary.latestReleaseTime || null
               };
             } else {
               return {
@@ -1812,9 +1822,11 @@
             time: primary.time,
             format: media.format || "",
             source: primary.source,
-            sampleCount: primary.sampleCount || 1,
+            sampleCount: Math.min(primary.sampleCount || 1, 3),
             matchedTitle: primary.matchedTitle || "",
             matchedEpisode: primary.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || null,
+            latestReleaseTime: primary.latestReleaseTime || null,
             isAdded: Boolean(state.addedShows[String(media.id)]),
             hasNextAiring,
             totalEpisodes,
@@ -1829,45 +1841,64 @@
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
+
       for (const item of items) {
         const key = String(item.id);
 
         if (item.source === "rss") {
           let entry = cache[key];
-          if (!entry || !entry.history) {
-            entry = { history: [], origin: "rss" };
+          if (!entry || typeof entry !== "object") {
+            entry = {};
           }
 
+          entry.history = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
+          entry.origin = "rss";
+
           const currentEpisode = item.matchedEpisode;
+          const currentDay = item.latestReleaseDay;
+          const currentTime = item.latestReleaseTime;
+
           const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
 
-          if (currentEpisode && !alreadySawThisEpisode) {
+          if (currentEpisode && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
             entry.history.push({
-              day: item.day,
-              time: item.time,
-              mins: toMinutes(item.time),
+              day: currentDay,
+              time: currentTime,
+              mins: toMinutes(currentTime),
               episode: currentEpisode
             });
-            if (entry.history.length > 10) entry.history.shift();
+
+            if (entry.history.length > 3) {
+              entry.history.shift();
+            }
           }
 
           if (entry.history.length > 0) {
             const allMins = entry.history.map(h => h.mins);
             const medMins = median(allMins);
+
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
-            item.day = entry.history[entry.history.length - 1].day;
+          } else {
+            item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
           cache[key] = {
             ...entry,
+            day: item.day,
+            time: item.time,
+            sampleCount: item.sampleCount,
+            matchedTitle: item.matchedTitle || "",
+            origin: "rss",
             updatedAt: new Date().toISOString()
           };
+
           output.push(item);
           continue;
         }
 
         const remembered = cache[key];
+
         if (item.source === "manual") {
           cache[key] = {
             day: item.day,
@@ -1877,13 +1908,18 @@
             updatedAt: new Date().toISOString()
           };
           output.push(item);
-        } else if (remembered && isValidTime(remembered.time)) {
+        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
+          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
+          const rememberedTime = rememberedHistory.length
+            ? minutesToHHMM(median(rememberedHistory.map(h => h.mins)))
+            : remembered.time;
+
           output.push({
             ...item,
-            day: remembered.day || item.day,
-            time: remembered.time,
+            day: item.day,
+            time: rememberedTime,
             source: "cache",
-            sampleCount: remembered.history ? remembered.history.length : (remembered.sampleCount || 1),
+            sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved"
           });
@@ -1891,6 +1927,7 @@
           output.push(item);
         }
       }
+
       saveSlotCache(state.userName, cache);
       return output;
     }
@@ -2064,9 +2101,9 @@
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
                             : item.source === "rss"
-                              ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
+                              ? `<span class="chip rss">RSS · ${Math.min(item.sampleCount || 1, 3)}</span>`
                               : item.source === "cache"
-                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${item.sampleCount || 1})</span>`
+                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${Math.min(item.sampleCount || 1, 3)})</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
