@@ -1141,10 +1141,9 @@
       if (isUnhealthy && state.notes.length) {
         extra += ` · ${escapeHtml(state.notes.join(" "))}`;
       }
-      
-els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
-   
-    
+
+      els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
+    }
 
     async function graphQLRequest(query, variables) {
       const response = await fetch(ENDPOINT, {
