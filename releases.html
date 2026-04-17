@@ -128,11 +128,45 @@
     .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
     .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
 
+    .stats-panel {
+      margin-bottom: 18px;
+      padding: 0;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .stats-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .stats-summary::-webkit-details-marker { display: none; }
+
+    .stats-summary::after {
+      content: '▾';
+      color: var(--muted);
+      transition: transform 0.16s ease;
+    }
+
+    .stats-panel[open] .stats-summary::after {
+      transform: rotate(180deg);
+    }
+
     .stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
-      margin-bottom: 18px;
+      padding: 0 14px 14px;
     }
 
     .stat {
@@ -348,23 +382,23 @@
 
     .item {
       display: grid;
-      grid-template-columns: 84px 1fr;
-      gap: 14px;
+      grid-template-columns: 58px 1fr;
+      gap: 12px;
       align-items: start;
-      padding: 14px;
+      padding: 12px;
       background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
       border: 1px solid var(--line);
-      border-radius: 20px;
+      border-radius: 18px;
     }
 
     .poster {
-      width: 84px;
+      width: 58px;
       aspect-ratio: 2 / 3;
-      border-radius: 14px;
+      border-radius: 12px;
       overflow: hidden;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
       flex: 0 0 auto;
     }
 
@@ -389,7 +423,15 @@
     .item-main {
       min-width: 0;
       display: grid;
-      gap: 10px;
+      gap: 8px;
+    }
+
+    .item-summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
     }
 
     .title-row {
@@ -402,11 +444,12 @@
 
     .title-block {
       min-width: 0;
+      flex: 1 1 auto;
     }
 
     .title {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       line-height: 1.25;
       font-weight: 800;
     }
@@ -533,6 +576,41 @@
       color: #dce4ff;
       font-weight: 800;
       font-size: 13px;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    .entry-collapse {
+      background: rgba(255,255,255,0.025);
+      border-color: rgba(255,255,255,0.055);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .entry-toggle {
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .entry-toggle::after {
+      content: 'Show details';
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .entry-collapse[open] .entry-toggle::after {
+      content: 'Hide details';
+    }
+
+    .entry-details {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 12px;
     }
 
     .torrent-list {
@@ -611,7 +689,7 @@
       .hero { padding-top: 16px; padding-bottom: 16px; }
       .bar { padding-top: 12px; padding-bottom: 12px; }
       .content { padding-top: 14px; padding-bottom: 14px; }
-      .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
       .stat { padding: 12px; min-height: 0; }
       .stat-value { font-size: 24px; }
       .controls { grid-template-columns: 1fr; }
@@ -622,16 +700,16 @@
       .field.filter,
       .field.actions { grid-column: auto; }
       .item {
-        grid-template-columns: 64px 1fr;
-        gap: 12px;
-        padding: 12px;
-        border-radius: 18px;
+        grid-template-columns: 52px 1fr;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 16px;
       }
       .poster {
-        width: 64px;
-        border-radius: 12px;
+        width: 52px;
+        border-radius: 10px;
       }
-      .title { font-size: 16px; }
+      .title { font-size: 15px; }
       .meta-grid { grid-template-columns: 1fr; }
       .actions-row,
       .torrent-top,
@@ -665,28 +743,31 @@
           <div class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></div>
         </div>
 
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-label">Anime in list</div>
-            <div class="stat-value" id="statTotal">0</div>
-            <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+        <details class="stats-panel">
+          <summary class="stats-summary">Show stats</summary>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">Anime in list</div>
+              <div class="stat-value" id="statTotal">0</div>
+              <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Found on releases.moe</div>
+              <div class="stat-value" id="statFound">0</div>
+              <div class="stat-help">Entries with a SeaDex page.</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Still waiting</div>
+              <div class="stat-value" id="statWaiting">0</div>
+              <div class="stat-help">Tracked shows that are not listed yet.</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Last checked</div>
+              <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+              <div class="stat-help">No background polling.</div>
+            </div>
           </div>
-          <div class="stat">
-            <div class="stat-label">Found on releases.moe</div>
-            <div class="stat-value" id="statFound">0</div>
-            <div class="stat-help">Entries with a SeaDex page.</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Still waiting</div>
-            <div class="stat-value" id="statWaiting">0</div>
-            <div class="stat-help">Tracked shows that are not listed yet.</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Last checked</div>
-            <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-            <div class="stat-help">No background polling.</div>
-          </div>
-        </div>
+        </details>
 
         <div class="controls">
           <div class="field username">
@@ -727,6 +808,7 @@
         <div class="bar-left">
           <div class="chip"><strong id="watchingListLabel">zrr / releases</strong></div>
           <div class="chip">Updates appear on refresh only</div>
+          <div class="chip">Stats are tucked away above</div>
         </div>
         <div class="bar-right">
           <div class="chip" id="visibleCountChip">Showing 0 titles</div>
@@ -1131,8 +1213,8 @@
 
         const statusBadges = item.hasSeaDex
           ? `
-            <span class="pill ok">On releases.moe</span>
-            ${item.incomplete ? '<span class="pill warn">Incomplete entry</span>' : ''}
+            <span class="pill ok">Found</span>
+            ${item.incomplete ? '<span class="pill warn">Incomplete</span>' : ''}
             ${item.bestTorrent?.dualAudio ? '<span class="pill info">Dual audio</span>' : ''}
           `
           : `<span class="pill bad">Waiting</span>`;
@@ -1213,7 +1295,7 @@
         article.innerHTML = `
           <div class="poster">${poster}</div>
           <div class="item-main">
-            <div class="title-row">
+            <div class="item-summary">
               <div class="title-block">
                 <h2 class="title">${escapeHtml(item.title)}</h2>
                 ${item.altTitle ? `<div class="alt-title">${escapeHtml(item.altTitle)}</div>` : ''}
@@ -1221,29 +1303,34 @@
               <div class="badges">${statusBadges}</div>
             </div>
 
-            <div class="meta-grid">
-              <div class="meta-card">
-                <div class="meta-label">Updated</div>
-                <div class="meta-value">${item.hasSeaDex ? escapeHtml(formatDateTime(item.updatedAt)) : '—'}</div>
-              </div>
-              <div class="meta-card">
-                <div class="meta-label">AniList ID</div>
-                <div class="meta-value">${item.id}</div>
-              </div>
-              ${bestTorrentBlock}
-              ${notesBlock}
-              ${theoreticalBlock}
-            </div>
+            <details class="entry-collapse">
+              <summary class="entry-toggle">Release details</summary>
+              <div class="entry-details">
+                <div class="meta-grid">
+                  <div class="meta-card">
+                    <div class="meta-label">Updated</div>
+                    <div class="meta-value">${item.hasSeaDex ? escapeHtml(formatDateTime(item.updatedAt)) : '—'}</div>
+                  </div>
+                  <div class="meta-card">
+                    <div class="meta-label">AniList ID</div>
+                    <div class="meta-value">${item.id}</div>
+                  </div>
+                  ${bestTorrentBlock}
+                  ${notesBlock}
+                  ${theoreticalBlock}
+                </div>
 
-            <div class="actions-row">
-              <a class="link-btn" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
-              ${item.hasSeaDex ? `<a class="link-btn primary" href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">SeaDex entry</a>` : ''}
-              ${item.bestTorrent?.url ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.url)}" target="_blank" rel="noreferrer">Best torrent</a>` : ''}
-              ${item.bestTorrent?.groupedUrl ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
-            </div>
+                <div class="actions-row">
+                  <a class="link-btn" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
+                  ${item.hasSeaDex ? `<a class="link-btn primary" href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">SeaDex entry</a>` : ''}
+                  ${item.bestTorrent?.url ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.url)}" target="_blank" rel="noreferrer">Best torrent</a>` : ''}
+                  ${item.bestTorrent?.groupedUrl ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
+                </div>
 
-            ${comparisons}
-            ${torrentsDetails}
+                ${comparisons}
+                ${torrentsDetails}
+              </div>
+            </details>
           </div>
         `;
 
