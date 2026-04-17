@@ -388,6 +388,13 @@
       margin-top: 10px;
     }
 
+    .mirror-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
     .torrent {
       padding: 10px 11px;
       border-radius: 12px;
@@ -432,20 +439,72 @@
     }
 
     @media (max-width: 900px) {
+      .wrap { width: min(100vw - 24px, 1200px); }
       .hero {
         grid-template-columns: 1fr;
       }
       .stats {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .toolbar {
+        align-items: stretch;
       }
     }
 
     @media (max-width: 680px) {
-      .wrap { width: min(100vw - 20px, 1200px); margin-top: 18px; }
-      .hero-card { padding: 20px; }
-      .settings { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .card { grid-template-columns: 90px 1fr; }
+      body {
+        padding-bottom: 28px;
+      }
+      .wrap {
+        width: min(100vw - 16px, 1200px);
+        margin-top: 12px;
+        margin-bottom: 28px;
+      }
+      .hero-card,
+      .stats {
+        padding: 16px;
+      }
+      .settings,
+      .stats,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .stat {
+        min-height: 0;
+      }
+      .toolbar,
+      .meta,
+      .actions,
+      .links,
+      .torrent-top {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .chip,
+      .link-btn,
+      button,
+      input {
+        width: 100%;
+      }
+      .card {
+        grid-template-columns: 1fr;
+        min-height: 0;
+      }
+      .cover {
+        min-height: 220px;
+      }
+      .content {
+        padding: 16px;
+      }
+      .title {
+        font-size: 20px;
+      }
+      .status-row {
+        align-items: stretch;
+      }
+      .pill {
+        justify-content: center;
+      }
     }
   </style>
 </head>
@@ -747,6 +806,70 @@
       return out;
     }
 
+    function normalizeLooseString(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function getTorrentSignature(torrent) {
+      const files = (torrent?.files || [])
+        .map((file) => `${file?.name || ''}:${Number(file?.length) || 0}`)
+        .sort()
+        .join('|');
+      const tags = [...(torrent?.tags || [])].map((tag) => normalizeLooseString(tag)).sort().join('|');
+      return [
+        normalizeLooseString(torrent?.groupedUrl),
+        normalizeLooseString(torrent?.infohash),
+        normalizeLooseString(torrent?.releaseGroup),
+        normalizeLooseString(torrent?.tracker),
+        Number(torrent?.dualAudio) ? 'dual' : 'single',
+        tags,
+        files
+      ].join('::');
+    }
+
+    function dedupeTorrents(torrents) {
+      const byKey = new Map();
+      for (const torrent of torrents || []) {
+        const strongKey = normalizeLooseString(torrent?.groupedUrl) || normalizeLooseString(torrent?.infohash);
+        const fallbackKey = getTorrentSignature(torrent);
+        const key = strongKey || fallbackKey;
+        const existing = byKey.get(key);
+        if (!existing) {
+          byKey.set(key, torrent);
+          continue;
+        }
+
+        const score = (item) => {
+          let n = 0;
+          if (item?.isBest) n += 100;
+          if (item?.dualAudio) n += 20;
+          if (item?.url) n += 5;
+          if (item?.groupedUrl) n += 5;
+          if ((item?.files || []).length) n += 3;
+          return n;
+        };
+
+        if (score(torrent) > score(existing)) {
+          byKey.set(key, torrent);
+        }
+      }
+      return Array.from(byKey.values());
+    }
+
+    function choosePreferredEntry(existing, candidate) {
+      if (!existing) return candidate;
+      const score = (entry) => {
+        let n = 0;
+        if (!entry?.incomplete) n += 50;
+        n += Math.min((entry?.expand?.trs || []).length, 10) * 5;
+        n += entry?.comparison ? 5 : 0;
+        const updated = Date.parse(entry?.updated || '') || 0;
+        n += Math.floor(updated / 1_000_000_000);
+        return n;
+      };
+      return score(candidate) > score(existing) ? candidate : existing;
+    }
+
     function buildSeaDexFilter(ids) {
       return '(' + ids.map((id) => `alID=${Number(id)}`).join(' || ') + ')';
     }
@@ -775,13 +898,15 @@
 
       const map = new Map();
       for (const item of results) {
-        if (item?.alID != null) map.set(Number(item.alID), item);
+        if (item?.alID == null) continue;
+        const key = Number(item.alID);
+        map.set(key, choosePreferredEntry(map.get(key), item));
       }
       return map;
     }
 
     function pickBestTorrent(entry) {
-      const torrents = entry?.expand?.trs || [];
+      const torrents = dedupeTorrents(entry?.expand?.trs || []);
       if (!torrents.length) return null;
       const sorted = [...torrents].sort((a, b) => {
         const score = (torrent) => {
@@ -803,6 +928,8 @@
         ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
         : [];
 
+      const dedupedTorrents = dedupeTorrents(entry?.expand?.trs || []);
+
       return {
         id: media.id,
         title: normalizeTitle(media),
@@ -819,7 +946,9 @@
         createdAt: entry?.created || '',
         comparisons,
         bestTorrent,
-        torrents: entry?.expand?.trs || []
+        torrents: dedupedTorrents,
+        rawTorrentCount: (entry?.expand?.trs || []).length,
+        duplicateTorrentCount: Math.max(0, (entry?.expand?.trs || []).length - dedupedTorrents.length)
       };
     }
 
@@ -871,7 +1000,7 @@
         const torrentsDetails = item.torrents.length
           ? `
             <details>
-              <summary>Show torrents (${item.torrents.length})</summary>
+              <summary>Show releases (${item.torrents.length}${item.duplicateTorrentCount ? ` unique / ${item.rawTorrentCount} raw` : ''})</summary>
               <div class="torrent-list">
                 ${item.torrents.map((torrent) => {
                   const torrentSize = formatBytes((torrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0));
@@ -897,6 +1026,7 @@
                   `;
                 }).join('')}
               </div>
+              ${item.duplicateTorrentCount ? `<div class="mirror-note">Collapsed ${item.duplicateTorrentCount} duplicate or mirrored torrent entr${item.duplicateTorrentCount === 1 ? 'y' : 'ies'} from releases.moe.</div>` : ''}
             </details>
           `
           : '';
