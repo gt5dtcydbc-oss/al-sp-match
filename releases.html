@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="description" content="Track releases.moe coverage for an AniList custom list." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Releases" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
   <title>Anime Releases Tracker</title>
   <style>
     :root {
@@ -422,6 +430,33 @@
       border-color: rgba(74,222,168,0.18);
     }
 
+    body.standalone-app .app {
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+
+    .install-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .install-hint-dismiss {
+      min-height: 40px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .install-copy {
+      color: var(--text);
+      font-weight: 700;
+    }
+
     .content {
       padding: 18px;
     }
@@ -815,6 +850,13 @@
         <div class="options-inner">
           <div id="notice" class="notice" hidden></div>
 
+        <div id="installHint" class="notice" hidden aria-live="polite">
+          <div class="install-copy">Install on iPhone: open this page in Safari, tap Share, then choose Add to Home Screen.</div>
+          <div class="install-actions">
+            <button id="dismissInstallHintBtn" class="install-hint-dismiss" type="button">Dismiss</button>
+          </div>
+        </div>
+
           <div class="options-stack">
             <details class="stats-panel">
               <summary class="stats-summary">Show stats</summary>
@@ -877,7 +919,7 @@
                 </div>
               </div>
 
-           
+
             </section>
           </div>
         </div>
@@ -887,11 +929,16 @@
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v2';
+    const STORAGE_KEY = 'releases-watchlist-settings-v3';
+    const SNAPSHOT_KEY = 'releases-watchlist-snapshot-v1';
+    const INSTALL_HINT_KEY = 'releases-watchlist-install-hint-dismissed-v1';
     const DEFAULTS = {
       username: 'zrr',
       listName: 'releases',
-      apiBase: 'https://releases.moe'
+      apiBase: 'https://releases.moe',
+      filter: 'all',
+      search: '',
+      optionsOpen: false
     };
 
     const state = {
@@ -915,6 +962,8 @@
       visibleCountChip: document.getElementById('visibleCountChip'),
       statusFilter: document.getElementById('statusFilter'),
       notice: document.getElementById('notice'),
+      installHint: document.getElementById('installHint'),
+      dismissInstallHintBtn: document.getElementById('dismissInstallHintBtn'),
       optionsPanel: document.getElementById('optionsPanel'),
       list: document.getElementById('list'),
       emptyState: document.getElementById('emptyState'),
@@ -939,7 +988,10 @@
       return {
         username: els.username.value.trim() || DEFAULTS.username,
         listName: els.listName.value.trim() || DEFAULTS.listName,
-        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
+        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, ''),
+        filter: state.filter,
+        search: state.search,
+        optionsOpen: Boolean(els.optionsPanel?.open)
       };
     }
 
@@ -947,11 +999,53 @@
       els.username.value = settings.username;
       els.listName.value = settings.listName;
       els.apiBase.value = settings.apiBase;
+      state.filter = settings.filter || 'all';
+      state.search = settings.search || '';
+      els.searchInput.value = state.search;
+      if (els.optionsPanel) els.optionsPanel.open = Boolean(settings.optionsOpen);
       els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
     }
 
     function saveSettings() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
+    }
+
+    function snapshotItems(items) {
+      return (items || []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        altTitle: item.altTitle || '',
+        cover: item.cover || '',
+        coverColor: item.coverColor || '#2d3e77',
+        aniListUrl: item.aniListUrl || '',
+        hasSeaDex: Boolean(item.hasSeaDex),
+        entryUrl: item.entryUrl || '',
+        incomplete: Boolean(item.incomplete),
+        searchBlob: item.searchBlob || ''
+      }));
+    }
+
+    function saveSnapshot() {
+      try {
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+          items: snapshotItems(state.items),
+          lastCheckedAt: state.lastCheckedAt ? new Date(state.lastCheckedAt).toISOString() : null
+        }));
+      } catch {}
+    }
+
+    function loadSnapshot() {
+      try {
+        const raw = localStorage.getItem(SNAPSHOT_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed?.items)) return false;
+        state.items = parsed.items;
+        state.lastCheckedAt = parsed.lastCheckedAt || null;
+        return true;
+      } catch {
+        return false;
+      }
     }
 
     function escapeHtml(value) {
@@ -980,6 +1074,30 @@
       els.notice.hidden = true;
       els.notice.className = 'notice';
       els.notice.innerHTML = '';
+    }
+
+    function isStandalone() {
+      return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function isLikelyIOS() {
+      return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    }
+
+    function renderInstallHint() {
+      if (!els.installHint) return;
+      const dismissed = localStorage.getItem(INSTALL_HINT_KEY) === '1';
+      const shouldShow = !dismissed && isLikelyIOS() && !isStandalone();
+      els.installHint.hidden = !shouldShow;
+    }
+
+    async function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        await navigator.serviceWorker.register('./service-worker.js', { scope: './' });
+      } catch (error) {
+        console.warn('Service worker registration failed:', error);
+      }
     }
 
     function formatDateTime(value) {
@@ -1336,6 +1454,7 @@
         state.lastCheckedAt = new Date();
         setStatus('ok', 'Ready');
         render();
+        saveSnapshot();
 
         if (showSuccess) {
           const found = state.items.filter((item) => item.hasSeaDex).length;
@@ -1373,18 +1492,27 @@
 
     function updateFilterButtons() {
       [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
-        button.classList.toggle('active', button.dataset.filter === state.filter);
+        const active = button.dataset.filter === state.filter;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
       });
     }
 
     function init() {
+      document.body.classList.toggle('standalone-app', isStandalone());
       applySettings(loadSettings());
       updateFilterButtons();
+      renderInstallHint();
 
       els.refreshBtn.addEventListener('click', () => runRefresh(true));
       els.resetBtn.addEventListener('click', resetDefaults);
+      els.dismissInstallHintBtn?.addEventListener('click', () => {
+        localStorage.setItem(INSTALL_HINT_KEY, '1');
+        renderInstallHint();
+      });
       els.searchInput.addEventListener('input', (event) => {
         state.search = event.target.value || '';
+        saveSettings();
         render();
       });
       els.statusFilter.addEventListener('click', (event) => {
@@ -1392,6 +1520,7 @@
         if (!button) return;
         state.filter = button.dataset.filter;
         updateFilterButtons();
+        saveSettings();
         render();
       });
 
@@ -1402,7 +1531,14 @@
         });
       });
 
+      els.optionsPanel?.addEventListener('toggle', saveSettings);
+
+      registerServiceWorker();
+      loadSnapshot();
       render();
+      if (state.items.length && state.lastCheckedAt) {
+        setStatus('warn', 'Showing last saved data');
+      }
       runRefresh(false);
     }
 
