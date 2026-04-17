@@ -61,9 +61,64 @@
       overflow: hidden;
     }
 
-    .hero {
-      padding: 22px;
+    .options-panel {
       border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .options-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .options-summary::-webkit-details-marker { display: none; }
+
+    .options-summary::after {
+      content: '▾';
+      color: var(--muted);
+      margin-left: auto;
+      order: 3;
+      transition: transform 0.16s ease;
+    }
+
+    .options-panel[open] .options-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .options-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .options-summary-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .options-inner {
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .options-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
       background: var(--panel-soft);
     }
 
@@ -368,27 +423,47 @@
     }
 
     .content {
-      padding: 18px 22px 22px;
+      padding: 18px;
     }
 
     .list {
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .item {
-      display: grid;
-      grid-template-columns: 58px 1fr;
-      gap: 12px;
-      align-items: start;
-      padding: 12px;
       background: rgba(255,255,255,0.03);
       border: 1px solid var(--line);
       border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .item-link,
+    .item-static {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 12px;
+      min-height: 72px;
+    }
+
+    .item-link {
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .item-link:hover {
+      background: rgba(255,255,255,0.035);
+      transform: translateY(-1px);
+    }
+
+    .item-static {
+      opacity: 0.96;
     }
 
     .poster {
-      width: 58px;
+      width: 46px;
       aspect-ratio: 2 / 3;
       border-radius: 12px;
       overflow: hidden;
@@ -419,23 +494,15 @@
     .item-main {
       min-width: 0;
       display: grid;
-      gap: 8px;
+      gap: 6px;
     }
 
     .item-summary {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       min-width: 0;
-    }
-
-    .title-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: start;
-      flex-wrap: wrap;
     }
 
     .title-block {
@@ -445,16 +512,9 @@
 
     .title {
       margin: 0;
-      font-size: 16px;
-      line-height: 1.25;
+      font-size: 15px;
+      line-height: 1.3;
       font-weight: 800;
-    }
-
-    .alt-title {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
@@ -464,8 +524,9 @@
     .badges {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
+      justify-content: flex-end;
     }
 
     .pill {
@@ -679,12 +740,10 @@
       }
 
       .shell { border-radius: 22px; }
-      .hero,
-      .bar,
       .content { padding-left: 14px; padding-right: 14px; }
-      .hero { padding-top: 16px; padding-bottom: 16px; }
-      .bar { padding-top: 12px; padding-bottom: 12px; }
+      .hero { padding: 14px; }
       .content { padding-top: 14px; padding-bottom: 14px; }
+      .options-inner { padding: 0 14px 14px; }
       .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
       .stat { padding: 12px; min-height: 0; }
       .stat-value { font-size: 24px; }
@@ -696,128 +755,133 @@
       .field.filter,
       .field.actions { grid-column: auto; }
       .item {
-        grid-template-columns: 52px 1fr;
-        gap: 10px;
-        padding: 10px;
         border-radius: 16px;
       }
+      .item-link,
+      .item-static {
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 10px;
+      }
       .poster {
-        width: 52px;
+        width: 42px;
         border-radius: 10px;
       }
-      .title { font-size: 15px; }
-      .meta-grid { grid-template-columns: 1fr; }
-      .actions-row,
-      .torrent-top,
-      .torrent-meta,
-      .bar-left,
-      .bar-right,
-      .button-row,
-      .title-row { align-items: stretch; }
-      .actions-row .link-btn,
-      .actions-row .mini-link,
+      .title { font-size: 14px; }
+      .button-row { align-items: stretch; }
       .button-row .primary-btn,
       .button-row .ghost-btn { width: 100%; }
       .pill { white-space: normal; }
-      .notice { margin-left: 14px; margin-right: 14px; }
+      .notice { margin-left: 0; margin-right: 0; }
+
+      .options-summary {
+        padding: 12px 14px;
+      }
+
+      .options-summary-right {
+        width: 100%;
+      }
+
+      .options-summary::after {
+        margin-left: 0;
+      }
+
+      .options-summary-right .chip,
+      .options-summary-right .hero-badge {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="shell">
-
-
-
-
-      <div id="notice" class="notice" hidden></div>
-
       <section class="content">
         <div id="list" class="list"></div>
         <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
       </section>
 
-      <section class="bar">
-        <div class="bar-left">
-          <div class="chip"><strong id="watchingListLabel">zrr / releases</strong></div>
-          <div class="chip">Updates appear on refresh only</div>
-          <a class="chip" href="#settingsPanel">Jump to settings</a>
-          <div class="chip">Settings and stats are below</div>
-        </div>
-        <div class="bar-right">
-          <div class="chip" id="visibleCountChip">Showing 0 titles</div>
-        </div>
-      </section>
+      <details class="options-panel" id="optionsPanel">
+        <summary class="options-summary">
+          <span class="options-title">Options</span>
+          <span class="options-summary-right">
+            <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
+            <span class="chip" id="visibleCountChip">Showing 0 titles</span>
+            <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
+          </span>
+        </summary>
 
-      <section class="hero" id="settingsPanel">
-        <div class="hero-top">
-          <div>
-            <div class="eyebrow">AniList + releases.moe</div>
-            <h1>Anime Releases Tracker</h1>
-          </div>
-          <div class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></div>
-        </div>
+        <div class="options-inner">
+          <div id="notice" class="notice" hidden></div>
 
-        <details class="stats-panel">
-          <summary class="stats-summary">Show stats</summary>
-          <div class="stats">
-            <div class="stat">
-              <div class="stat-label">Anime in list</div>
-              <div class="stat-value" id="statTotal">0</div>
-              <div class="stat-help">Unique AniList shows in the selected custom list.</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Found on releases.moe</div>
-              <div class="stat-value" id="statFound">0</div>
-              <div class="stat-help">Entries with a SeaDex page.</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Still waiting</div>
-              <div class="stat-value" id="statWaiting">0</div>
-              <div class="stat-help">Tracked shows that are not listed yet.</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Last checked</div>
-              <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-              <div class="stat-help">No background polling.</div>
-            </div>
-          </div>
-        </details>
+          <div class="options-stack">
+            <details class="stats-panel">
+              <summary class="stats-summary">Show stats</summary>
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-label">Anime in list</div>
+                  <div class="stat-value" id="statTotal">0</div>
+                  <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Found on releases.moe</div>
+                  <div class="stat-value" id="statFound">0</div>
+                  <div class="stat-help">Entries with a releases.moe page.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Still waiting</div>
+                  <div class="stat-value" id="statWaiting">0</div>
+                  <div class="stat-help">Tracked shows that are not listed yet.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Last checked</div>
+                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+                  <div class="stat-help">Only refreshes on page load or manual reload.</div>
+                </div>
+              </div>
+            </details>
 
-        <div class="controls">
-          <div class="field username">
-            <label for="username">AniList username</label>
-            <input id="username" value="zrr" autocomplete="off" />
-          </div>
-          <div class="field list">
-            <label for="listName">Custom list name</label>
-            <input id="listName" value="releases" autocomplete="off" />
-          </div>
-          <div class="field api">
-            <label for="apiBase">releases.moe API base</label>
-            <input id="apiBase" value="https://releases.moe" autocomplete="off" />
-          </div>
-          <div class="field search">
-            <label for="searchInput">Filter anime</label>
-            <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
-          </div>
-          <div class="field filter">
-            <label>Status view</label>
-            <div class="segmented" id="statusFilter">
-              <button type="button" data-filter="all" class="active">All</button>
-              <button type="button" data-filter="found">Found</button>
-              <button type="button" data-filter="waiting">Waiting</button>
-            </div>
-          </div>
-          <div class="field actions">
-            <label>Actions</label>
-            <div class="button-row">
-              <button id="refreshBtn" class="primary-btn">Reload</button>
-              <button id="resetBtn" class="ghost-btn">Reset</button>
-            </div>
+            <section class="hero" id="settingsPanel">
+              <div class="controls">
+                <div class="field username">
+                  <label for="username">AniList username</label>
+                  <input id="username" value="zrr" autocomplete="off" />
+                </div>
+                <div class="field list">
+                  <label for="listName">Custom list name</label>
+                  <input id="listName" value="releases" autocomplete="off" />
+                </div>
+                <div class="field api">
+                  <label for="apiBase">releases.moe API base</label>
+                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+                </div>
+                <div class="field search">
+                  <label for="searchInput">Filter anime</label>
+                  <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
+                </div>
+                <div class="field filter">
+                  <label>Status view</label>
+                  <div class="segmented" id="statusFilter">
+                    <button type="button" data-filter="all" class="active">All</button>
+                    <button type="button" data-filter="found">Found</button>
+                    <button type="button" data-filter="waiting">Waiting</button>
+                  </div>
+                </div>
+                <div class="field actions">
+                  <label>Actions</label>
+                  <div class="button-row">
+                    <button id="refreshBtn" class="primary-btn">Reload</button>
+                    <button id="resetBtn" class="ghost-btn">Reset</button>
+                  </div>
+                </div>
+              </div>
+
+           
+            </section>
           </div>
         </div>
-      </section>
+      </details>
     </div>
   </div>
 
@@ -851,6 +915,7 @@
       visibleCountChip: document.getElementById('visibleCountChip'),
       statusFilter: document.getElementById('statusFilter'),
       notice: document.getElementById('notice'),
+      optionsPanel: document.getElementById('optionsPanel'),
       list: document.getElementById('list'),
       emptyState: document.getElementById('emptyState'),
       statTotal: document.getElementById('statTotal'),
@@ -908,6 +973,7 @@
       els.notice.hidden = false;
       els.notice.className = `notice ${kind}`.trim();
       els.notice.innerHTML = message;
+      if (els.optionsPanel) els.optionsPanel.open = true;
     }
 
     function clearNotice() {
@@ -1204,128 +1270,48 @@
           ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
           : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
 
-        const statusBadges = item.hasSeaDex
-          ? `
-            <span class="pill ok">Found</span>
-            ${item.incomplete ? '<span class="pill warn">Incomplete</span>' : ''}
-            ${item.bestTorrent?.dualAudio ? '<span class="pill info">Dual audio</span>' : ''}
-          `
-          : `<span class="pill bad">Waiting</span>`;
+        let statusClass = 'bad';
+        let statusText = 'Waiting';
+        if (item.hasSeaDex && item.incomplete) {
+          statusClass = 'warn';
+          statusText = 'Incomplete';
+        } else if (item.hasSeaDex) {
+          statusClass = 'ok';
+          statusText = 'Found';
+        }
 
-        const notesBlock = item.notes
-          ? `<div class="meta-card"><div class="meta-label">SeaDex notes</div><div class="meta-value line-clamp-3">${escapeHtml(item.notes)}</div></div>`
-          : '';
-
-        const theoreticalBlock = item.theoreticalBest
-          ? `<div class="meta-card"><div class="meta-label">Theoretical best</div><div class="meta-value line-clamp-3">${escapeHtml(item.theoreticalBest)}</div></div>`
-          : '';
-
-        const bestTorrentBlock = item.hasSeaDex
-          ? `
-            <div class="meta-card">
-              <div class="meta-label">Best release</div>
-              <div class="meta-value">
-                ${escapeHtml(item.bestTorrent?.releaseGroup || 'No preferred torrent flagged')}
-                ${item.bestTorrent?.tags?.length ? `<br><span class="meta-value muted">${escapeHtml(item.bestTorrent.tags.join(', '))}</span>` : ''}
-              </div>
-            </div>
-            <div class="meta-card">
-              <div class="meta-label">Tracker / size</div>
-              <div class="meta-value">
-                ${escapeHtml(item.bestTorrent?.tracker || '—')} • ${escapeHtml(item.bestSize)}
-                ${item.duplicateTorrentCount ? `<br><span class="meta-value muted">${item.torrents.length} unique of ${item.rawTorrentCount} raw torrents</span>` : ''}
-              </div>
-            </div>
-          `
-          : `
-            <div class="meta-card">
-              <div class="meta-label">Status</div>
-              <div class="meta-value muted">No SeaDex entry yet for this AniList ID.</div>
-            </div>
-            <div class="meta-card">
-              <div class="meta-label">AniList ID</div>
-              <div class="meta-value">${item.id}</div>
-            </div>
-          `;
-
-        const comparisons = item.comparisons.length
-          ? `<div class="actions-row">${item.comparisons.map((url) => `<a class="mini-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Comparison</a>`).join('')}</div>`
-          : '';
-
-        const torrentsDetails = item.torrents.length
-          ? `
-            <details>
-              <summary>Show releases (${item.torrents.length}${item.duplicateTorrentCount ? ` unique / ${item.rawTorrentCount} raw` : ''})</summary>
-              <div class="torrent-list">
-                ${item.torrents.map((torrent) => {
-                  const torrentSize = formatBytes((torrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0));
-                  return `
-                    <div class="torrent">
-                      <div class="torrent-top">
-                        <div class="torrent-name">${escapeHtml(torrent.releaseGroup || 'Unknown group')}</div>
-                        <div class="badges">
-                          ${torrent.isBest ? '<span class="pill ok">Best</span>' : ''}
-                          ${torrent.dualAudio ? '<span class="pill info">Dual audio</span>' : ''}
-                        </div>
-                      </div>
-                      <div class="torrent-meta">
-                        <span>Tracker: ${escapeHtml(torrent.tracker || 'Unknown')}</span>
-                        <span>Size: ${escapeHtml(torrentSize)}</span>
-                        ${torrent.tags?.length ? `<span>Tags: ${escapeHtml(torrent.tags.join(', '))}</span>` : ''}
-                      </div>
-                      <div class="actions-row">
-                        ${torrent.url ? `<a class="mini-link" href="${escapeHtml(torrent.url)}" target="_blank" rel="noreferrer">Torrent page</a>` : ''}
-                        ${torrent.groupedUrl ? `<a class="mini-link" href="${escapeHtml(torrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </details>
-          `
-          : '';
-
-        article.innerHTML = `
+        const cardInner = `
           <div class="poster">${poster}</div>
           <div class="item-main">
-            <div class="item-summary">
-              <div class="title-block">
-                <h2 class="title">${escapeHtml(item.title)}</h2>
-                ${item.altTitle ? `<div class="alt-title">${escapeHtml(item.altTitle)}</div>` : ''}
-              </div>
-              <div class="badges">${statusBadges}</div>
+            <div class="title-block">
+              <h2 class="title">${escapeHtml(item.title)}</h2>
             </div>
-
-            <details class="entry-collapse">
-              <summary class="entry-toggle">Release details</summary>
-              <div class="entry-details">
-                <div class="meta-grid">
-                  <div class="meta-card">
-                    <div class="meta-label">Updated</div>
-                    <div class="meta-value">${item.hasSeaDex ? escapeHtml(formatDateTime(item.updatedAt)) : '—'}</div>
-                  </div>
-                  <div class="meta-card">
-                    <div class="meta-label">AniList ID</div>
-                    <div class="meta-value">${item.id}</div>
-                  </div>
-                  ${bestTorrentBlock}
-                  ${notesBlock}
-                  ${theoreticalBlock}
-                </div>
-
-                <div class="actions-row">
-                  <a class="link-btn" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
-                  ${item.hasSeaDex ? `<a class="link-btn primary" href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">SeaDex entry</a>` : ''}
-                  ${item.bestTorrent?.url ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.url)}" target="_blank" rel="noreferrer">Best torrent</a>` : ''}
-                  ${item.bestTorrent?.groupedUrl ? `<a class="link-btn" href="${escapeHtml(item.bestTorrent.groupedUrl)}" target="_blank" rel="noreferrer">Grouped link</a>` : ''}
-                </div>
-
-                ${comparisons}
-                ${torrentsDetails}
-              </div>
-            </details>
+          </div>
+          <div class="badges">
+            <span class="pill ${statusClass}">${statusText}</span>
           </div>
         `;
+
+        if (item.hasSeaDex && item.entryUrl) {
+          article.innerHTML = `
+            <a
+              class="item-link"
+              href="${escapeHtml(item.entryUrl)}"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open ${escapeHtml(item.title)} on releases.moe"
+              title="Open on releases.moe"
+            >
+              ${cardInner}
+            </a>
+          `;
+        } else {
+          article.innerHTML = `
+            <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
+              ${cardInner}
+            </div>
+          `;
+        }
 
         els.list.appendChild(article);
       }
@@ -1358,6 +1344,8 @@
             `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe.`,
             'success'
           );
+        } else if (els.optionsPanel) {
+          els.optionsPanel.open = false;
         }
       } catch (error) {
         setStatus('bad', 'Error');
