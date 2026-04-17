@@ -35,10 +35,7 @@
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(140,158,255,0.18), transparent 26%),
-        radial-gradient(circle at top right, rgba(123,92,255,0.14), transparent 22%),
-        linear-gradient(180deg, #090e1c 0%, #0b1020 100%);
+      background: var(--bg);
       min-height: 100vh;
     }
 
@@ -57,18 +54,17 @@
     }
 
     .shell {
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      background: var(--panel);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
       border-radius: 28px;
       overflow: hidden;
-      backdrop-filter: blur(14px);
     }
 
     .hero {
       padding: 22px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+      border-top: 1px solid var(--line);
+      background: var(--panel-soft);
     }
 
     .hero-top {
@@ -386,7 +382,7 @@
       gap: 12px;
       align-items: start;
       padding: 12px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      background: rgba(255,255,255,0.03);
       border: 1px solid var(--line);
       border-radius: 18px;
     }
@@ -730,7 +726,34 @@
 <body>
   <div class="app">
     <div class="shell">
-      <section class="hero">
+
+
+
+
+      <div id="notice" class="notice" hidden></div>
+
+      <section class="content">
+        <div id="list" class="list"></div>
+        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
+        <div class="footer-note">
+          If direct <code>file://</code> opening behaves oddly in your browser, serve this file from a tiny local web server instead,
+          for example <code>python -m http.server</code> in the folder that contains it.
+        </div>
+      </section>
+
+      <section class="bar">
+        <div class="bar-left">
+          <div class="chip"><strong id="watchingListLabel">zrr / releases</strong></div>
+          <div class="chip">Updates appear on refresh only</div>
+          <a class="chip" href="#settingsPanel">Jump to settings</a>
+          <div class="chip">Settings and stats are below</div>
+        </div>
+        <div class="bar-right">
+          <div class="chip" id="visibleCountChip">Showing 0 titles</div>
+        </div>
+      </section>
+
+      <section class="hero" id="settingsPanel">
         <div class="hero-top">
           <div>
             <div class="eyebrow">AniList + releases.moe</div>
@@ -801,28 +824,6 @@
               <button id="resetBtn" class="ghost-btn">Reset</button>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section class="bar">
-        <div class="bar-left">
-          <div class="chip"><strong id="watchingListLabel">zrr / releases</strong></div>
-          <div class="chip">Updates appear on refresh only</div>
-          <div class="chip">Stats are tucked away above</div>
-        </div>
-        <div class="bar-right">
-          <div class="chip" id="visibleCountChip">Showing 0 titles</div>
-        </div>
-      </section>
-
-      <div id="notice" class="notice" hidden></div>
-
-      <section class="content">
-        <div id="list" class="list"></div>
-        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
-        <div class="footer-note">
-          If direct <code>file://</code> opening behaves oddly in your browser, serve this file from a tiny local web server instead,
-          for example <code>python -m http.server</code> in the folder that contains it.
         </div>
       </section>
     </div>
