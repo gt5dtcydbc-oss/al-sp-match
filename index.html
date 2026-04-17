@@ -1141,8 +1141,12 @@
       if (isUnhealthy && state.notes.length) {
         extra += ` · ${escapeHtml(state.notes.join(" "))}`;
       }
-
-      els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
+      {
+els.footer.innerHTML = `
+  <span class="${statusClass}">${statusLabel}</span>${extra}
+  · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/" target="_blank" rel="noopener noreferrer">Release status</a>
+`;
+   
     }
 
     async function graphQLRequest(query, variables) {
