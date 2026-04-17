@@ -1,16 +1,9 @@
-1) Lazy-load the cover images
-
-Find this part inside renderBoard():
-
-${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="">` : ""}
-
-Replace it with:
-
-${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
-
-
-
-
+That is a very smart observation. You are absolutely right—if a "v2" (version 2 with subtitle or video fixes) is released hours later, keeping the newer timestamp would artificially delay the estimated release time for that slot. We want the time of the *initial* release.
+To make this work flawlessly, I've made **two** changes to the code:
+ 1. **Flipped the timestamp logic:** Changed date.getTime() > existing.date.getTime() to < so it always keeps the oldest (earliest) release time.
+ 2. **Normalized "v2" episode numbers:** The previous regular expression actually captured "v2" as part of the episode number (e.g., episode "06v2"). This meant it wouldn't have deduplicated against "06" at all! I added .replace(/v\d+/gi, "") to the episode parser so both "06" and "06v2" become exactly "06", ensuring they share the same deduplication key.
+Here is the complete, updated code:
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -521,21 +514,36 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       line-height: 1.45;
     }
 
+    .footer-status-healthy {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .footer-status-unhealthy {
+      color: #ff8a8a;
+      font-weight: 700;
+    }
+
     .update-indicator {
+      --indicator-rgb: 255, 255, 255;
       position: fixed;
       top: 12px;
       right: 12px;
       width: 9px;
       height: 9px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(var(--indicator-rgb), 0.92);
       box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.12),
-        0 0 10px rgba(255, 255, 255, 0.12);
+        0 0 0 1px rgba(var(--indicator-rgb), 0.12),
+        0 0 10px rgba(var(--indicator-rgb), 0.12);
       z-index: 9999;
       opacity: 0.9;
       pointer-events: auto;
       animation: indicatorBreathe 2.2s ease-in-out infinite;
+    }
+
+    .update-indicator.error {
+      --indicator-rgb: 255, 90, 90;
     }
 
     .update-indicator.flash {
@@ -549,33 +557,33 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         transform: scale(1);
         opacity: 0.72;
         box-shadow:
-          0 0 0 1px rgba(255, 255, 255, 0.10),
-          0 0 8px rgba(255, 255, 255, 0.08);
+          0 0 0 1px rgba(var(--indicator-rgb), 0.10),
+          0 0 8px rgba(var(--indicator-rgb), 0.08);
       }
       50% {
         transform: scale(1.12);
         opacity: 0.98;
         box-shadow:
-          0 0 0 1px rgba(255, 255, 255, 0.16),
-          0 0 14px rgba(255, 255, 255, 0.18);
+          0 0 0 1px rgba(var(--indicator-rgb), 0.16),
+          0 0 14px rgba(var(--indicator-rgb), 0.18);
       }
     }
 
     @keyframes indicatorFlash {
       0% {
         box-shadow:
-          0 0 0 0 rgba(255, 255, 255, 0.55),
-          0 0 10px rgba(255, 255, 255, 0.18);
+          0 0 0 0 rgba(var(--indicator-rgb), 0.55),
+          0 0 10px rgba(var(--indicator-rgb), 0.18);
       }
       45% {
         box-shadow:
-          0 0 0 10px rgba(255, 255, 255, 0),
-          0 0 20px rgba(255, 255, 255, 0.28);
+          0 0 0 10px rgba(var(--indicator-rgb), 0),
+          0 0 20px rgba(var(--indicator-rgb), 0.28);
       }
       100% {
         box-shadow:
-          0 0 0 0 rgba(255, 255, 255, 0),
-          0 0 10px rgba(255, 255, 255, 0.12);
+          0 0 0 0 rgba(var(--indicator-rgb), 0),
+          0 0 10px rgba(var(--indicator-rgb), 0.12);
       }
     }
 
@@ -869,7 +877,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       <details class="panel top-dropdown">
         <summary>
           <div>
-            <h2 class="section-title">Loaded Entries Overview</h2>
+            <h2 class="section-title">Fetched Entries</h2>
             <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
@@ -883,7 +891,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and MEMORY.</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Memory</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -899,11 +907,10 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
             </div>
           </div>
           <div class="button-row" style="margin-top: 8px;">
-            <button id="clearMemoryBtn" class="secondary" type="button">Clear MEMORY</button>
+            <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
             <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
           </div>
           <div class="helper" style="margin-top: 12px;">
-            Per-show customization now lives on each card. Use the small settings icon on a show to adjust its slot, or use Add show here to add extra currently airing entries.
           </div>
         </div>
       </details>
@@ -992,7 +999,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
+    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -1107,14 +1114,41 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
       isLoading: false,
-      activeSettingsId: null
+      activeSettingsId: null,
+      healthStatus: "healthy"
     };
 
     showMessage("info", "Ready.");
+    setUpdateIndicatorStatus("ok");
 
     function showMessage(type, text) {
       els.message.className = `message ${type}`;
       els.message.textContent = text;
+    }
+
+    function setUpdateIndicatorStatus(status = "ok") {
+      if (!els.updateIndicator) return;
+      els.updateIndicator.classList.toggle("error", status === "error");
+    }
+
+    function renderFooterStatus() {
+      const isUnhealthy = state.healthStatus === "unhealthy";
+      const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
+      const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
+      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+
+      let extra = "";
+      if (formattedSavedAt) {
+        extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
+      } else {
+        extra += " · Waiting for first update";
+      }
+
+      if (isUnhealthy && state.notes.length) {
+        extra += ` · ${escapeHtml(state.notes.join(" "))}`;
+      }
+
+      els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
     }
 
     async function graphQLRequest(query, variables) {
@@ -1316,7 +1350,8 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
       if (!match) return null;
       const showTitle = match[1].trim();
-      const episodeToken = match[2].replace(/\s+/g, "");
+      // Remove spaces and any "v2", "v3" suffixes so they share the same base episode deduplication key
+      const episodeToken = match[2].replace(/\s+/g, "").replace(/v\d+/gi, "");
       if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
       return { showTitle, episode: episodeToken };
     }
@@ -1337,7 +1372,8 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         if (Number.isNaN(date.getTime())) continue;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
-        if (!existing || date.getTime() > existing.date.getTime()) {
+        // Changed > to < to keep the OLDEST release time, ignoring later delayed v2s
+        if (!existing || date.getTime() < existing.date.getTime()) {
           deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
       }
@@ -1427,15 +1463,22 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         if (score > bestScore) { best = candidate; bestScore = score; }
       }
       if (!best || bestScore < 70 || !best.items.length) return null;
+
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
+
+      const latestRelease = best.items[0];
+      const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
+
       return {
         day: slot.day,
         time: slot.time,
         source: sourceName,
         sampleCount: slot.sampleCount || 1,
         matchedTitle: best.title,
-        matchedEpisode: best.items[0]?.episode || null
+        matchedEpisode: latestRelease?.episode || null,
+        latestReleaseDay: latestSlot?.weekday || null,
+        latestReleaseTime: latestSlot?.time || null
       };
     }
 
@@ -1517,6 +1560,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         primaryCandidates: state.primaryCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
+        healthStatus: state.healthStatus,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -1537,6 +1581,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
+      state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       if (!Number.isFinite(snapshotSavedAt)) {
@@ -1546,6 +1591,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         } catch (_) {}
       }
       refreshBoardFromState();
+      setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
@@ -1702,7 +1748,9 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
                 source: "rss",
                 sampleCount: primary.sampleCount || 1,
                 matchedTitle: primary.matchedTitle || "",
-                matchedEpisode: primary.matchedEpisode || null
+                matchedEpisode: primary.matchedEpisode || null,
+                latestReleaseDay: primary.latestReleaseDay || null,
+                latestReleaseTime: primary.latestReleaseTime || null
               };
             } else {
               return {
@@ -1782,9 +1830,11 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
             time: primary.time,
             format: media.format || "",
             source: primary.source,
-            sampleCount: primary.sampleCount || 1,
+            sampleCount: Math.min(primary.sampleCount || 1, 3),
             matchedTitle: primary.matchedTitle || "",
             matchedEpisode: primary.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || null,
+            latestReleaseTime: primary.latestReleaseTime || null,
             isAdded: Boolean(state.addedShows[String(media.id)]),
             hasNextAiring,
             totalEpisodes,
@@ -1799,45 +1849,64 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
+
       for (const item of items) {
         const key = String(item.id);
 
         if (item.source === "rss") {
           let entry = cache[key];
-          if (!entry || !entry.history) {
-            entry = { history: [], origin: "rss" };
+          if (!entry || typeof entry !== "object") {
+            entry = {};
           }
 
+          entry.history = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
+          entry.origin = "rss";
+
           const currentEpisode = item.matchedEpisode;
+          const currentDay = item.latestReleaseDay;
+          const currentTime = item.latestReleaseTime;
+
           const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
 
-          if (currentEpisode && !alreadySawThisEpisode) {
+          if (currentEpisode && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
             entry.history.push({
-              day: item.day,
-              time: item.time,
-              mins: toMinutes(item.time),
+              day: currentDay,
+              time: currentTime,
+              mins: toMinutes(currentTime),
               episode: currentEpisode
             });
-            if (entry.history.length > 10) entry.history.shift();
+
+            if (entry.history.length > 3) {
+              entry.history.shift();
+            }
           }
 
           if (entry.history.length > 0) {
             const allMins = entry.history.map(h => h.mins);
             const medMins = median(allMins);
+
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
-            item.day = entry.history[entry.history.length - 1].day;
+          } else {
+            item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
           cache[key] = {
             ...entry,
+            day: item.day,
+            time: item.time,
+            sampleCount: item.sampleCount,
+            matchedTitle: item.matchedTitle || "",
+            origin: "rss",
             updatedAt: new Date().toISOString()
           };
+
           output.push(item);
           continue;
         }
 
         const remembered = cache[key];
+
         if (item.source === "manual") {
           cache[key] = {
             day: item.day,
@@ -1847,13 +1916,18 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
             updatedAt: new Date().toISOString()
           };
           output.push(item);
-        } else if (remembered && isValidTime(remembered.time)) {
+        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
+          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
+          const rememberedTime = rememberedHistory.length
+            ? minutesToHHMM(median(rememberedHistory.map(h => h.mins)))
+            : remembered.time;
+
           output.push({
             ...item,
-            day: remembered.day || item.day,
-            time: remembered.time,
+            day: item.day,
+            time: rememberedTime,
             source: "cache",
-            sampleCount: remembered.history ? remembered.history.length : (remembered.sampleCount || 1),
+            sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved"
           });
@@ -1861,6 +1935,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
           output.push(item);
         }
       }
+
       saveSlotCache(state.userName, cache);
       return output;
     }
@@ -2020,7 +2095,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
                     return `
                     <article class="entry">
                       <div class="thumb">
-                        ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="">` : ""}
+                       ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
                       <div class="entry-body">
                         <div class="entry-title">
@@ -2034,9 +2109,9 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
                             : item.source === "rss"
-                              ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
+                              ? `<span class="chip rss">RSS · ${Math.min(item.sampleCount || 1, 3)}</span>`
                               : item.source === "cache"
-                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${item.sampleCount || 1})</span>`
+                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${Math.min(item.sampleCount || 1, 3)})</span>`
                                 : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
@@ -2092,17 +2167,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
-      const customCount = state.items.filter(item => item.source === "manual").length;
-      const addedCount = state.items.filter(item => item.isAdded).length;
-      const rssCount = state.items.filter(item => item.source === "rss").length;
-      const cacheCount = state.items.filter(item => item.source === "cache").length;
-      const fallbackCount = state.items.filter(item => item.source === "fallback").length;
-      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
-      const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
-      els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} MEMORY, ${fallbackCount} fallback.` +
-        updatedLabel +
-        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
+      renderFooterStatus();
     }
 
     function persistState() {
@@ -2292,7 +2357,7 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
       if (!els.addShowResults) return;
 
       const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
-      const addedIds = new Set(Object.keys(state.addedShows || {}));
+      const addedIds = new Set(Object.keys(state.addedShows || {}).map(String));
 
       if (!state.searchResults.length) {
         const text = els.addShowSearch.value.trim().length >= 2
@@ -2353,6 +2418,10 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
     async function loadBoard(options = {}) {
       const userName = String(options.userName ?? els.username.value).trim();
       if (!userName) {
+        state.healthStatus = "unhealthy";
+        state.notes = ["Please enter a username."];
+        setUpdateIndicatorStatus("error");
+        renderFooterStatus();
         showMessage("error", "Please enter a username.");
         return false;
       }
@@ -2407,7 +2476,9 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
         state.notes = nextNotes;
+        state.healthStatus = nextNotes.length ? "unhealthy" : "healthy";
         state.lastSuccessfulLoadAt = Date.now();
+        setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
 
         refreshBoardFromState();
         saveBoardSnapshot();
@@ -2425,7 +2496,11 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
 
+        state.healthStatus = "unhealthy";
+        state.notes = [`AniList: ${message}`];
+        setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        renderFooterStatus();
 
         if (!preserveBoard) renderSearchResults();
 
@@ -2549,13 +2624,20 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
         if (els.username.value.trim()) {
           loadBoard({ reason: hydrated ? "refresh" : "load" });
         } else {
+          state.healthStatus = "healthy";
+          setUpdateIndicatorStatus("ok");
           updateIndicatorTitle(0);
+          renderFooterStatus();
         }
       } catch (error) {
         console.error("Boot failed:", error);
         clearBoardSnapshot();
         state.lastSuccessfulLoadAt = 0;
+        state.healthStatus = "unhealthy";
+        state.notes = [`Startup: ${error.message}`];
+        setUpdateIndicatorStatus("error");
         updateIndicatorTitle(0);
+        renderFooterStatus();
         showMessage("error", `Startup failed: ${error.message}`);
       }
     }
@@ -2568,3 +2650,5 @@ ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decod
   </script>
 </body>
 </html>
+
+```
