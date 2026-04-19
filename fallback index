@@ -1,9 +1,3 @@
-That is a very smart observation. You are absolutely right—if a "v2" (version 2 with subtitle or video fixes) is released hours later, keeping the newer timestamp would artificially delay the estimated release time for that slot. We want the time of the *initial* release.
-To make this work flawlessly, I've made **two** changes to the code:
- 1. **Flipped the timestamp logic:** Changed date.getTime() > existing.date.getTime() to < so it always keeps the oldest (earliest) release time.
- 2. **Normalized "v2" episode numbers:** The previous regular expression actually captured "v2" as part of the episode number (e.g., episode "06v2"). This meant it wouldn't have deduplicated against "06" at all! I added .replace(/v\d+/gi, "") to the episode parser so both "06" and "06v2" become exactly "06", ensuring they share the same deduplication key.
-Here is the complete, updated code:
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1148,7 +1142,10 @@ Here is the complete, updated code:
         extra += ` · ${escapeHtml(state.notes.join(" "))}`;
       }
 
-      els.footer.innerHTML = `<span class="${statusClass}">${statusLabel}</span>${extra}`;
+      els.footer.innerHTML = `
+  <span class="${statusClass}">${statusLabel}</span>${extra}
+  · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
+`;
     }
 
     async function graphQLRequest(query, variables) {
@@ -2650,5 +2647,3 @@ Here is the complete, updated code:
   </script>
 </body>
 </html>
-
-```
