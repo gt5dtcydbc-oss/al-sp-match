@@ -84,6 +84,13 @@
       align-items: end;
     }
 
+    .manager-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: start;
+    }
+
     .field { display: grid; gap: 8px; }
     .field label { color: var(--muted); font-size: 0.92rem; }
 
@@ -99,13 +106,6 @@
       padding: 12px 14px;
       border-radius: 14px;
       outline: none;
-    }
-    
-    textarea {
-      resize: vertical;
-      line-height: 1.4;
-      white-space: pre;
-      overflow-x: auto;
     }
 
     input[type="text"]:focus,
@@ -400,21 +400,29 @@
       align-items: center;
       border-radius: 999px;
       padding: 3px 7px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text);
       font-size: 0.71rem;
       font-weight: 700;
+      border: 1px solid transparent;
     }
 
-    .chip.rss,
     .chip.cache,
-    .chip.fallback,
     .chip.manual,
     .chip.added {
       background: rgba(255, 255, 255, 0.06);
       border-color: rgba(255, 255, 255, 0.10);
       color: var(--text);
+    }
+
+    .chip.rss {
+      background: rgba(140, 226, 174, 0.12);
+      border-color: rgba(140, 226, 174, 0.25);
+      color: var(--ok);
+    }
+
+    .chip.fallback {
+      background: rgba(255, 212, 138, 0.12);
+      border-color: rgba(255, 212, 138, 0.25);
+      color: var(--warn);
     }
 
     .countdown-inline {
@@ -596,6 +604,34 @@
       color: var(--muted);
       font-size: 0.86rem;
       line-height: 1.45;
+    }
+
+    .health-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .health-status::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .health-status.healthy { color: var(--ok); }
+    .health-status.healthy::before { 
+      background: var(--ok); 
+      box-shadow: 0 0 8px rgba(140, 226, 174, 0.4); 
+    }
+
+    .health-status.unhealthy { color: var(--warn); }
+    .health-status.unhealthy::before { 
+      background: var(--warn); 
+      box-shadow: 0 0 8px rgba(255, 212, 138, 0.4); 
     }
 
     .update-indicator {
@@ -1051,20 +1087,19 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the RSS feeds, proxy settings, and memory.</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
         <div class="top-dropdown-body">
           <div class="config-grid">
             <div class="field">
-              <label for="rssUrl">RSS Feed URLs (One per line)</label>
-              <textarea id="rssUrl" rows="3" spellcheck="false" autocomplete="off">https://subsplease.org/rss/?r=1080
-https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
+              <label for="rssUrl">SubsPlease RSS URL</label>
+              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
             </div>
             <div class="field">
-              <label for="rssProxyTemplate">Proxy</label>
-              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" value="https://corsproxy.io/?%URL%" autocomplete="off" />
+              <label for="rssProxyTemplate">SubsPlease proxy</label>
+              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
             </div>
           </div>
           <div class="button-row" style="margin-top: 8px;">
@@ -1262,6 +1297,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
 
     const state = {
       userName: "",
+      fetchStatus: "healthy",
       currentEntries: [],
       mergedEntries: [],
       overrides: {},
@@ -1284,6 +1320,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       els.message.textContent = text;
     }
 
+    // --- Toast Notification System ---
     function showToast(message, type = "info", duration = 3000) {
       const container = document.getElementById("toastContainer");
       if (!container) return;
@@ -1538,29 +1575,10 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       }));
     }
 
-    function parseGenericFeeds(feedDataArray) {
-      const masterCandidates = new Map();
-
-      for (const feed of feedDataArray) {
-        if (!feed.text) continue;
-        
-        let candidates = [];
-        try {
-          candidates = parseXmlFeed(feed.text);
-        } catch (e) {
-          continue;
-        }
-
-        for (const candidate of candidates) {
-          candidate.priority = feed.priority;
-          const normTitle = normalizeTitle(candidate.title);
-          
-          if (!masterCandidates.has(normTitle)) {
-            masterCandidates.set(normTitle, candidate);
-          }
-        }
-      }
-      return Array.from(masterCandidates.values());
+    function parseGenericFeed(text) {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return [];
+      return parseXmlFeed(trimmed);
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -1625,22 +1643,11 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
       let best = null;
       let bestScore = 0;
-      
       for (const candidate of safeCandidates) {
-        let score = scoreMatch(candidate, variants);
-        
-        if (score > 0) {
-          // Penalize lower priority feeds so the first URL usually wins
-          score = score - ((candidate.priority || 0) * 12); 
-          
-          if (score >= 60 && score > bestScore) { 
-            best = candidate;
-            bestScore = score;
-          }
-        }
+        const score = scoreMatch(candidate, variants);
+        if (score > bestScore) { best = candidate; bestScore = score; }
       }
-      
-      if (!best || bestScore < 60 || !best.items.length) return null;
+      if (!best || bestScore < 70 || !best.items.length) return null;
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
       return {
@@ -1793,11 +1800,13 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       return Array.from(map.values());
     }
 
+    // --- 90 DAY GARBAGE COLLECTION ROUTINE ---
     function cleanUpOrphanedData() {
       const currentIds = new Set((state.currentEntries || []).map(e => String(e?.media?.id)));
       const addedIds = new Set(Object.keys(state.addedShows || {}));
       let overridesChanged = false;
 
+      // Clean up orphaned manual overrides
       for (const id of Object.keys(state.overrides || {})) {
         if (!currentIds.has(id) && !addedIds.has(id)) {
           delete state.overrides[id];
@@ -1807,6 +1816,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       
       if (overridesChanged) persistState();
 
+      // Clean up old memory (cache) after 90 days
       const cache = loadSlotCache(state.userName);
       const now = Date.now();
       const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
@@ -1816,6 +1826,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
         const itemDate = item.updatedAt ? new Date(item.updatedAt).getTime() : now;
         const itemAge = now - itemDate;
         
+        // Delete ONLY IF older than 90 days AND no longer actively on the board
         if (itemAge > NINETY_DAYS_MS && !currentIds.has(id) && !addedIds.has(id)) {
           delete cache[id];
           cacheChanged = true;
@@ -1827,6 +1838,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
         console.info("Cleaned up orphaned shows from local storage.");
       }
     }
+    // -----------------------------------------
 
     function mediaCatalog() {
       const map = new Map();
@@ -2185,10 +2197,14 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       const fallbackCount = state.items.filter(item => item.source === "fallback").length;
       const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
       const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
-      els.footer.textContent =
-        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
-        updatedLabel +
-        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
+      
+      const isHealthy = state.fetchStatus === "healthy";
+      const healthHtml = `<span class="health-status ${isHealthy ? 'healthy' : 'unhealthy'}">${isHealthy ? 'Healthy' : 'Unhealthy'}</span>`;
+
+      els.footer.innerHTML =
+        `${healthHtml} &bull; ${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        escapeHtml(updatedLabel) +
+        (state.notes.length ? ` <strong style="color: var(--warn); margin-left: 6px;">${escapeHtml(state.notes.join(" "))}</strong>` : "");
     }
 
     function persistState() {
@@ -2441,6 +2457,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       if (!userName) { showMessage("error", "Please enter a username."); return false; }
       if (state.isLoading) return false;
       state.isLoading = true;
+      state.fetchStatus = "healthy";
       savePageSettings();
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
@@ -2449,36 +2466,26 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
       state.addedShows = loadAddedShows(userName);
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
-      
       try {
         const nextNotes = [];
         const entries = await fetchAniListWatching(userName);
         const nextCurrentEntries = dedupeEntriesById(entries);
         const nextTotalAniListEntries = nextCurrentEntries.length;
-        
-        const rssInputRaw = els.rssUrl.value.trim();
-        const urls = rssInputRaw.split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
-        
-        const feedPromises = urls.map(url => fetchTextWithOptionalProxy(url, els.rssProxyTemplate.value.trim()));
-        const feedResults = await Promise.allSettled(feedPromises);
-        
-        const feedDataArray = [];
-        for (let i = 0; i < feedResults.length; i++) {
-          const res = feedResults[i];
-          if (res.status === "fulfilled" && res.value.trim()) {
-            feedDataArray.push({ text: res.value.trim(), priority: i });
-          } else if (res.status === "rejected") {
-            nextNotes.push(`Feed ${i+1} failed: ${res.reason.message}`);
-          }
-        }
-
+        const primaryResult = await fetchTextWithOptionalProxy(
+          els.rssUrl.value.trim(),
+          els.rssProxyTemplate.value.trim()
+        );
         let nextPrimaryCandidates = [];
-        if (feedDataArray.length > 0) {
+        if (primaryResult.trim()) {
           try {
-            nextPrimaryCandidates = parseGenericFeeds(feedDataArray);
+            nextPrimaryCandidates = parseGenericFeed(primaryResult);
           } catch (error) {
-            nextNotes.push(`Feed parse error: ${error.message}`);
+            nextNotes.push(`SubsPlease: ${error.message}`);
+            state.fetchStatus = "unhealthy";
           }
+        } else {
+            nextNotes.push(`SubsPlease: Empty feed`);
+            state.fetchStatus = "unhealthy";
         }
         
         state.currentEntries = nextCurrentEntries;
@@ -2487,6 +2494,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
         state.notes = nextNotes;
         state.lastSuccessfulLoadAt = Date.now();
         
+        // --- 90 Day Clean up called automatically on load ---
         cleanUpOrphanedData();
         
         refreshBoardFromState();
@@ -2499,6 +2507,9 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
         );
         return true;
       } catch (error) {
+        state.fetchStatus = "unhealthy";
+        refreshBoardFromState();
+        
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
@@ -2595,7 +2606,7 @@ https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
     });
 
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); loadBoard(); } });
+    els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
 
     [els.username, els.rssUrl, els.rssProxyTemplate].forEach(el => {
