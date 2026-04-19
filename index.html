@@ -1191,7 +1191,7 @@
       let lastError = null;
       for (const target of targets) {
         try {
-          const response = await fetch(target, { method: "GET" });
+          const response = await fetch(target, { method: "GET", cache: "no-store" });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
         } catch (error) {
