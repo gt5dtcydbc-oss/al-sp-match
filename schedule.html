@@ -84,13 +84,6 @@
       align-items: end;
     }
 
-    .manager-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: 1.1fr 0.9fr;
-      align-items: start;
-    }
-
     .field { display: grid; gap: 8px; }
     .field label { color: var(--muted); font-size: 0.92rem; }
 
@@ -106,6 +99,13 @@
       padding: 12px 14px;
       border-radius: 14px;
       outline: none;
+    }
+    
+    textarea {
+      resize: vertical;
+      line-height: 1.4;
+      white-space: pre;
+      overflow-x: auto;
     }
 
     input[type="text"]:focus,
@@ -803,6 +803,49 @@
         opacity: 1;
       }
     }
+    
+    /* Toast Container Styles */
+    #toastContainer {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10001;
+      pointer-events: none;
+    }
+
+    /* Individual Toast Styles */
+    .toast {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--line-soft);
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      transform: translateY(20px);
+      opacity: 0;
+      animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .toast.success { border-left: 4px solid var(--ok); }
+    .toast.warn { border-left: 4px solid var(--warn); }
+    .toast.info { border-left: 4px solid var(--accent); }
+
+    .toast.hiding {
+      animation: toastFadeOut 0.2s ease-in forwards;
+    }
+
+    @keyframes toastSlideIn {
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes toastFadeOut {
+      to { transform: translateY(-10px); opacity: 0; }
+    }
 
     @media (max-width: 1180px) {
       .manager-grid { grid-template-columns: 1fr; }
@@ -909,6 +952,13 @@
         background: rgba(17, 17, 17, 0.94);
         backdrop-filter: blur(12px);
       }
+      
+      #toastContainer {
+        bottom: 80px;
+        left: 16px;
+        right: 16px;
+        align-items: center;
+      }
     }
 
     @media (max-width: 480px) {
@@ -1001,19 +1051,20 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
+            <div class="manager-toggle-copy">Expand to edit the RSS feeds, proxy settings, and memory.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
         <div class="top-dropdown-body">
           <div class="config-grid">
             <div class="field">
-              <label for="rssUrl">SubsPlease RSS URL</label>
-              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+              <label for="rssUrl">RSS Feed URLs (One per line)</label>
+              <textarea id="rssUrl" rows="3" spellcheck="false" autocomplete="off">https://subsplease.org/rss/?r=1080
+https://nyaa.si/?page=rss&q=varyg&c=1_2&f=0</textarea>
             </div>
             <div class="field">
-              <label for="rssProxyTemplate">SubsPlease proxy</label>
-              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+              <label for="rssProxyTemplate">Proxy</label>
+              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" value="https://corsproxy.io/?%URL%" autocomplete="off" />
             </div>
           </div>
           <div class="button-row" style="margin-top: 8px;">
@@ -1107,6 +1158,8 @@
       </div>
     </div>
   </div>
+
+  <div id="toastContainer" aria-live="polite"></div>
 
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
@@ -1229,6 +1282,24 @@
     function showMessage(type, text) {
       els.message.className = `message ${type}`;
       els.message.textContent = text;
+    }
+
+    function showToast(message, type = "info", duration = 3000) {
+      const container = document.getElementById("toastContainer");
+      if (!container) return;
+
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add("hiding");
+        toast.addEventListener("animationend", () => {
+          toast.remove();
+        });
+      }, duration);
     }
 
     async function graphQLRequest(query, variables) {
@@ -1467,10 +1538,29 @@
       }));
     }
 
-    function parseGenericFeed(text) {
-      const trimmed = String(text || "").trim();
-      if (!trimmed) return [];
-      return parseXmlFeed(trimmed);
+    function parseGenericFeeds(feedDataArray) {
+      const masterCandidates = new Map();
+
+      for (const feed of feedDataArray) {
+        if (!feed.text) continue;
+        
+        let candidates = [];
+        try {
+          candidates = parseXmlFeed(feed.text);
+        } catch (e) {
+          continue;
+        }
+
+        for (const candidate of candidates) {
+          candidate.priority = feed.priority;
+          const normTitle = normalizeTitle(candidate.title);
+          
+          if (!masterCandidates.has(normTitle)) {
+            masterCandidates.set(normTitle, candidate);
+          }
+        }
+      }
+      return Array.from(masterCandidates.values());
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -1535,11 +1625,22 @@
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
       let best = null;
       let bestScore = 0;
+      
       for (const candidate of safeCandidates) {
-        const score = scoreMatch(candidate, variants);
-        if (score > bestScore) { best = candidate; bestScore = score; }
+        let score = scoreMatch(candidate, variants);
+        
+        if (score > 0) {
+          // Penalize lower priority feeds so the first URL usually wins
+          score = score - ((candidate.priority || 0) * 12); 
+          
+          if (score >= 60 && score > bestScore) { 
+            best = candidate;
+            bestScore = score;
+          }
+        }
       }
-      if (!best || bestScore < 70 || !best.items.length) return null;
+      
+      if (!best || bestScore < 60 || !best.items.length) return null;
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
       return {
@@ -1592,7 +1693,12 @@
     }
 
     function saveJSON(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+      try { 
+        localStorage.setItem(key, JSON.stringify(value)); 
+      } catch (error) {
+        console.warn("localStorage save failed:", error);
+        showToast("Warning: Could not save to local storage. Changes will be lost on refresh.", "warn", 5000);
+      }
     }
 
     function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
@@ -1685,6 +1791,41 @@
         if (!map.has(id)) map.set(id, entry);
       }
       return Array.from(map.values());
+    }
+
+    function cleanUpOrphanedData() {
+      const currentIds = new Set((state.currentEntries || []).map(e => String(e?.media?.id)));
+      const addedIds = new Set(Object.keys(state.addedShows || {}));
+      let overridesChanged = false;
+
+      for (const id of Object.keys(state.overrides || {})) {
+        if (!currentIds.has(id) && !addedIds.has(id)) {
+          delete state.overrides[id];
+          overridesChanged = true;
+        }
+      }
+      
+      if (overridesChanged) persistState();
+
+      const cache = loadSlotCache(state.userName);
+      const now = Date.now();
+      const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+      let cacheChanged = false;
+
+      for (const [id, item] of Object.entries(cache)) {
+        const itemDate = item.updatedAt ? new Date(item.updatedAt).getTime() : now;
+        const itemAge = now - itemDate;
+        
+        if (itemAge > NINETY_DAYS_MS && !currentIds.has(id) && !addedIds.has(id)) {
+          delete cache[id];
+          cacheChanged = true;
+        }
+      }
+
+      if (cacheChanged) {
+        saveSlotCache(state.userName, cache);
+        console.info("Cleaned up orphaned shows from local storage.");
+      }
     }
 
     function mediaCatalog() {
@@ -2162,6 +2303,7 @@
       persistState();
       refreshBoardFromState();
       closeSettingsModal();
+      showToast("Custom time saved.", "success");
     }
 
     function useDetectedForActiveShow() {
@@ -2188,6 +2330,7 @@
       persistState();
       refreshBoardFromState();
       populateShowSettingsModal();
+      showToast("Reverted to detected time.", "success");
     }
 
     function clearOrRemoveActiveShow() {
@@ -2202,6 +2345,7 @@
         persistState();
         refreshBoardFromState();
         closeSettingsModal();
+        showToast("Show removed from board.", "info");
         return;
       }
 
@@ -2209,6 +2353,7 @@
       persistState();
       refreshBoardFromState();
       closeSettingsModal();
+      showToast("Custom slot cleared.", "info");
     }
 
     function addShowFromSearch(media) {
@@ -2226,6 +2371,7 @@
       refreshBoardFromState();
       closeAddShowModal();
       openSettingsModalForId(media.id);
+      showToast("Show added to your board.", "success");
     }
 
     function renderSearchResults() {
@@ -2303,28 +2449,46 @@
       state.addedShows = loadAddedShows(userName);
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
+      
       try {
         const nextNotes = [];
         const entries = await fetchAniListWatching(userName);
         const nextCurrentEntries = dedupeEntriesById(entries);
         const nextTotalAniListEntries = nextCurrentEntries.length;
-        const primaryResult = await fetchTextWithOptionalProxy(
-          els.rssUrl.value.trim(),
-          els.rssProxyTemplate.value.trim()
-        );
-        let nextPrimaryCandidates = [];
-        if (primaryResult.trim()) {
-          try {
-            nextPrimaryCandidates = parseGenericFeed(primaryResult);
-          } catch (error) {
-            nextNotes.push(`SubsPlease: ${error.message}`);
+        
+        const rssInputRaw = els.rssUrl.value.trim();
+        const urls = rssInputRaw.split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
+        
+        const feedPromises = urls.map(url => fetchTextWithOptionalProxy(url, els.rssProxyTemplate.value.trim()));
+        const feedResults = await Promise.allSettled(feedPromises);
+        
+        const feedDataArray = [];
+        for (let i = 0; i < feedResults.length; i++) {
+          const res = feedResults[i];
+          if (res.status === "fulfilled" && res.value.trim()) {
+            feedDataArray.push({ text: res.value.trim(), priority: i });
+          } else if (res.status === "rejected") {
+            nextNotes.push(`Feed ${i+1} failed: ${res.reason.message}`);
           }
         }
+
+        let nextPrimaryCandidates = [];
+        if (feedDataArray.length > 0) {
+          try {
+            nextPrimaryCandidates = parseGenericFeeds(feedDataArray);
+          } catch (error) {
+            nextNotes.push(`Feed parse error: ${error.message}`);
+          }
+        }
+        
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextTotalAniListEntries;
         state.primaryCandidates = nextPrimaryCandidates;
         state.notes = nextNotes;
         state.lastSuccessfulLoadAt = Date.now();
+        
+        cleanUpOrphanedData();
+        
         refreshBoardFromState();
         saveBoardSnapshot();
         pulseUpdateIndicator();
@@ -2412,7 +2576,7 @@
       els.clearMemoryBtn.addEventListener("click", () => {
         const scopedUser = els.username.value.trim() || state.userName;
         clearSlotCache(scopedUser);
-        showMessage("info", "Memory cleared.");
+        showToast("Cache cleared successfully.", "success");
         if (state.userName) refreshBoardFromState();
       });
     }
@@ -2431,7 +2595,7 @@
     });
 
     els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
-    els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); loadBoard(); } });
     els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
 
     [els.username, els.rssUrl, els.rssProxyTemplate].forEach(el => {
