@@ -6,15 +6,18 @@
   <title>Currently airing</title>
   <style>
     :root {
-      --bg: #080808;
+      color-scheme: dark;
+      --bg: #070707;
       --panel: #111111;
       --panel-2: #181818;
-      --line: #2a2a2a;
+      --panel-3: #1f1f1f;
+      --line: #2c2c2c;
+      --line-soft: rgba(255, 255, 255, 0.08);
       --text: #f5f5f5;
-      --muted: #9a9a9a;
+      --muted: #9b9b9b;
       --accent: #ffffff;
-      --accent-2: #d9d9d9;
-      --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+      --accent-2: #d7d7d7;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.42);
       --ok: #8ce2ae;
       --warn: #ffd48a;
     }
@@ -46,8 +49,8 @@
     }
 
     .panel {
-      background: rgba(17, 17, 17, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: var(--panel);
+      border: 1px solid var(--line-soft);
       border-radius: 20px;
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
@@ -59,7 +62,8 @@
       margin-bottom: 16px;
     }
 
-    .controls {
+    .controls,
+    .manager {
       display: grid;
       gap: 14px;
       padding: 18px 20px;
@@ -78,6 +82,13 @@
       gap: 12px;
       grid-template-columns: repeat(2, minmax(240px, 1fr));
       align-items: end;
+    }
+
+    .manager-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: start;
     }
 
     .field { display: grid; gap: 8px; }
@@ -113,11 +124,11 @@
       border-radius: 999px;
       font-weight: 700;
       letter-spacing: 0.01em;
-      transition: transform 0.16s ease, opacity 0.2s ease;
+      transition: transform 0.16s ease, opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     }
 
     button.primary {
-      color: #0a0a0a;
+      color: #0b0b0b;
       background: linear-gradient(135deg, var(--accent-2), var(--accent));
     }
 
@@ -134,9 +145,9 @@
     }
 
     button.danger {
-      color: #ffdede;
-      background: rgba(255, 120, 120, 0.12);
-      border: 1px solid rgba(255, 120, 120, 0.25);
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
     }
 
     button:hover { transform: translateY(-1px); }
@@ -166,16 +177,16 @@
 
     .message.info {
       display: block;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
       border-color: rgba(255, 255, 255, 0.10);
       color: var(--text);
     }
 
     .message.error {
       display: block;
-      background: rgba(255, 120, 120, 0.12);
-      border-color: rgba(255, 120, 120, 0.28);
-      color: #ffd6d6;
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: var(--text);
     }
 
     .summary {
@@ -195,14 +206,23 @@
       letter-spacing: -0.02em;
     }
 
-    .top-dropdown {
+    .section-copy {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .top-dropdown,
+    .manager-dropdown {
       margin: 0;
       overflow: hidden;
       border-top: 0;
       padding-top: 0;
     }
 
-    .top-dropdown > summary {
+    .top-dropdown > summary,
+    .manager-dropdown > summary {
       list-style: none;
       display: flex;
       align-items: center;
@@ -210,10 +230,12 @@
       gap: 16px;
       padding: 18px 20px;
       min-height: 82px;
-      background: linear-gradient(180deg, rgba(22, 22, 22, 0.98), rgba(14, 14, 14, 0.98));
+      background: var(--panel-2);
     }
 
-    .top-dropdown > summary::-webkit-details-marker {
+    .top-dropdown > summary::-webkit-details-marker,
+    .manager-dropdown > summary::-webkit-details-marker,
+    .task-dropdown > summary::-webkit-details-marker {
       display: none;
     }
 
@@ -236,22 +258,42 @@
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.10);
-      color: #ededed;
+      color: var(--text);
       font-size: 1rem;
       transition: transform 0.16s ease, background 0.16s ease;
     }
 
-    .top-dropdown[open] .manager-toggle-icon {
+    .top-dropdown[open] .manager-toggle-icon,
+    .manager-dropdown[open] .manager-toggle-icon,
+    .task-dropdown[open] .manager-toggle-icon {
       transform: rotate(180deg);
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.09);
     }
 
-    .top-dropdown-body {
+    .top-dropdown-body,
+    .manager-dropdown-body {
       display: grid;
       gap: 16px;
       padding: 18px 20px 20px;
       border-top: 1px solid rgba(255,255,255,0.07);
-      background: rgba(14, 14, 14, 0.55);
+      background: var(--panel);
+    }
+
+    .manager-section {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .list-card {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      min-height: 86px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .list-stack {
@@ -262,16 +304,68 @@
       padding-right: 4px;
     }
 
+    .show-row,
+    .override-row,
     .search-result {
       display: grid;
       gap: 10px;
       padding: 12px;
       border-radius: 16px;
-      background: linear-gradient(180deg, rgba(28, 28, 28, 0.98), rgba(20, 20, 20, 0.98));
+      background: var(--panel-3);
       border: 1px solid rgba(255, 255, 255, 0.05);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+
+    .show-row,
+    .search-result {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
+    }
+
+    .override-row {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .task-dropdown {
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      background: var(--panel-3);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+
+    .task-dropdown > summary {
+      list-style: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+    }
+
+    .task-dropdown-body {
+      display: grid;
+      gap: 12px;
+      padding: 0 16px 16px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .task-summary-main {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .task-summary-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.4;
     }
 
     .row-head {
@@ -313,20 +407,10 @@
       font-weight: 700;
     }
 
-    .chip.rss {
-      background: rgba(140, 226, 174, 0.11);
-      border-color: rgba(140, 226, 174, 0.18);
-      color: #d8ffe7;
-    }
-
+    .chip.rss,
+    .chip.cache,
     .chip.fallback,
     .chip.manual,
-    .chip.moved {
-      background: rgba(255, 212, 138, 0.11);
-      border-color: rgba(255, 212, 138, 0.18);
-      color: #fff0d6;
-    }
-
     .chip.added {
       background: rgba(255, 255, 255, 0.06);
       border-color: rgba(255, 255, 255, 0.10);
@@ -337,6 +421,13 @@
       display: inline;
       opacity: 0.92;
       font-weight: 800;
+    }
+
+    .override-controls {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 170px 140px minmax(220px, 1fr);
+      align-items: center;
     }
 
     .toggle {
@@ -401,23 +492,23 @@
       gap: 8px;
       border-radius: 999px;
       padding: 5px 10px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      color: #f0f0f0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: var(--text);
       font-size: 0.78rem;
       font-weight: 800;
     }
 
     .highlight-next {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)) !important;
-      border: 1px solid rgba(255,255,255,0.18) !important;
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04) !important;
+      border: 1px solid rgba(255, 255, 255, 0.16) !important;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 0 20px rgba(255,255,255,0.05);
     }
 
     .highlight-next .time-pill {
       background: var(--accent) !important;
-      color: #0a0a0a !important;
-      border-color: rgba(255,255,255,0.9);
+      color: #0b0b0b !important;
+      border-color: var(--accent) !important;
     }
 
     .entry-list { display: grid; gap: 8px; }
@@ -429,7 +520,7 @@
       align-items: start;
       padding: 9px;
       border-radius: 14px;
-      background: linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(18, 18, 18, 0.98));
+      background: var(--panel-3);
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
@@ -478,9 +569,9 @@
       min-width: 30px;
       padding: 0;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: #f0f0f0;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: var(--text);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -497,7 +588,7 @@
     .entry-settings-btn:hover {
       background: rgba(255, 255, 255, 0.10);
       border-color: rgba(255, 255, 255, 0.18);
-      color: #ffffff;
+      color: var(--accent);
     }
 
     .footer {
@@ -507,36 +598,21 @@
       line-height: 1.45;
     }
 
-    .footer-status-healthy {
-      color: var(--ok);
-      font-weight: 700;
-    }
-
-    .footer-status-unhealthy {
-      color: #ff8a8a;
-      font-weight: 700;
-    }
-
     .update-indicator {
-      --indicator-rgb: 255, 255, 255;
       position: fixed;
       top: 12px;
       right: 12px;
       width: 9px;
       height: 9px;
       border-radius: 999px;
-      background: rgba(var(--indicator-rgb), 0.92);
+      background: rgba(255, 255, 255, 0.92);
       box-shadow:
-        0 0 0 1px rgba(var(--indicator-rgb), 0.12),
-        0 0 10px rgba(var(--indicator-rgb), 0.12);
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 10px rgba(255, 255, 255, 0.12);
       z-index: 9999;
       opacity: 0.9;
       pointer-events: auto;
       animation: indicatorBreathe 2.2s ease-in-out infinite;
-    }
-
-    .update-indicator.error {
-      --indicator-rgb: 255, 90, 90;
     }
 
     .update-indicator.flash {
@@ -550,33 +626,33 @@
         transform: scale(1);
         opacity: 0.72;
         box-shadow:
-          0 0 0 1px rgba(var(--indicator-rgb), 0.10),
-          0 0 8px rgba(var(--indicator-rgb), 0.08);
+          0 0 0 1px rgba(255, 255, 255, 0.10),
+          0 0 8px rgba(255, 255, 255, 0.08);
       }
       50% {
         transform: scale(1.12);
         opacity: 0.98;
         box-shadow:
-          0 0 0 1px rgba(var(--indicator-rgb), 0.16),
-          0 0 14px rgba(var(--indicator-rgb), 0.18);
+          0 0 0 1px rgba(255, 255, 255, 0.16),
+          0 0 14px rgba(255, 255, 255, 0.18);
       }
     }
 
     @keyframes indicatorFlash {
       0% {
         box-shadow:
-          0 0 0 0 rgba(var(--indicator-rgb), 0.55),
-          0 0 10px rgba(var(--indicator-rgb), 0.18);
+          0 0 0 0 rgba(255, 255, 255, 0.55),
+          0 0 10px rgba(255, 255, 255, 0.18);
       }
       45% {
         box-shadow:
-          0 0 0 10px rgba(var(--indicator-rgb), 0),
-          0 0 20px rgba(var(--indicator-rgb), 0.28);
+          0 0 0 10px rgba(255, 255, 255, 0),
+          0 0 20px rgba(255, 255, 255, 0.28);
       }
       100% {
         box-shadow:
-          0 0 0 0 rgba(var(--indicator-rgb), 0),
-          0 0 10px rgba(var(--indicator-rgb), 0.12);
+          0 0 0 0 rgba(255, 255, 255, 0),
+          0 0 10px rgba(255, 255, 255, 0.12);
       }
     }
 
@@ -601,7 +677,7 @@
       max-height: min(86vh, 900px);
       display: grid;
       gap: 0;
-      background: rgba(15, 15, 15, 0.97);
+      background: var(--panel);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 22px;
       box-shadow: var(--shadow);
@@ -623,7 +699,7 @@
       gap: 14px;
       padding: 18px 20px;
       border-bottom: 1px solid rgba(255,255,255,0.07);
-      background: linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(12, 12, 12, 0.98));
+      background: var(--panel-2);
     }
 
     .modal-title {
@@ -671,7 +747,7 @@
       justify-content: flex-end;
       padding: 16px 20px 20px;
       border-top: 1px solid rgba(255,255,255,0.07);
-      background: rgba(10, 10, 10, 0.65);
+      background: rgba(255,255,255,0.02);
     }
 
     .modal-note {
@@ -727,10 +803,90 @@
         opacity: 1;
       }
     }
+    
+    /* Toast Container Styles */
+    #toastContainer {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10001;
+      pointer-events: none;
+    }
+
+    /* Individual Toast Styles */
+    .toast {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--line-soft);
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      transform: translateY(20px);
+      opacity: 0;
+      animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .toast.success { border-left: 4px solid var(--ok); }
+    .toast.warn { border-left: 4px solid var(--warn); }
+    .toast.info { border-left: 4px solid var(--accent); }
+
+    .toast.hiding {
+      animation: toastFadeOut 0.2s ease-in forwards;
+    }
+
+    @keyframes toastSlideIn {
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes toastFadeOut {
+      to { transform: translateY(-10px); opacity: 0; }
+    }
+
+    @media (max-width: 1180px) {
+      .manager-grid { grid-template-columns: 1fr; }
+    }
 
     @media (max-width: 980px) {
       .toolbar-grid,
       .config-grid { grid-template-columns: 1fr; }
+
+      .override-controls {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 12px;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+
+      .override-controls > * {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+      }
+
+      .override-controls::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .override-controls::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .override-controls::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+      }
+
+      .override-controls .row-actions {
+        flex-wrap: nowrap;
+      }
 
       .modal-grid {
         grid-template-columns: 1fr;
@@ -742,16 +898,18 @@
         padding: 18px 12px 36px;
       }
 
-      .controls { padding: 16px; }
+      .controls, .manager { padding: 16px; }
 
       .top-dropdown > summary,
-      .top-dropdown-body {
+      .manager-dropdown > summary,
+      .top-dropdown-body,
+      .manager-dropdown-body {
         padding-left: 16px;
         padding-right: 16px;
       }
 
       .board { grid-template-columns: 1fr; }
-      .search-result { grid-template-columns: 1fr; }
+      .show-row, .search-result { grid-template-columns: 1fr; }
       .row-actions { justify-content: flex-start; }
 
       .modal {
@@ -791,8 +949,15 @@
         bottom: 0;
         z-index: 2;
         padding-bottom: calc(16px + env(safe-area-inset-bottom));
-        background: rgba(10, 10, 10, 0.92);
+        background: rgba(17, 17, 17, 0.94);
         backdrop-filter: blur(12px);
+      }
+      
+      #toastContainer {
+        bottom: 80px;
+        left: 16px;
+        right: 16px;
+        align-items: center;
       }
     }
 
@@ -800,11 +965,13 @@
       .wrap { padding: 8px 7px 16px; }
       .title { margin-bottom: 10px; font-size: 1.25rem; }
       .panel.controls { margin-bottom: 10px !important; }
-      .controls, .day-column { padding: 8px; }
+      .controls, .manager, .day-column { padding: 8px; }
       .top-stack { margin-top: 14px !important; gap: 8px; }
 
       .top-dropdown > summary,
-      .top-dropdown-body {
+      .manager-dropdown > summary,
+      .top-dropdown-body,
+      .manager-dropdown-body {
         padding: 12px;
         min-height: auto;
       }
@@ -812,7 +979,7 @@
       .manager-toggle-copy { font-size: 0.8rem; margin-top: 2px; }
       .day-head { padding-bottom: 5px; margin-bottom: 6px; }
       .day-name { font-size: 0.92rem; }
-      .day-count { font-size: 0.72rem; color: var(--muted); }
+      .day-count { font-size: 0.72rem; }
       .time-group { gap: 5px; margin-bottom: 6px; padding: 2px; }
       .time-pill { padding: 3px 7px; font-size: 0.68rem; }
       .entry-list { gap: 4px; }
@@ -870,8 +1037,8 @@
       <details class="panel top-dropdown">
         <summary>
           <div>
-            <h2 class="section-title">Fetched Entries</h2>
-            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and RSS shows.</div>
+            <h2 class="section-title">Loaded Entries Overview</h2>
+            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -884,7 +1051,7 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Cache</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and memory.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -900,10 +1067,11 @@
             </div>
           </div>
           <div class="button-row" style="margin-top: 8px;">
-            <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
+            <button id="clearMemoryBtn" class="secondary" type="button">Clear Memory</button>
             <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
           </div>
           <div class="helper" style="margin-top: 12px;">
+            Per-show customization now lives on each card. Use the small settings icon on a show to adjust its slot, or use Add show here to add extra currently airing entries.
           </div>
         </div>
       </details>
@@ -932,7 +1100,6 @@
         </label>
 
         <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
-        <div id="modalHistorySlot" class="modal-note" style="margin-top: -6px; display: none;"></div>
 
         <div class="modal-grid">
           <div class="field">
@@ -991,24 +1158,21 @@
     </div>
   </div>
 
+  <div id="toastContainer" aria-live="polite"></div>
+
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
-    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
+    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v2";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    
-    // Automatically detect the user's timezone, with Berlin as a fallback
-    const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin";
-    
+    const DEFAULT_TIMEZONE = "Europe/Berlin";
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
     const REFRESH_STALE_MS = 10 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const AIRING_NOW_WINDOW_MINUTES = 15;
-    const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-    const SCHEDULE_MOVED_THRESHOLD_SECONDS = (7 * 24 * 60 * 60) + (5 * 60 * 60);
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -1037,7 +1201,6 @@
                 siteUrl
                 format
                 status
-                episodes
                 coverImage { large medium }
                 title { userPreferred english romaji native }
                 synonyms
@@ -1057,7 +1220,6 @@
             siteUrl
             format
             status
-            episodes
             coverImage { large medium }
             title { userPreferred english romaji native }
             synonyms
@@ -1089,7 +1251,6 @@
       showSettingsSubtitle: document.getElementById("showSettingsSubtitle"),
       modalUseCustom: document.getElementById("modalUseCustom"),
       modalDetectedSlot: document.getElementById("modalDetectedSlot"),
-      modalHistorySlot: document.getElementById("modalHistorySlot"),
       modalDay: document.getElementById("modalDay"),
       modalTime: document.getElementById("modalTime"),
       modalCustomHelper: document.getElementById("modalCustomHelper"),
@@ -1112,45 +1273,33 @@
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
       isLoading: false,
-      activeSettingsId: null,
-      healthStatus: "healthy",
-      lastNextSlotKey: null
+      activeSettingsId: null
     };
 
     showMessage("info", "Ready.");
-    setUpdateIndicatorStatus("ok");
 
     function showMessage(type, text) {
       els.message.className = `message ${type}`;
       els.message.textContent = text;
     }
 
-    function setUpdateIndicatorStatus(status = "ok") {
-      if (!els.updateIndicator) return;
-      els.updateIndicator.classList.toggle("error", status === "error");
-    }
+    // --- Toast Notification System ---
+    function showToast(message, type = "info", duration = 3000) {
+      const container = document.getElementById("toastContainer");
+      if (!container) return;
 
-    function renderFooterStatus() {
-      const isUnhealthy = state.healthStatus === "unhealthy";
-      const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
-      const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
-      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
 
-      let extra = "";
-      if (formattedSavedAt) {
-        extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
-      } else {
-        extra += " · Waiting for first update";
-      }
+      container.appendChild(toast);
 
-      if (isUnhealthy && state.notes.length) {
-        extra += ` · ${escapeHtml(state.notes.join(" "))}`;
-      }
-
-      els.footer.innerHTML = `
-  <span class="${statusClass}">${statusLabel}</span>${extra}
-  · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
-`;
+      setTimeout(() => {
+        toast.classList.add("hiding");
+        toast.addEventListener("animationend", () => {
+          toast.remove();
+        });
+      }, duration);
     }
 
     async function graphQLRequest(query, variables) {
@@ -1352,8 +1501,7 @@
       const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
       if (!match) return null;
       const showTitle = match[1].trim();
-      // Remove spaces and any "v2", "v3" suffixes so they share the same base episode deduplication key
-      const episodeToken = match[2].replace(/\s+/g, "").replace(/v\d+/gi, "");
+      const episodeToken = match[2].replace(/\s+/g, "");
       if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
       return { showTitle, episode: episodeToken };
     }
@@ -1374,8 +1522,7 @@
         if (Number.isNaN(date.getTime())) continue;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
-        // Changed > to < to keep the OLDEST release time, ignoring later delayed v2s
-        if (!existing || date.getTime() < existing.date.getTime()) {
+        if (!existing || date.getTime() > existing.date.getTime()) {
           deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
       }
@@ -1418,10 +1565,9 @@
     }
 
     function minutesToHHMM(total) {
-      const rounded = Math.round(Number(total) || 0);
-      const normalized = ((rounded % 1440) + 1440) % 1440;
+      const normalized = ((total % 1440) + 1440) % 1440;
       const h = Math.floor(normalized / 60);
-      const m = normalized % 60;
+      const m = Math.round(normalized % 60);
       return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     }
 
@@ -1430,22 +1576,6 @@
       const mid = Math.floor(sorted.length / 2);
       if (!sorted.length) return null;
       return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
-    // Circular Median function to handle midnight wrapping
-    function medianTime(minutesArray) {
-      if (!minutesArray || !minutesArray.length) return null;
-      const base = minutesArray[0]; 
-      const adjusted = minutesArray.map(m => {
-        let diff = m - base;
-        if (diff > 720) diff -= 1440;
-        if (diff < -720) diff += 1440;
-        return base + diff;
-      });
-      const sorted = adjusted.sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      const med = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-      return ((Math.round(med) % 1440) + 1440) % 1440;
     }
 
     function inferSlotFromReleases(releases, timeZone) {
@@ -1463,8 +1593,7 @@
       }
       const dayItems = sample.filter(item => item.weekday === chosenDay);
       const timeItems = dayItems.length ? dayItems : sample;
-      // Using medianTime to protect against midnight wraps
-      const chosenMinutes = medianTime(timeItems.map(item => item.minutes));
+      const chosenMinutes = median(timeItems.map(item => item.minutes));
       return {
         day: chosenDay,
         time: minutesToHHMM(chosenMinutes ?? sample[0].minutes),
@@ -1482,22 +1611,14 @@
         if (score > bestScore) { best = candidate; bestScore = score; }
       }
       if (!best || bestScore < 70 || !best.items.length) return null;
-
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
-
-      const latestRelease = best.items[0];
-      const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
-
       return {
         day: slot.day,
         time: slot.time,
         source: sourceName,
         sampleCount: slot.sampleCount || 1,
-        matchedTitle: best.title,
-        matchedEpisode: latestRelease?.episode || null,
-        latestReleaseDay: latestSlot?.weekday || null,
-        latestReleaseTime: latestSlot?.time || null
+        matchedTitle: best.title
       };
     }
 
@@ -1542,7 +1663,12 @@
     }
 
     function saveJSON(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+      try { 
+        localStorage.setItem(key, JSON.stringify(value)); 
+      } catch (error) {
+        console.warn("localStorage save failed:", error);
+        showToast("Warning: Could not save to local storage. Changes will be lost on refresh.", "warn", 5000);
+      }
     }
 
     function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
@@ -1579,7 +1705,6 @@
         primaryCandidates: state.primaryCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
-        healthStatus: state.healthStatus,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -1600,7 +1725,6 @@
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
-      state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       if (!Number.isFinite(snapshotSavedAt)) {
@@ -1610,7 +1734,6 @@
         } catch (_) {}
       }
       refreshBoardFromState();
-      setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
@@ -1630,96 +1753,6 @@
       saveSlotCache(state.userName, cache);
     }
 
-    function parseStoredTimestamp(value) {
-      const ms = Date.parse(String(value || ""));
-      return Number.isFinite(ms) ? ms : NaN;
-    }
-
-    function pruneOrphanedStoredState(userName, validMediaIds) {
-      if (!userName) return;
-
-      const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
-      const nowMs = Date.now();
-      const nowIso = new Date(nowMs).toISOString();
-
-      const cache = loadSlotCache(userName);
-      let cacheChanged = false;
-
-      for (const id of Object.keys(cache)) {
-        const entry = cache[id];
-
-        if (!entry || typeof entry !== "object") {
-          delete cache[id];
-          cacheChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            cacheChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          cacheChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
-          delete cache[id];
-          cacheChanged = true;
-        }
-      }
-
-      if (cacheChanged) {
-        saveSlotCache(userName, cache);
-      }
-
-      const overrides = state.overrides && typeof state.overrides === "object"
-        ? { ...state.overrides }
-        : {};
-      let overridesChanged = false;
-
-      for (const id of Object.keys(overrides)) {
-        const entry = overrides[id];
-
-        if (!entry || typeof entry !== "object") {
-          delete overrides[id];
-          overridesChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            overridesChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          overridesChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
-          delete overrides[id];
-          overridesChanged = true;
-        }
-      }
-
-      if (overridesChanged) {
-        state.overrides = overrides;
-        saveOverrides(userName, overrides);
-      }
-    }
-
     function dedupeEntriesById(entries) {
       const map = new Map();
       for (const entry of entries || []) {
@@ -1728,6 +1761,60 @@
         if (!map.has(id)) map.set(id, entry);
       }
       return Array.from(map.values());
+    }
+
+    // --- 90 DAY GARBAGE COLLECTION ROUTINE ---
+    function cleanUpOrphanedData() {
+      const currentIds = new Set((state.currentEntries || []).map(e => String(e?.media?.id)));
+      const addedIds = new Set(Object.keys(state.addedShows || {}));
+      let overridesChanged = false;
+
+      // Clean up orphaned manual overrides
+      for (const id of Object.keys(state.overrides || {})) {
+        if (!currentIds.has(id) && !addedIds.has(id)) {
+          delete state.overrides[id];
+          overridesChanged = true;
+        }
+      }
+      
+      if (overridesChanged) persistState();
+
+      // Clean up old memory (cache) after 90 days
+      const cache = loadSlotCache(state.userName);
+      const now = Date.now();
+      const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+      let cacheChanged = false;
+
+      for (const [id, item] of Object.entries(cache)) {
+        const itemDate = item.updatedAt ? new Date(item.updatedAt).getTime() : now;
+        const itemAge = now - itemDate;
+        
+        // Delete ONLY IF older than 90 days AND no longer actively on the board
+        if (itemAge > NINETY_DAYS_MS && !currentIds.has(id) && !addedIds.has(id)) {
+          delete cache[id];
+          cacheChanged = true;
+        }
+      }
+
+      if (cacheChanged) {
+        saveSlotCache(state.userName, cache);
+        console.info("Cleaned up orphaned shows from local storage.");
+      }
+    }
+    // -----------------------------------------
+
+    function mediaCatalog() {
+      const map = new Map();
+      for (const entry of state.currentEntries || []) {
+        if (entry?.media?.id) map.set(String(entry.media.id), entry.media);
+      }
+      for (const value of Object.values(state.addedShows || {})) {
+        if (value?.id) map.set(String(value.id), value);
+      }
+      for (const media of state.searchResults || []) {
+        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
+      }
+      return map;
     }
 
     function isValidTime(value) {
@@ -1766,10 +1853,7 @@
                 time: primary.time,
                 source: "rss",
                 sampleCount: primary.sampleCount || 1,
-                matchedTitle: primary.matchedTitle || "",
-                matchedEpisode: primary.matchedEpisode || null,
-                latestReleaseDay: primary.latestReleaseDay || null,
-                latestReleaseTime: primary.latestReleaseTime || null
+                matchedTitle: primary.matchedTitle || ""
               };
             } else {
               return {
@@ -1797,68 +1881,29 @@
 
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
-      const nowSeconds = Math.floor(Date.now() / 1000);
-
       for (const entry of entries) {
         const media = entry.media;
         if (!media?.id) continue;
-
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
-        const nextEpisodeNumber = Number(media?.nextAiringEpisode?.episode);
-        const nextAiringAt = Number(media?.nextAiringEpisode?.airingAt);
-        const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
-        const totalEpisodes = media.episodes || "?";
-        const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
-        const isScheduleMoved =
-          hasNextAiring &&
-          Number.isFinite(nextAiringAt) &&
-          nextAiringAt > nowSeconds &&
-          (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
-
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: override.day,
-            time: override.time,
-            format: media.format || "",
-            source: "manual",
-            sampleCount: 1,
-            matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring,
-            totalEpisodes,
-            displayEpisode,
-            isScheduleMoved
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover,
+            day: override.day, time: override.time, format: media.format || "",
+            source: "manual", sampleCount: 1, matchedTitle: "",
+            isAdded: Boolean(state.addedShows[String(media.id)])
           });
           continue;
         }
-
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: primary.day,
-            time: primary.time,
-            format: media.format || "",
-            source: primary.source,
-            sampleCount: Math.min(primary.sampleCount || 1, 3),
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover,
+            day: primary.day, time: primary.time, format: media.format || "",
+            source: primary.source, sampleCount: primary.sampleCount || 1,
             matchedTitle: primary.matchedTitle || "",
-            matchedEpisode: primary.matchedEpisode || null,
-            latestReleaseDay: primary.latestReleaseDay || null,
-            latestReleaseTime: primary.latestReleaseTime || null,
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring,
-            totalEpisodes,
-            displayEpisode,
-            isScheduleMoved
+            isAdded: Boolean(state.addedShows[String(media.id)])
           });
         }
       }
@@ -1868,97 +1913,29 @@
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
-
       for (const item of items) {
         const key = String(item.id);
-
-        if (item.source === "rss") {
-          let entry = cache[key];
-          if (!entry || typeof entry !== "object") {
-            entry = {};
-          }
-
-          entry.history = Array.isArray(entry.history) ? entry.history : [];
-          entry.origin = "rss";
-
-          const currentEpisode = item.matchedEpisode;
-          const currentDay = item.latestReleaseDay;
-          const currentTime = item.latestReleaseTime;
-
-          const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
-
-          if (currentEpisode && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
-            entry.history.push({
-              day: currentDay,
-              time: currentTime,
-              mins: toMinutes(currentTime),
-              episode: currentEpisode
-            });
-
-            if (entry.history.length > 3) {
-              entry.history.shift();
-            }
-          }
-
-          if (entry.history.length > 0) {
-            const allMins = entry.history.map(h => h.mins);
-            const medMins = medianTime(allMins);
-
-            item.time = minutesToHHMM(medMins);
-            item.sampleCount = entry.history.length;
-          } else {
-            item.sampleCount = Math.min(item.sampleCount || 1, 3);
-          }
-
+        if (item.source === "manual" || item.source === "rss") {
           cache[key] = {
-            ...entry,
-            day: item.day,
-            time: item.time,
-            sampleCount: item.sampleCount,
-            matchedTitle: item.matchedTitle || "",
-            origin: "rss",
-            updatedAt: new Date().toISOString()
-          };
-
-          output.push({
-            ...item,
-            historyLog: entry.history.map(h => h.time).join(", ")
-          });
-          continue;
-        }
-
-        const remembered = cache[key];
-
-        if (item.source === "manual") {
-          cache[key] = {
-            day: item.day,
-            time: item.time,
-            sampleCount: 1,
-            origin: "manual",
+            day: item.day, time: item.time, sampleCount: item.sampleCount || 1,
+            matchedTitle: item.matchedTitle || "", origin: item.source,
             updatedAt: new Date().toISOString()
           };
           output.push(item);
-        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
-          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
-          const rememberedTime = rememberedHistory.length
-            ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins)))
-            : remembered.time;
-
+          continue;
+        }
+        const remembered = cache[key];
+        if (remembered && remembered.time && remembered.origin !== "manual") {
           output.push({
-            ...item,
-            day: item.day, 
-            time: rememberedTime,
-            source: "cache",
-            sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
+            ...item, time: remembered.time, source: "cache",
+            sampleCount: remembered.sampleCount || 1,
             matchedTitle: remembered.matchedTitle || "",
-            cacheOrigin: remembered.origin || "saved",
-            historyLog: rememberedHistory.map(h => h.time).join(", ")
+            cacheOrigin: remembered.origin || "saved"
           });
         } else {
           output.push(item);
         }
       }
-
       saveSlotCache(state.userName, cache);
       return output;
     }
@@ -2069,7 +2046,8 @@
 
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
-      const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
+      const rssCount = items.filter(item => item.source === "rss").length;
+      const cacheCount = items.filter(item => item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
       const cards = [
@@ -2077,6 +2055,7 @@
         { label: "Custom", value: String(manualCount) },
         { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
+        { label: "Memory", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
         { label: "Parsed RSS", value: String(primaryCount) }
       ];
@@ -2088,18 +2067,9 @@
       `).join("");
     }
 
-    function renderBoard(items, isTick = false) {
+    function renderBoard(items) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
-      const newNextSlotKey = nextSlot ? nextSlot.key : null;
-
-      // Abort re-render if it's just a background tick and nothing has moved
-      if (isTick && newNextSlotKey === state.lastNextSlotKey) {
-        return; 
-      }
-      
-      state.lastNextSlotKey = newNextSlotKey;
-
       els.board.innerHTML = grouped.map(dayBlock => `
         <section class="panel day-column">
           <div class="day-head">
@@ -2117,15 +2087,10 @@
                   ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
                 </div>
                 <div class="entry-list">
-                  ${slot.items.map(item => {
-                    const epStr = item.hasNextAiring
-                      ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
-                      : "";
-
-                    return `
+                  ${slot.items.map(item => `
                     <article class="entry">
                       <div class="thumb">
-                       ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
+                        ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="">` : ""}
                       </div>
                       <div class="entry-body">
                         <div class="entry-title">
@@ -2133,14 +2098,14 @@
                         </div>
                         <div class="entry-meta">
                           ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
-                          ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
-                          ${item.isScheduleMoved ? `<span class="chip moved">Schedule Moved</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
-                            ? `<span class="chip manual">CUSTOM</span>`
-                            : (item.source === "rss" || item.source === "cache")
-                              ? `<span class="chip rss" title="Calculated from past releases: ${escapeHtml(item.historyLog || item.time)}">RSS · ${item.sampleCount || 1}</span>`
-                              : `<span class="chip fallback">AniList</span>`}
+                            ? `<span class="chip manual">Custom</span>`
+                            : item.source === "rss"
+                              ? `<span class="chip rss">RSS · ${item.sampleCount || 1}</span>`
+                              : item.source === "cache"
+                                ? `<span class="chip cache">Memory · ${escapeHtml(item.cacheOrigin || "saved")}</span>`
+                                : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
                       <button
@@ -2159,8 +2124,7 @@
                         </svg>
                       </button>
                     </article>
-                  `;
-                  }).join("")}
+                  `).join("")}
                 </div>
               </div>
             `;
@@ -2182,12 +2146,6 @@
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
-
-      pruneOrphanedStoredState(
-        state.userName,
-        state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
-      );
-
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       state.items = applyCache(built).sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
@@ -2195,7 +2153,17 @@
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
-      renderFooterStatus();
+      const customCount = state.items.filter(item => item.source === "manual").length;
+      const addedCount = state.items.filter(item => item.isAdded).length;
+      const rssCount = state.items.filter(item => item.source === "rss").length;
+      const cacheCount = state.items.filter(item => item.source === "cache").length;
+      const fallbackCount = state.items.filter(item => item.source === "fallback").length;
+      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
+      const updatedLabel = formattedSavedAt ? ` Last updated ${formattedSavedAt}.` : "";
+      els.footer.textContent =
+        `${state.items.length} visible. ${customCount} custom, ${addedCount} added, ${rssCount} RSS, ${cacheCount} memory, ${fallbackCount} fallback.` +
+        updatedLabel +
+        (state.notes.length ? ` ${state.notes.join(" ")}` : "");
     }
 
     function persistState() {
@@ -2266,14 +2234,6 @@
         ? `Detected: ${detected.day} · ${detected.time}`
         : "Detected: No slot found yet";
 
-      const activeItem = itemMap().get(id);
-      if (activeItem && activeItem.historyLog) {
-        els.modalHistorySlot.textContent = `History: ${activeItem.historyLog}`;
-        els.modalHistorySlot.style.display = "block";
-      } else {
-        els.modalHistorySlot.style.display = "none";
-      }
-
       els.modalUseCustom.checked = Boolean(override?.enabled);
       els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
       els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
@@ -2318,6 +2278,7 @@
       persistState();
       refreshBoardFromState();
       closeSettingsModal();
+      showToast("Custom time saved.", "success");
     }
 
     function useDetectedForActiveShow() {
@@ -2344,6 +2305,7 @@
       persistState();
       refreshBoardFromState();
       populateShowSettingsModal();
+      showToast("Reverted to detected time.", "success");
     }
 
     function clearOrRemoveActiveShow() {
@@ -2358,6 +2320,7 @@
         persistState();
         refreshBoardFromState();
         closeSettingsModal();
+        showToast("Show removed from board.", "info");
         return;
       }
 
@@ -2365,35 +2328,32 @@
       persistState();
       refreshBoardFromState();
       closeSettingsModal();
+      showToast("Custom slot cleared.", "info");
     }
 
     function addShowFromSearch(media) {
       if (!media?.id) return;
-      const id = String(media.id);
-      state.addedShows[id] = media;
-
-      if (!state.overrides[id]) {
+      state.addedShows[String(media.id)] = media;
+      if (!state.overrides[String(media.id)]) {
         const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
-        if (suggested) {
-          state.overrides[id] = {
-            enabled: false,
-            day: suggested.day,
-            time: suggested.time
-          };
-        }
+        state.overrides[String(media.id)] = {
+          enabled: Boolean(suggested),
+          day: suggested?.day || "Monday",
+          time: suggested?.time || "18:00"
+        };
       }
-
       persistState();
       refreshBoardFromState();
       closeAddShowModal();
       openSettingsModalForId(media.id);
+      showToast("Show added to your board.", "success");
     }
 
     function renderSearchResults() {
       if (!els.addShowResults) return;
 
       const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
-      const addedIds = new Set(Object.keys(state.addedShows || {}).map(String));
+      const addedIds = new Set(Object.keys(state.addedShows || {}));
 
       if (!state.searchResults.length) {
         const text = els.addShowSearch.value.trim().length >= 2
@@ -2452,74 +2412,48 @@
     }
 
     async function loadBoard(options = {}) {
-      const userName = String(options.userName ?? els.username.value).trim();
-      if (!userName) {
-        state.healthStatus = "unhealthy";
-        state.notes = ["Please enter a username."];
-        setUpdateIndicatorStatus("error");
-        renderFooterStatus();
-        showMessage("error", "Please enter a username.");
-        return false;
-      }
+      const userName = els.username.value.trim();
+      if (!userName) { showMessage("error", "Please enter a username."); return false; }
       if (state.isLoading) return false;
-
       state.isLoading = true;
       savePageSettings();
-
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
-      const nextOverrides = loadOverrides(userName);
-      const nextAddedShows = loadAddedShows(userName);
-
+      state.userName = userName;
+      state.overrides = loadOverrides(userName);
+      state.addedShows = loadAddedShows(userName);
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
-
       try {
-        const [aniListResult, rssResult] = await Promise.allSettled([
-          fetchAniListWatching(userName),
-          fetchTextWithOptionalProxy(
-            els.rssUrl.value.trim(),
-            els.rssProxyTemplate.value.trim()
-          )
-        ]);
-
-        if (aniListResult.status !== "fulfilled") {
-          const reason = aniListResult.reason;
-          throw (reason instanceof Error ? reason : new Error(String(reason || "AniList request failed.")));
-        }
-
         const nextNotes = [];
-        const nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+        const entries = await fetchAniListWatching(userName);
+        const nextCurrentEntries = dedupeEntriesById(entries);
+        const nextTotalAniListEntries = nextCurrentEntries.length;
+        const primaryResult = await fetchTextWithOptionalProxy(
+          els.rssUrl.value.trim(),
+          els.rssProxyTemplate.value.trim()
+        );
         let nextPrimaryCandidates = [];
-
-        if (rssResult.status === "fulfilled") {
-          const primaryResult = String(rssResult.value || "").trim();
-          if (primaryResult) {
-            try {
-              nextPrimaryCandidates = parseGenericFeed(primaryResult);
-            } catch (error) {
-              nextNotes.push(`SubsPlease: ${error.message}`);
-            }
+        if (primaryResult.trim()) {
+          try {
+            nextPrimaryCandidates = parseGenericFeed(primaryResult);
+          } catch (error) {
+            nextNotes.push(`SubsPlease: ${error.message}`);
           }
-        } else {
-          nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
-
-        state.userName = userName;
-        state.overrides = nextOverrides;
-        state.addedShows = nextAddedShows;
+        
         state.currentEntries = nextCurrentEntries;
-        state.totalAniListEntries = nextCurrentEntries.length;
+        state.totalAniListEntries = nextTotalAniListEntries;
         state.primaryCandidates = nextPrimaryCandidates;
         state.notes = nextNotes;
-        state.healthStatus = nextNotes.length ? "unhealthy" : "healthy";
         state.lastSuccessfulLoadAt = Date.now();
-        setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
-
+        
+        // --- 90 Day Clean up called automatically on load ---
+        cleanUpOrphanedData();
+        
         refreshBoardFromState();
         saveBoardSnapshot();
         pulseUpdateIndicator();
-
         showMessage(
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
@@ -2527,20 +2461,12 @@
         );
         return true;
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error || "Unknown error");
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
-
-        state.healthStatus = "unhealthy";
-        state.notes = [`AniList: ${message}`];
-        setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
-        renderFooterStatus();
-
         if (!preserveBoard) renderSearchResults();
-
-        showMessage("error", `Could not refresh the board: ${message}.${fallbackTime}`.trim());
+        showMessage("error", `Could not refresh the board: ${error.message}.${fallbackTime}`.trim());
         return false;
       } finally {
         state.isLoading = false;
@@ -2553,17 +2479,16 @@
     }
 
     function maybeRefreshBoard(reason = "refresh") {
-      if (!navigator.onLine) return; // Don't try to fetch if we have no internet
       if (document.visibilityState === "hidden") return;
       if (state.isLoading) return;
-      if (!state.userName) return;
+      if (!els.username.value.trim()) return;
       if (!boardIsStale()) return;
-      loadBoard({ reason, userName: state.userName });
+      loadBoard({ reason });
     }
 
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
-      setInterval(() => { if (state.items.length) renderBoard(state.items, true); }, COUNTDOWN_TICK_MS);
+      setInterval(() => { if (state.items.length) renderBoard(state.items); }, COUNTDOWN_TICK_MS);
     }
 
     let searchDebounceTimer = null;
@@ -2611,10 +2536,9 @@
 
     if (els.clearMemoryBtn) {
       els.clearMemoryBtn.addEventListener("click", () => {
-        const scopedUser = state.userName || els.username.value.trim();
-        if (!scopedUser) return;
+        const scopedUser = els.username.value.trim() || state.userName;
         clearSlotCache(scopedUser);
-        showMessage("info", "MEMORY cleared.");
+        showToast("Cache cleared successfully.", "success");
         if (state.userName) refreshBoardFromState();
       });
     }
@@ -2645,6 +2569,8 @@
       if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
     });
 
+    window.addEventListener("focus", () => { maybeRefreshBoard("refresh"); });
+
     let autoRefreshStarted = false;
     let bootCompleted = false;
 
@@ -2659,20 +2585,13 @@
         if (els.username.value.trim()) {
           loadBoard({ reason: hydrated ? "refresh" : "load" });
         } else {
-          state.healthStatus = "healthy";
-          setUpdateIndicatorStatus("ok");
           updateIndicatorTitle(0);
-          renderFooterStatus();
         }
       } catch (error) {
         console.error("Boot failed:", error);
         clearBoardSnapshot();
         state.lastSuccessfulLoadAt = 0;
-        state.healthStatus = "unhealthy";
-        state.notes = [`Startup: ${error.message}`];
-        setUpdateIndicatorStatus("error");
         updateIndicatorTitle(0);
-        renderFooterStatus();
         showMessage("error", `Startup failed: ${error.message}`);
       }
     }
