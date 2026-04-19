@@ -1067,6 +1067,68 @@
       }
     `;
 
+    // --- INDEXEDDB IMAGE PANTRY ---
+    const DB_NAME = 'AiringBoardImages';
+    const STORE_NAME = 'covers';
+    let dbPromise = null;
+
+    function getDB() {
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, 1);
+          request.onupgradeneeded = (e) => e.target.result.createObjectStore(STORE_NAME);
+          request.onsuccess = (e) => resolve(e.target.result);
+          request.onerror = (e) => reject(e.target.error);
+        });
+      }
+      return dbPromise;
+    }
+
+    async function getCachedImage(id, url) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const blob = await new Promise((resolve) => {
+          const req = store.get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+        if (blob) return URL.createObjectURL(blob);
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const newBlob = await res.blob();
+        const txW = db.transaction(STORE_NAME, 'readwrite');
+        txW.objectStore(STORE_NAME).put(newBlob, id);
+        return URL.createObjectURL(newBlob);
+      } catch (err) {
+        return url;
+      }
+    }
+
+    async function deleteCachedImage(id) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+      } catch (e) {}
+    }
+
+    async function loadImagesToDOM() {
+      const imgs = document.querySelectorAll('img.lazy-cover');
+      for (const img of imgs) {
+        img.classList.remove('lazy-cover'); // Prevent double processing
+        const id = img.getAttribute('data-media-id');
+        const url = img.getAttribute('data-original-url');
+        if (id && url) {
+          const localUrl = await getCachedImage(id, url);
+          img.src = localUrl;
+        }
+      }
+    }
+    // ------------------------------
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
@@ -1191,6 +1253,7 @@
       let lastError = null;
       for (const target of targets) {
         try {
+          // CACHE NO-STORE FIX APPLIED HERE
           const response = await fetch(target, { method: "GET", cache: "no-store" });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
@@ -1352,7 +1415,6 @@
       const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
       if (!match) return null;
       const showTitle = match[1].trim();
-      // Remove spaces and any "v2", "v3" suffixes so they share the same base episode deduplication key
       const episodeToken = match[2].replace(/\s+/g, "").replace(/v\d+/gi, "");
       if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
       return { showTitle, episode: episodeToken };
@@ -1374,7 +1436,6 @@
         if (Number.isNaN(date.getTime())) continue;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
-        // Changed > to < to keep the OLDEST release time, ignoring later delayed v2s
         if (!existing || date.getTime() < existing.date.getTime()) {
           deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
@@ -1432,7 +1493,6 @@
       return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     }
 
-    // Circular Median function to handle midnight wrapping
     function medianTime(minutesArray) {
       if (!minutesArray || !minutesArray.length) return null;
       const base = minutesArray[0]; 
@@ -1463,7 +1523,6 @@
       }
       const dayItems = sample.filter(item => item.weekday === chosenDay);
       const timeItems = dayItems.length ? dayItems : sample;
-      // Using medianTime to protect against midnight wraps
       const chosenMinutes = medianTime(timeItems.map(item => item.minutes));
       return {
         day: chosenDay,
@@ -1635,80 +1694,30 @@
       return Number.isFinite(ms) ? ms : NaN;
     }
 
+    // --- HARD DELETE CLEANUP ENGINE ---
     function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
 
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
-      const nowMs = Date.now();
-      const nowIso = new Date(nowMs).toISOString();
-
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
 
+      // Nuke any slot cache history + image blob not currently valid
       for (const id of Object.keys(cache)) {
-        const entry = cache[id];
-
-        if (!entry || typeof entry !== "object") {
+        if (!validIds.has(id)) {
           delete cache[id];
-          cacheChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            cacheChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          cacheChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
-          delete cache[id];
+          deleteCachedImage(id); // Delete from IndexedDB Pantry
           cacheChanged = true;
         }
       }
 
-      if (cacheChanged) {
-        saveSlotCache(userName, cache);
-      }
+      if (cacheChanged) saveSlotCache(userName, cache);
 
-      const overrides = state.overrides && typeof state.overrides === "object"
-        ? { ...state.overrides }
-        : {};
+      const overrides = state.overrides && typeof state.overrides === "object" ? { ...state.overrides } : {};
       let overridesChanged = false;
 
       for (const id of Object.keys(overrides)) {
-        const entry = overrides[id];
-
-        if (!entry || typeof entry !== "object") {
-          delete overrides[id];
-          overridesChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            overridesChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          overridesChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
+        if (!validIds.has(id)) {
           delete overrides[id];
           overridesChanged = true;
         }
@@ -1719,6 +1728,7 @@
         saveOverrides(userName, overrides);
       }
     }
+    // ----------------------------------
 
     function dedupeEntriesById(entries) {
       const map = new Map();
@@ -2093,7 +2103,6 @@
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       const newNextSlotKey = nextSlot ? nextSlot.key : null;
 
-      // Abort re-render if it's just a background tick and nothing has moved
       if (isTick && newNextSlotKey === state.lastNextSlotKey) {
         return; 
       }
@@ -2122,10 +2131,11 @@
                       ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
                       : "";
 
+                    // IMAGES NOW RENDERED WITH DATA ATTRIBUTES FOR INDEXEDDB INJECTION
                     return `
                     <article class="entry">
                       <div class="thumb">
-                       ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
+                       ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
                       <div class="entry-body">
                         <div class="entry-title">
@@ -2170,6 +2180,9 @@
       if (!grouped.length) {
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
+
+      // TRIGGER ASYNC IMAGE LOAD
+      loadImagesToDOM();
     }
 
     function itemMap() {
@@ -2183,6 +2196,7 @@
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
+      // Trigger Hard Delete immediately
       pruneOrphanedStoredState(
         state.userName,
         state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
@@ -2505,6 +2519,24 @@
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
+        // --- HARD DELETE MANUAL SHOWS IF COMPLETED ---
+        const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
+        if (addedIds.length > 0) {
+          try {
+            const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
+            const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
+            const mediaList = statusData?.Page?.media || [];
+            for (const m of mediaList) {
+              if (m.status === "FINISHED" || m.status === "CANCELLED") {
+                delete nextAddedShows[String(m.id)];
+                delete nextOverrides[String(m.id)];
+              }
+            }
+          } catch(e) {
+            // Ignore if status check fails to avoid breaking main board
+          }
+        }
+
         state.userName = userName;
         state.overrides = nextOverrides;
         state.addedShows = nextAddedShows;
@@ -2553,7 +2585,7 @@
     }
 
     function maybeRefreshBoard(reason = "refresh") {
-      if (!navigator.onLine) return; // Don't try to fetch if we have no internet
+      if (!navigator.onLine) return; 
       if (document.visibilityState === "hidden") return;
       if (state.isLoading) return;
       if (!state.userName) return;
