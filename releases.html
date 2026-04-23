@@ -24,14 +24,11 @@
       --bad: #ff8d8d;
       --bad-soft: rgba(255,141,141,0.14);
       --shadow: 0 20px 50px rgba(0,0,0,0.28);
-      --radius-xl: 24px;
-      --radius-lg: 18px;
-      --radius-md: 14px;
-      --radius-sm: 12px;
     }
 
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
+
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
@@ -40,13 +37,6 @@
     }
 
     a { color: inherit; text-decoration: none; }
-    code {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 8px;
-      padding: 2px 6px;
-      font-size: 0.92em;
-    }
 
     .app {
       width: min(1120px, calc(100vw - 24px));
@@ -61,320 +51,46 @@
       overflow: hidden;
     }
 
-    .options-panel {
-      border-top: 1px solid var(--line);
+    .content {
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .board {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255,255,255,0.025);
+      display: grid;
+      gap: 14px;
+    }
+
+    .board-secondary {
       background: rgba(255,255,255,0.02);
     }
 
-    .options-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 18px;
+    .board-head {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: flex-end;
       gap: 12px;
       flex-wrap: wrap;
     }
 
-    .options-summary::-webkit-details-marker { display: none; }
-
-    .options-summary::after {
-      content: '▾';
-      color: var(--muted);
-      margin-left: auto;
-      order: 3;
-      transition: transform 0.16s ease;
-    }
-
-    .options-panel[open] .options-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .options-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .options-summary-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .options-inner {
-      padding: 0 18px 18px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .options-stack {
-      display: grid;
-      gap: 14px;
-    }
-
-    .hero {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: var(--panel-soft);
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
-      flex: 0 0 auto;
-    }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
-    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
-
-    .stats-panel {
-      margin-bottom: 18px;
-      padding: 0;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .stats-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .stats-summary::-webkit-details-marker { display: none; }
-
-    .stats-summary::after {
-      content: '▾';
-      color: var(--muted);
-      transition: transform 0.16s ease;
-    }
-
-    .stats-panel[open] .stats-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px;
-      padding: 0 14px 14px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 18px;
-      padding: 14px 16px;
-      min-height: 96px;
-    }
-
-    .stat-label {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 28px;
-      line-height: 1;
+    .board-eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 11px;
       font-weight: 800;
       margin-bottom: 6px;
     }
 
-    .stat-help {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 12px;
-      align-items: end;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
-    }
-
-    .field.username { grid-column: span 3; }
-    .field.list { grid-column: span 2; }
-    .field.released-list { grid-column: span 2; }
-    .field.api { grid-column: span 5; }
-    .field.search { grid-column: span 6; }
-    .field.filter { grid-column: span 3; }
-    .field.actions { grid-column: span 3; }
-
-    label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    input, button, .segmented {
-      font: inherit;
-    }
-
-    input {
-      width: 100%;
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line-strong);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: rgba(140,158,255,0.65);
-      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
-    }
-
-    .segmented {
-      display: inline-flex;
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 4px;
-      gap: 4px;
-      min-height: 48px;
-    }
-
-    .segmented button,
-    .ghost-btn,
-    .primary-btn,
-    .link-btn,
-    .mini-link {
-      border: 0;
-      cursor: pointer;
-      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
-    }
-
-    .segmented button {
-      flex: 1;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-      padding: 10px 12px;
-    }
-
-    .segmented button.active {
-      background: rgba(140,158,255,0.18);
-      color: var(--text);
-      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
-    }
-
-    .button-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .primary-btn,
-    .ghost-btn {
-      min-height: 48px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-weight: 800;
-      width: 100%;
-    }
-
-    .primary-btn {
-      color: white;
-      background: linear-gradient(135deg, #8c9eff, #a479ff);
-      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
-    }
-
-    .ghost-btn {
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-    }
-
-    .primary-btn:hover,
-    .ghost-btn:hover,
-    .link-btn:hover,
-    .mini-link:hover,
-    .segmented button:hover {
-      transform: translateY(-1px);
-    }
-
-    .primary-btn:disabled,
-    .ghost-btn:disabled {
-      opacity: 0.7;
-      cursor: progress;
-      transform: none;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .notice {
-      margin: 18px 22px 0;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    .notice.error {
-      color: #ffd8d8;
-      background: rgba(255,141,141,0.08);
-      border-color: rgba(255,141,141,0.18);
-    }
-
-    .notice.success {
-      color: #d8ffef;
-      background: rgba(74,222,168,0.08);
-      border-color: rgba(74,222,168,0.18);
-    }
-
-    .content {
-      padding: 18px;
+    .board-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
     }
 
     .list {
@@ -489,8 +205,20 @@
     .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
     .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
 
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     .empty {
-      padding: 40px 16px;
+      padding: 32px 16px;
       text-align: center;
       color: var(--muted);
       border: 1px dashed rgba(255,255,255,0.1);
@@ -498,14 +226,272 @@
       background: rgba(255,255,255,0.03);
     }
 
+    .options-panel {
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .options-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .options-summary::-webkit-details-marker { display: none; }
+
+    .options-summary::after {
+      content: '▾';
+      color: var(--muted);
+      margin-left: auto;
+      order: 3;
+      transition: transform 0.16s ease;
+    }
+
+    .options-panel[open] .options-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .options-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .options-summary-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .options-inner {
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-soft);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
+      flex: 0 0 auto;
+    }
+
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
+    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
+
+    .notice {
+      margin: 18px 22px 0;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .notice.error {
+      color: #ffd8d8;
+      background: rgba(255,141,141,0.08);
+      border-color: rgba(255,141,141,0.18);
+    }
+
+    .notice.success {
+      color: #d8ffef;
+      background: rgba(74,222,168,0.08);
+      border-color: rgba(74,222,168,0.18);
+    }
+
+    .stats-panel {
+      margin-bottom: 18px;
+      padding: 0;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .stats-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .stats-summary::-webkit-details-marker { display: none; }
+
+    .stats-summary::after {
+      content: '▾';
+      color: var(--muted);
+      transition: transform 0.16s ease;
+    }
+
+    .stats-panel[open] .stats-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 14px 14px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-height: 96px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .stat-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.username { grid-column: span 3; }
+    .field.list { grid-column: span 2; }
+    .field.downloaded-list { grid-column: span 2; }
+    .field.api { grid-column: span 5; }
+    .field.search { grid-column: span 8; }
+    .field.actions { grid-column: span 4; }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input, button {
+      font: inherit;
+    }
+
+    input {
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(140,158,255,0.65);
+      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .primary-btn,
+    .ghost-btn {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 800;
+      width: 100%;
+      border: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .primary-btn {
+      color: white;
+      background: linear-gradient(135deg, #8c9eff, #a479ff);
+      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
+    }
+
+    .ghost-btn {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+    }
+
+    .primary-btn:hover,
+    .ghost-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-btn:disabled,
+    .ghost-btn:disabled {
+      opacity: 0.7;
+      cursor: progress;
+      transform: none;
+    }
+
     @media (max-width: 920px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .field.username,
       .field.list,
-      .field.released-list,
+      .field.downloaded-list,
       .field.api,
       .field.search,
-      .field.filter,
       .field.actions { grid-column: span 6; }
     }
 
@@ -516,9 +502,19 @@
       }
 
       .shell { border-radius: 22px; }
-      .content { padding-left: 14px; padding-right: 14px; }
-      .hero { padding: 14px; }
-      .content { padding-top: 14px; padding-bottom: 14px; }
+      .content {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        gap: 14px;
+      }
+
+      .board {
+        padding: 14px;
+        border-radius: 18px;
+      }
+
       .options-inner { padding: 0 14px 14px; }
       .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
       .stat { padding: 12px; min-height: 0; }
@@ -526,10 +522,9 @@
       .controls { grid-template-columns: 1fr; }
       .field.username,
       .field.list,
-      .field.released-list,
+      .field.downloaded-list,
       .field.api,
       .field.search,
-      .field.filter,
       .field.actions { grid-column: auto; }
 
       .item { border-radius: 16px; }
@@ -551,7 +546,6 @@
       .button-row .ghost-btn { width: 100%; }
       .pill { white-space: normal; }
       .notice { margin-left: 0; margin-right: 0; }
-
       .options-summary { padding: 12px 14px; }
       .options-summary-right { width: 100%; }
       .options-summary::after { margin-left: 0; }
@@ -568,8 +562,29 @@
   <div class="app">
     <div class="shell">
       <section class="content">
-        <div id="list" class="list"></div>
-        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
+        <section class="board">
+          <div class="board-head">
+            <div>
+              <div class="board-eyebrow">Monitoring</div>
+              <h2 class="board-title">Releases</h2>
+            </div>
+            <span class="chip" id="watchingCountChip">0 titles</span>
+          </div>
+          <div id="watchingList" class="list"></div>
+          <div id="watchingEmpty" class="empty" hidden>No monitored titles yet.</div>
+        </section>
+
+        <section class="board board-secondary">
+          <div class="board-head">
+            <div>
+              <div class="board-eyebrow">Library</div>
+              <h2 class="board-title">Downloaded</h2>
+            </div>
+            <span class="chip" id="downloadedCountChip">0 titles</span>
+          </div>
+          <div id="downloadedList" class="list"></div>
+          <div id="downloadedEmpty" class="empty" hidden>No downloaded titles yet.</div>
+        </section>
       </section>
 
       <details class="options-panel" id="optionsPanel">
@@ -577,8 +592,8 @@
           <span class="options-title">Options</span>
           <span class="options-summary-right">
             <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
-            <span class="chip"><strong id="releasedListLabel">Released: released</strong></span>
-            <span class="chip" id="visibleCountChip">Showing 0 titles</span>
+            <span class="chip"><strong id="downloadedListLabel">Downloaded: downloaded</strong></span>
+            <span class="chip" id="visibleCountChip">Watching 0 · Downloaded 0</span>
             <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
           </span>
         </summary>
@@ -586,79 +601,68 @@
         <div class="options-inner">
           <div id="notice" class="notice" hidden></div>
 
-          <div class="options-stack">
-            <details class="stats-panel">
-              <summary class="stats-summary">Show stats</summary>
-              <div class="stats">
-                <div class="stat">
-                  <div class="stat-label">Anime tracked total</div>
-                  <div class="stat-value" id="statTotal">0</div>
-                  <div class="stat-help">Combined total from your monitoring and released AniList lists.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Available now</div>
-                  <div class="stat-value" id="statFound">0</div>
-                  <div class="stat-help">Titles in your monitoring list that are currently on releases.moe.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Already released</div>
-                  <div class="stat-value" id="statReleased">0</div>
-                  <div class="stat-help">Titles coming from your released AniList custom list.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Still waiting</div>
-                  <div class="stat-value" id="statWaiting">0</div>
-                  <div class="stat-help">Titles in your monitoring list that are not on releases.moe yet.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Last checked</div>
-                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                  <div class="stat-help">Only refreshes on page load or manual reload.</div>
-                </div>
+          <details class="stats-panel">
+            <summary class="stats-summary">Show stats</summary>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-label">Anime tracked total</div>
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-help">Combined total from your releases and downloaded AniList lists.</div>
               </div>
-            </details>
+              <div class="stat">
+                <div class="stat-label">Available now</div>
+                <div class="stat-value" id="statFound">0</div>
+                <div class="stat-help">Titles in your releases list that are currently on releases.moe.</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Already downloaded</div>
+                <div class="stat-value" id="statDownloaded">0</div>
+                <div class="stat-help">Titles coming from your downloaded AniList custom list.</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Still waiting</div>
+                <div class="stat-value" id="statWaiting">0</div>
+                <div class="stat-help">Titles in your releases list that are not on releases.moe yet.</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Last checked</div>
+                <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+                <div class="stat-help">Only refreshes on page load or manual reload.</div>
+              </div>
+            </div>
+          </details>
 
-            <section class="hero" id="settingsPanel">
-              <div class="controls">
-                <div class="field username">
-                  <label for="username">AniList username</label>
-                  <input id="username" value="zrr" autocomplete="off" />
-                </div>
-                <div class="field list">
-                  <label for="listName">Monitoring list name</label>
-                  <input id="listName" value="releases" autocomplete="off" />
-                </div>
-                <div class="field released-list">
-                  <label for="releasedListName">Released list name</label>
-                  <input id="releasedListName" value="released" autocomplete="off" />
-                </div>
-                <div class="field api">
-                  <label for="apiBase">releases.moe API base</label>
-                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
-                </div>
-                <div class="field search">
-                  <label for="searchInput">Filter anime</label>
-                  <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
-                </div>
-                <div class="field filter">
-                  <label>Status view</label>
-                  <div class="segmented" id="statusFilter">
-                    <button type="button" data-filter="all" class="active">All</button>
-                    <button type="button" data-filter="found">Available</button>
-                    <button type="button" data-filter="released">Released</button>
-                    <button type="button" data-filter="waiting">Waiting</button>
-                  </div>
-                </div>
-                <div class="field actions">
-                  <label>Actions</label>
-                  <div class="button-row">
-                    <button id="refreshBtn" class="primary-btn">Reload</button>
-                    <button id="resetBtn" class="ghost-btn">Reset</button>
-                  </div>
+          <section class="hero" id="settingsPanel">
+            <div class="controls">
+              <div class="field username">
+                <label for="username">AniList username</label>
+                <input id="username" value="zrr" autocomplete="off" />
+              </div>
+              <div class="field list">
+                <label for="listName">Releases list name</label>
+                <input id="listName" value="releases" autocomplete="off" />
+              </div>
+              <div class="field downloaded-list">
+                <label for="downloadedListName">Downloaded list name</label>
+                <input id="downloadedListName" value="downloaded" autocomplete="off" />
+              </div>
+              <div class="field api">
+                <label for="apiBase">releases.moe API base</label>
+                <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+              </div>
+              <div class="field search">
+                <label for="searchInput">Filter anime</label>
+                <input id="searchInput" placeholder="Search across both boards" autocomplete="off" />
+              </div>
+              <div class="field actions">
+                <label>Actions</label>
+                <div class="button-row">
+                  <button id="refreshBtn" class="primary-btn">Reload</button>
+                  <button id="resetBtn" class="ghost-btn">Reset</button>
                 </div>
               </div>
-            </section>
-          </div>
+            </div>
+          </section>
         </div>
       </details>
     </div>
@@ -666,11 +670,11 @@
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v4';
+    const STORAGE_KEY = 'releases-watchlist-settings-v5';
     const DEFAULTS = {
       username: 'zrr',
       listName: 'releases',
-      releasedListName: 'released',
+      downloadedListName: 'downloaded',
       apiBase: 'https://releases.moe'
     };
 
@@ -678,14 +682,13 @@
       items: [],
       lastCheckedAt: null,
       isLoading: false,
-      filter: 'all',
       search: ''
     };
 
     const els = {
       username: document.getElementById('username'),
       listName: document.getElementById('listName'),
-      releasedListName: document.getElementById('releasedListName'),
+      downloadedListName: document.getElementById('downloadedListName'),
       apiBase: document.getElementById('apiBase'),
       searchInput: document.getElementById('searchInput'),
       refreshBtn: document.getElementById('refreshBtn'),
@@ -693,16 +696,19 @@
       statusDot: document.getElementById('statusDot'),
       statusText: document.getElementById('statusText'),
       watchingListLabel: document.getElementById('watchingListLabel'),
-      releasedListLabel: document.getElementById('releasedListLabel'),
+      downloadedListLabel: document.getElementById('downloadedListLabel'),
       visibleCountChip: document.getElementById('visibleCountChip'),
-      statusFilter: document.getElementById('statusFilter'),
+      watchingCountChip: document.getElementById('watchingCountChip'),
+      downloadedCountChip: document.getElementById('downloadedCountChip'),
       notice: document.getElementById('notice'),
       optionsPanel: document.getElementById('optionsPanel'),
-      list: document.getElementById('list'),
-      emptyState: document.getElementById('emptyState'),
+      watchingList: document.getElementById('watchingList'),
+      downloadedList: document.getElementById('downloadedList'),
+      watchingEmpty: document.getElementById('watchingEmpty'),
+      downloadedEmpty: document.getElementById('downloadedEmpty'),
       statTotal: document.getElementById('statTotal'),
       statFound: document.getElementById('statFound'),
-      statReleased: document.getElementById('statReleased'),
+      statDownloaded: document.getElementById('statDownloaded'),
       statWaiting: document.getElementById('statWaiting'),
       statChecked: document.getElementById('statChecked')
     };
@@ -722,7 +728,7 @@
       return {
         username: els.username.value.trim() || DEFAULTS.username,
         listName: els.listName.value.trim() || DEFAULTS.listName,
-        releasedListName: els.releasedListName.value.trim() || DEFAULTS.releasedListName,
+        downloadedListName: els.downloadedListName.value.trim() || DEFAULTS.downloadedListName,
         apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
       };
     }
@@ -730,10 +736,10 @@
     function applySettings(settings) {
       els.username.value = settings.username;
       els.listName.value = settings.listName;
-      els.releasedListName.value = settings.releasedListName;
+      els.downloadedListName.value = settings.downloadedListName;
       els.apiBase.value = settings.apiBase;
       els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
-      els.releasedListLabel.textContent = `Released: ${settings.releasedListName}`;
+      els.downloadedListLabel.textContent = `Downloaded: ${settings.downloadedListName}`;
     }
 
     function saveSettings() {
@@ -795,36 +801,6 @@
       return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
     }
 
-    function getAltTitle(media) {
-      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
-        .filter(Boolean)
-        .filter((value, index, arr) => arr.indexOf(value) === index);
-      if (names.length <= 1) return '';
-      return names.slice(1).join(' • ');
-    }
-
-    function dedupeMediaList(mediaItems) {
-      const deduped = new Map();
-      for (const media of mediaItems || []) {
-        if (media?.id) deduped.set(media.id, media);
-      }
-      return Array.from(deduped.values());
-    }
-
-    function getAvailableCustomListNames(lists) {
-      return (lists || [])
-        .filter((list) => list?.isCustomList)
-        .map((list) => list?.name)
-        .filter(Boolean);
-    }
-
-    function findCustomList(lists, listName) {
-      return (lists || []).find((list) =>
-        list?.isCustomList &&
-        String(list?.name || '').trim().toLowerCase() === String(listName || '').trim().toLowerCase()
-      );
-    }
-
     async function postAniList(query, variables) {
       const response = await fetch(ANILIST_API, {
         method: 'POST',
@@ -864,6 +840,28 @@
       return data?.MediaListCollection?.lists || [];
     }
 
+    function getAvailableCustomListNames(lists) {
+      return (lists || [])
+        .filter((list) => list?.isCustomList)
+        .map((list) => list?.name)
+        .filter(Boolean);
+    }
+
+    function findCustomList(lists, listName) {
+      return (lists || []).find((list) =>
+        list?.isCustomList &&
+        String(list?.name || '').trim().toLowerCase() === String(listName || '').trim().toLowerCase()
+      );
+    }
+
+    function dedupeMediaList(mediaItems) {
+      const deduped = new Map();
+      for (const media of mediaItems || []) {
+        if (media?.id) deduped.set(media.id, media);
+      }
+      return Array.from(deduped.values());
+    }
+
     function getRequiredCustomListMedia(lists, listName, username) {
       const wanted = findCustomList(lists, listName);
       if (!wanted) {
@@ -883,12 +881,12 @@
       return dedupeMediaList((wanted.entries || []).map((entry) => entry?.media).filter(Boolean));
     }
 
-    async function fetchAniListLists(username, listName, releasedListName) {
+    async function fetchAniListLists(username, listName, downloadedListName) {
       const lists = await fetchAniListAnimeLists(username);
       return {
         watching: getRequiredCustomListMedia(lists, listName, username),
-        released: getOptionalCustomListMedia(lists, releasedListName),
-        releasedListExists: Boolean(findCustomList(lists, releasedListName))
+        downloaded: getOptionalCustomListMedia(lists, downloadedListName),
+        downloadedListExists: Boolean(findCustomList(lists, downloadedListName))
       };
     }
 
@@ -1013,17 +1011,8 @@
       })[0];
     }
 
-    function getItemPrimaryStatus(item) {
-      if (item.isReleased) return 'released';
-      if (item.hasSeaDex) return 'found';
-      return 'waiting';
-    }
-
-    function buildViewModel(media, entry, isReleased) {
+    function buildViewModel(media, entry, isDownloaded) {
       const bestTorrent = entry ? pickBestTorrent(entry) : null;
-      const comparisons = entry?.comparison
-        ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
-        : [];
       const torrents = dedupeTorrents(entry?.expand?.trs || []);
       const bestSize = bestTorrent
         ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
@@ -1034,18 +1023,13 @@
       return {
         id: media.id,
         title: normalizeTitle(media),
-        altTitle: getAltTitle(media),
         cover: media?.coverImage?.large || '',
         coverColor: media?.coverImage?.color || '#2d3e77',
         aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
         hasSeaDex: Boolean(entry),
-        isReleased: Boolean(isReleased),
+        isDownloaded: Boolean(isDownloaded),
         entryUrl: entry ? `https://releases.moe/${media.id}/` : '',
         incomplete: Boolean(entry?.incomplete),
-        notes: entry?.notes || '',
-        theoreticalBest: entry?.theoreticalBest || '',
-        updatedAt: entry?.updated || '',
-        comparisons,
         bestTorrent,
         bestSize,
         torrents,
@@ -1053,99 +1037,104 @@
         duplicateTorrentCount,
         searchBlob: [
           normalizeTitle(media),
-          getAltTitle(media),
           entry?.notes || '',
           bestTorrent?.releaseGroup || '',
           (bestTorrent?.tags || []).join(' '),
-          isReleased ? 'released owned have downloaded' : 'watching monitor waiting'
+          isDownloaded ? 'downloaded owned have downloaded' : 'watching monitor waiting releases'
         ].join(' ').toLowerCase()
       };
     }
 
     function getVisibleItems() {
       const term = state.search.trim().toLowerCase();
-      return state.items.filter((item) => {
-        const status = getItemPrimaryStatus(item);
-        if (state.filter !== 'all' && status !== state.filter) return false;
-        if (term && !item.searchBlob.includes(term)) return false;
-        return true;
-      });
+      const matches = (item) => !term || item.searchBlob.includes(term);
+      return {
+        watching: state.items.filter((item) => !item.isDownloaded && matches(item)),
+        downloaded: state.items.filter((item) => item.isDownloaded && matches(item))
+      };
+    }
+
+    function renderItemInto(container, item) {
+      const article = document.createElement('article');
+      article.className = 'item';
+
+      const poster = item.cover
+        ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
+        : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+
+      let statusClass = 'bad';
+      let statusText = 'Waiting';
+      if (item.isDownloaded) {
+        statusClass = 'info';
+        statusText = 'Downloaded';
+      } else if (item.hasSeaDex && item.incomplete) {
+        statusClass = 'warn';
+        statusText = 'Incomplete';
+      } else if (item.hasSeaDex) {
+        statusClass = 'ok';
+        statusText = 'Available';
+      }
+
+      const cardInner = `
+        <div class="poster">${poster}</div>
+        <div class="item-main">
+          <div class="title-block">
+            <h2 class="title">${escapeHtml(item.title)}</h2>
+          </div>
+        </div>
+        <div class="badges">
+          <span class="pill ${statusClass}">${statusText}</span>
+        </div>
+      `;
+
+      if (item.hasSeaDex && item.entryUrl) {
+        article.innerHTML = `
+          <a
+            class="item-link"
+            href="${escapeHtml(item.entryUrl)}"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open ${escapeHtml(item.title)} on releases.moe"
+            title="Open on releases.moe"
+          >
+            ${cardInner}
+          </a>
+        `;
+      } else {
+        article.innerHTML = `
+          <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
+            ${cardInner}
+          </div>
+        `;
+      }
+
+      container.appendChild(article);
     }
 
     function render() {
-      const visibleItems = getVisibleItems();
+      const visible = getVisibleItems();
+      const watchingItems = visible.watching;
+      const downloadedItems = visible.downloaded;
       const total = state.items.length;
-      const releasedCount = state.items.filter((item) => item.isReleased).length;
-      const foundCount = state.items.filter((item) => !item.isReleased && item.hasSeaDex).length;
-      const waitingCount = state.items.filter((item) => !item.isReleased && !item.hasSeaDex).length;
+      const downloadedCount = state.items.filter((item) => item.isDownloaded).length;
+      const foundCount = state.items.filter((item) => !item.isDownloaded && item.hasSeaDex).length;
+      const waitingCount = state.items.filter((item) => !item.isDownloaded && !item.hasSeaDex).length;
 
-      els.list.innerHTML = '';
-      els.emptyState.hidden = visibleItems.length > 0;
+      els.watchingList.innerHTML = '';
+      els.downloadedList.innerHTML = '';
+      els.watchingEmpty.hidden = watchingItems.length > 0;
+      els.downloadedEmpty.hidden = downloadedItems.length > 0;
       els.statTotal.textContent = String(total);
       els.statFound.textContent = String(foundCount);
-      els.statReleased.textContent = String(releasedCount);
+      els.statDownloaded.textContent = String(downloadedCount);
       els.statWaiting.textContent = String(waitingCount);
       els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
-      els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
+      els.visibleCountChip.textContent = `Watching ${watchingItems.length} · Downloaded ${downloadedItems.length}`;
+      els.watchingCountChip.textContent = `${watchingItems.length} title${watchingItems.length === 1 ? '' : 's'}`;
+      els.downloadedCountChip.textContent = `${downloadedItems.length} title${downloadedItems.length === 1 ? '' : 's'}`;
 
-      if (!visibleItems.length) return;
-
-      for (const item of visibleItems) {
-        const article = document.createElement('article');
-        article.className = 'item';
-
-        const poster = item.cover
-          ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
-          : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
-
-        let statusClass = 'bad';
-        let statusText = 'Waiting';
-        if (item.isReleased) {
-          statusClass = 'info';
-          statusText = 'Released';
-        } else if (item.hasSeaDex && item.incomplete) {
-          statusClass = 'warn';
-          statusText = 'Incomplete';
-        } else if (item.hasSeaDex) {
-          statusClass = 'ok';
-          statusText = 'Available';
-        }
-
-        const cardInner = `
-          <div class="poster">${poster}</div>
-          <div class="item-main">
-            <div class="title-block">
-              <h2 class="title">${escapeHtml(item.title)}</h2>
-            </div>
-          </div>
-          <div class="badges">
-            <span class="pill ${statusClass}">${statusText}</span>
-          </div>
-        `;
-
-        if (item.hasSeaDex && item.entryUrl) {
-          article.innerHTML = `
-            <a
-              class="item-link"
-              href="${escapeHtml(item.entryUrl)}"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open ${escapeHtml(item.title)} on releases.moe"
-              title="Open on releases.moe"
-            >
-              ${cardInner}
-            </a>
-          `;
-        } else {
-          article.innerHTML = `
-            <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
-              ${cardInner}
-            </div>
-          `;
-        }
-
-        els.list.appendChild(article);
-      }
+      watchingItems.forEach((item) => renderItemInto(els.watchingList, item));
+      downloadedItems.forEach((item) => renderItemInto(els.downloadedList, item));
     }
 
     async function runRefresh(showSuccess = true) {
@@ -1159,32 +1148,22 @@
       clearNotice();
 
       try {
-        const { watching, released, releasedListExists } = await fetchAniListLists(
+        const { watching, downloaded, downloadedListExists } = await fetchAniListLists(
           settings.username,
           settings.listName,
-          settings.releasedListName
+          settings.downloadedListName
         );
 
         const watchingIds = new Set(watching.map((media) => Number(media.id)));
-        const releasedOnly = released.filter((media) => !watchingIds.has(Number(media.id)));
-        const allMedia = [...watching, ...releasedOnly];
-
-        const seaDexMap = await fetchSeaDexByAniListIds(
-          allMedia.map((media) => media.id),
-          settings.apiBase
-        );
+        const downloadedOnly = downloaded.filter((media) => !watchingIds.has(Number(media.id)));
+        const allMedia = [...watching, ...downloadedOnly];
+        const seaDexMap = await fetchSeaDexByAniListIds(allMedia.map((media) => media.id), settings.apiBase);
 
         state.items = allMedia
-          .map((media) =>
-            buildViewModel(
-              media,
-              seaDexMap.get(media.id) || null,
-              !watchingIds.has(Number(media.id))
-            )
-          )
+          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null, !watchingIds.has(Number(media.id))))
           .sort((a, b) => {
             const rank = (item) => {
-              if (item.isReleased) return 2;
+              if (item.isDownloaded) return 2;
               if (item.hasSeaDex) return 1;
               return 0;
             };
@@ -1196,19 +1175,18 @@
         render();
 
         if (showSuccess) {
-          const releasedCount = state.items.filter((item) => item.isReleased).length;
-          const foundCount = state.items.filter((item) => !item.isReleased && item.hasSeaDex).length;
-          const waitingCount = state.items.filter((item) => !item.isReleased && !item.hasSeaDex).length;
-
-          const releasedListNote = releasedListExists
-            ? ` <strong>${releasedCount}</strong> ${releasedCount === 1 ? 'title is' : 'titles are'} in <strong>${escapeHtml(settings.releasedListName)}</strong> and shown as released.`
-            : ` The released list <strong>${escapeHtml(settings.releasedListName)}</strong> was not found, so nothing was shown as released.`;
+          const downloadedCount = state.items.filter((item) => item.isDownloaded).length;
+          const foundCount = state.items.filter((item) => !item.isDownloaded && item.hasSeaDex).length;
+          const waitingCount = state.items.filter((item) => !item.isDownloaded && !item.hasSeaDex).length;
+          const downloadedListNote = downloadedListExists
+            ? ` <strong>${downloadedCount}</strong> ${downloadedCount === 1 ? 'title is' : 'titles are'} shown in <strong>${escapeHtml(settings.downloadedListName)}</strong>.`
+            : ` The downloaded list <strong>${escapeHtml(settings.downloadedListName)}</strong> was not found, so nothing was shown in Downloaded.`;
 
           showNotice(
             `Loaded <strong>${state.items.length}</strong> total anime from your two lists. ` +
             `<strong>${watching.length}</strong> ${watching.length === 1 ? 'title is' : 'titles are'} being monitored in <strong>${escapeHtml(settings.listName)}</strong>. ` +
             `<strong>${foundCount}</strong> ${foundCount === 1 ? 'title is' : 'titles are'} currently available and <strong>${waitingCount}</strong> ${waitingCount === 1 ? 'title is' : 'titles are'} still waiting.` +
-            releasedListNote,
+            downloadedListNote,
             'success'
           );
         } else if (els.optionsPanel) {
@@ -1231,22 +1209,13 @@
     function resetDefaults() {
       applySettings(DEFAULTS);
       state.search = '';
-      state.filter = 'all';
       els.searchInput.value = '';
-      updateFilterButtons();
       saveSettings();
       runRefresh(true);
     }
 
-    function updateFilterButtons() {
-      [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
-        button.classList.toggle('active', button.dataset.filter === state.filter);
-      });
-    }
-
     function init() {
       applySettings(loadSettings());
-      updateFilterButtons();
 
       els.refreshBtn.addEventListener('click', () => runRefresh(true));
       els.resetBtn.addEventListener('click', resetDefaults);
@@ -1254,15 +1223,8 @@
         state.search = event.target.value || '';
         render();
       });
-      els.statusFilter.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-filter]');
-        if (!button) return;
-        state.filter = button.dataset.filter;
-        updateFilterButtons();
-        render();
-      });
 
-      [els.username, els.listName, els.releasedListName, els.apiBase].forEach((el) => {
+      [els.username, els.listName, els.downloadedListName, els.apiBase].forEach((el) => {
         el.addEventListener('change', () => {
           saveSettings();
           applySettings(getSettings());
