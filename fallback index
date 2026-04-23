@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Currently airing</title>
+  
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
   <style>
     :root {
       --bg: #080808;
@@ -313,8 +319,7 @@
       font-weight: 700;
     }
 
-    .chip.rss,
-    .chip.cache {
+    .chip.rss {
       background: rgba(140, 226, 174, 0.11);
       border-color: rgba(140, 226, 174, 0.18);
       color: #d8ffe7;
@@ -872,7 +877,7 @@
         <summary>
           <div>
             <h2 class="section-title">Fetched Entries</h2>
-            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and cached shows.</div>
+            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and RSS shows.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -885,7 +890,7 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Memory</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Cache</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -933,6 +938,7 @@
         </label>
 
         <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
+        <div id="modalHistorySlot" class="modal-note" style="margin-top: -6px; display: none;"></div>
 
         <div class="modal-grid">
           <div class="field">
@@ -997,7 +1003,10 @@
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const DEFAULT_TIMEZONE = "Europe/Berlin";
+    
+    // Automatically detect the user's timezone, with Berlin as a fallback
+    const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin";
+    
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
     const REFRESH_STALE_MS = 10 * 60 * 1000;
@@ -1064,6 +1073,68 @@
       }
     `;
 
+    // --- INDEXEDDB IMAGE PANTRY ---
+    const DB_NAME = 'AiringBoardImages';
+    const STORE_NAME = 'covers';
+    let dbPromise = null;
+
+    function getDB() {
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, 1);
+          request.onupgradeneeded = (e) => e.target.result.createObjectStore(STORE_NAME);
+          request.onsuccess = (e) => resolve(e.target.result);
+          request.onerror = (e) => reject(e.target.error);
+        });
+      }
+      return dbPromise;
+    }
+
+    async function getCachedImage(id, url) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const blob = await new Promise((resolve) => {
+          const req = store.get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+        if (blob) return URL.createObjectURL(blob);
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const newBlob = await res.blob();
+        const txW = db.transaction(STORE_NAME, 'readwrite');
+        txW.objectStore(STORE_NAME).put(newBlob, id);
+        return URL.createObjectURL(newBlob);
+      } catch (err) {
+        return url;
+      }
+    }
+
+    async function deleteCachedImage(id) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+      } catch (e) {}
+    }
+
+    async function loadImagesToDOM() {
+      const imgs = document.querySelectorAll('img.lazy-cover');
+      for (const img of imgs) {
+        img.classList.remove('lazy-cover'); // Prevent double processing
+        const id = img.getAttribute('data-media-id');
+        const url = img.getAttribute('data-original-url');
+        if (id && url) {
+          const localUrl = await getCachedImage(id, url);
+          img.src = localUrl;
+        }
+      }
+    }
+    // ------------------------------
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
@@ -1086,6 +1157,7 @@
       showSettingsSubtitle: document.getElementById("showSettingsSubtitle"),
       modalUseCustom: document.getElementById("modalUseCustom"),
       modalDetectedSlot: document.getElementById("modalDetectedSlot"),
+      modalHistorySlot: document.getElementById("modalHistorySlot"),
       modalDay: document.getElementById("modalDay"),
       modalTime: document.getElementById("modalTime"),
       modalCustomHelper: document.getElementById("modalCustomHelper"),
@@ -1109,7 +1181,8 @@
       lastSuccessfulLoadAt: 0,
       isLoading: false,
       activeSettingsId: null,
-      healthStatus: "healthy"
+      healthStatus: "healthy",
+      lastNextSlotKey: null
     };
 
     showMessage("info", "Ready.");
@@ -1186,7 +1259,8 @@
       let lastError = null;
       for (const target of targets) {
         try {
-          const response = await fetch(target, { method: "GET" });
+          // CACHE NO-STORE FIX APPLIED HERE
+          const response = await fetch(target, { method: "GET", cache: "no-store" });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
         } catch (error) {
@@ -1347,7 +1421,6 @@
       const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
       if (!match) return null;
       const showTitle = match[1].trim();
-      // Remove spaces and any "v2", "v3" suffixes so they share the same base episode deduplication key
       const episodeToken = match[2].replace(/\s+/g, "").replace(/v\d+/gi, "");
       if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
       return { showTitle, episode: episodeToken };
@@ -1369,7 +1442,6 @@
         if (Number.isNaN(date.getTime())) continue;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
-        // Changed > to < to keep the OLDEST release time, ignoring later delayed v2s
         if (!existing || date.getTime() < existing.date.getTime()) {
           deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
@@ -1427,6 +1499,21 @@
       return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     }
 
+    function medianTime(minutesArray) {
+      if (!minutesArray || !minutesArray.length) return null;
+      const base = minutesArray[0]; 
+      const adjusted = minutesArray.map(m => {
+        let diff = m - base;
+        if (diff > 720) diff -= 1440;
+        if (diff < -720) diff += 1440;
+        return base + diff;
+      });
+      const sorted = adjusted.sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const med = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+      return ((Math.round(med) % 1440) + 1440) % 1440;
+    }
+
     function inferSlotFromReleases(releases, timeZone) {
       const sample = releases.slice(0, 3).map(item => {
         const slot = dateToWeekdayTime(item.date, timeZone);
@@ -1442,7 +1529,7 @@
       }
       const dayItems = sample.filter(item => item.weekday === chosenDay);
       const timeItems = dayItems.length ? dayItems : sample;
-      const chosenMinutes = median(timeItems.map(item => item.minutes));
+      const chosenMinutes = medianTime(timeItems.map(item => item.minutes));
       return {
         day: chosenDay,
         time: minutesToHHMM(chosenMinutes ?? sample[0].minutes),
@@ -1613,80 +1700,30 @@
       return Number.isFinite(ms) ? ms : NaN;
     }
 
+    // --- HARD DELETE CLEANUP ENGINE ---
     function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
 
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
-      const nowMs = Date.now();
-      const nowIso = new Date(nowMs).toISOString();
-
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
 
+      // Nuke any slot cache history + image blob not currently valid
       for (const id of Object.keys(cache)) {
-        const entry = cache[id];
-
-        if (!entry || typeof entry !== "object") {
+        if (!validIds.has(id)) {
           delete cache[id];
-          cacheChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            cacheChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          cacheChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
-          delete cache[id];
+          deleteCachedImage(id); // Delete from IndexedDB Pantry
           cacheChanged = true;
         }
       }
 
-      if (cacheChanged) {
-        saveSlotCache(userName, cache);
-      }
+      if (cacheChanged) saveSlotCache(userName, cache);
 
-      const overrides = state.overrides && typeof state.overrides === "object"
-        ? { ...state.overrides }
-        : {};
+      const overrides = state.overrides && typeof state.overrides === "object" ? { ...state.overrides } : {};
       let overridesChanged = false;
 
       for (const id of Object.keys(overrides)) {
-        const entry = overrides[id];
-
-        if (!entry || typeof entry !== "object") {
-          delete overrides[id];
-          overridesChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            overridesChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          overridesChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
+        if (!validIds.has(id)) {
           delete overrides[id];
           overridesChanged = true;
         }
@@ -1697,6 +1734,7 @@
         saveOverrides(userName, overrides);
       }
     }
+    // ----------------------------------
 
     function dedupeEntriesById(entries) {
       const map = new Map();
@@ -1856,7 +1894,7 @@
             entry = {};
           }
 
-          entry.history = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
+          entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
           const currentEpisode = item.matchedEpisode;
@@ -1880,7 +1918,7 @@
 
           if (entry.history.length > 0) {
             const allMins = entry.history.map(h => h.mins);
-            const medMins = median(allMins);
+            const medMins = medianTime(allMins);
 
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
@@ -1898,7 +1936,10 @@
             updatedAt: new Date().toISOString()
           };
 
-          output.push(item);
+          output.push({
+            ...item,
+            historyLog: entry.history.map(h => h.time).join(", ")
+          });
           continue;
         }
 
@@ -1916,17 +1957,18 @@
         } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
           const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
           const rememberedTime = rememberedHistory.length
-            ? minutesToHHMM(median(rememberedHistory.map(h => h.mins)))
+            ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins)))
             : remembered.time;
 
           output.push({
             ...item,
-            day: item.day,
+            day: item.day, 
             time: rememberedTime,
             source: "cache",
             sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
             matchedTitle: remembered.matchedTitle || "",
-            cacheOrigin: remembered.origin || "saved"
+            cacheOrigin: remembered.origin || "saved",
+            historyLog: rememberedHistory.map(h => h.time).join(", ")
           });
         } else {
           output.push(item);
@@ -2043,8 +2085,7 @@
 
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
-      const rssCount = items.filter(item => item.source === "rss").length;
-      const cacheCount = items.filter(item => item.source === "cache").length;
+      const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
       const cards = [
@@ -2052,7 +2093,6 @@
         { label: "Custom", value: String(manualCount) },
         { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
-        { label: "MEMORY", value: String(cacheCount) },
         { label: "Fallback", value: String(fallbackCount) },
         { label: "Parsed RSS", value: String(primaryCount) }
       ];
@@ -2064,9 +2104,17 @@
       `).join("");
     }
 
-    function renderBoard(items) {
+    function renderBoard(items, isTick = false) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
+      const newNextSlotKey = nextSlot ? nextSlot.key : null;
+
+      if (isTick && newNextSlotKey === state.lastNextSlotKey) {
+        return; 
+      }
+      
+      state.lastNextSlotKey = newNextSlotKey;
+
       els.board.innerHTML = grouped.map(dayBlock => `
         <section class="panel day-column">
           <div class="day-head">
@@ -2089,10 +2137,11 @@
                       ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
                       : "";
 
+                    // IMAGES NOW RENDERED WITH DATA ATTRIBUTES FOR INDEXEDDB INJECTION
                     return `
                     <article class="entry">
                       <div class="thumb">
-                       ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
+                       ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
                       <div class="entry-body">
                         <div class="entry-title">
@@ -2105,11 +2154,9 @@
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
-                            : item.source === "rss"
-                              ? `<span class="chip rss">RSS · ${Math.min(item.sampleCount || 1, 3)}</span>`
-                              : item.source === "cache"
-                                ? `<span class="chip cache">MEMORY ${escapeHtml(String(item.cacheOrigin || "saved").toUpperCase())} (${Math.min(item.sampleCount || 1, 3)})</span>`
-                                : `<span class="chip fallback">AniList</span>`}
+                            : (item.source === "rss" || item.source === "cache")
+                              ? `<span class="chip rss" title="Calculated from past releases: ${escapeHtml(item.historyLog || item.time)}">RSS · ${item.sampleCount || 1}</span>`
+                              : `<span class="chip fallback">AniList</span>`}
                         </div>
                       </div>
                       <button
@@ -2139,6 +2186,9 @@
       if (!grouped.length) {
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
+
+      // TRIGGER ASYNC IMAGE LOAD
+      loadImagesToDOM();
     }
 
     function itemMap() {
@@ -2152,6 +2202,7 @@
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
+      // Trigger Hard Delete immediately
       pruneOrphanedStoredState(
         state.userName,
         state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
@@ -2234,6 +2285,14 @@
       els.modalDetectedSlot.textContent = detected
         ? `Detected: ${detected.day} · ${detected.time}`
         : "Detected: No slot found yet";
+
+      const activeItem = itemMap().get(id);
+      if (activeItem && activeItem.historyLog) {
+        els.modalHistorySlot.textContent = `History: ${activeItem.historyLog}`;
+        els.modalHistorySlot.style.display = "block";
+      } else {
+        els.modalHistorySlot.style.display = "none";
+      }
 
       els.modalUseCustom.checked = Boolean(override?.enabled);
       els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
@@ -2466,6 +2525,24 @@
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
+        // --- HARD DELETE MANUAL SHOWS IF COMPLETED ---
+        const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
+        if (addedIds.length > 0) {
+          try {
+            const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
+            const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
+            const mediaList = statusData?.Page?.media || [];
+            for (const m of mediaList) {
+              if (m.status === "FINISHED" || m.status === "CANCELLED") {
+                delete nextAddedShows[String(m.id)];
+                delete nextOverrides[String(m.id)];
+              }
+            }
+          } catch(e) {
+            // Ignore if status check fails to avoid breaking main board
+          }
+        }
+
         state.userName = userName;
         state.overrides = nextOverrides;
         state.addedShows = nextAddedShows;
@@ -2514,6 +2591,7 @@
     }
 
     function maybeRefreshBoard(reason = "refresh") {
+      if (!navigator.onLine) return; 
       if (document.visibilityState === "hidden") return;
       if (state.isLoading) return;
       if (!state.userName) return;
@@ -2523,7 +2601,7 @@
 
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
-      setInterval(() => { if (state.items.length) renderBoard(state.items); }, COUNTDOWN_TICK_MS);
+      setInterval(() => { if (state.items.length) renderBoard(state.items, true); }, COUNTDOWN_TICK_MS);
     }
 
     let searchDebounceTimer = null;
@@ -2604,8 +2682,6 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
     });
-
-    window.addEventListener("focus", () => { maybeRefreshBoard("refresh"); });
 
     let autoRefreshStarted = false;
     let bootCompleted = false;
