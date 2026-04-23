@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anime Releases Tracker + Personal Library</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-soft: #121933;
+      --panel: #11182d;
+      --panel-soft: #18213d;
+      --card: #131b31;
+      --text: #eef2ff;
+      --muted: #98a6cc;
+      --line: rgba(255,255,255,0.08);
+      --line-strong: rgba(255,255,255,0.12);
+      --accent: #8c9eff;
+      --accent-soft: rgba(140,158,255,0.16);
+      --ok: #4adea8;
+      --ok-soft: rgba(74,222,168,0.14);
+      --warn: #ffd479;
+      --warn-soft: rgba(255,212,121,0.14);
+      --bad: #ff8d8d;
+      --bad-soft: rgba(255,141,141,0.14);
+      --shadow: 0 20px 50px rgba(0,0,0,0.28);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    code {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 0.92em;
+    }
+
+    .app {
+      width: min(1180px, calc(100vw - 24px));
+      margin: 20px auto 40px;
+    }
+
+    .shell {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 28px;
+      overflow: hidden;
+    }
+
+    .options-panel {
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .options-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .options-summary::-webkit-details-marker { display: none; }
+
+    .options-summary::after {
+      content: '▾';
+      color: var(--muted);
+      margin-left: auto;
+      order: 3;
+      transition: transform 0.16s ease;
+    }
+
+    .options-panel[open] .options-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .options-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .options-summary-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .options-inner {
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .options-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-soft);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 3.7vw, 42px);
+      line-height: 1.04;
+    }
+
+    .sub {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 72ch;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
+      flex: 0 0 auto;
+    }
+
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
+    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
+
+    .stats-panel {
+      margin-bottom: 0;
+      padding: 0;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .stats-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .stats-summary::-webkit-details-marker { display: none; }
+
+    .stats-summary::after {
+      content: '▾';
+      color: var(--muted);
+      transition: transform 0.16s ease;
+    }
+
+    .stats-panel[open] .stats-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      padding: 0 14px 14px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-height: 96px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .stat-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.username { grid-column: span 3; }
+    .field.list { grid-column: span 2; }
+    .field.api { grid-column: span 4; }
+    .field.search { grid-column: span 7; }
+    .field.filter { grid-column: span 3; }
+    .field.actions { grid-column: span 2; }
+
+    .import-export-panel {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      display: grid;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .section-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input, textarea, select, button, .segmented {
+      font: inherit;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: rgba(140,158,255,0.65);
+      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
+    }
+
+    .segmented {
+      display: inline-flex;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+      min-height: 48px;
+      flex-wrap: wrap;
+    }
+
+    .segmented button,
+    .ghost-btn,
+    .primary-btn,
+    .link-btn,
+    .mini-link,
+    .mini-btn {
+      border: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .segmented button {
+      flex: 1;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 10px 12px;
+      min-width: 90px;
+    }
+
+    .segmented button.active {
+      background: rgba(140,158,255,0.18);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .primary-btn,
+    .ghost-btn {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 800;
+      width: 100%;
+    }
+
+    .primary-btn {
+      color: white;
+      background: linear-gradient(135deg, #8c9eff, #a479ff);
+      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
+    }
+
+    .ghost-btn {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+    }
+
+    .mini-btn {
+      min-height: 38px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-weight: 800;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+    }
+
+    .mini-btn.primary {
+      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
+      border-color: rgba(140,158,255,0.24);
+    }
+
+    .danger-btn {
+      background: rgba(255,141,141,0.08);
+      border-color: rgba(255,141,141,0.2);
+      color: #ffdcdc;
+    }
+
+    .primary-btn:hover,
+    .ghost-btn:hover,
+    .link-btn:hover,
+    .mini-link:hover,
+    .mini-btn:hover,
+    .segmented button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-btn:disabled,
+    .ghost-btn:disabled,
+    .mini-btn:disabled {
+      opacity: 0.7;
+      cursor: progress;
+      transform: none;
+    }
+
+    .bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .bar-left,
+    .bar-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .notice {
+      margin: 18px 0 0;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .notice.error {
+      color: #ffd8d8;
+      background: rgba(255,141,141,0.08);
+      border-color: rgba(255,141,141,0.18);
+    }
+
+    .notice.success {
+      color: #d8ffef;
+      background: rgba(74,222,168,0.08);
+      border-color: rgba(74,222,168,0.18);
+    }
+
+    .content {
+      padding: 18px;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .item-link,
+    .item-static {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 12px;
+      min-height: 72px;
+    }
+
+    .item-link {
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .item-link:hover {
+      background: rgba(255,255,255,0.035);
+      transform: translateY(-1px);
+    }
+
+    .item-static {
+      opacity: 0.96;
+    }
+
+    .poster {
+      width: 46px;
+      aspect-ratio: 2 / 3;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      flex: 0 0 auto;
+    }
+
+    .poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .poster-fallback {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,0.4);
+      font-size: 11px;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .item-main {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .item-summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .title-block {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.3;
+      font-weight: 800;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .subtitle {
+      margin: 2px 0 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .pill.ok { color: #d8ffef; background: var(--ok-soft); border-color: rgba(74,222,168,0.18); }
+    .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
+    .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
+    .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 12px 12px;
+    }
+
+    .meta-card {
+      padding: 12px 13px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      min-width: 0;
+    }
+
+    .meta-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .meta-value.muted { color: var(--muted); }
+
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .link-btn,
+    .mini-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+
+    .link-btn {
+      min-height: 42px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+    }
+
+    .link-btn.primary {
+      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
+      border-color: rgba(140,158,255,0.24);
+    }
+
+    .mini-link {
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    details {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: #dce4ff;
+      font-weight: 800;
+      font-size: 13px;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    .entry-collapse {
+      background: rgba(255,255,255,0.025);
+      border-color: rgba(255,255,255,0.055);
+      padding: 0;
+      overflow: hidden;
+      margin: 0 12px 12px;
+    }
+
+    .entry-toggle {
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .entry-toggle::after {
+      content: 'Show details';
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .entry-collapse[open] .entry-toggle::after {
+      content: 'Hide details';
+    }
+
+    .entry-details {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .personal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .personal-field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .personal-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .empty {
+      padding: 40px 16px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(255,255,255,0.1);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    @media (max-width: 920px) {
+      .field.username,
+      .field.list,
+      .field.api,
+      .field.search,
+      .field.filter,
+      .field.actions { grid-column: span 6; }
+
+      .personal-grid,
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app {
+        width: min(100vw - 12px, 1180px);
+        margin: 8px auto 18px;
+      }
+
+      .shell { border-radius: 22px; }
+      .content { padding-left: 14px; padding-right: 14px; }
+      .hero { padding: 14px; }
+      .content { padding-top: 14px; padding-bottom: 14px; }
+      .options-inner { padding: 0 14px 14px; }
+      .stats { gap: 10px; padding: 0 10px 10px; }
+      .stat { padding: 12px; min-height: 0; }
+      .stat-value { font-size: 24px; }
+      .controls { grid-template-columns: 1fr; }
+      .field.username,
+      .field.list,
+      .field.api,
+      .field.search,
+      .field.filter,
+      .field.actions { grid-column: auto; }
+      .item {
+        border-radius: 16px;
+      }
+      .item-link,
+      .item-static {
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 10px;
+      }
+      .poster {
+        width: 42px;
+        border-radius: 10px;
+      }
+      .title { font-size: 14px; }
+      .button-row { align-items: stretch; }
+      .button-row .primary-btn,
+      .button-row .ghost-btn { width: 100%; }
+      .pill { white-space: normal; }
+      .notice { margin-left: 0; margin-right: 0; }
+
+      .options-summary {
+        padding: 12px 14px;
+      }
+
+      .options-summary-right {
+        width: 100%;
+      }
+
+      .options-summary::after {
+        margin-left: 0;
+      }
+
+      .options-summary-right .chip,
+      .options-summary-right .hero-badge {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="shell">
+      <section class="content">
+        <div id="list" class="list"></div>
+        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
+      </section>
+
+      <details class="options-panel" id="optionsPanel">
+        <summary class="options-summary">
+          <span class="options-title">Options</span>
+          <span class="options-summary-right">
+            <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
+            <span class="chip" id="visibleCountChip">Showing 0 titles</span>
+            <span class="chip" id="unmatchedChip">0 unmatched imports</span>
+            <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
+          </span>
+        </summary>
+
+        <div class="options-inner">
+          <div id="notice" class="notice" hidden></div>
+
+          <div class="options-stack">
+            <details class="stats-panel">
+              <summary class="stats-summary">Show stats</summary>
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-label">Anime in list</div>
+                  <div class="stat-value" id="statTotal">0</div>
+                  <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Found on releases.moe</div>
+                  <div class="stat-value" id="statFound">0</div>
+                  <div class="stat-help">Entries with a releases.moe page.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Still waiting</div>
+                  <div class="stat-value" id="statWaiting">0</div>
+                  <div class="stat-help">Tracked shows that are not listed yet.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Owned / grabbed</div>
+                  <div class="stat-value" id="statOwned">0</div>
+                  <div class="stat-help">Titles you marked as already grabbed.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Manual review</div>
+                  <div class="stat-value" id="statReview">0</div>
+                  <div class="stat-help">Titles not on releases or where you prefer something else.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Unmatched imports</div>
+                  <div class="stat-value" id="statUnmatched">0</div>
+                  <div class="stat-help">Imported spreadsheet rows that could not be matched safely.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Last checked</div>
+                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+                  <div class="stat-help">Refreshes on page load or manual reload.</div>
+                </div>
+              </div>
+            </details>
+
+            <section class="hero" id="settingsPanel">
+              <div class="controls">
+                <div class="field username">
+                  <label for="username">AniList username</label>
+                  <input id="username" value="zrr" autocomplete="off" />
+                </div>
+                <div class="field list">
+                  <label for="listName">Custom list name</label>
+                  <input id="listName" value="releases" autocomplete="off" />
+                </div>
+                <div class="field api">
+                  <label for="apiBase">releases.moe API base</label>
+                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+                </div>
+                <div class="field search">
+                  <label for="searchInput">Filter anime</label>
+                  <input id="searchInput" placeholder="Search titles, releases, comments, notes" autocomplete="off" />
+                </div>
+                <div class="field filter">
+                  <label>Status view</label>
+                  <div class="segmented" id="statusFilter">
+                    <button type="button" data-filter="all" class="active">All</button>
+                    <button type="button" data-filter="found">Found</button>
+                    <button type="button" data-filter="waiting">Waiting</button>
+                    <button type="button" data-filter="owned">Owned</button>
+                    <button type="button" data-filter="review">Review</button>
+                  </div>
+                </div>
+                <div class="field actions">
+                  <label>Actions</label>
+                  <div class="button-row">
+                    <button id="refreshBtn" class="primary-btn">Reload</button>
+                    <button id="resetBtn" class="ghost-btn">Reset</button>
+                  </div>
+                </div>
+              </div>
+
+              <section class="import-export-panel">
+                <p class="section-title">Personal library import / export</p>
+                <p class="section-help">
+                  Export each Excel sheet as CSV, then import it here. The app matches rows against the current AniList list and stores your personal library locally in the browser.
+                </p>
+
+                <div class="button-row">
+                  <button id="importOwnedBtn" type="button" class="mini-btn primary">Import grabbed CSV</button>
+                  <button id="importReviewBtn" type="button" class="mini-btn">Import review CSV</button>
+                  <button id="exportOwnedBtn" type="button" class="mini-btn">Export grabbed CSV</button>
+                  <button id="exportReviewBtn" type="button" class="mini-btn">Export review CSV</button>
+                  <button id="exportJsonBtn" type="button" class="mini-btn">Export JSON backup</button>
+                  <button id="clearUnmatchedBtn" type="button" class="mini-btn">Clear unmatched list</button>
+                </div>
+
+                <p class="section-help">
+                  Expected grabbed columns: <code>Series</code>, <code>Release</code>, <code>Date</code>, <code>Comment</code>. Expected review columns: <code>Series</code>, <code>Release</code>, <code>Comment</code>, optional <code>Reason</code>.
+                </p>
+
+                <input id="importOwnedInput" type="file" accept=".csv,text/csv" hidden />
+                <input id="importReviewInput" type="file" accept=".csv,text/csv" hidden />
+              </section>
+            </section>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    const ANILIST_API = 'https://graphql.anilist.co';
+    const STORAGE_KEY = 'releases-watchlist-settings-v2';
+    const PERSONAL_STORAGE_KEY = 'releases-personal-library-v1';
+
+    const DEFAULTS = {
+      username: 'zrr',
+      listName: 'releases',
+      apiBase: 'https://releases.moe'
+    };
+
+    const EMPTY_PERSONAL_LIBRARY = {
+      entries: {},
+      unmatched: []
+    };
+
+    const state = {
+      items: [],
+      lastCheckedAt: null,
+      isLoading: false,
+      filter: 'all',
+      search: '',
+      personal: loadPersonalLibrary()
+    };
+
+    const els = {
+      username: document.getElementById('username'),
+      listName: document.getElementById('listName'),
+      apiBase: document.getElementById('apiBase'),
+      searchInput: document.getElementById('searchInput'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      statusDot: document.getElementById('statusDot'),
+      statusText: document.getElementById('statusText'),
+      watchingListLabel: document.getElementById('watchingListLabel'),
+      visibleCountChip: document.getElementById('visibleCountChip'),
+      unmatchedChip: document.getElementById('unmatchedChip'),
+      statusFilter: document.getElementById('statusFilter'),
+      notice: document.getElementById('notice'),
+      optionsPanel: document.getElementById('optionsPanel'),
+      list: document.getElementById('list'),
+      emptyState: document.getElementById('emptyState'),
+      statTotal: document.getElementById('statTotal'),
+      statFound: document.getElementById('statFound'),
+      statWaiting: document.getElementById('statWaiting'),
+      statOwned: document.getElementById('statOwned'),
+      statReview: document.getElementById('statReview'),
+      statUnmatched: document.getElementById('statUnmatched'),
+      statChecked: document.getElementById('statChecked'),
+      importOwnedBtn: document.getElementById('importOwnedBtn'),
+      importReviewBtn: document.getElementById('importReviewBtn'),
+      exportOwnedBtn: document.getElementById('exportOwnedBtn'),
+      exportReviewBtn: document.getElementById('exportReviewBtn'),
+      exportJsonBtn: document.getElementById('exportJsonBtn'),
+      clearUnmatchedBtn: document.getElementById('clearUnmatchedBtn'),
+      importOwnedInput: document.getElementById('importOwnedInput'),
+      importReviewInput: document.getElementById('importReviewInput')
+    };
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { ...DEFAULTS };
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULTS, ...parsed };
+      } catch {
+        return { ...DEFAULTS };
+      }
+    }
+
+    function getSettings() {
+      return {
+        username: els.username.value.trim() || DEFAULTS.username,
+        listName: els.listName.value.trim() || DEFAULTS.listName,
+        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
+      };
+    }
+
+    function applySettings(settings) {
+      els.username.value = settings.username;
+      els.listName.value = settings.listName;
+      els.apiBase.value = settings.apiBase;
+      els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
+    }
+
+    function saveSettings() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
+    }
+
+    function loadPersonalLibrary() {
+      try {
+        const raw = localStorage.getItem(PERSONAL_STORAGE_KEY);
+        if (!raw) return structuredClonePersonalLibrary(EMPTY_PERSONAL_LIBRARY);
+        const parsed = JSON.parse(raw);
+        return {
+          entries: parsed?.entries && typeof parsed.entries === 'object' ? parsed.entries : {},
+          unmatched: Array.isArray(parsed?.unmatched) ? parsed.unmatched : []
+        };
+      } catch {
+        return structuredClonePersonalLibrary(EMPTY_PERSONAL_LIBRARY);
+      }
+    }
+
+    function structuredClonePersonalLibrary(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function savePersonalLibrary() {
+      localStorage.setItem(PERSONAL_STORAGE_KEY, JSON.stringify(state.personal));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? '');
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function setStatus(kind, text) {
+      els.statusDot.className = 'dot';
+      if (kind) els.statusDot.classList.add(kind);
+      els.statusText.textContent = text;
+    }
+
+    function showNotice(message, kind = '') {
+      els.notice.hidden = false;
+      els.notice.className = `notice ${kind}`.trim();
+      els.notice.innerHTML = message;
+      if (els.optionsPanel) els.optionsPanel.open = true;
+    }
+
+    function clearNotice() {
+      els.notice.hidden = true;
+      els.notice.className = 'notice';
+      els.notice.innerHTML = '';
+    }
+
+    function formatDateTime(value) {
+      if (!value) return 'Never';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }).format(date);
+    }
+
+    function formatBytes(bytes) {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return '—';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let n = value;
+      let i = 0;
+      while (n >= 1024 && i < units.length - 1) {
+        n /= 1024;
+        i += 1;
+      }
+      return `${n.toFixed(n >= 100 || i === 0 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
+    }
+
+    function normalizeTitle(media) {
+      return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
+    }
+
+    function getAltTitle(media) {
+      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
+        .filter(Boolean)
+        .filter((value, index, arr) => arr.indexOf(value) === index);
+      if (names.length <= 1) return '';
+      return names.slice(1).join(' • ');
+    }
+
+    function normalizeLooseString(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function normalizeMatch(value) {
+      return String(value || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/['’]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    }
+
+    function getTorrentSignature(torrent) {
+      const files = (torrent?.files || [])
+        .map((file) => `${file?.name || ''}:${Number(file?.length) || 0}`)
+        .sort()
+        .join('|');
+      const tags = [...(torrent?.tags || [])].map((tag) => normalizeLooseString(tag)).sort().join('|');
+      return [
+        normalizeLooseString(torrent?.groupedUrl),
+        normalizeLooseString(torrent?.infohash),
+        normalizeLooseString(torrent?.releaseGroup),
+        normalizeLooseString(torrent?.tracker),
+        Number(torrent?.dualAudio) ? 'dual' : 'single',
+        tags,
+        files
+      ].join('::');
+    }
+
+    function dedupeTorrents(torrents) {
+      const byKey = new Map();
+      for (const torrent of torrents || []) {
+        const strongKey = normalizeLooseString(torrent?.groupedUrl) || normalizeLooseString(torrent?.infohash);
+        const fallbackKey = getTorrentSignature(torrent);
+        const key = strongKey || fallbackKey;
+        const existing = byKey.get(key);
+        if (!existing) {
+          byKey.set(key, torrent);
+          continue;
+        }
+
+        const score = (item) => {
+          let n = 0;
+          if (item?.isBest) n += 100;
+          if (item?.dualAudio) n += 20;
+          if (item?.url) n += 5;
+          if (item?.groupedUrl) n += 5;
+          if ((item?.files || []).length) n += 3;
+          return n;
+        };
+
+        if (score(torrent) > score(existing)) {
+          byKey.set(key, torrent);
+        }
+      }
+      return Array.from(byKey.values());
+    }
+
+    function choosePreferredEntry(existing, candidate) {
+      if (!existing) return candidate;
+      const score = (entry) => {
+        let n = 0;
+        if (!entry?.incomplete) n += 50;
+        n += Math.min((entry?.expand?.trs || []).length, 10) * 5;
+        n += entry?.comparison ? 5 : 0;
+        const updated = Date.parse(entry?.updated || '') || 0;
+        n += Math.floor(updated / 1_000_000_000);
+        return n;
+      };
+      return score(candidate) > score(existing) ? candidate : existing;
+    }
+
+    function pickBestTorrent(entry) {
+      const torrents = dedupeTorrents(entry?.expand?.trs || []);
+      if (!torrents.length) return null;
+      return [...torrents].sort((a, b) => {
+        const score = (torrent) => {
+          let n = 0;
+          if (torrent?.isBest) n += 100;
+          if (torrent?.dualAudio) n += 20;
+          if (torrent?.groupedUrl) n += 5;
+          if (torrent?.url) n += 2;
+          return n;
+        };
+        return score(b) - score(a);
+      })[0];
+    }
+
+    function getEmptyPersonalEntry(animeId, seriesName = '') {
+      return {
+        animeId: Number(animeId) || 0,
+        seriesName: seriesName || '',
+        personalStatus: 'none',
+        ownedRelease: '',
+        ownedDate: '',
+        reviewRelease: '',
+        reviewReason: '',
+        comment: '',
+        updatedAt: ''
+      };
+    }
+
+    function getPersonalEntry(animeId) {
+      const key = String(animeId);
+      const existing = state.personal.entries[key];
+      return existing ? { ...getEmptyPersonalEntry(animeId), ...existing } : getEmptyPersonalEntry(animeId);
+    }
+
+    function isMeaningfulPersonalEntry(entry) {
+      return Boolean(
+        entry &&
+        (
+          entry.personalStatus && entry.personalStatus !== 'none' ||
+          entry.ownedRelease ||
+          entry.ownedDate ||
+          entry.reviewRelease ||
+          entry.reviewReason ||
+          entry.comment
+        )
+      );
+    }
+
+    function buildSearchBlobForItem(item) {
+      return [
+        item.title,
+        item.altTitle,
+        item.notes || '',
+        item.bestTorrent?.releaseGroup || '',
+        (item.bestTorrent?.tags || []).join(' '),
+        item.ownedRelease || '',
+        item.ownedDate || '',
+        item.reviewRelease || '',
+        item.reviewReason || '',
+        item.comment || '',
+        item.seriesName || ''
+      ].join(' ').toLowerCase();
+    }
+
+    function applyPersonalToViewModel(item, personalEntry) {
+      const entry = personalEntry ? { ...getEmptyPersonalEntry(item.id, item.title), ...personalEntry } : getEmptyPersonalEntry(item.id, item.title);
+      const next = {
+        ...item,
+        seriesName: entry.seriesName || item.title,
+        personalStatus: entry.personalStatus || 'none',
+        ownedRelease: entry.ownedRelease || '',
+        ownedDate: entry.ownedDate || '',
+        reviewRelease: entry.reviewRelease || '',
+        reviewReason: entry.reviewReason || '',
+        comment: entry.comment || '',
+        personalUpdatedAt: entry.updatedAt || ''
+      };
+      next.searchBlob = buildSearchBlobForItem(next);
+      return next;
+    }
+
+    async function postAniList(query, variables) {
+      const response = await fetch(ANILIST_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ query, variables })
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || data?.errors) {
+        const message = data?.errors?.[0]?.message || `AniList request failed with ${response.status}`;
+        throw new Error(message);
+      }
+      return data.data;
+    }
+
+    async function fetchAniListCustomList(username, listName) {
+      const query = `
+        query ($userName: String!) {
+          MediaListCollection(userName: $userName, type: ANIME) {
+            lists {
+              name
+              isCustomList
+              entries {
+                media {
+                  id
+                  siteUrl
+                  title { romaji english native }
+                  coverImage { large color }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const data = await postAniList(query, { userName: username });
+      const lists = data?.MediaListCollection?.lists || [];
+      const wanted = lists.find((list) =>
+        list?.isCustomList &&
+        String(list?.name || '').trim().toLowerCase() === listName.trim().toLowerCase()
+      );
+
+      if (!wanted) {
+        const available = lists
+          .filter((list) => list?.isCustomList)
+          .map((list) => list.name)
+          .filter(Boolean);
+        const extra = available.length
+          ? ` Available custom lists: ${available.map(escapeHtml).join(', ')}.`
+          : ' No public custom lists were returned for this account.';
+        throw new Error(`Custom list <strong>${escapeHtml(listName)}</strong> was not found for <strong>${escapeHtml(username)}</strong>.${extra}`);
+      }
+
+      const deduped = new Map();
+      for (const entry of wanted.entries || []) {
+        const media = entry?.media;
+        if (media?.id) deduped.set(media.id, media);
+      }
+      return Array.from(deduped.values());
+    }
+
+    function chunk(array, size) {
+      const out = [];
+      for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
+      return out;
+    }
+
+    function buildSeaDexFilter(ids) {
+      return '(' + ids.map((id) => `alID=${Number(id)}`).join(' || ') + ')';
+    }
+
+    async function fetchSeaDexByAniListIds(ids, apiBase) {
+      if (!ids.length) return new Map();
+      const results = [];
+
+      for (const idChunk of chunk(ids, 25)) {
+        const params = new URLSearchParams({
+          filter: buildSeaDexFilter(idChunk),
+          expand: 'trs',
+          perPage: String(idChunk.length),
+          sort: '-updated'
+        });
+
+        const url = `${apiBase}/api/collections/entries/records?${params.toString()}`;
+        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          const message = data?.message || `releases.moe request failed with ${response.status}`;
+          throw new Error(message);
+        }
+        results.push(...(data?.items || []));
+      }
+
+      const map = new Map();
+      for (const item of results) {
+        if (item?.alID == null) continue;
+        const key = Number(item.alID);
+        map.set(key, choosePreferredEntry(map.get(key), item));
+      }
+      return map;
+    }
+
+    function buildViewModel(media, entry, personalEntry) {
+      const bestTorrent = entry ? pickBestTorrent(entry) : null;
+      const comparisons = entry?.comparison
+        ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
+        : [];
+      const torrents = dedupeTorrents(entry?.expand?.trs || []);
+      const bestSize = bestTorrent
+        ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
+        : '—';
+      const rawTorrentCount = (entry?.expand?.trs || []).length;
+      const duplicateTorrentCount = Math.max(0, rawTorrentCount - torrents.length);
+
+      const base = {
+        id: media.id,
+        title: normalizeTitle(media),
+        altTitle: getAltTitle(media),
+        cover: media?.coverImage?.large || '',
+        coverColor: media?.coverImage?.color || '#2d3e77',
+        aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
+        hasSeaDex: Boolean(entry),
+        entryUrl: entry ? `https://releases.moe/${media.id}/` : '',
+        incomplete: Boolean(entry?.incomplete),
+        notes: entry?.notes || '',
+        theoreticalBest: entry?.theoreticalBest || '',
+        updatedAt: entry?.updated || '',
+        comparisons,
+        bestTorrent,
+        bestSize,
+        torrents,
+        rawTorrentCount,
+        duplicateTorrentCount,
+        personalStatus: 'none',
+        ownedRelease: '',
+        ownedDate: '',
+        reviewRelease: '',
+        reviewReason: '',
+        comment: '',
+        seriesName: normalizeTitle(media),
+        personalUpdatedAt: ''
+      };
+
+      return applyPersonalToViewModel(base, personalEntry);
+    }
+
+    function getVisibleItems() {
+      const term = state.search.trim().toLowerCase();
+      return state.items.filter((item) => {
+        if (state.filter === 'found' && !item.hasSeaDex) return false;
+        if (state.filter === 'waiting' && item.hasSeaDex) return false;
+        if (state.filter === 'owned' && item.personalStatus !== 'owned') return false;
+        if (state.filter === 'review' && item.personalStatus !== 'review') return false;
+        if (term && !item.searchBlob.includes(term)) return false;
+        return true;
+      });
+    }
+
+    function render() {
+      const visibleItems = getVisibleItems();
+      const ownedCount = state.items.filter((item) => item.personalStatus === 'owned').length;
+      const reviewCount = state.items.filter((item) => item.personalStatus === 'review').length;
+      const unmatchedCount = state.personal.unmatched.length;
+
+      els.list.innerHTML = '';
+      els.emptyState.hidden = visibleItems.length > 0;
+      els.statTotal.textContent = String(state.items.length);
+      els.statFound.textContent = String(state.items.filter((item) => item.hasSeaDex).length);
+      els.statWaiting.textContent = String(state.items.filter((item) => !item.hasSeaDex).length);
+      els.statOwned.textContent = String(ownedCount);
+      els.statReview.textContent = String(reviewCount);
+      els.statUnmatched.textContent = String(unmatchedCount);
+      els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
+      els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
+      els.unmatchedChip.textContent = `${unmatchedCount} unmatched import${unmatchedCount === 1 ? '' : 's'}`;
+
+      if (!visibleItems.length) return;
+
+      for (const item of visibleItems) {
+        const article = document.createElement('article');
+        article.className = 'item';
+        article.dataset.animeId = String(item.id);
+
+        const poster = item.cover
+          ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
+          : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+
+        let statusClass = 'bad';
+        let statusText = 'Waiting';
+        if (item.hasSeaDex && item.incomplete) {
+          statusClass = 'warn';
+          statusText = 'Incomplete';
+        } else if (item.hasSeaDex) {
+          statusClass = 'ok';
+          statusText = 'Found';
+        }
+
+        const personalBadge = item.personalStatus === 'owned'
+          ? `<span class="pill info">Owned</span>`
+          : item.personalStatus === 'review'
+            ? `<span class="pill warn">Review</span>`
+            : '';
+
+        const cardInner = `
+          <div class="poster">${poster}</div>
+          <div class="item-main">
+            <div class="title-block">
+              <h2 class="title">${escapeHtml(item.title)}</h2>
+              ${item.altTitle ? `<p class="subtitle">${escapeHtml(item.altTitle)}</p>` : ''}
+            </div>
+          </div>
+          <div class="badges">
+            <span class="pill ${statusClass}">${statusText}</span>
+            ${personalBadge}
+          </div>
+        `;
+
+        const topRow = item.hasSeaDex && item.entryUrl
+          ? `
+            <a
+              class="item-link"
+              href="${escapeHtml(item.entryUrl)}"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open ${escapeHtml(item.title)} on releases.moe"
+              title="Open on releases.moe"
+            >
+              ${cardInner}
+            </a>
+          `
+          : `
+            <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
+              ${cardInner}
+            </div>
+          `;
+
+        article.innerHTML = `
+          ${topRow}
+
+          <div class="meta-grid">
+            <div class="meta-card">
+              <div class="meta-label">Personal</div>
+              <div class="meta-value">
+                ${item.personalStatus === 'owned'
+                  ? `Owned${item.ownedRelease ? ` • ${escapeHtml(item.ownedRelease)}` : ''}`
+                  : item.personalStatus === 'review'
+                    ? `Review${item.reviewRelease ? ` • ${escapeHtml(item.reviewRelease)}` : ''}`
+                    : '<span class="muted">No local entry yet</span>'
+                }
+              </div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">Best on releases.moe</div>
+              <div class="meta-value">
+                ${item.bestTorrent?.releaseGroup ? escapeHtml(item.bestTorrent.releaseGroup) : '<span class="muted">—</span>'}
+              </div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">Comment</div>
+              <div class="meta-value line-clamp-3 ${item.comment ? '' : 'muted'}">
+                ${item.comment ? escapeHtml(item.comment) : 'No comment saved'}
+              </div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-label">Links</div>
+              <div class="actions-row">
+                <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
+                ${item.entryUrl ? `<a class="mini-link" href="${escapeHtml(item.entryUrl)}" target="_blank" rel="noreferrer">releases.moe</a>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <details class="entry-collapse">
+            <summary class="entry-toggle">Edit collection data</summary>
+            <div class="entry-details">
+              <div class="personal-grid">
+                <div class="personal-field">
+                  <label>Personal status</label>
+                  <select data-field="personalStatus">
+                    <option value="none" ${item.personalStatus === 'none' ? 'selected' : ''}>None</option>
+                    <option value="owned" ${item.personalStatus === 'owned' ? 'selected' : ''}>Owned / grabbed</option>
+                    <option value="review" ${item.personalStatus === 'review' ? 'selected' : ''}>Manual review</option>
+                  </select>
+                </div>
+
+                <div class="personal-field">
+                  <label>Owned date</label>
+                  <input data-field="ownedDate" value="${escapeHtml(item.ownedDate)}" placeholder="2026-04-23 or any text" />
+                </div>
+
+                <div class="personal-field full">
+                  <label>Owned / grabbed release</label>
+                  <input data-field="ownedRelease" value="${escapeHtml(item.ownedRelease)}" placeholder="What you actually grabbed" />
+                </div>
+
+                <div class="personal-field full">
+                  <label>Review / preferred release</label>
+                  <input data-field="reviewRelease" value="${escapeHtml(item.reviewRelease)}" placeholder="Used when not on releases.moe or when you prefer another release" />
+                </div>
+
+                <div class="personal-field">
+                  <label>Review reason</label>
+                  <select data-field="reviewReason">
+                    <option value="" ${!item.reviewReason ? 'selected' : ''}>—</option>
+                    <option value="not_on_releases" ${item.reviewReason === 'not_on_releases' ? 'selected' : ''}>Not on releases.moe</option>
+                    <option value="dont_like_choice" ${item.reviewReason === 'dont_like_choice' ? 'selected' : ''}>Do not like their chosen release</option>
+                    <option value="other" ${item.reviewReason === 'other' ? 'selected' : ''}>Other</option>
+                  </select>
+                </div>
+
+                <div class="personal-field full">
+                  <label>Comment</label>
+                  <textarea data-field="comment" placeholder="Notes, links, why you chose this release, etc.">${escapeHtml(item.comment)}</textarea>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button type="button" class="mini-btn primary" data-action="save-personal">Save entry</button>
+                <button type="button" class="mini-btn danger-btn" data-action="clear-personal">Clear entry</button>
+              </div>
+
+              <div class="footer-note">
+                Local data is stored only in this browser. Use the export buttons above to keep a backup.
+                ${item.personalUpdatedAt ? ` Last saved: ${escapeHtml(formatDateTime(item.personalUpdatedAt))}.` : ''}
+              </div>
+            </div>
+          </details>
+        `;
+
+        els.list.appendChild(article);
+      }
+    }
+
+    function resetDefaults() {
+      applySettings(DEFAULTS);
+      state.search = '';
+      state.filter = 'all';
+      els.searchInput.value = '';
+      updateFilterButtons();
+      saveSettings();
+      runRefresh(true);
+    }
+
+    function updateFilterButtons() {
+      [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
+        button.classList.toggle('active', button.dataset.filter === state.filter);
+      });
+    }
+
+    function updateItemPersonalState(animeId, personalEntry) {
+      state.items = state.items.map((item) => (
+        item.id === animeId ? applyPersonalToViewModel(item, personalEntry) : item
+      ));
+    }
+
+    function setPersonalEntry(animeId, itemTitle, patch) {
+      const key = String(animeId);
+      const current = getPersonalEntry(animeId);
+      const next = {
+        ...current,
+        ...patch,
+        animeId: Number(animeId),
+        seriesName: patch?.seriesName || current.seriesName || itemTitle || current.seriesName || '',
+        updatedAt: new Date().toISOString()
+      };
+
+      if (isMeaningfulPersonalEntry(next)) {
+        state.personal.entries[key] = next;
+        updateItemPersonalState(Number(animeId), next);
+      } else {
+        delete state.personal.entries[key];
+        updateItemPersonalState(Number(animeId), getEmptyPersonalEntry(animeId, itemTitle));
+      }
+
+      savePersonalLibrary();
+      render();
+    }
+
+    function clearPersonalEntry(animeId, itemTitle) {
+      const key = String(animeId);
+      delete state.personal.entries[key];
+      updateItemPersonalState(Number(animeId), getEmptyPersonalEntry(animeId, itemTitle));
+      savePersonalLibrary();
+      render();
+    }
+
+    function parseCsv(text) {
+      const input = String(text || '').replace(/^\uFEFF/, '');
+      const delimiter = detectDelimiter(input);
+      const rows = [];
+      let current = '';
+      let row = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < input.length; i += 1) {
+        const char = input[i];
+        const next = input[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+
+        if (!inQuotes && char === delimiter) {
+          row.push(current);
+          current = '';
+          continue;
+        }
+
+        if (!inQuotes && (char === '\n' || char === '\r')) {
+          if (char === '\r' && next === '\n') i += 1;
+          row.push(current);
+          rows.push(row);
+          row = [];
+          current = '';
+          continue;
+        }
+
+        current += char;
+      }
+
+      row.push(current);
+      rows.push(row);
+
+      const filteredRows = rows.filter((cells) => cells.some((cell) => String(cell).trim() !== ''));
+      if (!filteredRows.length) return [];
+
+      const headers = filteredRows[0].map((cell) => String(cell || '').trim());
+      const objects = [];
+      for (const cells of filteredRows.slice(1)) {
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = String(cells[index] ?? '').trim();
+        });
+        objects.push(obj);
+      }
+      return objects;
+    }
+
+    function detectDelimiter(text) {
+      const lines = String(text || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 5);
+
+      const options = [',', ';', '\t'];
+      let best = ',';
+      let bestScore = -1;
+
+      for (const delimiter of options) {
+        const score = lines.reduce((sum, line) => sum + line.split(delimiter).length, 0);
+        if (score > bestScore) {
+          bestScore = score;
+          best = delimiter;
+        }
+      }
+
+      return best;
+    }
+
+    function canonicalHeader(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/[\/_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function getRowValue(row, candidates) {
+      const map = new Map(Object.entries(row).map(([key, value]) => [canonicalHeader(key), value]));
+      for (const candidate of candidates) {
+        if (map.has(canonicalHeader(candidate))) return String(map.get(canonicalHeader(candidate)) || '').trim();
+      }
+      return '';
+    }
+
+    function findMatchForSeries(series) {
+      const normalizedSeries = normalizeMatch(series);
+      if (!normalizedSeries) return { item: null, reason: 'Empty series name' };
+
+      const matches = state.items.filter((item) => {
+        const names = [item.title, item.altTitle]
+          .join(' • ')
+          .split('•')
+          .map((part) => part.trim())
+          .filter(Boolean);
+        return names.some((name) => normalizeMatch(name) === normalizedSeries);
+      });
+
+      if (matches.length === 1) {
+        return { item: matches[0], reason: '' };
+      }
+
+      if (!matches.length) {
+        return { item: null, reason: 'No exact title match in current AniList list' };
+      }
+
+      return { item: null, reason: 'Multiple possible matches in current AniList list' };
+    }
+
+    function mergeUnmatchedRows(rows) {
+      const byKey = new Map(
+        state.personal.unmatched.map((row) => [
+          `${row.type}::${normalizeMatch(row.series)}::${normalizeLooseString(row.release)}::${normalizeLooseString(row.comment)}`,
+          row
+        ])
+      );
+
+      for (const row of rows) {
+        const key = `${row.type}::${normalizeMatch(row.series)}::${normalizeLooseString(row.release)}::${normalizeLooseString(row.comment)}`;
+        byKey.set(key, row);
+      }
+
+      state.personal.unmatched = Array.from(byKey.values());
+      savePersonalLibrary();
+    }
+
+    async function importCsvFile(file, type) {
+      if (!file) return;
+
+      if (!state.items.length) {
+        showNotice(
+          'Import skipped because there are no loaded AniList titles yet. Refresh the list first, then import the CSV.',
+          'error'
+        );
+        return;
+      }
+
+      const text = await file.text();
+      const rows = parseCsv(text);
+
+      if (!rows.length) {
+        showNotice(`The selected ${escapeHtml(type)} CSV did not contain any readable rows.`, 'error');
+        return;
+      }
+
+      let matched = 0;
+      const unmatched = [];
+
+      for (const row of rows) {
+        const series = getRowValue(row, ['Series', 'Title', 'Anime', 'Name']);
+        const release = getRowValue(row, ['Release', 'Grabbed Release', 'Owned Release', 'Preferred Release']);
+        const date = getRowValue(row, ['Date', 'Owned Date', 'Grabbed Date']);
+        const comment = getRowValue(row, ['Comment', 'Comments', 'Note', 'Notes']);
+        const reason = getRowValue(row, ['Reason', 'Review Reason']);
+
+        const found = findMatchForSeries(series);
+        if (!found.item) {
+          unmatched.push({
+            type,
+            series,
+            release,
+            date,
+            comment,
+            reason,
+            importedAt: new Date().toISOString(),
+            why: found.reason || 'Unknown match error'
+          });
+          continue;
+        }
+
+        const item = found.item;
+        matched += 1;
+
+        if (type === 'owned') {
+          setPersonalEntry(item.id, item.title, {
+            seriesName: item.title,
+            personalStatus: 'owned',
+            ownedRelease: release,
+            ownedDate: date,
+            comment
+          });
+        } else {
+          setPersonalEntry(item.id, item.title, {
+            seriesName: item.title,
+            personalStatus: 'review',
+            reviewRelease: release,
+            reviewReason: reason || '',
+            comment
+          });
+        }
+      }
+
+      if (unmatched.length) {
+        mergeUnmatchedRows(unmatched);
+      }
+
+      render();
+
+      showNotice(
+        `Imported <strong>${matched}</strong> ${type === 'owned' ? 'grabbed' : 'review'} row${matched === 1 ? '' : 's'}. ` +
+        `${unmatched.length ? `Could not safely match <strong>${unmatched.length}</strong> row${unmatched.length === 1 ? '' : 's'}; they were added to the unmatched list.` : 'Everything matched cleanly.'}`,
+        unmatched.length ? 'error' : 'success'
+      );
+    }
+
+    function downloadFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportOwnedCsv() {
+      const rows = Object.values(state.personal.entries)
+        .filter((entry) => entry.personalStatus === 'owned')
+        .sort((a, b) => String(a.seriesName || '').localeCompare(String(b.seriesName || '')));
+
+      const lines = [
+        ['Series', 'Release', 'Date', 'Comment'].map(csvCell).join(',')
+      ];
+
+      for (const entry of rows) {
+        lines.push([
+          entry.seriesName || '',
+          entry.ownedRelease || '',
+          entry.ownedDate || '',
+          entry.comment || ''
+        ].map(csvCell).join(','));
+      }
+
+      downloadFile('anime_grabbed_export.csv', lines.join('\n'), 'text/csv;charset=utf-8');
+    }
+
+    function exportReviewCsv() {
+      const rows = Object.values(state.personal.entries)
+        .filter((entry) => entry.personalStatus === 'review')
+        .sort((a, b) => String(a.seriesName || '').localeCompare(String(b.seriesName || '')));
+
+      const lines = [
+        ['Series', 'Release', 'Comment', 'Reason'].map(csvCell).join(',')
+      ];
+
+      for (const entry of rows) {
+        lines.push([
+          entry.seriesName || '',
+          entry.reviewRelease || '',
+          entry.comment || '',
+          entry.reviewReason || ''
+        ].map(csvCell).join(','));
+      }
+
+      downloadFile('anime_review_export.csv', lines.join('\n'), 'text/csv;charset=utf-8');
+    }
+
+    function exportJsonBackup() {
+      downloadFile(
+        'anime_personal_library_backup.json',
+        JSON.stringify(state.personal, null, 2),
+        'application/json;charset=utf-8'
+      );
+    }
+
+    async function runRefresh(showSuccess = true) {
+      if (state.isLoading) return;
+      const settings = getSettings();
+      saveSettings();
+      applySettings(settings);
+      state.isLoading = true;
+      els.refreshBtn.disabled = true;
+      setStatus('', 'Refreshing…');
+      clearNotice();
+
+      try {
+        const anime = await fetchAniListCustomList(settings.username, settings.listName);
+        const seaDexMap = await fetchSeaDexByAniListIds(anime.map((media) => media.id), settings.apiBase);
+
+        state.items = anime
+          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null, getPersonalEntry(media.id)))
+          .sort((a, b) =>
+            Number(b.hasSeaDex) - Number(a.hasSeaDex) ||
+            Number(b.personalStatus === 'owned') - Number(a.personalStatus === 'owned') ||
+            a.title.localeCompare(b.title)
+          );
+
+        state.lastCheckedAt = new Date();
+        setStatus('ok', 'Ready');
+        render();
+
+        if (showSuccess) {
+          const found = state.items.filter((item) => item.hasSeaDex).length;
+          const owned = state.items.filter((item) => item.personalStatus === 'owned').length;
+          showNotice(
+            `Loaded <strong>${state.items.length}</strong> anime from <strong>${escapeHtml(settings.username)}</strong> / <strong>${escapeHtml(settings.listName)}</strong>. ` +
+            `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe and <strong>${owned}</strong> ${owned === 1 ? 'title is' : 'titles are'} marked as owned locally.`,
+            'success'
+          );
+        } else if (els.optionsPanel) {
+          els.optionsPanel.open = false;
+        }
+      } catch (error) {
+        setStatus('bad', 'Error');
+        const message = error instanceof Error ? error.message : String(error);
+        showNotice(
+          `Refresh failed. ${message}<br><br>` +
+          `If AniList works but releases.moe is blocked in your browser, the next step is a tiny proxy in front of the releases.moe API and pointing the API base field at that proxy.`,
+          'error'
+        );
+      } finally {
+        state.isLoading = false;
+        els.refreshBtn.disabled = false;
+      }
+    }
+
+    function handleListClick(event) {
+      const saveButton = event.target.closest('[data-action="save-personal"]');
+      const clearButton = event.target.closest('[data-action="clear-personal"]');
+      const article = event.target.closest('.item');
+
+      if (!article) return;
+      const animeId = Number(article.dataset.animeId);
+      const item = state.items.find((entry) => entry.id === animeId);
+      if (!item) return;
+
+      if (saveButton) {
+        const read = (field) => article.querySelector(`[data-field="${field}"]`)?.value?.trim?.() ?? '';
+        setPersonalEntry(animeId, item.title, {
+          seriesName: item.title,
+          personalStatus: read('personalStatus') || 'none',
+          ownedRelease: read('ownedRelease'),
+          ownedDate: read('ownedDate'),
+          reviewRelease: read('reviewRelease'),
+          reviewReason: read('reviewReason'),
+          comment: read('comment')
+        });
+
+        showNotice(`Saved local collection data for <strong>${escapeHtml(item.title)}</strong>.`, 'success');
+        return;
+      }
+
+      if (clearButton) {
+        if (!window.confirm(`Clear the local collection entry for "${item.title}"?`)) return;
+        clearPersonalEntry(animeId, item.title);
+        showNotice(`Cleared the local collection entry for <strong>${escapeHtml(item.title)}</strong>.`, 'success');
+      }
+    }
+
+    function init() {
+      applySettings(loadSettings());
+      updateFilterButtons();
+
+      els.refreshBtn.addEventListener('click', () => runRefresh(true));
+      els.resetBtn.addEventListener('click', resetDefaults);
+      els.searchInput.addEventListener('input', (event) => {
+        state.search = event.target.value || '';
+        render();
+      });
+
+      els.statusFilter.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button) return;
+        state.filter = button.dataset.filter;
+        updateFilterButtons();
+        render();
+      });
+
+      els.importOwnedBtn.addEventListener('click', () => els.importOwnedInput.click());
+      els.importReviewBtn.addEventListener('click', () => els.importReviewInput.click());
+
+      els.importOwnedInput.addEventListener('change', async (event) => {
+        const [file] = event.target.files || [];
+        await importCsvFile(file, 'owned');
+        event.target.value = '';
+      });
+
+      els.importReviewInput.addEventListener('change', async (event) => {
+        const [file] = event.target.files || [];
+        await importCsvFile(file, 'review');
+        event.target.value = '';
+      });
+
+      els.exportOwnedBtn.addEventListener('click', exportOwnedCsv);
+      els.exportReviewBtn.addEventListener('click', exportReviewCsv);
+      els.exportJsonBtn.addEventListener('click', exportJsonBackup);
+
+      els.clearUnmatchedBtn.addEventListener('click', () => {
+        if (!state.personal.unmatched.length) {
+          showNotice('The unmatched import list is already empty.', 'success');
+          return;
+        }
+        if (!window.confirm('Clear the unmatched import list?')) return;
+        state.personal.unmatched = [];
+        savePersonalLibrary();
+        render();
+        showNotice('Cleared the unmatched import list.', 'success');
+      });
+
+      els.list.addEventListener('click', handleListClick);
+
+      [els.username, els.listName, els.apiBase].forEach((el) => {
+        el.addEventListener('change', () => {
+          saveSettings();
+          applySettings(getSettings());
+        });
+      });
+
+      render();
+      runRefresh(false);
+    }
+
+    init();
+  </script>
+</body>
+</html>
