@@ -122,38 +122,6 @@
       background: var(--panel-soft);
     }
 
-    .hero-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
-    }
-
-    .eyebrow {
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 12px;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(28px, 3.7vw, 42px);
-      line-height: 1.04;
-    }
-
-    .sub {
-      margin: 10px 0 0;
-      color: var(--muted);
-      max-width: 64ch;
-      line-height: 1.55;
-      font-size: 14px;
-    }
-
     .hero-badge {
       display: inline-flex;
       align-items: center;
@@ -215,7 +183,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
       padding: 0 14px 14px;
     }
@@ -260,11 +228,12 @@
     }
 
     .field.username { grid-column: span 3; }
-    .field.list { grid-column: span 3; }
-    .field.api { grid-column: span 4; }
-    .field.search { grid-column: span 7; }
+    .field.list { grid-column: span 2; }
+    .field.released-list { grid-column: span 2; }
+    .field.api { grid-column: span 5; }
+    .field.search { grid-column: span 6; }
     .field.filter { grid-column: span 3; }
-    .field.actions { grid-column: span 2; }
+    .field.actions { grid-column: span 3; }
 
     label {
       font-size: 12px;
@@ -368,24 +337,6 @@
       opacity: 0.7;
       cursor: progress;
       transform: none;
-    }
-
-    .bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 22px;
-      border-bottom: 1px solid var(--line);
-      flex-wrap: wrap;
-    }
-
-    .bar-left,
-    .bar-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
     }
 
     .chip {
@@ -497,14 +448,6 @@
       gap: 6px;
     }
 
-    .item-summary {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-      min-width: 0;
-    }
-
     .title-block {
       min-width: 0;
       flex: 1 1 auto;
@@ -546,174 +489,6 @@
     .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
     .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
 
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .meta-card {
-      padding: 12px 13px;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      min-width: 0;
-    }
-
-    .meta-label {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
-    }
-
-    .meta-value {
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--text);
-      word-break: break-word;
-    }
-
-    .meta-value.muted { color: var(--muted); }
-
-    .line-clamp-3 {
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .actions-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .link-btn,
-    .mini-link {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-weight: 800;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-    }
-
-    .link-btn {
-      min-height: 42px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.05);
-      color: var(--text);
-    }
-
-    .link-btn.primary {
-      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
-      border-color: rgba(140,158,255,0.24);
-    }
-
-    .mini-link {
-      padding: 6px 10px;
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    details {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 10px 12px;
-    }
-
-    summary {
-      cursor: pointer;
-      color: #dce4ff;
-      font-weight: 800;
-      font-size: 13px;
-      list-style: none;
-    }
-
-    summary::-webkit-details-marker { display: none; }
-
-    .entry-collapse {
-      background: rgba(255,255,255,0.025);
-      border-color: rgba(255,255,255,0.055);
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .entry-toggle {
-      padding: 11px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .entry-toggle::after {
-      content: 'Show details';
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .entry-collapse[open] .entry-toggle::after {
-      content: 'Hide details';
-    }
-
-    .entry-details {
-      padding: 0 12px 12px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .torrent-list {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .torrent {
-      border-radius: 14px;
-      padding: 11px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .torrent-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      margin-bottom: 6px;
-    }
-
-    .torrent-name {
-      font-weight: 800;
-      line-height: 1.4;
-    }
-
-    .torrent-meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      margin-bottom: 8px;
-    }
-
-    .footer-note {
-      margin-top: 16px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-
     .empty {
       padding: 40px 16px;
       text-align: center;
@@ -727,6 +502,7 @@
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .field.username,
       .field.list,
+      .field.released-list,
       .field.api,
       .field.search,
       .field.filter,
@@ -750,23 +526,25 @@
       .controls { grid-template-columns: 1fr; }
       .field.username,
       .field.list,
+      .field.released-list,
       .field.api,
       .field.search,
       .field.filter,
       .field.actions { grid-column: auto; }
-      .item {
-        border-radius: 16px;
-      }
+
+      .item { border-radius: 16px; }
       .item-link,
       .item-static {
         grid-template-columns: 42px minmax(0, 1fr) auto;
         gap: 10px;
         padding: 10px;
       }
+
       .poster {
         width: 42px;
         border-radius: 10px;
       }
+
       .title { font-size: 14px; }
       .button-row { align-items: stretch; }
       .button-row .primary-btn,
@@ -774,17 +552,9 @@
       .pill { white-space: normal; }
       .notice { margin-left: 0; margin-right: 0; }
 
-      .options-summary {
-        padding: 12px 14px;
-      }
-
-      .options-summary-right {
-        width: 100%;
-      }
-
-      .options-summary::after {
-        margin-left: 0;
-      }
+      .options-summary { padding: 12px 14px; }
+      .options-summary-right { width: 100%; }
+      .options-summary::after { margin-left: 0; }
 
       .options-summary-right .chip,
       .options-summary-right .hero-badge {
@@ -807,6 +577,7 @@
           <span class="options-title">Options</span>
           <span class="options-summary-right">
             <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
+            <span class="chip"><strong id="releasedListLabel">Released: released</strong></span>
             <span class="chip" id="visibleCountChip">Showing 0 titles</span>
             <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
           </span>
@@ -820,19 +591,24 @@
               <summary class="stats-summary">Show stats</summary>
               <div class="stats">
                 <div class="stat">
-                  <div class="stat-label">Anime in list</div>
+                  <div class="stat-label">Anime tracked total</div>
                   <div class="stat-value" id="statTotal">0</div>
-                  <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+                  <div class="stat-help">Combined total from your monitoring and released AniList lists.</div>
                 </div>
                 <div class="stat">
-                  <div class="stat-label">Found on releases.moe</div>
+                  <div class="stat-label">Available now</div>
                   <div class="stat-value" id="statFound">0</div>
-                  <div class="stat-help">Entries with a releases.moe page.</div>
+                  <div class="stat-help">Titles in your monitoring list that are currently on releases.moe.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Already released</div>
+                  <div class="stat-value" id="statReleased">0</div>
+                  <div class="stat-help">Titles coming from your released AniList custom list.</div>
                 </div>
                 <div class="stat">
                   <div class="stat-label">Still waiting</div>
                   <div class="stat-value" id="statWaiting">0</div>
-                  <div class="stat-help">Tracked shows that are not listed yet.</div>
+                  <div class="stat-help">Titles in your monitoring list that are not on releases.moe yet.</div>
                 </div>
                 <div class="stat">
                   <div class="stat-label">Last checked</div>
@@ -849,8 +625,12 @@
                   <input id="username" value="zrr" autocomplete="off" />
                 </div>
                 <div class="field list">
-                  <label for="listName">Custom list name</label>
+                  <label for="listName">Monitoring list name</label>
                   <input id="listName" value="releases" autocomplete="off" />
+                </div>
+                <div class="field released-list">
+                  <label for="releasedListName">Released list name</label>
+                  <input id="releasedListName" value="released" autocomplete="off" />
                 </div>
                 <div class="field api">
                   <label for="apiBase">releases.moe API base</label>
@@ -864,7 +644,8 @@
                   <label>Status view</label>
                   <div class="segmented" id="statusFilter">
                     <button type="button" data-filter="all" class="active">All</button>
-                    <button type="button" data-filter="found">Found</button>
+                    <button type="button" data-filter="found">Available</button>
+                    <button type="button" data-filter="released">Released</button>
                     <button type="button" data-filter="waiting">Waiting</button>
                   </div>
                 </div>
@@ -876,8 +657,6 @@
                   </div>
                 </div>
               </div>
-
-           
             </section>
           </div>
         </div>
@@ -887,10 +666,11 @@
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v2';
+    const STORAGE_KEY = 'releases-watchlist-settings-v4';
     const DEFAULTS = {
       username: 'zrr',
       listName: 'releases',
+      releasedListName: 'released',
       apiBase: 'https://releases.moe'
     };
 
@@ -905,6 +685,7 @@
     const els = {
       username: document.getElementById('username'),
       listName: document.getElementById('listName'),
+      releasedListName: document.getElementById('releasedListName'),
       apiBase: document.getElementById('apiBase'),
       searchInput: document.getElementById('searchInput'),
       refreshBtn: document.getElementById('refreshBtn'),
@@ -912,6 +693,7 @@
       statusDot: document.getElementById('statusDot'),
       statusText: document.getElementById('statusText'),
       watchingListLabel: document.getElementById('watchingListLabel'),
+      releasedListLabel: document.getElementById('releasedListLabel'),
       visibleCountChip: document.getElementById('visibleCountChip'),
       statusFilter: document.getElementById('statusFilter'),
       notice: document.getElementById('notice'),
@@ -920,6 +702,7 @@
       emptyState: document.getElementById('emptyState'),
       statTotal: document.getElementById('statTotal'),
       statFound: document.getElementById('statFound'),
+      statReleased: document.getElementById('statReleased'),
       statWaiting: document.getElementById('statWaiting'),
       statChecked: document.getElementById('statChecked')
     };
@@ -939,6 +722,7 @@
       return {
         username: els.username.value.trim() || DEFAULTS.username,
         listName: els.listName.value.trim() || DEFAULTS.listName,
+        releasedListName: els.releasedListName.value.trim() || DEFAULTS.releasedListName,
         apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
       };
     }
@@ -946,8 +730,10 @@
     function applySettings(settings) {
       els.username.value = settings.username;
       els.listName.value = settings.listName;
+      els.releasedListName.value = settings.releasedListName;
       els.apiBase.value = settings.apiBase;
       els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
+      els.releasedListLabel.textContent = `Released: ${settings.releasedListName}`;
     }
 
     function saveSettings() {
@@ -1017,6 +803,28 @@
       return names.slice(1).join(' • ');
     }
 
+    function dedupeMediaList(mediaItems) {
+      const deduped = new Map();
+      for (const media of mediaItems || []) {
+        if (media?.id) deduped.set(media.id, media);
+      }
+      return Array.from(deduped.values());
+    }
+
+    function getAvailableCustomListNames(lists) {
+      return (lists || [])
+        .filter((list) => list?.isCustomList)
+        .map((list) => list?.name)
+        .filter(Boolean);
+    }
+
+    function findCustomList(lists, listName) {
+      return (lists || []).find((list) =>
+        list?.isCustomList &&
+        String(list?.name || '').trim().toLowerCase() === String(listName || '').trim().toLowerCase()
+      );
+    }
+
     async function postAniList(query, variables) {
       const response = await fetch(ANILIST_API, {
         method: 'POST',
@@ -1032,7 +840,7 @@
       return data.data;
     }
 
-    async function fetchAniListCustomList(username, listName) {
+    async function fetchAniListAnimeLists(username) {
       const query = `
         query ($userName: String!) {
           MediaListCollection(userName: $userName, type: ANIME) {
@@ -1053,29 +861,35 @@
       `;
 
       const data = await postAniList(query, { userName: username });
-      const lists = data?.MediaListCollection?.lists || [];
-      const wanted = lists.find((list) =>
-        list?.isCustomList &&
-        String(list?.name || '').trim().toLowerCase() === listName.trim().toLowerCase()
-      );
+      return data?.MediaListCollection?.lists || [];
+    }
 
+    function getRequiredCustomListMedia(lists, listName, username) {
+      const wanted = findCustomList(lists, listName);
       if (!wanted) {
-        const available = lists
-          .filter((list) => list?.isCustomList)
-          .map((list) => list.name)
-          .filter(Boolean);
+        const available = getAvailableCustomListNames(lists);
         const extra = available.length
           ? ` Available custom lists: ${available.map(escapeHtml).join(', ')}.`
           : ' No public custom lists were returned for this account.';
         throw new Error(`Custom list <strong>${escapeHtml(listName)}</strong> was not found for <strong>${escapeHtml(username)}</strong>.${extra}`);
       }
+      return dedupeMediaList((wanted.entries || []).map((entry) => entry?.media).filter(Boolean));
+    }
 
-      const deduped = new Map();
-      for (const entry of wanted.entries || []) {
-        const media = entry?.media;
-        if (media?.id) deduped.set(media.id, media);
-      }
-      return Array.from(deduped.values());
+    function getOptionalCustomListMedia(lists, listName) {
+      if (!String(listName || '').trim()) return [];
+      const wanted = findCustomList(lists, listName);
+      if (!wanted) return [];
+      return dedupeMediaList((wanted.entries || []).map((entry) => entry?.media).filter(Boolean));
+    }
+
+    async function fetchAniListLists(username, listName, releasedListName) {
+      const lists = await fetchAniListAnimeLists(username);
+      return {
+        watching: getRequiredCustomListMedia(lists, listName, username),
+        released: getOptionalCustomListMedia(lists, releasedListName),
+        releasedListExists: Boolean(findCustomList(lists, releasedListName))
+      };
     }
 
     function chunk(array, size) {
@@ -1199,7 +1013,13 @@
       })[0];
     }
 
-    function buildViewModel(media, entry) {
+    function getItemPrimaryStatus(item) {
+      if (item.isReleased) return 'released';
+      if (item.hasSeaDex) return 'found';
+      return 'waiting';
+    }
+
+    function buildViewModel(media, entry, isReleased) {
       const bestTorrent = entry ? pickBestTorrent(entry) : null;
       const comparisons = entry?.comparison
         ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
@@ -1219,6 +1039,7 @@
         coverColor: media?.coverImage?.color || '#2d3e77',
         aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
         hasSeaDex: Boolean(entry),
+        isReleased: Boolean(isReleased),
         entryUrl: entry ? `https://releases.moe/${media.id}/` : '',
         incomplete: Boolean(entry?.incomplete),
         notes: entry?.notes || '',
@@ -1235,7 +1056,8 @@
           getAltTitle(media),
           entry?.notes || '',
           bestTorrent?.releaseGroup || '',
-          (bestTorrent?.tags || []).join(' ')
+          (bestTorrent?.tags || []).join(' '),
+          isReleased ? 'released owned have downloaded' : 'watching monitor waiting'
         ].join(' ').toLowerCase()
       };
     }
@@ -1243,8 +1065,8 @@
     function getVisibleItems() {
       const term = state.search.trim().toLowerCase();
       return state.items.filter((item) => {
-        if (state.filter === 'found' && !item.hasSeaDex) return false;
-        if (state.filter === 'waiting' && item.hasSeaDex) return false;
+        const status = getItemPrimaryStatus(item);
+        if (state.filter !== 'all' && status !== state.filter) return false;
         if (term && !item.searchBlob.includes(term)) return false;
         return true;
       });
@@ -1252,11 +1074,17 @@
 
     function render() {
       const visibleItems = getVisibleItems();
+      const total = state.items.length;
+      const releasedCount = state.items.filter((item) => item.isReleased).length;
+      const foundCount = state.items.filter((item) => !item.isReleased && item.hasSeaDex).length;
+      const waitingCount = state.items.filter((item) => !item.isReleased && !item.hasSeaDex).length;
+
       els.list.innerHTML = '';
       els.emptyState.hidden = visibleItems.length > 0;
-      els.statTotal.textContent = String(state.items.length);
-      els.statFound.textContent = String(state.items.filter((item) => item.hasSeaDex).length);
-      els.statWaiting.textContent = String(state.items.filter((item) => !item.hasSeaDex).length);
+      els.statTotal.textContent = String(total);
+      els.statFound.textContent = String(foundCount);
+      els.statReleased.textContent = String(releasedCount);
+      els.statWaiting.textContent = String(waitingCount);
       els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
       els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
 
@@ -1272,12 +1100,15 @@
 
         let statusClass = 'bad';
         let statusText = 'Waiting';
-        if (item.hasSeaDex && item.incomplete) {
+        if (item.isReleased) {
+          statusClass = 'info';
+          statusText = 'Released';
+        } else if (item.hasSeaDex && item.incomplete) {
           statusClass = 'warn';
           statusText = 'Incomplete';
         } else if (item.hasSeaDex) {
           statusClass = 'ok';
-          statusText = 'Found';
+          statusText = 'Available';
         }
 
         const cardInner = `
@@ -1328,20 +1159,56 @@
       clearNotice();
 
       try {
-        const anime = await fetchAniListCustomList(settings.username, settings.listName);
-        const seaDexMap = await fetchSeaDexByAniListIds(anime.map((media) => media.id), settings.apiBase);
-        state.items = anime
-          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null))
-          .sort((a, b) => Number(b.hasSeaDex) - Number(a.hasSeaDex) || a.title.localeCompare(b.title));
+        const { watching, released, releasedListExists } = await fetchAniListLists(
+          settings.username,
+          settings.listName,
+          settings.releasedListName
+        );
+
+        const watchingIds = new Set(watching.map((media) => Number(media.id)));
+        const releasedOnly = released.filter((media) => !watchingIds.has(Number(media.id)));
+        const allMedia = [...watching, ...releasedOnly];
+
+        const seaDexMap = await fetchSeaDexByAniListIds(
+          allMedia.map((media) => media.id),
+          settings.apiBase
+        );
+
+        state.items = allMedia
+          .map((media) =>
+            buildViewModel(
+              media,
+              seaDexMap.get(media.id) || null,
+              !watchingIds.has(Number(media.id))
+            )
+          )
+          .sort((a, b) => {
+            const rank = (item) => {
+              if (item.isReleased) return 2;
+              if (item.hasSeaDex) return 1;
+              return 0;
+            };
+            return rank(b) - rank(a) || a.title.localeCompare(b.title);
+          });
+
         state.lastCheckedAt = new Date();
         setStatus('ok', 'Ready');
         render();
 
         if (showSuccess) {
-          const found = state.items.filter((item) => item.hasSeaDex).length;
+          const releasedCount = state.items.filter((item) => item.isReleased).length;
+          const foundCount = state.items.filter((item) => !item.isReleased && item.hasSeaDex).length;
+          const waitingCount = state.items.filter((item) => !item.isReleased && !item.hasSeaDex).length;
+
+          const releasedListNote = releasedListExists
+            ? ` <strong>${releasedCount}</strong> ${releasedCount === 1 ? 'title is' : 'titles are'} in <strong>${escapeHtml(settings.releasedListName)}</strong> and shown as released.`
+            : ` The released list <strong>${escapeHtml(settings.releasedListName)}</strong> was not found, so nothing was shown as released.`;
+
           showNotice(
-            `Loaded <strong>${state.items.length}</strong> anime from <strong>${escapeHtml(settings.username)}</strong> / <strong>${escapeHtml(settings.listName)}</strong>. ` +
-            `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe.`,
+            `Loaded <strong>${state.items.length}</strong> total anime from your two lists. ` +
+            `<strong>${watching.length}</strong> ${watching.length === 1 ? 'title is' : 'titles are'} being monitored in <strong>${escapeHtml(settings.listName)}</strong>. ` +
+            `<strong>${foundCount}</strong> ${foundCount === 1 ? 'title is' : 'titles are'} currently available and <strong>${waitingCount}</strong> ${waitingCount === 1 ? 'title is' : 'titles are'} still waiting.` +
+            releasedListNote,
             'success'
           );
         } else if (els.optionsPanel) {
@@ -1395,7 +1262,7 @@
         render();
       });
 
-      [els.username, els.listName, els.apiBase].forEach((el) => {
+      [els.username, els.listName, els.releasedListName, els.apiBase].forEach((el) => {
         el.addEventListener('change', () => {
           saveSettings();
           applySettings(getSettings());
