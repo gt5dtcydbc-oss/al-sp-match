@@ -24,11 +24,14 @@
       --bad: #ff8d8d;
       --bad-soft: rgba(255,141,141,0.14);
       --shadow: 0 20px 50px rgba(0,0,0,0.28);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 12px;
     }
 
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
-
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
@@ -37,6 +40,13 @@
     }
 
     a { color: inherit; text-decoration: none; }
+    code {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 0.92em;
+    }
 
     .app {
       width: min(1120px, calc(100vw - 24px));
@@ -51,46 +61,369 @@
       overflow: hidden;
     }
 
-    .content {
-      padding: 18px;
-      display: grid;
-      gap: 18px;
-    }
-
-    .board {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: rgba(255,255,255,0.025);
-      display: grid;
-      gap: 14px;
-    }
-
-    .board-secondary {
+    .options-panel {
+      border-top: 1px solid var(--line);
       background: rgba(255,255,255,0.02);
     }
 
-    .board-head {
+    .options-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: flex-end;
       gap: 12px;
       flex-wrap: wrap;
     }
 
-    .board-eyebrow {
+    .options-summary::-webkit-details-marker { display: none; }
+
+    .options-summary::after {
+      content: '▾';
+      color: var(--muted);
+      margin-left: auto;
+      order: 3;
+      transition: transform 0.16s ease;
+    }
+
+    .options-panel[open] .options-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .options-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .options-summary-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .options-inner {
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .options-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-soft);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
       color: var(--accent);
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 3.7vw, 42px);
+      line-height: 1.04;
+    }
+
+    .sub {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 64ch;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
+      flex: 0 0 auto;
+    }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
+    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
+
+    .stats-panel {
+      margin-bottom: 18px;
+      padding: 0;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .stats-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .stats-summary::-webkit-details-marker { display: none; }
+
+    .stats-summary::after {
+      content: '▾';
+      color: var(--muted);
+      transition: transform 0.16s ease;
+    }
+
+    .stats-panel[open] .stats-summary::after {
+      transform: rotate(180deg);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 14px 14px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-height: 96px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      line-height: 1;
       font-weight: 800;
       margin-bottom: 6px;
     }
 
-    .board-title {
-      margin: 0;
-      font-size: 22px;
-      line-height: 1.1;
+    .stat-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.username { grid-column: span 3; }
+    .field.list { grid-column: span 3; }
+    .field.api { grid-column: span 4; }
+    .field.search { grid-column: span 7; }
+    .field.filter { grid-column: span 3; }
+    .field.actions { grid-column: span 2; }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input, button, .segmented {
+      font: inherit;
+    }
+
+    input {
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(140,158,255,0.65);
+      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
+    }
+
+    .segmented {
+      display: inline-flex;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+      min-height: 48px;
+    }
+
+    .segmented button,
+    .ghost-btn,
+    .primary-btn,
+    .link-btn,
+    .mini-link {
+      border: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .segmented button {
+      flex: 1;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
+    .segmented button.active {
+      background: rgba(140,158,255,0.18);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .primary-btn,
+    .ghost-btn {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 800;
+      width: 100%;
+    }
+
+    .primary-btn {
+      color: white;
+      background: linear-gradient(135deg, #8c9eff, #a479ff);
+      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
+    }
+
+    .ghost-btn {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+    }
+
+    .primary-btn:hover,
+    .ghost-btn:hover,
+    .link-btn:hover,
+    .mini-link:hover,
+    .segmented button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-btn:disabled,
+    .ghost-btn:disabled {
+      opacity: 0.7;
+      cursor: progress;
+      transform: none;
+    }
+
+    .bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .bar-left,
+    .bar-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .notice {
+      margin: 18px 22px 0;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .notice.error {
+      color: #ffd8d8;
+      background: rgba(255,141,141,0.08);
+      border-color: rgba(255,141,141,0.18);
+    }
+
+    .notice.success {
+      color: #d8ffef;
+      background: rgba(74,222,168,0.08);
+      border-color: rgba(74,222,168,0.18);
+    }
+
+    .content {
+      padding: 18px;
     }
 
     .list {
@@ -164,6 +497,14 @@
       gap: 6px;
     }
 
+    .item-summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
     .title-block {
       min-width: 0;
       flex: 1 1 auto;
@@ -205,20 +546,176 @@
     .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
     .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
 
-    .chip {
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .meta-card {
+      padding: 12px 13px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      min-width: 0;
+    }
+
+    .meta-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .meta-value.muted { color: var(--muted); }
+
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .link-btn,
+    .mini-link {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.04);
+      font-weight: 800;
+      border-radius: 12px;
       border: 1px solid var(--line);
+    }
+
+    .link-btn {
+      min-height: 42px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+    }
+
+    .link-btn.primary {
+      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
+      border-color: rgba(140,158,255,0.24);
+    }
+
+    .mini-link {
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.04);
       color: var(--muted);
+      font-size: 12px;
+    }
+
+    details {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: #dce4ff;
+      font-weight: 800;
       font-size: 13px;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    .entry-collapse {
+      background: rgba(255,255,255,0.025);
+      border-color: rgba(255,255,255,0.055);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .entry-toggle {
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .entry-toggle::after {
+      content: 'Show details';
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .entry-collapse[open] .entry-toggle::after {
+      content: 'Hide details';
+    }
+
+    .entry-details {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .torrent-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .torrent {
+      border-radius: 14px;
+      padding: 11px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .torrent-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .torrent-name {
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .torrent-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
     }
 
     .empty {
-      padding: 32px 16px;
+      padding: 40px 16px;
       text-align: center;
       color: var(--muted);
       border: 1px dashed rgba(255,255,255,0.1);
@@ -226,272 +723,13 @@
       background: rgba(255,255,255,0.03);
     }
 
-    .options-panel {
-      border-top: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-    }
-
-    .options-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .options-summary::-webkit-details-marker { display: none; }
-
-    .options-summary::after {
-      content: '▾';
-      color: var(--muted);
-      margin-left: auto;
-      order: 3;
-      transition: transform 0.16s ease;
-    }
-
-    .options-panel[open] .options-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .options-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .options-summary-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .options-inner {
-      padding: 0 18px 18px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .hero {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: var(--panel-soft);
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
-      flex: 0 0 auto;
-    }
-
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
-    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
-
-    .notice {
-      margin: 18px 22px 0;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    .notice.error {
-      color: #ffd8d8;
-      background: rgba(255,141,141,0.08);
-      border-color: rgba(255,141,141,0.18);
-    }
-
-    .notice.success {
-      color: #d8ffef;
-      background: rgba(74,222,168,0.08);
-      border-color: rgba(74,222,168,0.18);
-    }
-
-    .stats-panel {
-      margin-bottom: 18px;
-      padding: 0;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .stats-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .stats-summary::-webkit-details-marker { display: none; }
-
-    .stats-summary::after {
-      content: '▾';
-      color: var(--muted);
-      transition: transform 0.16s ease;
-    }
-
-    .stats-panel[open] .stats-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px;
-      padding: 0 14px 14px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 18px;
-      padding: 14px 16px;
-      min-height: 96px;
-    }
-
-    .stat-label {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 28px;
-      line-height: 1;
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .stat-help {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 12px;
-      align-items: end;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
-    }
-
-    .field.username { grid-column: span 3; }
-    .field.list { grid-column: span 2; }
-    .field.downloaded-list { grid-column: span 2; }
-    .field.api { grid-column: span 5; }
-    .field.search { grid-column: span 8; }
-    .field.actions { grid-column: span 4; }
-
-    label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    input, button {
-      font: inherit;
-    }
-
-    input {
-      width: 100%;
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line-strong);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: rgba(140,158,255,0.65);
-      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
-    }
-
-    .button-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .primary-btn,
-    .ghost-btn {
-      min-height: 48px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-weight: 800;
-      width: 100%;
-      border: 0;
-      cursor: pointer;
-      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
-    }
-
-    .primary-btn {
-      color: white;
-      background: linear-gradient(135deg, #8c9eff, #a479ff);
-      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
-    }
-
-    .ghost-btn {
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-    }
-
-    .primary-btn:hover,
-    .ghost-btn:hover {
-      transform: translateY(-1px);
-    }
-
-    .primary-btn:disabled,
-    .ghost-btn:disabled {
-      opacity: 0.7;
-      cursor: progress;
-      transform: none;
-    }
-
     @media (max-width: 920px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .field.username,
       .field.list,
-      .field.downloaded-list,
       .field.api,
       .field.search,
+      .field.filter,
       .field.actions { grid-column: span 6; }
     }
 
@@ -502,19 +740,9 @@
       }
 
       .shell { border-radius: 22px; }
-      .content {
-        padding-left: 14px;
-        padding-right: 14px;
-        padding-top: 14px;
-        padding-bottom: 14px;
-        gap: 14px;
-      }
-
-      .board {
-        padding: 14px;
-        border-radius: 18px;
-      }
-
+      .content { padding-left: 14px; padding-right: 14px; }
+      .hero { padding: 14px; }
+      .content { padding-top: 14px; padding-bottom: 14px; }
       .options-inner { padding: 0 14px 14px; }
       .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
       .stat { padding: 12px; min-height: 0; }
@@ -522,33 +750,41 @@
       .controls { grid-template-columns: 1fr; }
       .field.username,
       .field.list,
-      .field.downloaded-list,
       .field.api,
       .field.search,
+      .field.filter,
       .field.actions { grid-column: auto; }
-
-      .item { border-radius: 16px; }
+      .item {
+        border-radius: 16px;
+      }
       .item-link,
       .item-static {
         grid-template-columns: 42px minmax(0, 1fr) auto;
         gap: 10px;
         padding: 10px;
       }
-
       .poster {
         width: 42px;
         border-radius: 10px;
       }
-
       .title { font-size: 14px; }
       .button-row { align-items: stretch; }
       .button-row .primary-btn,
       .button-row .ghost-btn { width: 100%; }
       .pill { white-space: normal; }
       .notice { margin-left: 0; margin-right: 0; }
-      .options-summary { padding: 12px 14px; }
-      .options-summary-right { width: 100%; }
-      .options-summary::after { margin-left: 0; }
+
+      .options-summary {
+        padding: 12px 14px;
+      }
+
+      .options-summary-right {
+        width: 100%;
+      }
+
+      .options-summary::after {
+        margin-left: 0;
+      }
 
       .options-summary-right .chip,
       .options-summary-right .hero-badge {
@@ -562,29 +798,8 @@
   <div class="app">
     <div class="shell">
       <section class="content">
-        <section class="board">
-          <div class="board-head">
-            <div>
-              <div class="board-eyebrow">Monitoring</div>
-              <h2 class="board-title">Releases</h2>
-            </div>
-            <span class="chip" id="watchingCountChip">0 titles</span>
-          </div>
-          <div id="watchingList" class="list"></div>
-          <div id="watchingEmpty" class="empty" hidden>No monitored titles yet.</div>
-        </section>
-
-        <section class="board board-secondary">
-          <div class="board-head">
-            <div>
-              <div class="board-eyebrow">Library</div>
-              <h2 class="board-title">Downloaded</h2>
-            </div>
-            <span class="chip" id="downloadedCountChip">0 titles</span>
-          </div>
-          <div id="downloadedList" class="list"></div>
-          <div id="downloadedEmpty" class="empty" hidden>No downloaded titles yet.</div>
-        </section>
+        <div id="list" class="list"></div>
+        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
       </section>
 
       <details class="options-panel" id="optionsPanel">
@@ -592,8 +807,7 @@
           <span class="options-title">Options</span>
           <span class="options-summary-right">
             <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
-            <span class="chip"><strong id="downloadedListLabel">Downloaded: downloaded</strong></span>
-            <span class="chip" id="visibleCountChip">Watching 0 · Downloaded 0</span>
+            <span class="chip" id="visibleCountChip">Showing 0 titles</span>
             <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
           </span>
         </summary>
@@ -601,68 +815,71 @@
         <div class="options-inner">
           <div id="notice" class="notice" hidden></div>
 
-          <details class="stats-panel">
-            <summary class="stats-summary">Show stats</summary>
-            <div class="stats">
-              <div class="stat">
-                <div class="stat-label">Anime tracked total</div>
-                <div class="stat-value" id="statTotal">0</div>
-                <div class="stat-help">Combined total from your releases and downloaded AniList lists.</div>
-              </div>
-              <div class="stat">
-                <div class="stat-label">Available now</div>
-                <div class="stat-value" id="statFound">0</div>
-                <div class="stat-help">Titles in your releases list that are currently on releases.moe.</div>
-              </div>
-              <div class="stat">
-                <div class="stat-label">Already downloaded</div>
-                <div class="stat-value" id="statDownloaded">0</div>
-                <div class="stat-help">Titles coming from your downloaded AniList custom list.</div>
-              </div>
-              <div class="stat">
-                <div class="stat-label">Still waiting</div>
-                <div class="stat-value" id="statWaiting">0</div>
-                <div class="stat-help">Titles in your releases list that are not on releases.moe yet.</div>
-              </div>
-              <div class="stat">
-                <div class="stat-label">Last checked</div>
-                <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                <div class="stat-help">Only refreshes on page load or manual reload.</div>
-              </div>
-            </div>
-          </details>
-
-          <section class="hero" id="settingsPanel">
-            <div class="controls">
-              <div class="field username">
-                <label for="username">AniList username</label>
-                <input id="username" value="zrr" autocomplete="off" />
-              </div>
-              <div class="field list">
-                <label for="listName">Releases list name</label>
-                <input id="listName" value="releases" autocomplete="off" />
-              </div>
-              <div class="field downloaded-list">
-                <label for="downloadedListName">Downloaded list name</label>
-                <input id="downloadedListName" value="downloaded" autocomplete="off" />
-              </div>
-              <div class="field api">
-                <label for="apiBase">releases.moe API base</label>
-                <input id="apiBase" value="https://releases.moe" autocomplete="off" />
-              </div>
-              <div class="field search">
-                <label for="searchInput">Filter anime</label>
-                <input id="searchInput" placeholder="Search across both boards" autocomplete="off" />
-              </div>
-              <div class="field actions">
-                <label>Actions</label>
-                <div class="button-row">
-                  <button id="refreshBtn" class="primary-btn">Reload</button>
-                  <button id="resetBtn" class="ghost-btn">Reset</button>
+          <div class="options-stack">
+            <details class="stats-panel">
+              <summary class="stats-summary">Show stats</summary>
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-label">Anime in list</div>
+                  <div class="stat-value" id="statTotal">0</div>
+                  <div class="stat-help">Unique AniList shows in the selected custom list.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Found on releases.moe</div>
+                  <div class="stat-value" id="statFound">0</div>
+                  <div class="stat-help">Entries with a releases.moe page.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Still waiting</div>
+                  <div class="stat-value" id="statWaiting">0</div>
+                  <div class="stat-help">Tracked shows that are not listed yet.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Last checked</div>
+                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+                  <div class="stat-help">Only refreshes on page load or manual reload.</div>
                 </div>
               </div>
-            </div>
-          </section>
+            </details>
+
+            <section class="hero" id="settingsPanel">
+              <div class="controls">
+                <div class="field username">
+                  <label for="username">AniList username</label>
+                  <input id="username" value="zrr" autocomplete="off" />
+                </div>
+                <div class="field list">
+                  <label for="listName">Custom list name</label>
+                  <input id="listName" value="releases" autocomplete="off" />
+                </div>
+                <div class="field api">
+                  <label for="apiBase">releases.moe API base</label>
+                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+                </div>
+                <div class="field search">
+                  <label for="searchInput">Filter anime</label>
+                  <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
+                </div>
+                <div class="field filter">
+                  <label>Status view</label>
+                  <div class="segmented" id="statusFilter">
+                    <button type="button" data-filter="all" class="active">All</button>
+                    <button type="button" data-filter="found">Found</button>
+                    <button type="button" data-filter="waiting">Waiting</button>
+                  </div>
+                </div>
+                <div class="field actions">
+                  <label>Actions</label>
+                  <div class="button-row">
+                    <button id="refreshBtn" class="primary-btn">Reload</button>
+                    <button id="resetBtn" class="ghost-btn">Reset</button>
+                  </div>
+                </div>
+              </div>
+
+           
+            </section>
+          </div>
         </div>
       </details>
     </div>
@@ -670,11 +887,10 @@
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v5';
+    const STORAGE_KEY = 'releases-watchlist-settings-v2';
     const DEFAULTS = {
       username: 'zrr',
       listName: 'releases',
-      downloadedListName: 'downloaded',
       apiBase: 'https://releases.moe'
     };
 
@@ -682,13 +898,13 @@
       items: [],
       lastCheckedAt: null,
       isLoading: false,
+      filter: 'all',
       search: ''
     };
 
     const els = {
       username: document.getElementById('username'),
       listName: document.getElementById('listName'),
-      downloadedListName: document.getElementById('downloadedListName'),
       apiBase: document.getElementById('apiBase'),
       searchInput: document.getElementById('searchInput'),
       refreshBtn: document.getElementById('refreshBtn'),
@@ -696,19 +912,14 @@
       statusDot: document.getElementById('statusDot'),
       statusText: document.getElementById('statusText'),
       watchingListLabel: document.getElementById('watchingListLabel'),
-      downloadedListLabel: document.getElementById('downloadedListLabel'),
       visibleCountChip: document.getElementById('visibleCountChip'),
-      watchingCountChip: document.getElementById('watchingCountChip'),
-      downloadedCountChip: document.getElementById('downloadedCountChip'),
+      statusFilter: document.getElementById('statusFilter'),
       notice: document.getElementById('notice'),
       optionsPanel: document.getElementById('optionsPanel'),
-      watchingList: document.getElementById('watchingList'),
-      downloadedList: document.getElementById('downloadedList'),
-      watchingEmpty: document.getElementById('watchingEmpty'),
-      downloadedEmpty: document.getElementById('downloadedEmpty'),
+      list: document.getElementById('list'),
+      emptyState: document.getElementById('emptyState'),
       statTotal: document.getElementById('statTotal'),
       statFound: document.getElementById('statFound'),
-      statDownloaded: document.getElementById('statDownloaded'),
       statWaiting: document.getElementById('statWaiting'),
       statChecked: document.getElementById('statChecked')
     };
@@ -728,7 +939,6 @@
       return {
         username: els.username.value.trim() || DEFAULTS.username,
         listName: els.listName.value.trim() || DEFAULTS.listName,
-        downloadedListName: els.downloadedListName.value.trim() || DEFAULTS.downloadedListName,
         apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
       };
     }
@@ -736,10 +946,8 @@
     function applySettings(settings) {
       els.username.value = settings.username;
       els.listName.value = settings.listName;
-      els.downloadedListName.value = settings.downloadedListName;
       els.apiBase.value = settings.apiBase;
       els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
-      els.downloadedListLabel.textContent = `Downloaded: ${settings.downloadedListName}`;
     }
 
     function saveSettings() {
@@ -801,6 +1009,14 @@
       return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
     }
 
+    function getAltTitle(media) {
+      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
+        .filter(Boolean)
+        .filter((value, index, arr) => arr.indexOf(value) === index);
+      if (names.length <= 1) return '';
+      return names.slice(1).join(' • ');
+    }
+
     async function postAniList(query, variables) {
       const response = await fetch(ANILIST_API, {
         method: 'POST',
@@ -816,7 +1032,7 @@
       return data.data;
     }
 
-    async function fetchAniListAnimeLists(username) {
+    async function fetchAniListCustomList(username, listName) {
       const query = `
         query ($userName: String!) {
           MediaListCollection(userName: $userName, type: ANIME) {
@@ -837,57 +1053,29 @@
       `;
 
       const data = await postAniList(query, { userName: username });
-      return data?.MediaListCollection?.lists || [];
-    }
-
-    function getAvailableCustomListNames(lists) {
-      return (lists || [])
-        .filter((list) => list?.isCustomList)
-        .map((list) => list?.name)
-        .filter(Boolean);
-    }
-
-    function findCustomList(lists, listName) {
-      return (lists || []).find((list) =>
+      const lists = data?.MediaListCollection?.lists || [];
+      const wanted = lists.find((list) =>
         list?.isCustomList &&
-        String(list?.name || '').trim().toLowerCase() === String(listName || '').trim().toLowerCase()
+        String(list?.name || '').trim().toLowerCase() === listName.trim().toLowerCase()
       );
-    }
 
-    function dedupeMediaList(mediaItems) {
-      const deduped = new Map();
-      for (const media of mediaItems || []) {
-        if (media?.id) deduped.set(media.id, media);
-      }
-      return Array.from(deduped.values());
-    }
-
-    function getRequiredCustomListMedia(lists, listName, username) {
-      const wanted = findCustomList(lists, listName);
       if (!wanted) {
-        const available = getAvailableCustomListNames(lists);
+        const available = lists
+          .filter((list) => list?.isCustomList)
+          .map((list) => list.name)
+          .filter(Boolean);
         const extra = available.length
           ? ` Available custom lists: ${available.map(escapeHtml).join(', ')}.`
           : ' No public custom lists were returned for this account.';
         throw new Error(`Custom list <strong>${escapeHtml(listName)}</strong> was not found for <strong>${escapeHtml(username)}</strong>.${extra}`);
       }
-      return dedupeMediaList((wanted.entries || []).map((entry) => entry?.media).filter(Boolean));
-    }
 
-    function getOptionalCustomListMedia(lists, listName) {
-      if (!String(listName || '').trim()) return [];
-      const wanted = findCustomList(lists, listName);
-      if (!wanted) return [];
-      return dedupeMediaList((wanted.entries || []).map((entry) => entry?.media).filter(Boolean));
-    }
-
-    async function fetchAniListLists(username, listName, downloadedListName) {
-      const lists = await fetchAniListAnimeLists(username);
-      return {
-        watching: getRequiredCustomListMedia(lists, listName, username),
-        downloaded: getOptionalCustomListMedia(lists, downloadedListName),
-        downloadedListExists: Boolean(findCustomList(lists, downloadedListName))
-      };
+      const deduped = new Map();
+      for (const entry of wanted.entries || []) {
+        const media = entry?.media;
+        if (media?.id) deduped.set(media.id, media);
+      }
+      return Array.from(deduped.values());
     }
 
     function chunk(array, size) {
@@ -1011,8 +1199,11 @@
       })[0];
     }
 
-    function buildViewModel(media, entry, isDownloaded) {
+    function buildViewModel(media, entry) {
       const bestTorrent = entry ? pickBestTorrent(entry) : null;
+      const comparisons = entry?.comparison
+        ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
+        : [];
       const torrents = dedupeTorrents(entry?.expand?.trs || []);
       const bestSize = bestTorrent
         ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
@@ -1023,13 +1214,17 @@
       return {
         id: media.id,
         title: normalizeTitle(media),
+        altTitle: getAltTitle(media),
         cover: media?.coverImage?.large || '',
         coverColor: media?.coverImage?.color || '#2d3e77',
         aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
         hasSeaDex: Boolean(entry),
-        isDownloaded: Boolean(isDownloaded),
         entryUrl: entry ? `https://releases.moe/${media.id}/` : '',
         incomplete: Boolean(entry?.incomplete),
+        notes: entry?.notes || '',
+        theoreticalBest: entry?.theoreticalBest || '',
+        updatedAt: entry?.updated || '',
+        comparisons,
         bestTorrent,
         bestSize,
         torrents,
@@ -1037,104 +1232,89 @@
         duplicateTorrentCount,
         searchBlob: [
           normalizeTitle(media),
+          getAltTitle(media),
           entry?.notes || '',
           bestTorrent?.releaseGroup || '',
-          (bestTorrent?.tags || []).join(' '),
-          isDownloaded ? 'downloaded owned have downloaded' : 'watching monitor waiting releases'
+          (bestTorrent?.tags || []).join(' ')
         ].join(' ').toLowerCase()
       };
     }
 
     function getVisibleItems() {
       const term = state.search.trim().toLowerCase();
-      const matches = (item) => !term || item.searchBlob.includes(term);
-      return {
-        watching: state.items.filter((item) => !item.isDownloaded && matches(item)),
-        downloaded: state.items.filter((item) => item.isDownloaded && matches(item))
-      };
-    }
-
-    function renderItemInto(container, item) {
-      const article = document.createElement('article');
-      article.className = 'item';
-
-      const poster = item.cover
-        ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
-        : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
-
-      let statusClass = 'bad';
-      let statusText = 'Waiting';
-      if (item.isDownloaded) {
-        statusClass = 'info';
-        statusText = 'Downloaded';
-      } else if (item.hasSeaDex && item.incomplete) {
-        statusClass = 'warn';
-        statusText = 'Incomplete';
-      } else if (item.hasSeaDex) {
-        statusClass = 'ok';
-        statusText = 'Available';
-      }
-
-      const cardInner = `
-        <div class="poster">${poster}</div>
-        <div class="item-main">
-          <div class="title-block">
-            <h2 class="title">${escapeHtml(item.title)}</h2>
-          </div>
-        </div>
-        <div class="badges">
-          <span class="pill ${statusClass}">${statusText}</span>
-        </div>
-      `;
-
-      if (item.hasSeaDex && item.entryUrl) {
-        article.innerHTML = `
-          <a
-            class="item-link"
-            href="${escapeHtml(item.entryUrl)}"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open ${escapeHtml(item.title)} on releases.moe"
-            title="Open on releases.moe"
-          >
-            ${cardInner}
-          </a>
-        `;
-      } else {
-        article.innerHTML = `
-          <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
-            ${cardInner}
-          </div>
-        `;
-      }
-
-      container.appendChild(article);
+      return state.items.filter((item) => {
+        if (state.filter === 'found' && !item.hasSeaDex) return false;
+        if (state.filter === 'waiting' && item.hasSeaDex) return false;
+        if (term && !item.searchBlob.includes(term)) return false;
+        return true;
+      });
     }
 
     function render() {
-      const visible = getVisibleItems();
-      const watchingItems = visible.watching;
-      const downloadedItems = visible.downloaded;
-      const total = state.items.length;
-      const downloadedCount = state.items.filter((item) => item.isDownloaded).length;
-      const foundCount = state.items.filter((item) => !item.isDownloaded && item.hasSeaDex).length;
-      const waitingCount = state.items.filter((item) => !item.isDownloaded && !item.hasSeaDex).length;
-
-      els.watchingList.innerHTML = '';
-      els.downloadedList.innerHTML = '';
-      els.watchingEmpty.hidden = watchingItems.length > 0;
-      els.downloadedEmpty.hidden = downloadedItems.length > 0;
-      els.statTotal.textContent = String(total);
-      els.statFound.textContent = String(foundCount);
-      els.statDownloaded.textContent = String(downloadedCount);
-      els.statWaiting.textContent = String(waitingCount);
+      const visibleItems = getVisibleItems();
+      els.list.innerHTML = '';
+      els.emptyState.hidden = visibleItems.length > 0;
+      els.statTotal.textContent = String(state.items.length);
+      els.statFound.textContent = String(state.items.filter((item) => item.hasSeaDex).length);
+      els.statWaiting.textContent = String(state.items.filter((item) => !item.hasSeaDex).length);
       els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
-      els.visibleCountChip.textContent = `Watching ${watchingItems.length} · Downloaded ${downloadedItems.length}`;
-      els.watchingCountChip.textContent = `${watchingItems.length} title${watchingItems.length === 1 ? '' : 's'}`;
-      els.downloadedCountChip.textContent = `${downloadedItems.length} title${downloadedItems.length === 1 ? '' : 's'}`;
+      els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
 
-      watchingItems.forEach((item) => renderItemInto(els.watchingList, item));
-      downloadedItems.forEach((item) => renderItemInto(els.downloadedList, item));
+      if (!visibleItems.length) return;
+
+      for (const item of visibleItems) {
+        const article = document.createElement('article');
+        article.className = 'item';
+
+        const poster = item.cover
+          ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
+          : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+
+        let statusClass = 'bad';
+        let statusText = 'Waiting';
+        if (item.hasSeaDex && item.incomplete) {
+          statusClass = 'warn';
+          statusText = 'Incomplete';
+        } else if (item.hasSeaDex) {
+          statusClass = 'ok';
+          statusText = 'Found';
+        }
+
+        const cardInner = `
+          <div class="poster">${poster}</div>
+          <div class="item-main">
+            <div class="title-block">
+              <h2 class="title">${escapeHtml(item.title)}</h2>
+            </div>
+          </div>
+          <div class="badges">
+            <span class="pill ${statusClass}">${statusText}</span>
+          </div>
+        `;
+
+        if (item.hasSeaDex && item.entryUrl) {
+          article.innerHTML = `
+            <a
+              class="item-link"
+              href="${escapeHtml(item.entryUrl)}"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open ${escapeHtml(item.title)} on releases.moe"
+              title="Open on releases.moe"
+            >
+              ${cardInner}
+            </a>
+          `;
+        } else {
+          article.innerHTML = `
+            <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
+              ${cardInner}
+            </div>
+          `;
+        }
+
+        els.list.appendChild(article);
+      }
     }
 
     async function runRefresh(showSuccess = true) {
@@ -1148,45 +1328,20 @@
       clearNotice();
 
       try {
-        const { watching, downloaded, downloadedListExists } = await fetchAniListLists(
-          settings.username,
-          settings.listName,
-          settings.downloadedListName
-        );
-
-        const watchingIds = new Set(watching.map((media) => Number(media.id)));
-        const downloadedOnly = downloaded.filter((media) => !watchingIds.has(Number(media.id)));
-        const allMedia = [...watching, ...downloadedOnly];
-        const seaDexMap = await fetchSeaDexByAniListIds(allMedia.map((media) => media.id), settings.apiBase);
-
-        state.items = allMedia
-          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null, !watchingIds.has(Number(media.id))))
-          .sort((a, b) => {
-            const rank = (item) => {
-              if (item.isDownloaded) return 2;
-              if (item.hasSeaDex) return 1;
-              return 0;
-            };
-            return rank(b) - rank(a) || a.title.localeCompare(b.title);
-          });
-
+        const anime = await fetchAniListCustomList(settings.username, settings.listName);
+        const seaDexMap = await fetchSeaDexByAniListIds(anime.map((media) => media.id), settings.apiBase);
+        state.items = anime
+          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null))
+          .sort((a, b) => Number(b.hasSeaDex) - Number(a.hasSeaDex) || a.title.localeCompare(b.title));
         state.lastCheckedAt = new Date();
         setStatus('ok', 'Ready');
         render();
 
         if (showSuccess) {
-          const downloadedCount = state.items.filter((item) => item.isDownloaded).length;
-          const foundCount = state.items.filter((item) => !item.isDownloaded && item.hasSeaDex).length;
-          const waitingCount = state.items.filter((item) => !item.isDownloaded && !item.hasSeaDex).length;
-          const downloadedListNote = downloadedListExists
-            ? ` <strong>${downloadedCount}</strong> ${downloadedCount === 1 ? 'title is' : 'titles are'} shown in <strong>${escapeHtml(settings.downloadedListName)}</strong>.`
-            : ` The downloaded list <strong>${escapeHtml(settings.downloadedListName)}</strong> was not found, so nothing was shown in Downloaded.`;
-
+          const found = state.items.filter((item) => item.hasSeaDex).length;
           showNotice(
-            `Loaded <strong>${state.items.length}</strong> total anime from your two lists. ` +
-            `<strong>${watching.length}</strong> ${watching.length === 1 ? 'title is' : 'titles are'} being monitored in <strong>${escapeHtml(settings.listName)}</strong>. ` +
-            `<strong>${foundCount}</strong> ${foundCount === 1 ? 'title is' : 'titles are'} currently available and <strong>${waitingCount}</strong> ${waitingCount === 1 ? 'title is' : 'titles are'} still waiting.` +
-            downloadedListNote,
+            `Loaded <strong>${state.items.length}</strong> anime from <strong>${escapeHtml(settings.username)}</strong> / <strong>${escapeHtml(settings.listName)}</strong>. ` +
+            `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe.`,
             'success'
           );
         } else if (els.optionsPanel) {
@@ -1209,13 +1364,22 @@
     function resetDefaults() {
       applySettings(DEFAULTS);
       state.search = '';
+      state.filter = 'all';
       els.searchInput.value = '';
+      updateFilterButtons();
       saveSettings();
       runRefresh(true);
     }
 
+    function updateFilterButtons() {
+      [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
+        button.classList.toggle('active', button.dataset.filter === state.filter);
+      });
+    }
+
     function init() {
       applySettings(loadSettings());
+      updateFilterButtons();
 
       els.refreshBtn.addEventListener('click', () => runRefresh(true));
       els.resetBtn.addEventListener('click', resetDefaults);
@@ -1223,8 +1387,15 @@
         state.search = event.target.value || '';
         render();
       });
+      els.statusFilter.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button) return;
+        state.filter = button.dataset.filter;
+        updateFilterButtons();
+        render();
+      });
 
-      [els.username, els.listName, els.downloadedListName, els.apiBase].forEach((el) => {
+      [els.username, els.listName, els.apiBase].forEach((el) => {
         el.addEventListener('change', () => {
           saveSettings();
           applySettings(getSettings());
