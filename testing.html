@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Currently airing</title>
+  
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
   <style>
     :root {
       --bg: #080808;
@@ -313,10 +319,17 @@
       font-weight: 700;
     }
 
-    .chip.rss {
+    .chip.rss,
+    .chip.sp {
       background: rgba(140, 226, 174, 0.11);
       border-color: rgba(140, 226, 174, 0.18);
       color: #d8ffe7;
+    }
+
+    .chip.nyaa {
+      background: rgba(138, 170, 255, 0.12);
+      border-color: rgba(138, 170, 255, 0.20);
+      color: #e4ebff;
     }
 
     .chip.fallback,
@@ -871,7 +884,7 @@
         <summary>
           <div>
             <h2 class="section-title">Fetched Entries</h2>
-            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and RSS shows.</div>
+            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, SubsPlease, and Nyaa shows.</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -884,7 +897,7 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Cache</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, Nyaa fallback, and Cache</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
@@ -997,6 +1010,7 @@
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const NYAA_RSS2JSON_URL = "https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fnyaa.si%2F%3Fpage%3Drss%26u%3Dvaryg1001";
     
     // Automatically detect the user's timezone, with Berlin as a fallback
     const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin";
@@ -1067,6 +1081,68 @@
       }
     `;
 
+    // --- INDEXEDDB IMAGE PANTRY ---
+    const DB_NAME = 'AiringBoardImages';
+    const STORE_NAME = 'covers';
+    let dbPromise = null;
+
+    function getDB() {
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, 1);
+          request.onupgradeneeded = (e) => e.target.result.createObjectStore(STORE_NAME);
+          request.onsuccess = (e) => resolve(e.target.result);
+          request.onerror = (e) => reject(e.target.error);
+        });
+      }
+      return dbPromise;
+    }
+
+    async function getCachedImage(id, url) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const blob = await new Promise((resolve) => {
+          const req = store.get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+        if (blob) return URL.createObjectURL(blob);
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const newBlob = await res.blob();
+        const txW = db.transaction(STORE_NAME, 'readwrite');
+        txW.objectStore(STORE_NAME).put(newBlob, id);
+        return URL.createObjectURL(newBlob);
+      } catch (err) {
+        return url;
+      }
+    }
+
+    async function deleteCachedImage(id) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+      } catch (e) {}
+    }
+
+    async function loadImagesToDOM() {
+      const imgs = document.querySelectorAll('img.lazy-cover');
+      for (const img of imgs) {
+        img.classList.remove('lazy-cover'); // Prevent double processing
+        const id = img.getAttribute('data-media-id');
+        const url = img.getAttribute('data-original-url');
+        if (id && url) {
+          const localUrl = await getCachedImage(id, url);
+          img.src = localUrl;
+        }
+      }
+    }
+    // ------------------------------
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
@@ -1105,6 +1181,7 @@
       overrides: {},
       addedShows: {},
       primaryCandidates: [],
+      secondaryCandidates: [],
       items: [],
       notes: [],
       totalAniListEntries: 0,
@@ -1191,7 +1268,8 @@
       let lastError = null;
       for (const target of targets) {
         try {
-          const response = await fetch(target, { method: "GET" });
+          // CACHE NO-STORE FIX APPLIED HERE
+          const response = await fetch(target, { method: "GET", cache: "no-store" });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
         } catch (error) {
@@ -1352,7 +1430,6 @@
       const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
       if (!match) return null;
       const showTitle = match[1].trim();
-      // Remove spaces and any "v2", "v3" suffixes so they share the same base episode deduplication key
       const episodeToken = match[2].replace(/\s+/g, "").replace(/v\d+/gi, "");
       if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
       return { showTitle, episode: episodeToken };
@@ -1374,7 +1451,6 @@
         if (Number.isNaN(date.getTime())) continue;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
-        // Changed > to < to keep the OLDEST release time, ignoring later delayed v2s
         if (!existing || date.getTime() < existing.date.getTime()) {
           deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
         }
@@ -1395,6 +1471,43 @@
       const trimmed = String(text || "").trim();
       if (!trimmed) return [];
       return parseXmlFeed(trimmed);
+    }
+
+    function escapeXml(text) {
+      return String(text ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&apos;");
+    }
+
+    function normalizeRss2JsonPubDate(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      let normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+      if (!/[zZ]$|[+\-]\d{2}:\d{2}$/.test(normalized)) {
+        normalized += "Z";
+      }
+      return normalized;
+    }
+
+    function convertRss2JsonToDummyXml(jsonText) {
+      let parsed;
+      try {
+        parsed = JSON.parse(String(jsonText || "{}"));
+      } catch (_) {
+        throw new Error("Fallback feed returned invalid JSON.");
+      }
+
+      const items = Array.isArray(parsed?.items) ? parsed.items : [];
+      const xmlItems = items.map(item => {
+        const title = escapeXml(item?.title || "");
+        const pubDate = escapeXml(normalizeRss2JsonPubDate(item?.pubDate || item?.isoDate || ""));
+        return `<item><title>${title}</title><pubDate>${pubDate}</pubDate></item>`;
+      }).join("");
+
+      return `<rss><channel>${xmlItems}</channel></rss>`;
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -1432,7 +1545,6 @@
       return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     }
 
-    // Circular Median function to handle midnight wrapping
     function medianTime(minutesArray) {
       if (!minutesArray || !minutesArray.length) return null;
       const base = minutesArray[0]; 
@@ -1463,7 +1575,6 @@
       }
       const dayItems = sample.filter(item => item.weekday === chosenDay);
       const timeItems = dayItems.length ? dayItems : sample;
-      // Using medianTime to protect against midnight wraps
       const chosenMinutes = medianTime(timeItems.map(item => item.minutes));
       return {
         day: chosenDay,
@@ -1577,6 +1688,7 @@
         userName: state.userName,
         currentEntries: state.currentEntries,
         primaryCandidates: state.primaryCandidates,
+        secondaryCandidates: state.secondaryCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
         healthStatus: state.healthStatus,
@@ -1598,6 +1710,7 @@
       state.addedShows = loadAddedShows(state.userName);
       state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
+      state.secondaryCandidates = Array.isArray(snapshot.secondaryCandidates) ? snapshot.secondaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
@@ -1635,80 +1748,30 @@
       return Number.isFinite(ms) ? ms : NaN;
     }
 
+    // --- HARD DELETE CLEANUP ENGINE ---
     function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
 
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
-      const nowMs = Date.now();
-      const nowIso = new Date(nowMs).toISOString();
-
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
 
+      // Nuke any slot cache history + image blob not currently valid
       for (const id of Object.keys(cache)) {
-        const entry = cache[id];
-
-        if (!entry || typeof entry !== "object") {
+        if (!validIds.has(id)) {
           delete cache[id];
-          cacheChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            cacheChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          cacheChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
-          delete cache[id];
+          deleteCachedImage(id); // Delete from IndexedDB Pantry
           cacheChanged = true;
         }
       }
 
-      if (cacheChanged) {
-        saveSlotCache(userName, cache);
-      }
+      if (cacheChanged) saveSlotCache(userName, cache);
 
-      const overrides = state.overrides && typeof state.overrides === "object"
-        ? { ...state.overrides }
-        : {};
+      const overrides = state.overrides && typeof state.overrides === "object" ? { ...state.overrides } : {};
       let overridesChanged = false;
 
       for (const id of Object.keys(overrides)) {
-        const entry = overrides[id];
-
-        if (!entry || typeof entry !== "object") {
-          delete overrides[id];
-          overridesChanged = true;
-          continue;
-        }
-
-        if (validIds.has(id)) {
-          if (entry.missingSince) {
-            delete entry.missingSince;
-            overridesChanged = true;
-          }
-          continue;
-        }
-
-        const missingSinceMs = parseStoredTimestamp(entry.missingSince);
-        if (!Number.isFinite(missingSinceMs)) {
-          entry.missingSince = nowIso;
-          overridesChanged = true;
-          continue;
-        }
-
-        if ((nowMs - missingSinceMs) >= ORPHAN_RETENTION_MS) {
+        if (!validIds.has(id)) {
           delete overrides[id];
           overridesChanged = true;
         }
@@ -1719,6 +1782,7 @@
         saveOverrides(userName, overrides);
       }
     }
+    // ----------------------------------
 
     function dedupeEntriesById(entries) {
       const map = new Map();
@@ -1744,46 +1808,44 @@
       };
     }
 
-    function detectDefaultSlot(media, primaryCandidates, timeZone) {
-      const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+    function fallbackSlotFromAniList(media, timeZone) {
       const next = media?.nextAiringEpisode;
+      if (!next?.airingAt) return null;
+      const airingSlot = getAniListWeekdayAndTime(next.airingAt, timeZone);
+      if (!airingSlot) return null;
+      const aniMinutes = toMinutes(airingSlot.time);
+      return {
+        day: airingSlot.weekday,
+        time: minutesToHHMM(aniMinutes + 60),
+        source: "fallback",
+        sampleCount: 0,
+        matchedTitle: ""
+      };
+    }
 
+    function reconcileMatchedSlotWithAniList(media, matchedSlot, timeZone) {
+      if (!matchedSlot) return fallbackSlotFromAniList(media, timeZone);
+
+      const next = media?.nextAiringEpisode;
       if (next?.airingAt) {
         const airingSlot = getAniListWeekdayAndTime(next.airingAt, timeZone);
-        if (airingSlot) {
-          const { weekday: aniDay, time: aniTime } = airingSlot;
-          const aniMinutes = toMinutes(aniTime);
+        if (airingSlot && matchedSlot.time) {
+          const aniMinutes = toMinutes(airingSlot.time);
+          const releaseMinutes = toMinutes(matchedSlot.time);
+          let diff = releaseMinutes - aniMinutes;
+          if (diff > 720) diff -= 1440;
+          if (diff < -720) diff += 1440;
 
-          if (primary?.time) {
-            const rssMinutes = toMinutes(primary.time);
-            let diff = rssMinutes - aniMinutes;
-            if (diff > 720) diff -= 1440;
-            if (diff < -720) diff += 1440;
-
-            if (Math.abs(diff) <= 210) {
-              return {
-                day: aniDay,
-                time: primary.time,
-                source: "rss",
-                sampleCount: primary.sampleCount || 1,
-                matchedTitle: primary.matchedTitle || "",
-                matchedEpisode: primary.matchedEpisode || null,
-                latestReleaseDay: primary.latestReleaseDay || null,
-                latestReleaseTime: primary.latestReleaseTime || null
-              };
-            } else {
-              return {
-                day: aniDay,
-                time: minutesToHHMM(aniMinutes + 60),
-                source: "fallback",
-                sampleCount: 0,
-                matchedTitle: ""
-              };
-            }
+          if (Math.abs(diff) <= 210) {
+            return {
+              ...matchedSlot,
+              day: airingSlot.weekday,
+              time: matchedSlot.time
+            };
           }
 
           return {
-            day: aniDay,
+            day: airingSlot.weekday,
             time: minutesToHHMM(aniMinutes + 60),
             source: "fallback",
             sampleCount: 0,
@@ -1792,10 +1854,24 @@
         }
       }
 
-      return primary || null;
+      return matchedSlot;
     }
 
-    function buildItems(entries, overrides, primaryCandidates, timeZone) {
+    function detectDefaultSlot(media, primaryCandidates, secondaryCandidates, timeZone) {
+      const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+      if (primary) {
+        return reconcileMatchedSlotWithAniList(media, primary, timeZone);
+      }
+
+      const secondary = tryMatchCandidateSet(media, secondaryCandidates, timeZone, "nyaa");
+      if (secondary) {
+        return reconcileMatchedSlotWithAniList(media, secondary, timeZone);
+      }
+
+      return fallbackSlotFromAniList(media, timeZone);
+    }
+
+    function buildItems(entries, overrides, primaryCandidates, secondaryCandidates, timeZone) {
       const items = [];
       const nowSeconds = Math.floor(Date.now() / 1000);
 
@@ -1838,7 +1914,7 @@
           continue;
         }
 
-        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
+        const primary = detectDefaultSlot(media, primaryCandidates, secondaryCandidates, timeZone);
         if (primary) {
           items.push({
             id: media.id,
@@ -1872,14 +1948,14 @@
       for (const item of items) {
         const key = String(item.id);
 
-        if (item.source === "rss") {
+        if (item.source === "rss" || item.source === "nyaa") {
           let entry = cache[key];
           if (!entry || typeof entry !== "object") {
             entry = {};
           }
 
           entry.history = Array.isArray(entry.history) ? entry.history : [];
-          entry.origin = "rss";
+          entry.origin = item.source;
 
           const currentEpisode = item.matchedEpisode;
           const currentDay = item.latestReleaseDay;
@@ -1916,7 +1992,7 @@
             time: item.time,
             sampleCount: item.sampleCount,
             matchedTitle: item.matchedTitle || "",
-            origin: "rss",
+            origin: item.source,
             updatedAt: new Date().toISOString()
           };
 
@@ -2067,18 +2143,21 @@
       return output;
     }
 
-    function renderSummary(items, primaryCount) {
+    function renderSummary(items, primaryCount, secondaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
-      const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
+      const rssCount = items.filter(item => item.source === "rss" || (item.source === "cache" && item.cacheOrigin === "rss")).length;
+      const nyaaCount = items.filter(item => item.source === "nyaa" || (item.source === "cache" && item.cacheOrigin === "nyaa")).length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
+      const parsedCount = (Number(primaryCount) || 0) + (Number(secondaryCount) || 0);
       const cards = [
         { label: "Visible", value: String(items.length) },
         { label: "Custom", value: String(manualCount) },
         { label: "Added shows", value: String(addedCount) },
         { label: "SubsPlease RSS", value: String(rssCount) },
+        { label: "Nyaa RSS", value: String(nyaaCount) },
         { label: "Fallback", value: String(fallbackCount) },
-        { label: "Parsed RSS", value: String(primaryCount) }
+        { label: "Parsed RSS", value: String(parsedCount) }
       ];
       els.summary.innerHTML = cards.map(card => `
         <article class="panel summary-card">
@@ -2093,7 +2172,6 @@
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       const newNextSlotKey = nextSlot ? nextSlot.key : null;
 
-      // Abort re-render if it's just a background tick and nothing has moved
       if (isTick && newNextSlotKey === state.lastNextSlotKey) {
         return; 
       }
@@ -2122,10 +2200,21 @@
                       ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
                       : "";
 
+                    const usesSubsPlease = item.source === "rss" || (item.source === "cache" && item.cacheOrigin === "rss");
+                    const usesNyaa = item.source === "nyaa" || (item.source === "cache" && item.cacheOrigin === "nyaa");
+                    const sourceChip = item.source === "manual"
+                      ? `<span class="chip manual">CUSTOM</span>`
+                      : usesSubsPlease
+                        ? `<span class="chip sp" title="Calculated from past releases: ${escapeHtml(item.historyLog || item.time)}">SP · ${item.sampleCount || 1}</span>`
+                        : usesNyaa
+                          ? `<span class="chip nyaa" title="Calculated from fallback releases: ${escapeHtml(item.historyLog || item.time)}">NYAA · ${item.sampleCount || 1}</span>`
+                          : `<span class="chip fallback">AniList</span>`;
+
+                    // IMAGES NOW RENDERED WITH DATA ATTRIBUTES FOR INDEXEDDB INJECTION
                     return `
                     <article class="entry">
                       <div class="thumb">
-                       ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
+                       ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
                       <div class="entry-body">
                         <div class="entry-title">
@@ -2136,11 +2225,7 @@
                           ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
                           ${item.isScheduleMoved ? `<span class="chip moved">Schedule Moved</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
-                          ${item.source === "manual"
-                            ? `<span class="chip manual">CUSTOM</span>`
-                            : (item.source === "rss" || item.source === "cache")
-                              ? `<span class="chip rss" title="Calculated from past releases: ${escapeHtml(item.historyLog || item.time)}">RSS · ${item.sampleCount || 1}</span>`
-                              : `<span class="chip fallback">AniList</span>`}
+                          ${sourceChip}
                         </div>
                       </div>
                       <button
@@ -2170,6 +2255,9 @@
       if (!grouped.length) {
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
+
+      // TRIGGER ASYNC IMAGE LOAD
+      loadImagesToDOM();
     }
 
     function itemMap() {
@@ -2183,16 +2271,17 @@
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
+      // Trigger Hard Delete immediately
       pruneOrphanedStoredState(
         state.userName,
         state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
       );
 
-      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
+      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, state.secondaryCandidates, DEFAULT_TIMEZONE);
       state.items = applyCache(built).sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
-      renderSummary(state.items, state.primaryCandidates.length);
+      renderSummary(state.items, state.primaryCandidates.length, state.secondaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
       renderFooterStatus();
@@ -2218,7 +2307,7 @@
     }
 
     function detectSlotForModal(media) {
-      return itemMap().get(String(media.id)) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+      return itemMap().get(String(media.id)) || detectDefaultSlot(media, state.primaryCandidates, state.secondaryCandidates, DEFAULT_TIMEZONE);
     }
 
     function syncSettingsModalState() {
@@ -2226,7 +2315,7 @@
       els.modalDay.disabled = !enabled;
       els.modalTime.disabled = !enabled;
       els.modalCustomHelper.textContent = enabled
-        ? "Custom slot is active and will override RSS / AniList for this show."
+        ? "Custom slot is active and will override SubsPlease / Nyaa / AniList for this show."
         : "Custom slot is off. Turn it on to set your own day and time.";
     }
 
@@ -2327,7 +2416,7 @@
       const media = mediaById(id);
       if (!media) return;
 
-      const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+      const detected = detectDefaultSlot(media, state.primaryCandidates, state.secondaryCandidates, DEFAULT_TIMEZONE);
 
       clearCachedSlotForShow(id);
 
@@ -2373,7 +2462,7 @@
       state.addedShows[id] = media;
 
       if (!state.overrides[id]) {
-        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        const suggested = detectDefaultSlot(media, state.primaryCandidates, state.secondaryCandidates, DEFAULT_TIMEZONE);
         if (suggested) {
           state.overrides[id] = {
             enabled: false,
@@ -2475,12 +2564,13 @@
       showMessage("info", loadingText);
 
       try {
-        const [aniListResult, rssResult] = await Promise.allSettled([
+        const [aniListResult, rssResult, nyaaResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
           fetchTextWithOptionalProxy(
             els.rssUrl.value.trim(),
             els.rssProxyTemplate.value.trim()
-          )
+          ),
+          fetchTextWithOptionalProxy(NYAA_RSS2JSON_URL, "")
         ]);
 
         if (aniListResult.status !== "fulfilled") {
@@ -2491,6 +2581,7 @@
         const nextNotes = [];
         const nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
         let nextPrimaryCandidates = [];
+        let nextSecondaryCandidates = [];
 
         if (rssResult.status === "fulfilled") {
           const primaryResult = String(rssResult.value || "").trim();
@@ -2505,12 +2596,45 @@
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
+        if (nyaaResult.status === "fulfilled") {
+          const secondaryResult = String(nyaaResult.value || "").trim();
+          if (secondaryResult) {
+            try {
+              const nyaaXml = convertRss2JsonToDummyXml(secondaryResult);
+              nextSecondaryCandidates = parseGenericFeed(nyaaXml);
+            } catch (error) {
+              nextNotes.push(`Nyaa: ${error.message}`);
+            }
+          }
+        } else {
+          nextNotes.push(`Nyaa: ${nyaaResult.reason?.message || "RSS request failed."}`);
+        }
+
+        // --- HARD DELETE MANUAL SHOWS IF COMPLETED ---
+        const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
+        if (addedIds.length > 0) {
+          try {
+            const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
+            const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
+            const mediaList = statusData?.Page?.media || [];
+            for (const m of mediaList) {
+              if (m.status === "FINISHED" || m.status === "CANCELLED") {
+                delete nextAddedShows[String(m.id)];
+                delete nextOverrides[String(m.id)];
+              }
+            }
+          } catch(e) {
+            // Ignore if status check fails to avoid breaking main board
+          }
+        }
+
         state.userName = userName;
         state.overrides = nextOverrides;
         state.addedShows = nextAddedShows;
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
+        state.secondaryCandidates = nextSecondaryCandidates;
         state.notes = nextNotes;
         state.healthStatus = nextNotes.length ? "unhealthy" : "healthy";
         state.lastSuccessfulLoadAt = Date.now();
@@ -2553,7 +2677,7 @@
     }
 
     function maybeRefreshBoard(reason = "refresh") {
-      if (!navigator.onLine) return; // Don't try to fetch if we have no internet
+      if (!navigator.onLine) return; 
       if (document.visibilityState === "hidden") return;
       if (state.isLoading) return;
       if (!state.userName) return;
