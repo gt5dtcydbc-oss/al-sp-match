@@ -1009,8 +1009,11 @@
     
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
-    const REFRESH_STALE_MS = 10 * 60 * 1000;
+    
+    // UPDATED REFRESH TIMERS TO SYNC
+    const REFRESH_STALE_MS = 5 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+    
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
@@ -1225,7 +1228,8 @@
       const response = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ query, variables })
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(15000) // Added safety timeout
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.errors) {
@@ -1259,8 +1263,11 @@
       let lastError = null;
       for (const target of targets) {
         try {
-          // CACHE NO-STORE FIX APPLIED HERE
-          const response = await fetch(target, { method: "GET", cache: "no-store" });
+          const response = await fetch(target, { 
+            method: "GET", 
+            cache: "no-store",
+            signal: AbortSignal.timeout(15000) // Added safety timeout
+          });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
         } catch (error) {
@@ -1309,7 +1316,12 @@
 
       const results = await Promise.all(uniqueUrls.map(async url => {
         try {
-          const text = await fetchTextWithOptionalProxy(url, proxyTemplate);
+          // Append a cache-buster so proxies are forced to fetch fresh RSS data
+          const cacheBustedUrl = url.includes("?") 
+            ? `${url}&_cb=${Date.now()}` 
+            : `${url}?_cb=${Date.now()}`;
+
+          const text = await fetchTextWithOptionalProxy(cacheBustedUrl, proxyTemplate);
           return { url, ok: true, text };
         } catch (error) {
           return {
