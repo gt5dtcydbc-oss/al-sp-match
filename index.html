@@ -890,15 +890,15 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Cache</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feeds, proxy settings, and Cache</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
         <div class="top-dropdown-body">
           <div class="config-grid">
             <div class="field">
-              <label for="rssUrl">SubsPlease RSS URL</label>
-              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+              <label for="rssUrl">SubsPlease RSS URLs</label>
+              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
             </div>
             <div class="field">
               <label for="rssProxyTemplate">SubsPlease proxy</label>
@@ -1268,6 +1268,99 @@
         }
       }
       throw lastError || new Error("Network request failed.");
+    }
+
+    function parseRssUrlList(raw) {
+      return String(raw || "")
+        .split(/[,\n]+/)
+        .map(value => value.trim())
+        .filter(Boolean);
+    }
+
+    function isSubsPleaseResolutionUrl(url, resolution) {
+      try {
+        const parsed = new URL(url);
+        return (
+          parsed.hostname === "subsplease.org" &&
+          parsed.pathname === "/rss/" &&
+          parsed.searchParams.get("r") === String(resolution)
+        );
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function getRssUrls() {
+      const urls = parseRssUrlList(els.rssUrl.value);
+      const output = urls.length ? urls : ["https://subsplease.org/rss/?r=1080"];
+
+      const hasSubsPlease1080 = output.some(url => isSubsPleaseResolutionUrl(url, 1080));
+      const hasSubsPlease720 = output.some(url => isSubsPleaseResolutionUrl(url, 720));
+
+      if (hasSubsPlease1080 && !hasSubsPlease720) {
+        output.push("https://subsplease.org/rss/?r=720");
+      }
+
+      return Array.from(new Set(output));
+    }
+
+    async function fetchRssFeedsWithOptionalProxy(urls, proxyTemplate) {
+      const uniqueUrls = Array.from(new Set((urls || []).map(url => String(url).trim()).filter(Boolean)));
+
+      const results = await Promise.all(uniqueUrls.map(async url => {
+        try {
+          const text = await fetchTextWithOptionalProxy(url, proxyTemplate);
+          return { url, ok: true, text };
+        } catch (error) {
+          return {
+            url,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error || "RSS request failed.")
+          };
+        }
+      }));
+
+      return results;
+    }
+
+    function mergeFeedCandidates(candidates) {
+      const merged = new Map();
+
+      for (const candidate of candidates || []) {
+        if (!candidate?.title) continue;
+
+        const key = normalizeTitle(candidate.title);
+        if (!key) continue;
+
+        if (!merged.has(key)) {
+          merged.set(key, {
+            title: candidate.title,
+            variants: new Set(candidate.variants || []),
+            items: new Map()
+          });
+        }
+
+        const target = merged.get(key);
+
+        for (const variant of candidate.variants || []) {
+          if (variant) target.variants.add(variant);
+        }
+
+        for (const item of candidate.items || []) {
+          const itemKey = `${normalizeTitle(item.showTitle)}::${item.episode}`;
+          const existing = target.items.get(itemKey);
+
+          if (!existing || item.date.getTime() < existing.date.getTime()) {
+            target.items.set(itemKey, item);
+          }
+        }
+      }
+
+      return Array.from(merged.values()).map(candidate => ({
+        title: candidate.title,
+        variants: Array.from(candidate.variants),
+        items: Array.from(candidate.items.values()).sort((a, b) => b.date.getTime() - a.date.getTime())
+      }));
     }
 
     function normalizeTitle(text) {
@@ -2490,6 +2583,7 @@
       const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
       const nextOverrides = loadOverrides(userName);
       const nextAddedShows = loadAddedShows(userName);
+      const rssUrls = getRssUrls();
 
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
@@ -2497,8 +2591,8 @@
       try {
         const [aniListResult, rssResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
-          fetchTextWithOptionalProxy(
-            els.rssUrl.value.trim(),
+          fetchRssFeedsWithOptionalProxy(
+            rssUrls,
             els.rssProxyTemplate.value.trim()
           )
         ]);
@@ -2513,14 +2607,25 @@
         let nextPrimaryCandidates = [];
 
         if (rssResult.status === "fulfilled") {
-          const primaryResult = String(rssResult.value || "").trim();
-          if (primaryResult) {
+          const allCandidates = [];
+
+          for (const feed of rssResult.value || []) {
+            if (!feed.ok) {
+              nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
+              continue;
+            }
+
+            const feedText = String(feed.text || "").trim();
+            if (!feedText) continue;
+
             try {
-              nextPrimaryCandidates = parseGenericFeed(primaryResult);
+              allCandidates.push(...parseGenericFeed(feedText));
             } catch (error) {
-              nextNotes.push(`SubsPlease: ${error.message}`);
+              nextNotes.push(`SubsPlease ${feed.url}: ${error.message}`);
             }
           }
+
+          nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
         } else {
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
