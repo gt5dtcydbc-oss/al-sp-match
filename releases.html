@@ -1,1747 +1,1243 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anime Releases Tracker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AniList Releases Board</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --panel: #11182d;
-      --panel-soft: #18213d;
-      --text: #eef2ff;
-      --muted: #98a6cc;
-      --line: rgba(255,255,255,0.08);
-      --line-strong: rgba(255,255,255,0.12);
-      --accent: #8c9eff;
-      --accent-soft: rgba(140,158,255,0.16);
-      --ok: #4adea8;
-      --ok-soft: rgba(74,222,168,0.14);
-      --warn: #ffd479;
-      --warn-soft: rgba(255,212,121,0.14);
-      --bad: #ff8d8d;
-      --bad-soft: rgba(255,141,141,0.14);
-      --shadow: 0 20px 50px rgba(0,0,0,0.28);
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f9fafc;
+      --text: #151923;
+      --muted: #697184;
+      --muted-2: #8b94a7;
+      --line: #e4e7ef;
+      --brand: #5f6df5;
+      --brand-strong: #4253ee;
+      --ok: #1b9a69;
+      --warn: #b7791f;
+      --danger: #c2413a;
+      --shadow: 0 18px 50px rgba(22, 29, 50, 0.08);
+      --radius: 22px;
+      --radius-sm: 14px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background: var(--bg);
+      margin: 0;
       min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(95, 109, 245, 0.12), transparent 34rem),
+        radial-gradient(circle at top right, rgba(27, 154, 105, 0.08), transparent 30rem),
+        var(--bg);
     }
 
-    a { color: inherit; text-decoration: none; }
-    button, input, textarea, select { font: inherit; }
-    button { color: inherit; }
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
 
     .app {
-      width: min(1120px, calc(100vw - 24px));
-      margin: 20px auto 40px;
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
     }
 
     .shell {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      border-radius: 28px;
-      overflow: hidden;
-    }
-
-    .content { padding: 18px; }
-    .list { display: grid; gap: 12px; }
-
-    .item {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .item-top {
       display: grid;
-      grid-template-columns: 46px minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 10px 12px;
-      min-height: 72px;
+      gap: 22px;
     }
 
-    .poster {
-      width: 46px;
-      aspect-ratio: 2 / 3;
-      border-radius: 12px;
-      overflow: hidden;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-      flex: 0 0 auto;
-    }
-
-    .poster img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .poster-fallback {
-      width: 100%;
-      height: 100%;
+    .hero {
       display: grid;
-      place-items: center;
-      color: rgba(255,255,255,0.4);
-      font-size: 11px;
-      text-align: center;
-      padding: 8px;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 18px;
     }
 
-    .item-main { min-width: 0; display: grid; gap: 6px; }
-
-    .title {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.3;
-      font-weight: 800;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .subtitle {
+    .eyebrow {
+      margin: 0 0 8px;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
       color: var(--muted);
-      font-size: 12px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .item-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
-
-    .badges {
-      display: flex;
-      gap: 8px;
-      flex-wrap: nowrap;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 7px 10px;
-      font-size: 12px;
       font-weight: 800;
-      border: 1px solid transparent;
-      white-space: nowrap;
     }
 
-    .pill.ok { color: #d8ffef; background: var(--ok-soft); border-color: rgba(74,222,168,0.18); }
-    .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
-    .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
-    .pill.muted { color: var(--muted); background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.08); }
-
-    details {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4rem);
+      letter-spacing: -0.06em;
+      line-height: 0.96;
     }
 
-    summary {
-      cursor: pointer;
-      color: #dce4ff;
-      font-weight: 800;
-      font-size: 13px;
-      list-style: none;
+    .subhead {
+      margin: 14px 0 0;
+      max-width: 720px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 1rem;
     }
 
-    summary::-webkit-details-marker { display: none; }
-
-    .entry-collapse {
-      margin: 0 12px 12px;
-      background: rgba(255,255,255,0.025);
-      border-color: rgba(255,255,255,0.055);
-      padding: 0;
-      overflow: hidden;
+    .toolbar,
+    .search-card,
+    .board,
+    .toast {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(228, 231, 239, 0.86);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
     }
 
-    .entry-toggle {
-      padding: 11px 12px;
+    .toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      padding: 12px;
+      border-radius: calc(var(--radius) + 6px);
     }
 
-    .entry-toggle::after {
-      content: 'Options';
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .entry-collapse[open] .entry-toggle::after { content: 'Hide'; }
-
-    .entry-details {
-      padding: 0 12px 12px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .meta-card {
-      padding: 12px 13px;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      min-width: 0;
-    }
-
-    .meta-label {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
-    }
-
-    .meta-value {
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--text);
-      word-break: break-word;
-    }
-
-    .comment-box { display: grid; gap: 8px; }
-
-    textarea, input, select {
-      width: 100%;
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line-strong);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    textarea {
-      min-height: 92px;
-      resize: vertical;
-      line-height: 1.5;
-    }
-
-    input:focus, textarea:focus, select:focus {
-      border-color: rgba(140,158,255,0.65);
-      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
-    }
-
-    label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .actions-row {
+    .toolbar-left,
+    .toolbar-right,
+    .import-wrap {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
       align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .primary-btn, .ghost-btn, .danger-btn, .mini-link {
-      border: 0;
-      cursor: pointer;
-      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(27, 154, 105, 0.12);
+    }
+
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--text);
+      border: 1px solid var(--line);
       font-weight: 800;
-      border-radius: 14px;
+      transition: 160ms ease;
     }
 
-    .primary-btn, .ghost-btn, .danger-btn {
-      min-height: 48px;
-      padding: 12px 14px;
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: #cfd5e5;
     }
 
-    .primary-btn {
+    .btn.primary {
+      background: var(--brand);
       color: white;
-      background: linear-gradient(135deg, #8c9eff, #a479ff);
-      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
+      border-color: transparent;
+      box-shadow: 0 12px 28px rgba(95, 109, 245, 0.28);
     }
 
-    .ghost-btn {
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
+    .btn.primary:hover {
+      background: var(--brand-strong);
     }
 
-    .danger-btn {
-      color: #ffdcdc;
-      background: rgba(255,141,141,0.1);
-      border: 1px solid rgba(255,141,141,0.18);
+    .btn.danger {
+      color: var(--danger);
     }
 
-    .mini-link {
-      min-height: 36px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      font-size: 12px;
-      border: 1px solid var(--line);
+    .btn.icon {
+      width: 40px;
+      padding: 0;
     }
 
-    .primary-btn:hover, .ghost-btn:hover, .danger-btn:hover, .mini-link:hover { transform: translateY(-1px); }
-    .primary-btn:disabled, .ghost-btn:disabled, .danger-btn:disabled, .mini-link:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
-
-    .options-panel {
-      border-top: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-      border-radius: 0;
-      border-left: 0;
-      border-right: 0;
-      border-bottom: 0;
+    .file-input {
+      display: none;
     }
 
-    .options-summary {
-      cursor: pointer;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+    .search-card {
+      position: relative;
+      padding: 14px;
+      border-radius: calc(var(--radius) + 8px);
     }
 
-    .options-summary::after {
-      content: '▾';
-      color: var(--muted);
-      margin-left: auto;
-      order: 3;
-      transition: transform 0.16s ease;
-    }
-
-    .options-panel[open] .options-summary::after { transform: rotate(180deg); }
-    .options-title { font-size: 14px; font-weight: 800; color: var(--text); }
-
-    .options-summary-right {
-      display: flex;
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
     }
 
-    .options-inner {
-      padding: 0 18px 18px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .hero {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: var(--panel-soft);
-    }
-
-    .section-title {
-      margin: 0 0 12px;
-      font-size: 14px;
-      font-weight: 900;
-      color: var(--text);
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 12px;
-      align-items: end;
-    }
-
-    .field { display: grid; gap: 7px; }
-    .field.search { grid-column: span 7; }
-    .field.category { grid-column: span 3; }
-    .field.actions { grid-column: span 2; }
-    .field.api { grid-column: span 7; }
-    .field.importexport { grid-column: span 5; }
-    .field.filter { grid-column: span 5; }
-    .field.local-search { grid-column: span 7; }
-
-    .segmented {
-      display: inline-flex;
+    .search-input {
       width: 100%;
-      background: rgba(255,255,255,0.04);
+      min-height: 52px;
+      padding: 0 18px;
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 4px;
-      gap: 4px;
-      min-height: 48px;
-    }
-
-    .segmented button {
-      flex: 1;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-      padding: 10px 12px;
-      border: 0;
-      cursor: pointer;
-    }
-
-    .segmented button.active {
-      background: rgba(140,158,255,0.18);
+      border-radius: 999px;
+      background: var(--surface-soft);
       color: var(--text);
-      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
+      outline: none;
+      transition: 160ms ease;
+      font-size: 1rem;
     }
 
-    .button-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .button-row > button { flex: 1 1 150px; }
+    .search-input:focus {
+      border-color: rgba(95, 109, 245, 0.65);
+      box-shadow: 0 0 0 4px rgba(95, 109, 245, 0.12);
+      background: #fff;
+    }
 
-    .chip, .hero-badge {
+    .results {
+      display: none;
+      position: absolute;
+      z-index: 20;
+      left: 14px;
+      right: 14px;
+      top: calc(100% - 6px);
+      max-height: 440px;
+      overflow: auto;
+      padding: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 24px 70px rgba(22, 29, 50, 0.16);
+    }
+
+    .results.open {
+      display: grid;
+      gap: 6px;
+    }
+
+    .result-item {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      padding: 10px;
+      text-align: left;
+      background: transparent;
+      border-radius: 16px;
+      color: var(--text);
+    }
+
+    .result-item:hover {
+      background: var(--surface-soft);
+    }
+
+    .poster {
+      width: 46px;
+      height: 64px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #dfe4f4, #f5f6fa);
+      border: 1px solid var(--line);
+    }
+
+    .result-title,
+    .card-title {
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .result-meta,
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 650;
+    }
+
+    .badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
+      gap: 5px;
+      padding: 5px 8px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.04);
+      background: var(--surface-soft);
       border: 1px solid var(--line);
       color: var(--muted);
-      font-size: 13px;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
-      flex: 0 0 auto;
-    }
-
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
-    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
-
-    .notice {
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    .notice.error { color: #ffd8d8; background: rgba(255,141,141,0.08); border-color: rgba(255,141,141,0.18); }
-    .notice.success { color: #d8ffef; background: rgba(74,222,168,0.08); border-color: rgba(74,222,168,0.18); }
-
-
-    .advanced-inner {
-      display: grid;
-      gap: 14px;
-      padding: 0 14px 14px;
-    }
-
-    .advanced-inner .stats {
-      padding: 0;
-    }
-
-    .compact-actions {
-      padding: 14px 18px;
-    }
-
-    .compact-actions .button-row > button {
-      flex: 0 1 220px;
-    }
-
-    .stats-panel {
-      padding: 0;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .stats-summary {
-      padding: 14px 16px;
-      font-size: 14px;
+      font-size: 0.76rem;
       font-weight: 800;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      white-space: nowrap;
     }
 
-    .stats-summary::after { content: '▾'; color: var(--muted); transition: transform 0.16s ease; }
-    .stats-panel[open] .stats-summary::after { transform: rotate(180deg); }
+    .badge.found {
+      color: var(--ok);
+      background: rgba(27, 154, 105, 0.08);
+      border-color: rgba(27, 154, 105, 0.18);
+    }
 
-    .stats {
+    .badge.watching {
+      color: var(--warn);
+      background: rgba(183, 121, 31, 0.08);
+      border-color: rgba(183, 121, 31, 0.2);
+    }
+
+    .badge.downloaded {
+      color: var(--brand-strong);
+      background: rgba(95, 109, 245, 0.09);
+      border-color: rgba(95, 109, 245, 0.18);
+    }
+
+    .boards {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      padding: 0 14px 14px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
     }
 
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 18px;
-      padding: 14px 16px;
-      min-height: 96px;
-    }
-
-    .stat-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-    .stat-value { font-size: 28px; line-height: 1; font-weight: 800; margin-bottom: 6px; }
-    .stat-help { color: var(--muted); font-size: 12px; line-height: 1.45; }
-
-    .search-results { display: grid; gap: 10px; margin-top: 12px; }
-
-    .search-result {
-      display: grid;
-      grid-template-columns: 42px minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.07);
-      background: rgba(255,255,255,0.035);
-    }
-
-    .board-section {
-      display: grid;
-      gap: 12px;
-    }
-
-    .board-section + .board-section {
-      margin-top: 22px;
+    .board {
+      min-height: 280px;
+      border-radius: calc(var(--radius) + 4px);
+      padding: 14px;
     }
 
     .board-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 4px 2px 0;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 2px 2px 10px;
+      border-bottom: 1px solid var(--line);
     }
 
     .board-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
       margin: 0;
-      font-size: 14px;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .count {
+      min-width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.78rem;
       font-weight: 900;
+    }
+
+    .collapse-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-weight: 900;
+      transition: 160ms ease;
+    }
+
+    .collapse-btn:hover {
       color: var(--text);
-      letter-spacing: 0.01em;
+      border-color: #cfd5e5;
     }
 
-    .board-count {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .empty {
-      padding: 40px 16px;
-      text-align: center;
-      color: var(--muted);
-      border: 1px dashed rgba(255,255,255,0.1);
-      border-radius: 18px;
-      background: rgba(255,255,255,0.03);
-    }
-
-    .hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-
-
-
-    .stale-chip { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
-
-    .advanced-card,
-    .api-settings,
-    .import-preview,
-    .option-section {
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 16px;
-    }
-
-    .advanced-card,
-    .import-preview,
-    .option-section {
-      padding: 13px;
+    .board-list {
       display: grid;
       gap: 10px;
     }
 
-    .advanced-card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+    .board.collapsed .board-list {
+      display: none;
     }
 
-    .section-subtitle,
-    .import-copy {
-      margin: 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
+    .board.collapsed {
+      min-height: auto;
     }
 
-    .api-settings { padding: 0; overflow: hidden; }
-    .api-summary { padding: 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .api-summary::after { content: '▾'; color: var(--muted); transition: transform 0.16s ease; }
-    .api-settings[open] .api-summary::after { transform: rotate(180deg); }
-    .api-inner { padding: 0 13px 13px; display: grid; gap: 10px; }
+    .show-card {
+      overflow: hidden;
+      border-radius: 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 24px rgba(22, 29, 50, 0.06);
+    }
 
-    .toggle-row {
-      display: flex;
+    .card-main {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: start;
       gap: 10px;
+      padding: 12px;
+    }
+
+    .download-check {
+      width: 22px;
+      height: 22px;
+      margin: 2px 0 0;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
+    .card-content {
+      min-width: 0;
+    }
+
+    .card-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .card-actions {
+      display: flex;
       align-items: center;
+      gap: 6px;
+    }
+
+    .notes-toggle {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
       color: var(--muted);
-      font-size: 13px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      font-weight: 900;
+    }
+
+    .notes-toggle[aria-expanded="true"] {
+      color: var(--brand-strong);
+      border-color: rgba(95, 109, 245, 0.25);
+      background: rgba(95, 109, 245, 0.08);
+    }
+
+    .remove-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      color: var(--muted-2);
+      background: transparent;
+      font-weight: 900;
+    }
+
+    .remove-btn:hover {
+      color: var(--danger);
+      background: rgba(194, 65, 58, 0.08);
+    }
+
+    .notes-panel {
+      display: none;
+      padding: 0 12px 12px;
+    }
+
+    .show-card.notes-open .notes-panel {
+      display: block;
+    }
+
+    .notes-panel textarea {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      outline: none;
+      background: var(--surface-soft);
+      color: var(--text);
       line-height: 1.4;
     }
 
-    .toggle-row input { width: auto; accent-color: var(--accent); }
-
-    .option-heading {
-      margin: 0;
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+    .notes-panel textarea:focus {
+      border-color: rgba(95, 109, 245, 0.65);
+      box-shadow: 0 0 0 4px rgba(95, 109, 245, 0.10);
+      background: #fff;
     }
 
-    .import-preview { border-color: rgba(255,212,121,0.18); background: rgba(255,212,121,0.07); }
-
-    .search-result-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      margin-top: 12px;
+    .empty {
+      padding: 22px 14px;
+      border: 1px dashed #d5dbea;
+      border-radius: 20px;
+      text-align: center;
       color: var(--muted);
-      font-size: 12px;
+      background: rgba(249, 250, 252, 0.62);
+      line-height: 1.45;
+      font-weight: 650;
     }
 
-    @media (max-width: 920px) {
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .field.search, .field.category, .field.actions, .field.api, .field.importexport, .field.filter, .field.local-search { grid-column: span 6; }
+    .toast-area {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 60;
+      display: grid;
+      gap: 10px;
+      width: min(420px, calc(100vw - 36px));
     }
 
-    @media (max-width: 680px) {
-      .app { width: min(100vw - 12px, 1120px); margin: 8px auto 18px; }
-      .shell { border-radius: 22px; }
-      .content { padding: 14px; }
-      .options-inner { padding: 0 14px 14px; }
-      .hero { padding: 14px; }
-      .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
-      .stat { padding: 12px; min-height: 0; }
-      .stat-value { font-size: 24px; }
-      .controls { grid-template-columns: 1fr; }
-      .field.search, .field.category, .field.actions, .field.api, .field.importexport, .field.filter, .field.local-search { grid-column: auto; }
-      .item-top { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; padding: 10px; }
-      .item-actions { grid-column: 1 / -1; justify-content: flex-start; }
-      .poster { width: 42px; border-radius: 10px; }
-      .title { font-size: 14px; }
-      .pill { white-space: normal; }
-      .meta-grid { grid-template-columns: 1fr; }
-      .search-result { grid-template-columns: 42px minmax(0, 1fr); }
-      .search-result .actions-row { grid-column: 1 / -1; }
-      .options-summary-right { width: 100%; }
-      .options-summary-right .chip, .options-summary-right .hero-badge { flex: 1 1 auto; justify-content: center; }
+    .toast {
+      padding: 14px 16px;
+      border-radius: 18px;
+      color: var(--text);
+      font-weight: 750;
+      line-height: 1.4;
+    }
+
+    .toast.error {
+      border-color: rgba(194, 65, 58, 0.24);
+    }
+
+    .kbd {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 900;
+    }
+
+    @media (max-width: 1040px) {
+      .boards {
+        grid-template-columns: 1fr;
+      }
+
+      .board {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        width: min(100% - 18px, 1440px);
+        padding-top: 18px;
+      }
+
+      .hero,
+      .search-row {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .toolbar-left,
+      .toolbar-right,
+      .import-wrap {
+        width: 100%;
+      }
+
+      .toolbar .btn,
+      .import-wrap .btn {
+        flex: 1;
+      }
+
+      .result-item {
+        grid-template-columns: 42px 1fr;
+      }
+
+      .result-item .badge {
+        grid-column: 2;
+        width: max-content;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="shell">
-      <section class="content">
-        <div id="list" class="list"></div>
-        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
+  <main class="app">
+    <section class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AniList × releases.moe</p>
+          <h1>Release Board</h1>
+          <p class="subhead">
+            Add anime from AniList, then let the board sort them by whether releases.moe has an entry.
+            Downloaded items stay tucked away until you need them.
+          </p>
+        </div>
+      </header>
+
+      <section class="toolbar" aria-label="Board tools">
+        <div class="toolbar-left">
+          <span class="status-pill"><span class="dot" aria-hidden="true"></span><span id="statusText">Ready</span></span>
+          <button class="btn" id="checkAllBtn" type="button">Check status</button>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn" id="exportBtn" type="button">Export JSON</button>
+          <div class="import-wrap">
+            <input class="file-input" id="importFile" type="file" accept="application/json,.json" />
+            <button class="btn" id="importBtn" type="button">Import JSON</button>
+          </div>
+          <button class="btn danger" id="clearBtn" type="button">Clear</button>
+        </div>
       </section>
 
-      <details class="options-panel" id="optionsPanel">
-        <summary class="options-summary">
-          <span class="options-title">Options</span>
-          <span class="options-summary-right">
-            <span class="chip" id="visibleCountChip">Showing 0 titles</span>
-            <span class="chip stale-chip" id="staleChip" hidden>Check releases</span>
-            <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
-          </span>
-        </summary>
-
-        <div class="options-inner">
-          <div id="notice" class="notice" hidden></div>
-
-          <section class="hero">
-            <h2 class="section-title">Add anime</h2>
-            <div class="controls">
-              <div class="field search">
-                <label for="aniListSearchInput">AniList search</label>
-                <input id="aniListSearchInput" placeholder="Search anime title" autocomplete="off" />
-              </div>
-              <div class="field actions">
-                <label>Search</label>
-                <button id="aniListSearchBtn" class="primary-btn">Search</button>
-              </div>
-              <div class="field local-search">
-                <label for="boardSearchInput">Filter board</label>
-                <input id="boardSearchInput" placeholder="Search titles or comments" autocomplete="off" />
-              </div>
-              <div class="field filter">
-                <label>View</label>
-                <div class="segmented" id="categoryFilter">
-                  <button type="button" data-filter="all" class="active">All</button>
-                  <button type="button" data-filter="watching">Watching</button>
-                  <button type="button" data-filter="downloaded">Downloaded</button>
-                </div>
-              </div>
-            </div>
-            <div id="searchResultToolbar" class="search-result-toolbar" hidden><span id="searchResultCount">0 results</span><button id="clearSearchResultsBtn" class="mini-link" type="button">Clear results</button></div>
-            <div id="searchResults" class="search-results" hidden></div>
-          </section>
-
-          <section class="hero compact-actions">
-            <div class="button-row">
-              <button id="checkReleasesBtn" class="primary-btn">Check releases</button>
-            </div>
-            <input id="importFile" class="hidden-file" type="file" accept="application/json" />
-          </section>
-
-          <details class="stats-panel">
-            <summary class="stats-summary">Advanced</summary>
-            <div class="advanced-inner">
-              <section class="advanced-card">
-                <div class="advanced-card-top">
-                  <div>
-                    <h2 class="section-title">Backup and transfer</h2>
-                    <p class="section-subtitle">Export before moving browsers or before replacing your board with an import.</p>
-                  </div>
-                  <div class="button-row">
-                    <button id="exportBtn" class="ghost-btn">Export JSON</button>
-                    <button id="importBtn" class="ghost-btn">Choose import file</button>
-                  </div>
-                </div>
-                <div id="importPreview" class="import-preview" hidden>
-                  <strong>Import ready</strong>
-                  <p class="import-copy" id="importSummary">No file selected.</p>
-                  <div class="button-row">
-                    <button id="importMergeBtn" class="primary-btn">Merge with current board</button>
-                    <button id="importReplaceBtn" class="danger-btn">Replace current board</button>
-                    <button id="importCancelBtn" class="ghost-btn">Cancel</button>
-                  </div>
-                </div>
-              </section>
-
-              <details class="api-settings">
-                <summary class="api-summary">API settings</summary>
-                <div class="api-inner">
-                  <label class="toggle-row">
-                    <input id="customApiToggle" type="checkbox" />
-                    Use a custom releases.moe API base. Leave this off unless your browser needs a proxy.
-                  </label>
-                  <div class="field api">
-                    <label for="apiBase">Custom API base</label>
-                    <input id="apiBase" value="https://releases.moe" autocomplete="off" disabled />
-                  </div>
-                </div>
-              </details>
-
-              <div class="stats">
-                <div class="stat">
-                  <div class="stat-label">Anime on board</div>
-                  <div class="stat-value" id="statTotal">0</div>
-                  <div class="stat-help">Manually added AniList shows.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Watching</div>
-                  <div class="stat-value" id="statWatching">0</div>
-                  <div class="stat-help">Titles you are still tracking.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Downloaded</div>
-                  <div class="stat-value" id="statDownloaded">0</div>
-                  <div class="stat-help">Titles you already have.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Last checked</div>
-                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                  <div class="stat-help" id="statCheckedHelp">Release status checks automatically on page load and manually with Check releases.</div>
-                </div>
-              </div>
-            </div>
-          </details>
+      <section class="search-card" aria-label="Search AniList">
+        <div class="search-row">
+          <input
+            class="search-input"
+            id="searchInput"
+            type="search"
+            autocomplete="off"
+            placeholder="Search AniList, e.g. Cowboy Bebop"
+            aria-label="Search AniList for anime"
+          />
+          <button class="btn primary" id="searchBtn" type="button">Search</button>
         </div>
-      </details>
-    </div>
-  </div>
+        <div class="results" id="results" role="listbox" aria-label="AniList search results"></div>
+      </section>
+
+      <section class="boards" aria-label="Release boards">
+        <article class="board" data-board="found">
+          <header class="board-header">
+            <h2 class="board-title">Found <span class="count" id="foundCount">0</span></h2>
+          </header>
+          <div class="board-list" id="foundList"></div>
+        </article>
+
+        <article class="board" data-board="watching">
+          <header class="board-header">
+            <h2 class="board-title">Watching <span class="count" id="watchingCount">0</span></h2>
+          </header>
+          <div class="board-list" id="watchingList"></div>
+        </article>
+
+        <article class="board" data-board="downloaded" id="downloadedBoard">
+          <header class="board-header">
+            <h2 class="board-title">Downloaded <span class="count" id="downloadedCount">0</span></h2>
+            <button class="collapse-btn" id="toggleDownloadedBtn" type="button" aria-expanded="true" title="Collapse Downloaded">⌄</button>
+          </header>
+          <div class="board-list" id="downloadedList"></div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast-area" id="toastArea" aria-live="polite" aria-atomic="true"></div>
 
   <script>
-    const ANILIST_API = 'https://graphql.anilist.co';
-    const SETTINGS_KEY = 'anime-release-board-settings-v1';
-    const BOARD_KEY = 'anime-release-board-v1';
-
-    const DEFAULTS = { apiBase: 'https://releases.moe', useCustomApiBase: false };
+    const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+    const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
+    const STORAGE_KEY = "anilist-releases-board:v1";
 
     const state = {
-      items: [],
-      lastCheckedAt: null,
-      isLoading: false,
-      categoryFilter: 'all',
-      boardSearch: '',
-      searchResults: [],
-      pendingImport: null
+      shows: [],
+      ui: {
+        downloadedCollapsed: false,
+        openNotes: {}
+      }
     };
 
     const els = {
-      list: document.getElementById('list'),
-      emptyState: document.getElementById('emptyState'),
-      optionsPanel: document.getElementById('optionsPanel'),
-      notice: document.getElementById('notice'),
-      statusDot: document.getElementById('statusDot'),
-      statusText: document.getElementById('statusText'),
-      visibleCountChip: document.getElementById('visibleCountChip'),
-      staleChip: document.getElementById('staleChip'),
-      aniListSearchInput: document.getElementById('aniListSearchInput'),
-      aniListSearchBtn: document.getElementById('aniListSearchBtn'),
-      searchResultToolbar: document.getElementById('searchResultToolbar'),
-      searchResultCount: document.getElementById('searchResultCount'),
-      clearSearchResultsBtn: document.getElementById('clearSearchResultsBtn'),
-      searchResults: document.getElementById('searchResults'),
-      boardSearchInput: document.getElementById('boardSearchInput'),
-      categoryFilter: document.getElementById('categoryFilter'),
-      customApiToggle: document.getElementById('customApiToggle'),
-      apiBase: document.getElementById('apiBase'),
-      checkReleasesBtn: document.getElementById('checkReleasesBtn'),
-      exportBtn: document.getElementById('exportBtn'),
-      importBtn: document.getElementById('importBtn'),
-      importFile: document.getElementById('importFile'),
-      importPreview: document.getElementById('importPreview'),
-      importSummary: document.getElementById('importSummary'),
-      importMergeBtn: document.getElementById('importMergeBtn'),
-      importReplaceBtn: document.getElementById('importReplaceBtn'),
-      importCancelBtn: document.getElementById('importCancelBtn'),
-      statTotal: document.getElementById('statTotal'),
-      statWatching: document.getElementById('statWatching'),
-      statDownloaded: document.getElementById('statDownloaded'),
-      statChecked: document.getElementById('statChecked'),
-      statCheckedHelp: document.getElementById('statCheckedHelp')
+      statusText: document.querySelector("#statusText"),
+      searchInput: document.querySelector("#searchInput"),
+      searchBtn: document.querySelector("#searchBtn"),
+      results: document.querySelector("#results"),
+      checkAllBtn: document.querySelector("#checkAllBtn"),
+      exportBtn: document.querySelector("#exportBtn"),
+      importBtn: document.querySelector("#importBtn"),
+      importFile: document.querySelector("#importFile"),
+      clearBtn: document.querySelector("#clearBtn"),
+      foundList: document.querySelector("#foundList"),
+      watchingList: document.querySelector("#watchingList"),
+      downloadedList: document.querySelector("#downloadedList"),
+      foundCount: document.querySelector("#foundCount"),
+      watchingCount: document.querySelector("#watchingCount"),
+      downloadedCount: document.querySelector("#downloadedCount"),
+      downloadedBoard: document.querySelector("#downloadedBoard"),
+      toggleDownloadedBtn: document.querySelector("#toggleDownloadedBtn"),
+      toastArea: document.querySelector("#toastArea")
     };
 
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+    const boardCopy = {
+      found: "Found",
+      watching: "Watching",
+      downloaded: "Downloaded"
+    };
+
+    const emptyCopy = {
+      found: "No matched releases yet.",
+      watching: "No shows waiting for releases.",
+      downloaded: "Nothing downloaded yet."
+    };
+
+    init();
+
+    function init() {
+      loadState();
+      bindEvents();
+      render();
+      checkAllStatuses({ silent: true });
     }
 
-    function normalizeTitle(media) {
-      return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
-    }
-
-    function getAltTitle(media) {
-      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
-        .filter(Boolean)
-        .filter((value, index, arr) => arr.indexOf(value) === index);
-      if (names.length <= 1) return '';
-      return names.slice(1).join(' - ');
-    }
-
-    function normalizeLooseString(value) {
-      return String(value || '').trim().toLowerCase();
-    }
-
-    function formatDateTime(value) {
-      if (!value) return 'Never';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '-';
-      return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric', month: 'short', day: '2-digit',
-        hour: '2-digit', minute: '2-digit'
-      }).format(date);
-    }
-
-    function formatBytes(bytes) {
-      const value = Number(bytes);
-      if (!Number.isFinite(value) || value <= 0) return '-';
-      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-      let n = value;
-      let i = 0;
-      while (n >= 1024 && i < units.length - 1) {
-        n /= 1024;
-        i += 1;
-      }
-      return `${n.toFixed(n >= 100 || i === 0 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
-    }
-
-    function setStatus(kind, text) {
-      els.statusDot.className = 'dot';
-      if (kind) els.statusDot.classList.add(kind);
-      els.statusText.textContent = text;
-    }
-
-    function showNotice(message, kind = '') {
-      els.notice.hidden = false;
-      els.notice.className = `notice ${kind}`.trim();
-      els.notice.innerHTML = message;
-      if (els.optionsPanel) els.optionsPanel.open = true;
-    }
-
-    function clearNotice() {
-      els.notice.hidden = true;
-      els.notice.className = 'notice';
-      els.notice.innerHTML = '';
-    }
-
-    function getSettings() {
-      const useCustomApiBase = Boolean(els.customApiToggle?.checked);
-      return {
-        useCustomApiBase,
-        apiBase: useCustomApiBase
-          ? (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
-          : DEFAULTS.apiBase
-      };
-    }
-
-    function loadSettings() {
-      try {
-        const raw = localStorage.getItem(SETTINGS_KEY);
-        if (!raw) return { ...DEFAULTS };
-        return { ...DEFAULTS, ...JSON.parse(raw) };
-      } catch {
-        return { ...DEFAULTS };
-      }
-    }
-
-    function applySettings(settings) {
-      const merged = { ...DEFAULTS, ...settings };
-      if (els.customApiToggle) els.customApiToggle.checked = Boolean(merged.useCustomApiBase);
-      els.apiBase.value = merged.apiBase || DEFAULTS.apiBase;
-      els.apiBase.disabled = !Boolean(els.customApiToggle?.checked);
-    }
-
-    function saveSettings() {
-      try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettings()));
-        return true;
-      } catch (error) {
-        console.warn('Settings could not be saved:', error);
-        return false;
-      }
-    }
-
-    function loadBoard() {
-      try {
-        const raw = localStorage.getItem(BOARD_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        state.items = Array.isArray(parsed?.items) ? parsed.items.map(normalizeBoardItem).filter(Boolean) : [];
-        state.lastCheckedAt = parsed?.lastCheckedAt || null;
-      } catch {
-        state.items = [];
-        state.lastCheckedAt = null;
-      }
-    }
-
-    function saveBoard({ quiet = false } = {}) {
-      try {
-        localStorage.setItem(BOARD_KEY, JSON.stringify({
-          version: 1,
-          lastCheckedAt: state.lastCheckedAt,
-          items: state.items
-        }));
-        return true;
-      } catch (error) {
-        console.warn('Board could not be saved:', error);
-        if (!quiet) {
-          showNotice(
-            'This browser blocked saving to local storage. The entry was added for this page session, but it may not persist after reload. Export JSON before closing the page.',
-            'error'
-          );
-        }
-        return false;
-      }
-    }
-
-    function rebuildSearchBlobs() {
-      state.items = state.items.map((item) => ({
-        ...item,
-        searchBlob: [item.title, item.altTitle, item.comment, item.release?.notes, item.release?.bestGroup, item.category]
-          .join(' ')
-          .toLowerCase()
-      }));
-    }
-
-    async function postAniList(query, variables) {
-      const response = await fetch(ANILIST_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ query, variables })
+    function bindEvents() {
+      els.searchBtn.addEventListener("click", () => runSearch());
+      els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
+      els.searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeResults();
+        if (event.key === "Enter") runSearch();
       });
 
-      const data = await response.json().catch(() => null);
-      if (!response.ok || data?.errors) {
-        const message = data?.errors?.[0]?.message || `AniList request failed with ${response.status}`;
-        throw new Error(message);
-      }
-      return data.data;
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".search-card")) closeResults();
+      });
+
+      els.checkAllBtn.addEventListener("click", () => checkAllStatuses({ silent: false }));
+      els.exportBtn.addEventListener("click", exportJson);
+      els.importBtn.addEventListener("click", () => els.importFile.click());
+      els.importFile.addEventListener("change", importJson);
+      els.clearBtn.addEventListener("click", clearBoard);
+      els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
     }
 
-    async function searchAniList(term) {
+    async function runSearch() {
+      const search = els.searchInput.value.trim();
+
+      if (!search) {
+        closeResults();
+        return;
+      }
+
+      setStatus("Searching AniList…");
+      els.results.classList.add("open");
+      els.results.innerHTML = '<div class="empty">Searching…</div>';
+
+      try {
+        const results = await searchAniList(search);
+        renderResults(results);
+        setStatus("Ready");
+      } catch (error) {
+        console.error(error);
+        els.results.innerHTML = '<div class="empty">AniList search failed. Try again in a moment.</div>';
+        setStatus("Search failed");
+        toast("Could not search AniList. The API may be rate-limiting requests or unavailable.", "error");
+      }
+    }
+
+    async function searchAniList(search) {
       const query = `
-        query ($search: String!) {
-          Page(page: 1, perPage: 10) {
+        query SearchAnime($search: String, $page: Int, $perPage: Int) {
+          Page(page: $page, perPage: $perPage) {
             media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
               id
-              siteUrl
+              title { romaji english native }
+              coverImage { medium large }
+              episodes
               format
               status
-              season
               seasonYear
-              title { romaji english native }
-              coverImage { large color }
+              siteUrl
             }
           }
         }
       `;
-      const data = await postAniList(query, { search: term });
-      return data?.Page?.media || [];
+
+      const response = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          variables: { search, page: 1, perPage: 8 }
+        })
+      });
+
+      if (!response.ok) throw new Error(`AniList returned ${response.status}`);
+      const json = await response.json();
+      return json?.data?.Page?.media ?? [];
     }
 
-    function mediaToBoardItem(media, category) {
-      return normalizeBoardItem({
-        id: media.id,
-        title: normalizeTitle(media),
-        altTitle: getAltTitle(media),
-        cover: media?.coverImage?.large || '',
-        coverColor: media?.coverImage?.color || '#2d3e77',
-        aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
-        category,
-        comment: '',
-        addedAt: new Date().toISOString(),
-        downloadedAt: category === 'downloaded' ? new Date().toISOString() : null,
-        release: normalizeRelease(null)
+    function renderResults(results) {
+      if (!results.length) {
+        els.results.innerHTML = '<div class="empty">No AniList results found.</div>';
+        return;
+      }
+
+      els.results.innerHTML = results.map((media) => {
+        const title = getTitle(media.title);
+        const alreadyAdded = state.shows.some((show) => show.anilistId === media.id);
+        const meta = [media.format, media.seasonYear, media.episodes ? `${media.episodes} ep` : null]
+          .filter(Boolean)
+          .map(escapeHtml)
+          .join(" · ");
+
+        return `
+          <button class="result-item" type="button" data-add-id="${media.id}" ${alreadyAdded ? "disabled" : ""}>
+            <img class="poster" src="${media.coverImage?.medium ?? ""}" alt="" loading="lazy" />
+            <span>
+              <span class="result-title">${escapeHtml(title)}</span>
+              <span class="result-meta">${meta || "Anime"}</span>
+            </span>
+            <span class="badge">${alreadyAdded ? "Added" : "Add"}</span>
+          </button>
+        `;
+      }).join("");
+
+      els.results.querySelectorAll("[data-add-id]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const media = results.find((item) => item.id === Number(button.dataset.addId));
+          if (media) await addShow(media);
+        });
       });
     }
 
-    function chunk(array, size) {
-      const out = [];
-      for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
-      return out;
-    }
-
-    function buildSeaDexFilter(ids) {
-      return '(' + ids.map((id) => `alID=${Number(id)}`).join(' || ') + ')';
-    }
-
-    function getTorrentSignature(torrent) {
-      const files = (torrent?.files || [])
-        .map((file) => `${file?.name || ''}:${Number(file?.length) || 0}`)
-        .sort()
-        .join('|');
-      const tags = [...(torrent?.tags || [])].map((tag) => normalizeLooseString(tag)).sort().join('|');
-      return [
-        normalizeLooseString(torrent?.groupedUrl),
-        normalizeLooseString(torrent?.infohash),
-        normalizeLooseString(torrent?.releaseGroup),
-        normalizeLooseString(torrent?.tracker),
-        Number(torrent?.dualAudio) ? 'dual' : 'single',
-        tags,
-        files
-      ].join('::');
-    }
-
-    function dedupeTorrents(torrents) {
-      const byKey = new Map();
-      for (const torrent of torrents || []) {
-        const strongKey = normalizeLooseString(torrent?.groupedUrl) || normalizeLooseString(torrent?.infohash);
-        const fallbackKey = getTorrentSignature(torrent);
-        const key = strongKey || fallbackKey;
-        const existing = byKey.get(key);
-        if (!existing) {
-          byKey.set(key, torrent);
-          continue;
-        }
-
-        const score = (item) => {
-          let n = 0;
-          if (item?.isBest) n += 100;
-          if (item?.dualAudio) n += 20;
-          if (item?.url) n += 5;
-          if (item?.groupedUrl) n += 5;
-          if ((item?.files || []).length) n += 3;
-          return n;
-        };
-
-        if (score(torrent) > score(existing)) byKey.set(key, torrent);
+    async function addShow(media) {
+      if (state.shows.some((show) => show.anilistId === media.id)) {
+        toast("That show is already on your board.");
+        return;
       }
-      return Array.from(byKey.values());
-    }
 
-    function choosePreferredEntry(existing, candidate) {
-      if (!existing) return candidate;
-      const score = (entry) => {
-        let n = 0;
-        if (!entry?.incomplete) n += 50;
-        n += Math.min((entry?.expand?.trs || []).length, 10) * 5;
-        n += entry?.comparison ? 5 : 0;
-        const updated = Date.parse(entry?.updated || '') || 0;
-        n += Math.floor(updated / 1000000000);
-        return n;
+      closeResults();
+      els.searchInput.value = "";
+      setStatus("Checking releases.moe…");
+
+      const show = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        anilistId: media.id,
+        title: getTitle(media.title),
+        titleEnglish: media.title?.english ?? "",
+        titleRomaji: media.title?.romaji ?? "",
+        coverImage: media.coverImage?.medium || media.coverImage?.large || "",
+        format: media.format ?? "",
+        episodes: media.episodes ?? null,
+        seasonYear: media.seasonYear ?? null,
+        siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
+        board: "watching",
+        downloaded: false,
+        comments: "",
+        releasesMoe: {
+          found: false,
+          recordId: null,
+          checkedAt: null,
+          error: null
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
-      return score(candidate) > score(existing) ? candidate : existing;
-    }
 
-    async function fetchSeaDexPage(apiBase, params) {
-      const url = `${apiBase}/api/collections/entries/records?${params.toString()}`;
-      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        const message = data?.message || `.moe request failed with ${response.status}`;
-        throw new Error(message);
-      }
-      return Array.isArray(data?.items) ? data.items : [];
-    }
-
-    async function fetchSeaDexSingleByAniListId(id, apiBase) {
-      const params = new URLSearchParams({
-        filter: `alID=${Number(id)}`,
-        expand: 'trs',
-        perPage: '1',
-        sort: '-updated'
-      });
-      const items = await fetchSeaDexPage(apiBase, params);
-      return items[0] || null;
-    }
-
-    async function fetchSeaDexByAniListIds(ids, apiBase) {
-      if (!ids.length) return new Map();
-      const uniqueIds = [...new Set(ids.map(Number).filter(Number.isFinite))];
-      const results = [];
-
-      for (const idChunk of chunk(uniqueIds, 20)) {
-        const params = new URLSearchParams({
-          filter: buildSeaDexFilter(idChunk),
-          expand: 'trs',
-          perPage: String(Math.max(idChunk.length, 30)),
-          sort: '-updated'
-        });
-        results.push(...await fetchSeaDexPage(apiBase, params));
-      }
-
-      const map = new Map();
-      for (const item of results) {
-        if (item?.alID == null) continue;
-        const key = Number(item.alID);
-        map.set(key, choosePreferredEntry(map.get(key), item));
-      }
-
-      // Safety net: a title can exist on releases.moe even if the batch filter misses it.
-      // This also fixes exact-title cases such as mono / AniList 176246.
-      const missingIds = uniqueIds.filter((id) => !map.has(id));
-      for (const id of missingIds) {
-        const single = await fetchSeaDexSingleByAniListId(id, apiBase).catch(() => null);
-        if (single?.alID != null) {
-          const key = Number(single.alID);
-          map.set(key, choosePreferredEntry(map.get(key), single));
-        }
-      }
-
-      return map;
-    }
-
-    function pickBestTorrent(entry) {
-      const torrents = dedupeTorrents(entry?.expand?.trs || []);
-      if (!torrents.length) return null;
-      return [...torrents].sort((a, b) => {
-        const score = (torrent) => {
-          let n = 0;
-          if (torrent?.isBest) n += 100;
-          if (torrent?.dualAudio) n += 20;
-          if (torrent?.groupedUrl) n += 5;
-          if (torrent?.url) n += 2;
-          return n;
-        };
-        return score(b) - score(a);
-      })[0];
-    }
-
-    function buildReleaseInfo(mediaId, entry) {
-      if (!entry) return normalizeRelease(null);
-      const torrents = dedupeTorrents(entry?.expand?.trs || []);
-      const bestTorrent = pickBestTorrent(entry);
-      const bestSize = bestTorrent
-        ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
-        : '-';
-
-      return normalizeRelease({
-        hasSeaDex: true,
-        incomplete: Boolean(entry?.incomplete),
-        entryUrl: `https://releases.moe/${mediaId}/`,
-        notes: entry?.notes || '',
-        theoreticalBest: entry?.theoreticalBest || '',
-        updatedAt: entry?.updated || '',
-        bestSize,
-        bestGroup: bestTorrent?.releaseGroup || '',
-        torrentCount: torrents.length
-      });
-    }
-
-    function setLoading(isLoading, statusText = 'Ready') {
-      state.isLoading = isLoading;
-      els.aniListSearchBtn.disabled = isLoading;
-      els.checkReleasesBtn.disabled = isLoading;
-      els.exportBtn.disabled = isLoading;
-      els.importBtn.disabled = isLoading;
-      if (isLoading) setStatus('', statusText);
-    }
-
-    async function runAniListSearch() {
-      const term = els.aniListSearchInput.value.trim();
-      if (!term) {
-        showNotice('Type an anime title to search AniList.', 'error');
-        return;
-      }
-
-      setLoading(true, 'Searching AniList...');
-      clearNotice();
-
-      try {
-        state.searchResults = await searchAniList(term);
-        renderSearchResults();
-        setStatus('ok', 'Ready');
-        if (!state.searchResults.length) showNotice('No AniList results found.', 'error');
-      } catch (error) {
-        setStatus('bad', 'Error');
-        showNotice(`AniList search failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}`, 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    function renderSearchResults() {
-      els.searchResults.innerHTML = '';
-      els.searchResults.hidden = !state.searchResults.length;
-      if (els.searchResultToolbar) els.searchResultToolbar.hidden = !state.searchResults.length;
-      if (els.searchResultCount) els.searchResultCount.textContent = `${state.searchResults.length} result${state.searchResults.length === 1 ? '' : 's'}`;
-
-      for (const media of state.searchResults) {
-        const alreadyAdded = state.items.some((item) => Number(item.id) === Number(media.id));
-        const result = document.createElement('div');
-        result.className = 'search-result';
-
-        const title = normalizeTitle(media);
-        const altTitle = getAltTitle(media);
-        const metadata = [media.format, media.seasonYear].filter(Boolean).join(' - ');
-
-        const posterWrap = document.createElement('div');
-        posterWrap.className = 'poster';
-        if (media?.coverImage?.large) {
-          const img = document.createElement('img');
-          img.src = media.coverImage.large;
-          img.alt = `${title} cover`;
-          img.loading = 'lazy';
-          posterWrap.appendChild(img);
-        } else {
-          const fallback = document.createElement('div');
-          fallback.className = 'poster-fallback';
-          fallback.textContent = 'No cover';
-          posterWrap.appendChild(fallback);
-        }
-
-        const main = document.createElement('div');
-        main.className = 'item-main';
-        const heading = document.createElement('h3');
-        heading.className = 'title';
-        heading.textContent = title;
-        const subtitle = document.createElement('div');
-        subtitle.className = 'subtitle';
-        subtitle.textContent = [altTitle, metadata].filter(Boolean).join(' - ');
-        main.append(heading, subtitle);
-
-        const actions = document.createElement('div');
-        actions.className = 'actions-row';
-
-        const addButton = document.createElement('button');
-        addButton.className = 'mini-link';
-        addButton.type = 'button';
-        addButton.dataset.addId = String(Number(media.id));
-        addButton.textContent = alreadyAdded ? 'Added' : 'Add';
-        addButton.disabled = alreadyAdded;
-        addButton.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          addMediaToBoard(media);
-        });
-
-        const aniListLink = document.createElement('a');
-        aniListLink.className = 'mini-link';
-        aniListLink.href = media.siteUrl || `https://anilist.co/anime/${media.id}`;
-        aniListLink.target = '_blank';
-        aniListLink.rel = 'noreferrer';
-        aniListLink.textContent = 'AniList';
-
-        actions.append(addButton, aniListLink);
-        result.append(posterWrap, main, actions);
-        els.searchResults.appendChild(result);
-      }
-    }
-
-    function clearSearchResults() {
-      state.searchResults = [];
-      els.searchResults.innerHTML = '';
-      els.searchResults.hidden = true;
-      if (els.searchResultToolbar) els.searchResultToolbar.hidden = true;
-      els.aniListSearchInput.value = '';
-    }
-
-    function addMediaToBoard(media) {
-      if (!media || media.id == null) {
-        showNotice('Could not add this result because AniList did not return a usable media ID.', 'error');
-        return;
-      }
-
-      const id = Number(media.id);
-      if (state.items.some((item) => Number(item.id) === id)) {
-        showNotice('That anime is already on your board.', 'error');
-        return;
-      }
-
-      const title = normalizeTitle(media);
-      const sameTitle = state.items.find((item) => normalizeLooseString(item.title) === normalizeLooseString(title) && Number(item.id) !== id);
-      state.items.push(mediaToBoardItem(media, 'watching'));
-      state.categoryFilter = 'all';
-      updateCategoryFilterButtons();
-      sortItems();
+      state.shows.unshift(show);
       render();
-      clearSearchResults();
-      const saved = saveBoard({ quiet: true });
-      const duplicateHint = sameTitle ? ` Heads up: <strong>${escapeHtml(sameTitle.title)}</strong> has a very similar title already on the board.` : '';
-      const saveHint = saved ? '' : ' Storage is blocked, so export JSON before closing the page or the change may be lost.';
-      showNotice(`Added <strong>${escapeHtml(title)}</strong> to Watching.${duplicateHint}${saveHint}`, saved && !sameTitle ? 'success' : 'error');
+      saveState();
+
+      await refreshShowStatus(show, { forceMove: true });
+      render();
+      saveState();
+      setStatus("Ready");
+      toast(`${show.title} added to ${boardCopy[show.board]}.`);
     }
 
-    function addSearchResult(id, event) {
-      if (event) { event.preventDefault(); event.stopPropagation(); }
-      const media = state.searchResults.find((item) => Number(item.id) === Number(id));
-      addMediaToBoard(media);
-    }
-
-    function sortItems() {
-      state.items.sort((a, b) => {
-        if (a.category !== b.category) return a.category === 'watching' ? -1 : 1;
-        const aStatus = a.release?.hasSeaDex ? 0 : 1;
-        const bStatus = b.release?.hasSeaDex ? 0 : 1;
-        return aStatus - bStatus || a.title.localeCompare(b.title);
-      });
-    }
-
-    async function checkReleases({ silent = false } = {}) {
-      if (!state.items.length) {
-        showNotice('Your board is empty. Add anime from AniList first.', 'error');
+    async function checkAllStatuses({ silent = false } = {}) {
+      const candidates = state.shows.filter((show) => !show.downloaded);
+      if (!candidates.length) {
+        if (!silent) toast("No non-downloaded shows to check.");
         return;
       }
 
-      saveSettings();
-      setLoading(true, 'Checking releases...');
-      clearNotice();
+      setStatus(`Checking ${candidates.length} show${candidates.length === 1 ? "" : "s"}…`);
 
-      try {
-        const settings = getSettings();
-        const ids = state.items.map((item) => item.id);
-        const seaDexMap = await fetchSeaDexByAniListIds(ids, settings.apiBase);
-        state.items = state.items.map((item) => ({
-          ...item,
-          release: buildReleaseInfo(item.id, seaDexMap.get(Number(item.id)) || null)
-        }));
-        state.lastCheckedAt = new Date().toISOString();
-        sortItems();
-        saveBoard();
-        setStatus('ok', 'Ready');
+      for (const show of candidates) {
+        await refreshShowStatus(show, { forceMove: true });
         render();
+        saveState();
+      }
 
-        const found = state.items.filter((item) => item.release?.hasSeaDex).length;
-        if (!silent) {
-          showNotice(
-            `Checked <strong>${state.items.length}</strong> titles. <strong>${found}</strong> ${found === 1 ? 'title has' : 'titles have'} a releases.moe page.`,
-            'success'
-          );
+      setStatus("Ready");
+      if (!silent) toast("Status check complete.");
+    }
+
+    async function refreshShowStatus(show, { forceMove = false } = {}) {
+      try {
+        const match = await getReleaseEntry(show.anilistId);
+        show.releasesMoe = {
+          found: Boolean(match),
+          recordId: match?.id ?? null,
+          checkedAt: new Date().toISOString(),
+          error: null
+        };
+
+        if (!show.downloaded && forceMove) {
+          show.board = match ? "found" : "watching";
         }
+
+        show.updatedAt = new Date().toISOString();
       } catch (error) {
-        setStatus('bad', 'Error');
-        if (!silent) {
-          showNotice(
-            `Release check failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}<br><br>` +
-            `If AniList works but releases.moe is blocked in your browser, enable the custom API base under Advanced > API settings and point it at your proxy.`,
-            'error'
-          );
-        }
-      } finally {
-        setLoading(false);
+        console.error(error);
+        show.releasesMoe = {
+          ...(show.releasesMoe || {}),
+          checkedAt: new Date().toISOString(),
+          error: error.message || "Unknown error"
+        };
       }
     }
 
-    function getVisibleItems() {
-      rebuildSearchBlobs();
-      const term = state.boardSearch.trim().toLowerCase();
-      return state.items.filter((item) => {
-        if (state.categoryFilter !== 'all' && item.category !== state.categoryFilter) return false;
-        if (term && !item.searchBlob.includes(term)) return false;
-        return true;
+    async function getReleaseEntry(anilistId) {
+      const params = new URLSearchParams({
+        perPage: "1",
+        filter: `alID=${Number(anilistId)}`
       });
-    }
 
-    function getReleaseBadge(item) {
-      if (item.release?.hasSeaDex && item.release?.incomplete) return ['warn', 'Incomplete'];
-      if (item.release?.hasSeaDex) return ['ok', 'Released'];
-      return ['bad', 'Waiting'];
-    }
+      const response = await fetch(`${RELEASES_ENDPOINT}?${params.toString()}`);
+      if (!response.ok) throw new Error(`releases.moe returned ${response.status}`);
 
-    function createItemElement(item) {
-      const article = document.createElement('article');
-      article.className = 'item';
-      const poster = item.cover
-        ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
-        : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
-      const [statusClass, statusText] = getReleaseBadge(item);
-      const categoryText = item.category === 'downloaded' ? 'Downloaded' : 'Watching';
-      const moveText = item.category === 'downloaded' ? 'Move to watching' : 'Mark downloaded';
-      const moveTarget = item.category === 'downloaded' ? 'watching' : 'downloaded';
-      const releaseUrl = item.release?.entryUrl || `https://releases.moe/${item.id}/`;
-
-      article.innerHTML = `
-        <div class="item-top">
-          <div class="poster">${poster}</div>
-          <div class="item-main">
-            <h2 class="title">${escapeHtml(item.title)}</h2>
-            <div class="subtitle">${escapeHtml(item.altTitle || 'No alternate title')}</div>
-          </div>
-          <div class="item-actions">
-            <div class="badges">
-              <span class="pill ${statusClass}">${statusText}</span>
-              <span class="pill muted">${categoryText}</span>
-            </div>
-          </div>
-        </div>
-
-        <details class="entry-collapse">
-          <summary class="entry-toggle">Manage</summary>
-          <div class="entry-details">
-            <section class="option-section">
-              <h3 class="option-heading">Notes</h3>
-              <div class="comment-box">
-                <label for="comment-${Number(item.id)}">Comment</label>
-                <textarea id="comment-${Number(item.id)}" data-comment-id="${Number(item.id)}" placeholder="Add notes, preferred release groups, quality, downloaded version, etc.">${escapeHtml(item.comment)}</textarea>
-              </div>
-            </section>
-
-            <section class="option-section">
-              <h3 class="option-heading">Release info</h3>
-              <div class="meta-grid">
-                <div class="meta-card">
-                  <div class="meta-label">Best release</div>
-                  <div class="meta-value">${escapeHtml(item.release?.bestGroup || '-')}</div>
-                </div>
-                <div class="meta-card">
-                  <div class="meta-label">Size / torrents</div>
-                  <div class="meta-value">${escapeHtml(item.release?.bestSize || '-')} - ${Number(item.release?.torrentCount || 0)} torrent${Number(item.release?.torrentCount || 0) === 1 ? '' : 's'}</div>
-                </div>
-                <div class="meta-card">
-                  <div class="meta-label">Added</div>
-                  <div class="meta-value">${escapeHtml(formatDateTime(item.addedAt))}</div>
-                </div>
-                <div class="meta-card">
-                  <div class="meta-label">Release updated</div>
-                  <div class="meta-value">${escapeHtml(item.release?.updatedAt ? formatDateTime(item.release.updatedAt) : '-')}</div>
-                </div>
-              </div>
-            </section>
-
-            <section class="option-section">
-              <h3 class="option-heading">Actions</h3>
-              <div class="actions-row">
-                <button class="mini-link" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}">${moveText}</button>
-                <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
-                <a class="mini-link" href="${escapeHtml(releaseUrl)}" target="_blank" rel="noreferrer">releases.moe</a>
-                <button class="danger-btn" data-remove-id="${Number(item.id)}">Remove</button>
-              </div>
-            </section>
-          </div>
-        </details>
-      `;
-      return article;
-    }
-
-    function createBoardSection(title, items) {
-      const section = document.createElement('section');
-      section.className = 'board-section';
-      section.innerHTML = `
-        <div class="board-header">
-          <h2 class="board-title">${escapeHtml(title)}</h2>
-          <span class="board-count">${items.length} title${items.length === 1 ? '' : 's'}</span>
-        </div>
-      `;
-      for (const item of items) section.appendChild(createItemElement(item));
-      return section;
+      const json = await response.json();
+      return json?.items?.[0] ?? null;
     }
 
     function render() {
-      const visibleItems = getVisibleItems();
-      els.list.innerHTML = '';
-      els.emptyState.hidden = visibleItems.length > 0;
-      renderStatsOnly();
-      els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
+      applyDownloadedCollapse();
+      const byBoard = {
+        found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
+        watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
+        downloaded: state.shows.filter((show) => show.downloaded || show.board === "downloaded")
+      };
 
-      if (!visibleItems.length) return;
-
-      const futureItems = visibleItems.filter((item) => item.category === 'watching');
-      const downloadedItems = visibleItems.filter((item) => item.category === 'downloaded');
-
-      if (futureItems.length) els.list.appendChild(createBoardSection('Watching', futureItems));
-      if (downloadedItems.length) els.list.appendChild(createBoardSection('Downloaded', downloadedItems));
+      renderBoard("found", byBoard.found, els.foundList, els.foundCount);
+      renderBoard("watching", byBoard.watching, els.watchingList, els.watchingCount);
+      renderBoard("downloaded", byBoard.downloaded, els.downloadedList, els.downloadedCount);
     }
 
-    function moveItem(id, category) {
-      state.items = state.items.map((item) => {
-        if (Number(item.id) !== Number(id)) return item;
-        return {
-          ...item,
-          category,
-          downloadedAt: category === 'downloaded' ? new Date().toISOString() : null
-        };
-      });
-      sortItems();
-      saveBoard();
-      render();
-    }
+    function renderBoard(board, shows, listEl, countEl) {
+      countEl.textContent = shows.length;
 
-    function removeItem(id) {
-      const item = state.items.find((candidate) => Number(candidate.id) === Number(id));
-      const ok = confirm(`Remove ${item?.title || 'this title'} from your board?`);
-      if (!ok) return;
-      state.items = state.items.filter((candidate) => Number(candidate.id) !== Number(id));
-      saveBoard();
-      render();
-      showNotice('Removed title from your board.', 'success');
-    }
-
-    function updateComment(id, comment) {
-      state.items = state.items.map((item) => Number(item.id) === Number(id) ? { ...item, comment } : item);
-      saveBoard();
-      renderStatsOnly();
-    }
-
-    function getDaysSinceLastCheck() {
-      if (!state.lastCheckedAt) return Infinity;
-      const checkedAt = new Date(state.lastCheckedAt).getTime();
-      if (!Number.isFinite(checkedAt)) return Infinity;
-      return Math.floor((Date.now() - checkedAt) / 86400000);
-    }
-
-    function updateStaleChip() {
-      const days = getDaysSinceLastCheck();
-      const isStale = state.items.length > 0 && (!state.lastCheckedAt || days >= 3);
-      if (!els.staleChip) return;
-      els.staleChip.hidden = !isStale;
-      els.staleChip.textContent = !state.lastCheckedAt ? 'Not checked yet' : `Checked ${days}d ago`;
-    }
-
-    function renderStatsOnly() {
-      els.statTotal.textContent = String(state.items.length);
-      els.statWatching.textContent = String(state.items.filter((item) => item.category === 'watching').length);
-      els.statDownloaded.textContent = String(state.items.filter((item) => item.category === 'downloaded').length);
-      els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
-      if (els.statCheckedHelp) {
-        const days = getDaysSinceLastCheck();
-        els.statCheckedHelp.textContent = !state.lastCheckedAt
-          ? 'Release status checks automatically on page load. This board has not been checked yet.'
-          : days >= 3
-            ? `Last release check was ${days} days ago. The board refreshes on page load, or you can check manually.`
-            : 'Release status checks automatically on page load and manually with Check releases.';
+      if (!shows.length) {
+        listEl.innerHTML = `<div class="empty">${emptyCopy[board]}</div>`;
+        return;
       }
-      updateStaleChip();
+
+      listEl.innerHTML = shows.map(renderShowCard).join("");
+
+      listEl.querySelectorAll("[data-download-id]").forEach((checkbox) => {
+        checkbox.addEventListener("change", () => toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked));
+      });
+
+      listEl.querySelectorAll("[data-notes-id]").forEach((button) => {
+        button.addEventListener("click", () => toggleNotes(button.dataset.notesId));
+      });
+
+      listEl.querySelectorAll("[data-remove-id]").forEach((button) => {
+        button.addEventListener("click", () => removeShow(button.dataset.removeId));
+      });
+
+      listEl.querySelectorAll("[data-comment-id]").forEach((textarea) => {
+        textarea.addEventListener("input", debounce(() => updateComments(textarea.dataset.commentId, textarea.value), 180));
+      });
     }
 
-    function updateCategoryFilterButtons() {
-      [...els.categoryFilter.querySelectorAll('button')].forEach((button) => {
-        button.classList.toggle('active', button.dataset.filter === state.categoryFilter);
-      });
+    function renderShowCard(show) {
+      const isDownloaded = show.downloaded || show.board === "downloaded";
+      const isNotesOpen = Boolean(state.ui.openNotes[show.id]);
+      const releaseBadge = isDownloaded
+        ? '<span class="badge downloaded">Downloaded</span>'
+        : show.releasesMoe?.found
+          ? '<span class="badge found">releases.moe found</span>'
+          : '<span class="badge watching">Watching</span>';
+      const meta = [show.format, show.seasonYear, show.episodes ? `${show.episodes} ep` : null]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(" · ");
+      const checked = show.releasesMoe?.checkedAt
+        ? `Checked ${formatDate(show.releasesMoe.checkedAt)}`
+        : "Not checked yet";
+
+      return `
+        <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
+          <div class="card-main">
+            <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} aria-label="Mark ${escapeAttr(show.title)} as downloaded" />
+            <div class="card-content">
+              <div class="card-title">${escapeHtml(show.title)}</div>
+              <div class="card-meta">
+                ${meta ? `<span>${meta}</span>` : ""}
+                ${releaseBadge}
+                <span class="badge">${escapeHtml(checked)}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments">✎</button>
+              <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove show">×</button>
+            </div>
+          </div>
+          <div class="notes-panel">
+            <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
+          </div>
+        </article>
+      `;
+    }
+
+    async function toggleDownloadedStatus(showId, checked) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+
+      show.downloaded = checked;
+      show.updatedAt = new Date().toISOString();
+
+      if (checked) {
+        show.previousBoard = show.board === "downloaded" ? show.previousBoard || "watching" : show.board;
+        show.board = "downloaded";
+        toast(`${show.title} moved to Downloaded.`);
+      } else {
+        show.downloaded = false;
+        show.board = show.releasesMoe?.found ? "found" : "watching";
+        await refreshShowStatus(show, { forceMove: true });
+        toast(`${show.title} moved to ${boardCopy[show.board]}.`);
+      }
+
+      render();
+      saveState();
+    }
+
+    function toggleNotes(showId) {
+      state.ui.openNotes[showId] = !state.ui.openNotes[showId];
+      render();
+      saveState();
+    }
+
+    function updateComments(showId, comments) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+      show.comments = comments;
+      show.updatedAt = new Date().toISOString();
+      saveState();
+    }
+
+    function removeShow(showId) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+
+      const ok = confirm(`Remove “${show.title}” from the board?`);
+      if (!ok) return;
+
+      state.shows = state.shows.filter((item) => item.id !== showId);
+      delete state.ui.openNotes[showId];
+      render();
+      saveState();
+      toast(`${show.title} removed.`);
     }
 
     function exportJson() {
-      saveSettings();
-      saveBoard();
       const payload = {
         version: 1,
         exportedAt: new Date().toISOString(),
-        settings: getSettings(),
-        lastCheckedAt: state.lastCheckedAt,
-        items: state.items
+        shows: state.shows,
+        ui: state.ui
       };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const date = new Date().toISOString().slice(0, 10);
-      link.href = url;
-      link.download = `anime-release-board-${date}.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `anilist-releases-board-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
       URL.revokeObjectURL(url);
-      showNotice('Exported your board as JSON.', 'success');
+      toast("Board exported as JSON.");
     }
 
-    async function importJson(file) {
+    async function importJson(event) {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
       try {
         const text = await file.text();
-        const parsed = JSON.parse(text);
-        const importedItems = Array.isArray(parsed?.items) ? parsed.items.map(normalizeBoardItem).filter(Boolean) : [];
-        if (!importedItems.length) throw new Error('The file does not contain any board items.');
+        const payload = JSON.parse(text);
+        const shows = Array.isArray(payload) ? payload : payload.shows;
 
-        state.pendingImport = { parsed, importedItems };
-        const currentCount = state.items.length;
-        els.importSummary.innerHTML = `File contains <strong>${importedItems.length}</strong> title${importedItems.length === 1 ? '' : 's'}. Your current board has <strong>${currentCount}</strong>. Merge keeps current comments/status where possible. Replace overwrites the current board, so export first if you may need a backup.`;
-        els.importPreview.hidden = false;
+        if (!Array.isArray(shows)) throw new Error("JSON must contain a shows array.");
+
+        state.shows = shows.map(normalizeImportedShow);
+        state.ui = {
+          downloadedCollapsed: Boolean(payload.ui?.downloadedCollapsed),
+          openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {}
+        };
+
+        render();
+        saveState();
+        toast("Board imported. Checking statuses now…");
+        await checkAllStatuses({ silent: true });
       } catch (error) {
-        showNotice(`Import failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}`, 'error');
-      } finally {
-        els.importFile.value = '';
+        console.error(error);
+        toast(`Import failed: ${error.message}`, "error");
       }
     }
 
-    function finishImport(merge) {
-      if (!state.pendingImport) return;
-      const { parsed, importedItems } = state.pendingImport;
+    function normalizeImportedShow(show) {
+      const id = show.id || (crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      const downloaded = Boolean(show.downloaded || show.board === "downloaded");
+      const releasesMoe = show.releasesMoe && typeof show.releasesMoe === "object"
+        ? show.releasesMoe
+        : { found: false, recordId: null, checkedAt: null, error: null };
 
-      if (merge) {
-        const byId = new Map(state.items.map((item) => [Number(item.id), item]));
-        for (const item of importedItems) {
-          const existing = byId.get(Number(item.id));
-          byId.set(Number(item.id), existing ? {
-            ...item,
-            ...existing,
-            release: existing.release?.hasSeaDex ? existing.release : item.release
-          } : item);
-        }
-        state.items = Array.from(byId.values());
-      } else {
-        state.items = importedItems;
-        state.lastCheckedAt = parsed?.lastCheckedAt || null;
-      }
+      return {
+        id,
+        anilistId: Number(show.anilistId || show.alID || show.idAnilist),
+        title: String(show.title || show.titleRomaji || show.titleEnglish || "Untitled"),
+        titleEnglish: String(show.titleEnglish || ""),
+        titleRomaji: String(show.titleRomaji || ""),
+        coverImage: String(show.coverImage || ""),
+        format: String(show.format || ""),
+        episodes: show.episodes ?? null,
+        seasonYear: show.seasonYear ?? null,
+        siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
+        board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
+        downloaded,
+        previousBoard: show.previousBoard || null,
+        comments: String(show.comments || ""),
+        releasesMoe: {
+          found: Boolean(releasesMoe.found),
+          recordId: releasesMoe.recordId ?? null,
+          checkedAt: releasesMoe.checkedAt ?? null,
+          error: releasesMoe.error ?? null
+        },
+        createdAt: show.createdAt || new Date().toISOString(),
+        updatedAt: show.updatedAt || new Date().toISOString()
+      };
+    }
 
-      if (parsed?.settings?.apiBase) {
-        applySettings({ ...DEFAULTS, ...parsed.settings });
-        saveSettings();
-      }
+    function clearBoard() {
+      if (!state.shows.length) return;
+      const ok = confirm("Clear the whole board? Export first if you want a backup.");
+      if (!ok) return;
 
-      state.pendingImport = null;
-      els.importPreview.hidden = true;
-      sortItems();
-      saveBoard();
+      state.shows = [];
+      state.ui.openNotes = {};
       render();
-      showNotice(`${merge ? 'Merged' : 'Replaced board with'} <strong>${importedItems.length}</strong> imported title${importedItems.length === 1 ? '' : 's'}.`, 'success');
+      saveState();
+      toast("Board cleared.");
     }
 
-    function cancelImport() {
-      state.pendingImport = null;
-      els.importPreview.hidden = true;
-      els.importSummary.textContent = 'No file selected.';
+    function toggleDownloaded() {
+      state.ui.downloadedCollapsed = !state.ui.downloadedCollapsed;
+      applyDownloadedCollapse();
+      saveState();
     }
 
-    window.addAnimeSearchResult = addSearchResult;
-    window.__animeBoardDebug = () => ({
-      itemCount: state.items.length,
-      searchResultCount: state.searchResults.length,
-      canUseLocalStorage: (() => {
-        try { localStorage.setItem('__anime_board_test__', '1'); localStorage.removeItem('__anime_board_test__'); return true; }
-        catch { return false; }
-      })(),
-      currentFilter: state.categoryFilter
-    });
-
-    function init() {
-      applySettings(loadSettings());
-      loadBoard();
-      sortItems();
-      updateCategoryFilterButtons();
-      render();
-      setStatus('ok', 'Ready');
-      if (state.items.length) checkReleases({ silent: true });
-
-      els.aniListSearchBtn.addEventListener('click', runAniListSearch);
-      els.aniListSearchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') runAniListSearch();
-      });
-      els.clearSearchResultsBtn.addEventListener('click', clearSearchResults);
-      // Add buttons receive direct click handlers when search results are rendered.
-
-      els.checkReleasesBtn.addEventListener('click', checkReleases);
-      els.exportBtn.addEventListener('click', exportJson);
-      els.importBtn.addEventListener('click', () => els.importFile.click());
-      els.importFile.addEventListener('change', (event) => {
-        const file = event.target.files?.[0];
-        if (file) importJson(file);
-      });
-      els.importMergeBtn.addEventListener('click', () => finishImport(true));
-      els.importReplaceBtn.addEventListener('click', () => finishImport(false));
-      els.importCancelBtn.addEventListener('click', cancelImport);
-      els.customApiToggle.addEventListener('change', () => {
-        els.apiBase.disabled = !els.customApiToggle.checked;
-        saveSettings();
-      });
-      els.apiBase.addEventListener('change', saveSettings);
-
-      els.boardSearchInput.addEventListener('input', (event) => {
-        state.boardSearch = event.target.value || '';
-        render();
-      });
-      els.categoryFilter.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-filter]');
-        if (!button) return;
-        state.categoryFilter = button.dataset.filter;
-        updateCategoryFilterButtons();
-        render();
-      });
-
-      els.list.addEventListener('click', (event) => {
-        const moveButton = event.target.closest('button[data-move-id]');
-        if (moveButton) {
-          moveItem(moveButton.dataset.moveId, moveButton.dataset.moveTarget);
-          return;
-        }
-        const removeButton = event.target.closest('[data-remove-id]');
-        if (removeButton) removeItem(removeButton.dataset.removeId);
-      });
-
-      els.list.addEventListener('input', (event) => {
-        const textarea = event.target.closest('[data-comment-id]');
-        if (!textarea) return;
-        updateComment(textarea.dataset.commentId, textarea.value);
-      });
+    function applyDownloadedCollapse() {
+      els.downloadedBoard.classList.toggle("collapsed", Boolean(state.ui.downloadedCollapsed));
+      els.toggleDownloadedBtn.setAttribute("aria-expanded", String(!state.ui.downloadedCollapsed));
+      els.toggleDownloadedBtn.textContent = state.ui.downloadedCollapsed ? "›" : "⌄";
+      els.toggleDownloadedBtn.title = state.ui.downloadedCollapsed ? "Expand Downloaded" : "Collapse Downloaded";
     }
 
-    init();
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const saved = JSON.parse(raw);
+        state.shows = Array.isArray(saved.shows) ? saved.shows.map(normalizeImportedShow) : [];
+        state.ui = {
+          downloadedCollapsed: Boolean(saved.ui?.downloadedCollapsed),
+          openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {}
+        };
+      } catch (error) {
+        console.error(error);
+        localStorage.removeItem(STORAGE_KEY);
+        toast("Saved board data was invalid and has been reset.", "error");
+      }
+    }
+
+    function closeResults() {
+      els.results.classList.remove("open");
+      els.results.innerHTML = "";
+    }
+
+    function setStatus(text) {
+      els.statusText.textContent = text;
+    }
+
+    function toast(message, type = "") {
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.textContent = message;
+      els.toastArea.append(el);
+      window.setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(8px)";
+        el.style.transition = "240ms ease";
+        window.setTimeout(() => el.remove(), 260);
+      }, 3200);
+    }
+
+    function getTitle(title = {}) {
+      return title.english || title.romaji || title.native || "Untitled";
+    }
+
+    function formatDate(value) {
+      try {
+        return new Intl.DateTimeFormat(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(new Date(value));
+      } catch {
+        return "recently";
+      }
+    }
+
+    function debounce(fn, wait) {
+      let timeout;
+      return (...args) => {
+        window.clearTimeout(timeout);
+        timeout = window.setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replaceAll("`", "&#096;");
+    }
   </script>
 </body>
 </html>
