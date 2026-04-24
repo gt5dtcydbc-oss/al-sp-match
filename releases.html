@@ -22,13 +22,10 @@
       --danger: #ff7b73;
       --shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
       --radius: 22px;
-      --radius-sm: 14px;
       --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -41,16 +38,9 @@
         linear-gradient(180deg, #111520 0%, #0d1017 100%);
     }
 
-    button,
-    input,
-    textarea {
-      font: inherit;
-    }
-
-    button {
-      border: 0;
-      cursor: pointer;
-    }
+    button, input, textarea { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    button:disabled { opacity: 0.62; cursor: not-allowed; transform: none !important; }
 
     .app {
       width: min(1440px, calc(100% - 32px));
@@ -58,10 +48,7 @@
       padding: 24px 0 48px;
     }
 
-    .shell {
-      display: grid;
-      gap: 18px;
-    }
+    .shell { display: grid; gap: 18px; }
 
     .hero {
       display: grid;
@@ -95,15 +82,367 @@
       font-size: 0.98rem;
     }
 
-    .search-card,
-    .board,
-    .toast,
-    .settings-card {
+    .search-card, .board, .toast, .settings-card {
       background: rgba(23, 27, 37, 0.88);
       border: 1px solid rgba(45, 53, 71, 0.92);
       box-shadow: var(--shadow);
       backdrop-filter: blur(16px);
     }
+
+    .boards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .board {
+      min-height: 280px;
+      border-radius: calc(var(--radius) + 4px);
+      padding: 14px;
+    }
+
+    .board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 2px 2px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .board-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .count {
+      min-width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 950;
+    }
+
+    .collapse-btn, .settings-chevron {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-weight: 950;
+      transition: 160ms ease;
+    }
+
+    .collapse-btn:hover {
+      color: var(--text);
+      border-color: #465169;
+    }
+
+    .board-list { display: grid; gap: 10px; }
+    .board.collapsed .board-list { display: none; }
+    .board.collapsed { min-height: auto; }
+
+    .show-card {
+      overflow: hidden;
+      border-radius: 20px;
+      background: rgba(32, 38, 54, 0.72);
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
+    }
+
+    .card-main {
+      display: grid;
+      grid-template-columns: auto 50px 1fr auto;
+      align-items: start;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .download-check {
+      width: 22px;
+      height: 22px;
+      margin: 2px 0 0;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
+    .thumb, .poster {
+      object-fit: cover;
+      background: linear-gradient(135deg, #30384b, #1e2432);
+      border: 1px solid var(--line);
+    }
+
+    .thumb {
+      width: 50px;
+      height: 68px;
+      border-radius: 14px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+      transition: 160ms ease;
+    }
+
+    .poster {
+      width: 46px;
+      height: 64px;
+      border-radius: 12px;
+    }
+
+    .thumb-link {
+      display: inline-grid;
+      width: max-content;
+      border-radius: 14px;
+      outline: none;
+    }
+
+    .thumb-link:hover .thumb,
+    .thumb-link:focus-visible .thumb {
+      transform: translateY(-1px);
+      border-color: rgba(139, 150, 255, 0.55);
+    }
+
+    .card-content { min-width: 0; }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .show-link {
+      color: inherit;
+      text-decoration: none;
+      outline: none;
+    }
+
+    .show-link:hover,
+    .show-link:focus-visible {
+      color: var(--brand-strong);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .complete-toggle {
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      color: var(--muted-2);
+      font-weight: 950;
+      line-height: 1;
+      transition: 160ms ease;
+    }
+
+    .complete-toggle:hover {
+      color: var(--text);
+      border-color: #465169;
+      background: var(--surface-softer);
+    }
+
+    .complete-toggle.active {
+      color: #0b0e17;
+      background: var(--ok);
+      border-color: transparent;
+      box-shadow: 0 0 0 4px rgba(69, 212, 155, 0.12);
+    }
+
+    .result-title, .card-title {
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .card-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .result-meta, .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .badge.found {
+      color: var(--ok);
+      background: rgba(69, 212, 155, 0.10);
+      border-color: rgba(69, 212, 155, 0.2);
+    }
+
+    .badge.watching {
+      color: var(--warn);
+      background: rgba(242, 195, 107, 0.10);
+      border-color: rgba(242, 195, 107, 0.22);
+    }
+
+    .badge.downloaded {
+      color: var(--brand-strong);
+      background: rgba(139, 150, 255, 0.12);
+      border-color: rgba(139, 150, 255, 0.22);
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .notes-toggle {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      font-weight: 950;
+    }
+
+    .notes-toggle[aria-expanded="true"] {
+      color: var(--brand-strong);
+      border-color: rgba(139, 150, 255, 0.25);
+      background: rgba(139, 150, 255, 0.10);
+    }
+
+    .remove-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      color: var(--muted-2);
+      background: transparent;
+      font-weight: 950;
+    }
+
+    .remove-btn:hover {
+      color: var(--danger);
+      background: rgba(255, 123, 115, 0.10);
+    }
+
+    .notes-panel {
+      display: none;
+      padding: 0 12px 12px 94px;
+    }
+
+    .show-card.notes-open .notes-panel { display: block; }
+
+    textarea {
+      width: 100%;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      outline: none;
+      background: #151923;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    textarea:focus {
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
+      background: #111722;
+    }
+
+    .notes-panel textarea { min-height: 92px; }
+
+    .search-card {
+      position: relative;
+      padding: 14px;
+      border-radius: calc(var(--radius) + 8px);
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--text);
+      outline: none;
+      transition: 160ms ease;
+      font-size: 1rem;
+    }
+
+    .search-input::placeholder, textarea::placeholder { color: var(--muted-2); }
+
+    .search-input:focus {
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.12);
+      background: #252c3d;
+    }
+
+    .results {
+      display: none;
+      margin-top: 10px;
+      max-height: 440px;
+      overflow: auto;
+      padding: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+    }
+
+    .results.open {
+      display: grid;
+      gap: 6px;
+    }
+
+    .result-item {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      padding: 10px;
+      text-align: left;
+      background: transparent;
+      border-radius: 16px;
+      color: var(--text);
+    }
+
+    .result-item:hover { background: var(--surface-soft); }
 
     .settings-card {
       border-radius: calc(var(--radius) + 6px);
@@ -121,9 +460,7 @@
       user-select: none;
     }
 
-    .settings-summary::-webkit-details-marker {
-      display: none;
-    }
+    .settings-summary::-webkit-details-marker { display: none; }
 
     .summary-title {
       display: block;
@@ -142,73 +479,20 @@
     .settings-chevron {
       display: inline-grid;
       place-items: center;
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--muted);
-      border: 1px solid var(--line);
-      font-weight: 950;
-      transition: 160ms ease;
     }
 
-    .settings-card[open] .settings-chevron {
-      transform: rotate(180deg);
-    }
+    .settings-card[open] .settings-chevron { transform: rotate(180deg); }
 
-$1
-    .batch-tools {
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       padding-top: 14px;
       border-top: 1px solid var(--line);
     }
 
-    .batch-label {
-      display: grid;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      font-weight: 800;
-    }
-
-    .batch-label textarea {
-      width: 100%;
-      min-height: 132px;
-      resize: vertical;
-      padding: 13px 14px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      outline: none;
-      background: #151923;
-      color: var(--text);
-      line-height: 1.45;
-    }
-
-    .batch-label textarea:focus {
-      border-color: rgba(139, 150, 255, 0.72);
-      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
-      background: #111722;
-    }
-
-    .batch-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .batch-note {
-      color: var(--muted-2);
-      font-size: 0.84rem;
-      line-height: 1.45;
-      font-weight: 700;
-    }
-
-    .toolbar-left,
-    .toolbar-right,
-    .import-wrap {
+    .toolbar-left, .toolbar-right, .import-wrap {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -265,333 +549,40 @@ $1
       box-shadow: 0 12px 28px rgba(139, 150, 255, 0.22);
     }
 
-    .btn.primary:hover {
-      background: var(--brand-strong);
-    }
+    .btn.primary:hover { background: var(--brand-strong); }
+    .btn.danger { color: var(--danger); }
+    .file-input { display: none; }
 
-    .btn.danger {
-      color: var(--danger);
-    }
-
-    .btn.icon {
-      width: 40px;
-      padding: 0;
-    }
-
-    .file-input {
-      display: none;
-    }
-
-    .search-card {
-      position: relative;
-      padding: 14px;
-      border-radius: calc(var(--radius) + 8px);
-    }
-
-    .search-row {
+    .batch-tools {
       display: grid;
-      grid-template-columns: 1fr auto;
       gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
     }
 
-    .search-input {
-      width: 100%;
-      min-height: 52px;
-      padding: 0 18px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--text);
-      outline: none;
-      transition: 160ms ease;
-      font-size: 1rem;
-    }
-
-    .search-input::placeholder,
-    .notes-panel textarea::placeholder {
-      color: var(--muted-2);
-    }
-
-    .search-input:focus {
-      border-color: rgba(139, 150, 255, 0.72);
-      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.12);
-      background: #252c3d;
-    }
-
-    .results {
-      display: none;
-      margin-top: 10px;
-      max-height: 440px;
-      overflow: auto;
-      padding: 8px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
-    }
-
-    .results.open {
+    .batch-label {
       display: grid;
       gap: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 800;
     }
 
-    .result-item {
-      display: grid;
-      grid-template-columns: 46px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      width: 100%;
-      padding: 10px;
-      text-align: left;
-      background: transparent;
-      border-radius: 16px;
-      color: var(--text);
-    }
+    .batch-label textarea { min-height: 132px; }
 
-    .result-item:hover {
-      background: var(--surface-soft);
-    }
-
-    .poster {
-      width: 46px;
-      height: 64px;
-      border-radius: 12px;
-      object-fit: cover;
-      background: linear-gradient(135deg, #30384b, #1e2432);
-      border: 1px solid var(--line);
-    }
-
-    .thumb {
-      width: 50px;
-      height: 68px;
-      border-radius: 14px;
-      object-fit: cover;
-      background: linear-gradient(135deg, #30384b, #1e2432);
-      border: 1px solid var(--line);
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-    }
-
-    .result-title,
-    .card-title {
-      font-weight: 900;
-      line-height: 1.2;
-    }
-
-    .result-meta,
-    .card-meta {
+    .batch-actions {
       display: flex;
+      align-items: center;
+      gap: 10px;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 7px;
-      color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 700;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 8px;
-      border-radius: 999px;
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 0.76rem;
-      font-weight: 850;
-      white-space: nowrap;
-    }
-
-    .badge.found {
-      color: var(--ok);
-      background: rgba(69, 212, 155, 0.10);
-      border-color: rgba(69, 212, 155, 0.2);
-    }
-
-    .badge.watching {
-      color: var(--warn);
-      background: rgba(242, 195, 107, 0.10);
-      border-color: rgba(242, 195, 107, 0.22);
-    }
-
-    .badge.downloaded {
-      color: var(--brand-strong);
-      background: rgba(139, 150, 255, 0.12);
-      border-color: rgba(139, 150, 255, 0.22);
-    }
-
-    .boards {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      align-items: start;
-    }
-
-    .board {
-      min-height: 280px;
-      border-radius: calc(var(--radius) + 4px);
-      padding: 14px;
-    }
-
-    .board-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-      padding: 2px 2px 10px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .board-title {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin: 0;
-      font-size: 1rem;
-      letter-spacing: -0.02em;
-    }
-
-    .count {
-      min-width: 28px;
-      height: 28px;
-      display: inline-grid;
-      place-items: center;
-      border-radius: 999px;
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 950;
-    }
-
-    .collapse-btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-weight: 950;
-      transition: 160ms ease;
-    }
-
-    .collapse-btn:hover {
-      color: var(--text);
-      border-color: #465169;
-    }
-
-    .board-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .board.collapsed .board-list {
-      display: none;
-    }
-
-    .board.collapsed {
-      min-height: auto;
-    }
-
-    .show-card {
-      overflow: hidden;
-      border-radius: 20px;
-      background: rgba(32, 38, 54, 0.72);
-      border: 1px solid var(--line);
-      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
-    }
-
-    .card-main {
-      display: grid;
-      grid-template-columns: auto 50px 1fr auto;
-      align-items: start;
-      gap: 10px;
-      padding: 12px;
-    }
-
-    .download-check {
-      width: 22px;
-      height: 22px;
-      margin: 2px 0 0;
-      accent-color: var(--brand);
-      cursor: pointer;
-    }
-
-    .card-content {
-      min-width: 0;
-    }
-
-    .card-title {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-    }
-
-    .card-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .notes-toggle {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      color: var(--muted);
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      font-weight: 950;
-    }
-
-    .notes-toggle[aria-expanded="true"] {
-      color: var(--brand-strong);
-      border-color: rgba(139, 150, 255, 0.25);
-      background: rgba(139, 150, 255, 0.10);
-    }
-
-    .remove-btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
+    .batch-note {
       color: var(--muted-2);
-      background: transparent;
-      font-weight: 950;
-    }
-
-    .remove-btn:hover {
-      color: var(--danger);
-      background: rgba(255, 123, 115, 0.10);
-    }
-
-    .notes-panel {
-      display: none;
-      padding: 0 12px 12px 94px;
-    }
-
-    .show-card.notes-open .notes-panel {
-      display: block;
-    }
-
-    .notes-panel textarea {
-      width: 100%;
-      min-height: 92px;
-      resize: vertical;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      outline: none;
-      background: #151923;
-      color: var(--text);
-      line-height: 1.4;
-    }
-
-    .notes-panel textarea:focus {
-      border-color: rgba(139, 150, 255, 0.72);
-      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
-      background: #111722;
+      font-size: 0.84rem;
+      line-height: 1.45;
+      font-weight: 700;
     }
 
     .empty {
@@ -623,28 +614,11 @@ $1
       line-height: 1.4;
     }
 
-    .toast.error {
-      border-color: rgba(255, 123, 115, 0.24);
-    }
-
-    .kbd {
-      padding: 2px 6px;
-      border-radius: 7px;
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 900;
-    }
+    .toast.error { border-color: rgba(255, 123, 115, 0.24); }
 
     @media (max-width: 1120px) {
-      .boards {
-        grid-template-columns: 1fr;
-      }
-
-      .board {
-        min-height: auto;
-      }
+      .boards { grid-template-columns: 1fr; }
+      .board { min-height: auto; }
     }
 
     @media (max-width: 720px) {
@@ -653,31 +627,27 @@ $1
         padding-top: 16px;
       }
 
-      .hero,
-      .search-row {
-        grid-template-columns: 1fr;
+      .hero, .search-row { grid-template-columns: 1fr; }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
       }
 
-$1
+      .toolbar-left, .toolbar-right, .import-wrap { width: 100%; }
+
+      .toolbar .btn, .import-wrap .btn {
+        flex: 1;
+      }
+
       .batch-actions {
         align-items: stretch;
         flex-direction: column;
       }
 
-      .toolbar-left,
-      .toolbar-right,
-      .import-wrap {
-        width: 100%;
-      }
+      .batch-actions .btn { width: 100%; }
 
-$1
-      .batch-actions .btn {
-        width: 100%;
-      }
-
-      .result-item {
-        grid-template-columns: 42px 1fr;
-      }
+      .result-item { grid-template-columns: 42px 1fr; }
 
       .result-item .badge {
         grid-column: 2;
@@ -693,12 +663,11 @@ $1
         height: 64px;
       }
 
-      .notes-panel {
-        padding-left: 12px;
-      }
+      .notes-panel { padding-left: 12px; }
     }
   </style>
 </head>
+
 <body>
   <main class="app">
     <section class="shell">
@@ -753,12 +722,26 @@ $1
         <summary class="settings-summary">
           <span>
             <span class="summary-title">Settings</span>
-            <span class="summary-help">Status checks, JSON import/export, and board reset.</span>
+            <span class="summary-help">Status checks, batch import, JSON import/export, and board reset.</span>
           </span>
           <span class="settings-chevron" aria-hidden="true">⌄</span>
         </summary>
 
-$1
+        <section class="toolbar" aria-label="Board tools">
+          <div class="toolbar-left">
+            <span class="status-pill"><span class="dot" aria-hidden="true"></span><span id="statusText">Ready</span></span>
+            <button class="btn" id="checkAllBtn" type="button">Check status</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn" id="exportBtn" type="button">Export JSON</button>
+            <div class="import-wrap">
+              <input class="file-input" id="importFile" type="file" accept="application/json,.json" />
+              <button class="btn" id="importBtn" type="button">Import JSON</button>
+            </div>
+            <button class="btn danger" id="clearBtn" type="button">Clear</button>
+          </div>
+        </section>
+
         <section class="batch-tools" aria-label="Batch import shows">
           <label class="batch-label" for="batchInput">
             Batch add series
@@ -798,7 +781,8 @@ $1
       checkAllBtn: document.querySelector("#checkAllBtn"),
       exportBtn: document.querySelector("#exportBtn"),
       importBtn: document.querySelector("#importBtn"),
-$1
+      importFile: document.querySelector("#importFile"),
+      clearBtn: document.querySelector("#clearBtn"),
       batchInput: document.querySelector("#batchInput"),
       batchImportBtn: document.querySelector("#batchImportBtn"),
       batchClearBtn: document.querySelector("#batchClearBtn"),
@@ -851,12 +835,14 @@ $1
       els.exportBtn.addEventListener("click", exportJson);
       els.importBtn.addEventListener("click", () => els.importFile.click());
       els.importFile.addEventListener("change", importJson);
-$1
+      els.clearBtn.addEventListener("click", clearBoard);
+      els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
       els.batchImportBtn.addEventListener("click", importBatchNames);
       els.batchClearBtn.addEventListener("click", () => {
         els.batchInput.value = "";
         els.batchInput.focus();
       });
+
       els.settingsPanel.addEventListener("toggle", () => {
         state.ui.settingsOpen = els.settingsPanel.open;
         saveState();
@@ -938,7 +924,7 @@ $1
 
         return `
           <button class="result-item" type="button" data-add-id="${media.id}" ${alreadyAdded ? "disabled" : ""}>
-            <img class="poster" src="${media.coverImage?.medium ?? ""}" alt="" loading="lazy" />
+            <img class="poster" src="${escapeAttr(media.coverImage?.medium ?? "")}" alt="" loading="lazy" />
             <span>
               <span class="result-title">${escapeHtml(title)}</span>
               <span class="result-meta">${meta || "Anime"}</span>
@@ -992,6 +978,7 @@ $1
         siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
         board: "watching",
         downloaded: false,
+        allAvailableDownloaded: false,
         comments: "",
         releasesMoe: {
           found: false,
@@ -1077,8 +1064,7 @@ $1
     function parseBatchNames(value) {
       const seen = new Set();
       return String(value || "")
-        .split(/[
-,;]+/)
+        .split(/[\n,;]+/)
         .map((name) => name.trim())
         .filter(Boolean)
         .filter((name) => {
@@ -1091,6 +1077,7 @@ $1
 
     async function checkAllStatuses({ silent = false } = {}) {
       const candidates = state.shows.filter((show) => !show.downloaded);
+
       if (!candidates.length) {
         if (!silent) toast("No non-downloaded shows to check.");
         return;
@@ -1149,6 +1136,7 @@ $1
     function render() {
       applyDownloadedCollapse();
       applySettingsState();
+
       const byBoard = {
         found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
         watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
@@ -1178,6 +1166,10 @@ $1
         button.addEventListener("click", () => toggleNotes(button.dataset.notesId));
       });
 
+      listEl.querySelectorAll("[data-complete-id]").forEach((button) => {
+        button.addEventListener("click", () => toggleAllAvailableDownloaded(button.dataset.completeId));
+      });
+
       listEl.querySelectorAll("[data-remove-id]").forEach((button) => {
         button.addEventListener("click", () => removeShow(button.dataset.removeId));
       });
@@ -1190,6 +1182,15 @@ $1
     function renderShowCard(show) {
       const isDownloaded = show.downloaded || show.board === "downloaded";
       const isNotesOpen = Boolean(state.ui.openNotes[show.id]);
+      const releaseUrl = getReleaseMoeUrl(show);
+      const title = escapeHtml(show.title);
+      const titleHtml = releaseUrl
+        ? `<a class="show-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe">${title}</a>`
+        : title;
+      const completeActive = Boolean(show.allAvailableDownloaded);
+      const completeToggle = isDownloaded
+        ? `<button class="complete-toggle ${completeActive ? "active" : ""}" type="button" data-complete-id="${show.id}" aria-pressed="${completeActive}" title="${completeActive ? "All available material downloaded" : "Mark all available material as downloaded"}">*</button>`
+        : "";
       const releaseBadge = isDownloaded
         ? '<span class="badge downloaded">Downloaded</span>'
         : show.releasesMoe?.found
@@ -1200,14 +1201,21 @@ $1
         .map(escapeHtml)
         .join(" · ");
       const fallbackPoster = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='136' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' rx='18' fill='%23252c3d'/%3E%3Cpath d='M25 93h50M32 42h36M32 58h36M32 74h24' stroke='%237f8aa1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E";
+      const posterSrc = escapeAttr(show.coverImage || fallbackPoster);
+      const thumbHtml = releaseUrl
+        ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" /></a>`
+        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" />`;
 
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
           <div class="card-main">
             <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} aria-label="Mark ${escapeAttr(show.title)} as downloaded" />
-            <img class="thumb" src="${escapeAttr(show.coverImage || fallbackPoster)}" alt="" loading="lazy" />
+            ${thumbHtml}
             <div class="card-content">
-              <div class="card-title">${escapeHtml(show.title)}</div>
+              <div class="title-row">
+                <div class="card-title">${titleHtml}</div>
+                ${completeToggle}
+              </div>
               <div class="card-meta">
                 ${meta ? `<span>${meta}</span>` : ""}
                 ${releaseBadge}
@@ -1235,14 +1243,26 @@ $1
       if (checked) {
         show.previousBoard = show.board === "downloaded" ? show.previousBoard || "watching" : show.board;
         show.board = "downloaded";
+        show.allAvailableDownloaded = Boolean(show.allAvailableDownloaded);
         toast(`${show.title} moved to Downloaded.`);
       } else {
         show.downloaded = false;
+        show.allAvailableDownloaded = false;
         show.board = show.releasesMoe?.found ? "found" : "watching";
         await refreshShowStatus(show, { forceMove: true });
         toast(`${show.title} moved to ${boardCopy[show.board]}.`);
       }
 
+      render();
+      saveState();
+    }
+
+    function toggleAllAvailableDownloaded(showId) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+
+      show.allAvailableDownloaded = !show.allAvailableDownloaded;
+      show.updatedAt = new Date().toISOString();
       render();
       saveState();
     }
@@ -1344,6 +1364,7 @@ $1
         siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
         board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
         downloaded,
+        allAvailableDownloaded: Boolean(show.allAvailableDownloaded || show.allSeasonsDownloaded || show.completeDownloaded),
         previousBoard: show.previousBoard || null,
         comments: String(show.comments || ""),
         releasesMoe: {
@@ -1429,6 +1450,12 @@ $1
         el.style.transition = "240ms ease";
         window.setTimeout(() => el.remove(), 260);
       }, 3200);
+    }
+
+    function getReleaseMoeUrl(show) {
+      const anilistId = Number(show?.anilistId);
+      if (!show?.releasesMoe?.found || !Number.isFinite(anilistId)) return "";
+      return `https://releases.moe/${anilistId}/`;
     }
 
     function getTitle(title = {}) {
