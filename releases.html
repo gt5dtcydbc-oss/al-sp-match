@@ -1246,7 +1246,7 @@
             <div class="subtitle">${escapeHtml([altTitle, metadata].filter(Boolean).join(' - '))}</div>
           </div>
           <div class="actions-row">
-            <button class="mini-link" type="button" data-add-id="${Number(media.id)}" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? 'Added' : 'Add'}</button>
+            <button class="mini-link" type="button" data-add-id="${Number(media.id)}" onclick="window.addAnimeSearchResult && window.addAnimeSearchResult(${Number(media.id)}, event)" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? 'Added' : 'Add'}</button>
             <a class="mini-link" href="${escapeHtml(media.siteUrl || `https://anilist.co/anime/${media.id}`)}" target="_blank" rel="noreferrer">AniList</a>
           </div>
         `;
@@ -1262,7 +1262,9 @@
       els.aniListSearchInput.value = '';
     }
 
-    function addSearchResult(id) {
+    function addSearchResult(id, event) {
+      if (event) { event.preventDefault(); event.stopPropagation(); }
+      console.log('Adding AniList result', id);
       const media = state.searchResults.find((item) => Number(item.id) === Number(id));
       if (!media) return;
       if (state.items.some((item) => Number(item.id) === Number(id))) {
@@ -1602,6 +1604,8 @@
       els.importPreview.hidden = true;
       els.importSummary.textContent = 'No file selected.';
     }
+
+    window.addAnimeSearchResult = addSearchResult;
 
     function init() {
       applySettings(loadSettings());
