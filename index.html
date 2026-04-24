@@ -2630,13 +2630,18 @@
           )
         ]);
 
-        if (aniListResult.status !== "fulfilled") {
+        const nextNotes = [];
+        let nextCurrentEntries = state.currentEntries || []; // Fallback to cached AniList shows
+
+        // UPDATED: Handle AniList gracefully without throwing an error that breaks RSS
+        if (aniListResult.status === "fulfilled") {
+          nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+        } else {
           const reason = aniListResult.reason;
-          throw (reason instanceof Error ? reason : new Error(String(reason || "AniList request failed.")));
+          const errMsg = reason instanceof Error ? reason.message : String(reason || "Request failed.");
+          nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
         }
 
-        const nextNotes = [];
-        const nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
         let nextPrimaryCandidates = [];
 
         if (rssResult.status === "fulfilled") {
@@ -2660,7 +2665,6 @@
 
           nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
           
-          // ADDED: Calculate the newest RSS release for staleness tracking
           let newest = 0;
           for (const c of nextPrimaryCandidates) {
             for (const item of c.items) {
@@ -2669,7 +2673,6 @@
           }
           state.lastRssReleaseAt = newest;
           
-          // ADDED: Check if feed is >24 hours stale
           const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
           if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
             nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
@@ -2681,7 +2684,7 @@
 
         // --- HARD DELETE MANUAL SHOWS IF COMPLETED ---
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
-        if (addedIds.length > 0) {
+        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { // Only run if AniList is up
           try {
             const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
             const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
@@ -2725,7 +2728,7 @@
           : "";
 
         state.healthStatus = "unhealthy";
-        state.notes = [`AniList: ${message}`];
+        state.notes = [`Board update failed: ${message}`];
         setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
         renderFooterStatus();
@@ -2753,7 +2756,6 @@
       loadBoard({ reason, userName: state.userName });
     }
 
-    // UPDATED: Added renderFooterStatus() to the 30-second interval
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(() => { 
