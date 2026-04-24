@@ -151,6 +151,8 @@
     .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
     .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
     .pill.muted { color: var(--muted); background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.08); }
+    .category-pill { cursor: pointer; }
+    .category-pill:hover { transform: translateY(-1px); background: rgba(140,158,255,0.12); color: var(--text); border-color: rgba(140,158,255,0.24); }
 
     details {
       background: rgba(255,255,255,0.03);
@@ -452,6 +454,25 @@
     .notice.error { color: #ffd8d8; background: rgba(255,141,141,0.08); border-color: rgba(255,141,141,0.18); }
     .notice.success { color: #d8ffef; background: rgba(74,222,168,0.08); border-color: rgba(74,222,168,0.18); }
 
+
+    .advanced-inner {
+      display: grid;
+      gap: 14px;
+      padding: 0 14px 14px;
+    }
+
+    .advanced-inner .stats {
+      padding: 0;
+    }
+
+    .compact-actions {
+      padding: 14px 18px;
+    }
+
+    .compact-actions .button-row > button {
+      flex: 0 1 220px;
+    }
+
     .stats-panel {
       padding: 0;
       background: rgba(255,255,255,0.035);
@@ -598,30 +619,16 @@
           <div id="notice" class="notice" hidden></div>
 
           <section class="hero">
-            <h2 class="section-title">Add from AniList</h2>
+            <h2 class="section-title">Add anime</h2>
             <div class="controls">
               <div class="field search">
                 <label for="aniListSearchInput">AniList search</label>
                 <input id="aniListSearchInput" placeholder="Search anime title" autocomplete="off" />
               </div>
-              <div class="field category">
-                <label for="addCategory">Add to</label>
-                <select id="addCategory">
-                  <option value="watching">Future releases</option>
-                  <option value="downloaded">Downloaded</option>
-                </select>
-              </div>
               <div class="field actions">
                 <label>Search</label>
                 <button id="aniListSearchBtn" class="primary-btn">Search</button>
               </div>
-            </div>
-            <div id="searchResults" class="search-results" hidden></div>
-          </section>
-
-          <section class="hero">
-            <h2 class="section-title">Board</h2>
-            <div class="controls">
               <div class="field local-search">
                 <label for="boardSearchInput">Filter board</label>
                 <input id="boardSearchInput" placeholder="Search titles or comments" autocomplete="off" />
@@ -630,48 +637,59 @@
                 <label>View</label>
                 <div class="segmented" id="categoryFilter">
                   <button type="button" data-filter="all" class="active">All</button>
-                  <button type="button" data-filter="watching">Future</button>
+                  <button type="button" data-filter="watching">Watching</button>
                   <button type="button" data-filter="downloaded">Downloaded</button>
                 </div>
               </div>
-              <div class="field api">
-                <label for="apiBase">.moe API base</label>
-                <input id="apiBase" value="https://releases.moe" autocomplete="off" />
-              </div>
-              <div class="field importexport">
-                <label>Actions</label>
-                <div class="button-row">
-                  <button id="checkReleasesBtn" class="primary-btn">Check releases</button>
-                  <button id="exportBtn" class="ghost-btn">Export JSON</button>
-                  <button id="importBtn" class="ghost-btn">Import JSON</button>
-                </div>
-              </div>
+            </div>
+            <div id="searchResults" class="search-results" hidden></div>
+          </section>
+
+          <section class="hero compact-actions">
+            <div class="button-row">
+              <button id="checkReleasesBtn" class="primary-btn">Check releases</button>
             </div>
             <input id="importFile" class="hidden-file" type="file" accept="application/json" />
           </section>
 
           <details class="stats-panel">
-            <summary class="stats-summary">Show stats</summary>
-            <div class="stats">
-              <div class="stat">
-                <div class="stat-label">Anime on board</div>
-                <div class="stat-value" id="statTotal">0</div>
-                <div class="stat-help">Manually added AniList shows.</div>
+            <summary class="stats-summary">Advanced</summary>
+            <div class="advanced-inner">
+              <div class="controls">
+                <div class="field api">
+                  <label for="apiBase">releases.moe API base</label>
+                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+                </div>
+                <div class="field importexport">
+                  <label>Backup</label>
+                  <div class="button-row">
+                    <button id="exportBtn" class="ghost-btn">Export JSON</button>
+                    <button id="importBtn" class="ghost-btn">Import JSON</button>
+                  </div>
+                </div>
               </div>
-              <div class="stat">
-                <div class="stat-label">Future releases</div>
-                <div class="stat-value" id="statWatching">0</div>
-                <div class="stat-help">Titles you are still tracking.</div>
-              </div>
-              <div class="stat">
-                <div class="stat-label">Downloaded</div>
-                <div class="stat-value" id="statDownloaded">0</div>
-                <div class="stat-help">Titles you already have.</div>
-              </div>
-              <div class="stat">
-                <div class="stat-label">Last checked</div>
-                <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                <div class="stat-help">Release status is checked manually.</div>
+
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-label">Anime on board</div>
+                  <div class="stat-value" id="statTotal">0</div>
+                  <div class="stat-help">Manually added AniList shows.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Watching</div>
+                  <div class="stat-value" id="statWatching">0</div>
+                  <div class="stat-help">Titles you are still tracking.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Downloaded</div>
+                  <div class="stat-value" id="statDownloaded">0</div>
+                  <div class="stat-help">Titles you already have.</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Last checked</div>
+                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+                  <div class="stat-help">Release status is checked manually.</div>
+                </div>
               </div>
             </div>
           </details>
@@ -706,7 +724,6 @@
       visibleCountChip: document.getElementById('visibleCountChip'),
       aniListSearchInput: document.getElementById('aniListSearchInput'),
       aniListSearchBtn: document.getElementById('aniListSearchBtn'),
-      addCategory: document.getElementById('addCategory'),
       searchResults: document.getElementById('searchResults'),
       boardSearchInput: document.getElementById('boardSearchInput'),
       categoryFilter: document.getElementById('categoryFilter'),
@@ -1158,7 +1175,7 @@
         showNotice('That anime is already on your board.', 'error');
         return;
       }
-      state.items.push(mediaToBoardItem(media, els.addCategory.value));
+      state.items.push(mediaToBoardItem(media, 'watching'));
       sortItems();
       saveBoard();
       render();
@@ -1239,8 +1256,8 @@
         ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
         : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
       const [statusClass, statusText] = getReleaseBadge(item);
-      const categoryText = item.category === 'downloaded' ? 'Downloaded' : 'Future';
-      const moveText = item.category === 'downloaded' ? 'Move to future' : 'Mark downloaded';
+      const categoryText = item.category === 'downloaded' ? 'Downloaded' : 'Watching';
+      const moveText = item.category === 'downloaded' ? 'Move to watching' : 'Mark downloaded';
       const moveTarget = item.category === 'downloaded' ? 'watching' : 'downloaded';
       const releaseUrl = item.release?.entryUrl || `https://releases.moe/${item.id}/`;
 
@@ -1254,7 +1271,7 @@
           <div class="item-actions">
             <div class="badges">
               <span class="pill ${statusClass}">${statusText}</span>
-              <span class="pill muted">${categoryText}</span>
+              <button class="pill muted category-pill" type="button" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}" title="Click to move to ${escapeHtml(moveTarget === 'downloaded' ? 'Downloaded' : 'Watching')}">${categoryText}</button>
             </div>
           </div>
         </div>
@@ -1323,7 +1340,7 @@
       const futureItems = visibleItems.filter((item) => item.category === 'watching');
       const downloadedItems = visibleItems.filter((item) => item.category === 'downloaded');
 
-      if (futureItems.length) els.list.appendChild(createBoardSection('Future releases', futureItems));
+      if (futureItems.length) els.list.appendChild(createBoardSection('Watching', futureItems));
       if (downloadedItems.length) els.list.appendChild(createBoardSection('Downloaded', downloadedItems));
     }
 
