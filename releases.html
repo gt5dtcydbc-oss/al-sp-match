@@ -506,6 +506,37 @@
       background: rgba(255,255,255,0.035);
     }
 
+    .board-section {
+      display: grid;
+      gap: 12px;
+    }
+
+    .board-section + .board-section {
+      margin-top: 22px;
+    }
+
+    .board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 2px 0;
+    }
+
+    .board-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: 0.01em;
+    }
+
+    .board-count {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
     .empty {
       padding: 40px 16px;
       text-align: center;
@@ -963,26 +994,41 @@
       return score(candidate) > score(existing) ? candidate : existing;
     }
 
+    async function fetchSeaDexPage(apiBase, params) {
+      const url = `${apiBase}/api/collections/entries/records?${params.toString()}`;
+      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = data?.message || `.moe request failed with ${response.status}`;
+        throw new Error(message);
+      }
+      return Array.isArray(data?.items) ? data.items : [];
+    }
+
+    async function fetchSeaDexSingleByAniListId(id, apiBase) {
+      const params = new URLSearchParams({
+        filter: `alID=${Number(id)}`,
+        expand: 'trs',
+        perPage: '1',
+        sort: '-updated'
+      });
+      const items = await fetchSeaDexPage(apiBase, params);
+      return items[0] || null;
+    }
+
     async function fetchSeaDexByAniListIds(ids, apiBase) {
       if (!ids.length) return new Map();
+      const uniqueIds = [...new Set(ids.map(Number).filter(Number.isFinite))];
       const results = [];
 
-      for (const idChunk of chunk(ids, 25)) {
+      for (const idChunk of chunk(uniqueIds, 20)) {
         const params = new URLSearchParams({
           filter: buildSeaDexFilter(idChunk),
           expand: 'trs',
-          perPage: String(idChunk.length),
+          perPage: String(Math.max(idChunk.length, 30)),
           sort: '-updated'
         });
-
-        const url = `${apiBase}/api/collections/entries/records?${params.toString()}`;
-        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-          const message = data?.message || `.moe request failed with ${response.status}`;
-          throw new Error(message);
-        }
-        results.push(...(data?.items || []));
+        results.push(...await fetchSeaDexPage(apiBase, params));
       }
 
       const map = new Map();
@@ -991,6 +1037,18 @@
         const key = Number(item.alID);
         map.set(key, choosePreferredEntry(map.get(key), item));
       }
+
+      // Safety net: a title can exist on releases.moe even if the batch filter misses it.
+      // This also fixes exact-title cases such as mono / AniList 176246.
+      const missingIds = uniqueIds.filter((id) => !map.has(id));
+      for (const id of missingIds) {
+        const single = await fetchSeaDexSingleByAniListId(id, apiBase).catch(() => null);
+        if (single?.alID != null) {
+          const key = Number(single.alID);
+          map.set(key, choosePreferredEntry(map.get(key), single));
+        }
+      }
+
       return map;
     }
 
@@ -1170,8 +1228,87 @@
 
     function getReleaseBadge(item) {
       if (item.release?.hasSeaDex && item.release?.incomplete) return ['warn', 'Incomplete'];
-      if (item.release?.hasSeaDex) return ['ok', 'Found'];
+      if (item.release?.hasSeaDex) return ['ok', 'Released'];
       return ['bad', 'Waiting'];
+    }
+
+    function createItemElement(item) {
+      const article = document.createElement('article');
+      article.className = 'item';
+      const poster = item.cover
+        ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
+        : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+      const [statusClass, statusText] = getReleaseBadge(item);
+      const categoryText = item.category === 'downloaded' ? 'Downloaded' : 'Future';
+      const moveText = item.category === 'downloaded' ? 'Move to future' : 'Mark downloaded';
+      const moveTarget = item.category === 'downloaded' ? 'watching' : 'downloaded';
+      const releaseUrl = item.release?.entryUrl || `https://releases.moe/${item.id}/`;
+
+      article.innerHTML = `
+        <div class="item-top">
+          <div class="poster">${poster}</div>
+          <div class="item-main">
+            <h2 class="title">${escapeHtml(item.title)}</h2>
+            <div class="subtitle">${escapeHtml(item.altTitle || 'No alternate title')}</div>
+          </div>
+          <div class="item-actions">
+            <div class="badges">
+              <span class="pill ${statusClass}">${statusText}</span>
+              <span class="pill muted">${categoryText}</span>
+            </div>
+          </div>
+        </div>
+
+        <details class="entry-collapse">
+          <summary class="entry-toggle">Manage</summary>
+          <div class="entry-details">
+            <div class="comment-box">
+              <label for="comment-${Number(item.id)}">Comment</label>
+              <textarea id="comment-${Number(item.id)}" data-comment-id="${Number(item.id)}" placeholder="Add notes, preferred release groups, quality, downloaded version, etc.">${escapeHtml(item.comment)}</textarea>
+            </div>
+
+            <div class="meta-grid">
+              <div class="meta-card">
+                <div class="meta-label">Best release</div>
+                <div class="meta-value">${escapeHtml(item.release?.bestGroup || '-')}</div>
+              </div>
+              <div class="meta-card">
+                <div class="meta-label">Size / torrents</div>
+                <div class="meta-value">${escapeHtml(item.release?.bestSize || '-')} - ${Number(item.release?.torrentCount || 0)} torrent${Number(item.release?.torrentCount || 0) === 1 ? '' : 's'}</div>
+              </div>
+              <div class="meta-card">
+                <div class="meta-label">Added</div>
+                <div class="meta-value">${escapeHtml(formatDateTime(item.addedAt))}</div>
+              </div>
+              <div class="meta-card">
+                <div class="meta-label">Release updated</div>
+                <div class="meta-value">${escapeHtml(item.release?.updatedAt ? formatDateTime(item.release.updatedAt) : '-')}</div>
+              </div>
+            </div>
+
+            <div class="actions-row">
+              <button class="mini-link" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}">${moveText}</button>
+              <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
+              <a class="mini-link" href="${escapeHtml(releaseUrl)}" target="_blank" rel="noreferrer">releases.moe</a>
+              <button class="danger-btn" data-remove-id="${Number(item.id)}">Remove</button>
+            </div>
+          </div>
+        </details>
+      `;
+      return article;
+    }
+
+    function createBoardSection(title, items) {
+      const section = document.createElement('section');
+      section.className = 'board-section';
+      section.innerHTML = `
+        <div class="board-header">
+          <h2 class="board-title">${escapeHtml(title)}</h2>
+          <span class="board-count">${items.length} title${items.length === 1 ? '' : 's'}</span>
+        </div>
+      `;
+      for (const item of items) section.appendChild(createItemElement(item));
+      return section;
     }
 
     function render() {
@@ -1183,72 +1320,11 @@
 
       if (!visibleItems.length) return;
 
-      for (const item of visibleItems) {
-        const article = document.createElement('article');
-        article.className = 'item';
-        const poster = item.cover
-          ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
-          : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
-        const [statusClass, statusText] = getReleaseBadge(item);
-        const categoryText = item.category === 'downloaded' ? 'Downloaded' : 'Future';
-        const moveText = item.category === 'downloaded' ? 'Move to future' : 'Mark downloaded';
-        const moveTarget = item.category === 'downloaded' ? 'watching' : 'downloaded';
-        const releaseUrl = item.release?.entryUrl || `https://releases.moe/${item.id}/`;
+      const futureItems = visibleItems.filter((item) => item.category === 'watching');
+      const downloadedItems = visibleItems.filter((item) => item.category === 'downloaded');
 
-        article.innerHTML = `
-          <div class="item-top">
-            <div class="poster">${poster}</div>
-            <div class="item-main">
-              <h2 class="title">${escapeHtml(item.title)}</h2>
-              <div class="subtitle">${escapeHtml(item.altTitle || 'No alternate title')}</div>
-            </div>
-            <div class="item-actions">
-              <div class="badges">
-                <span class="pill ${statusClass}">${statusText}</span>
-                <span class="pill muted">${categoryText}</span>
-              </div>
-            </div>
-          </div>
-
-          <details class="entry-collapse">
-            <summary class="entry-toggle">Manage</summary>
-            <div class="entry-details">
-              <div class="comment-box">
-                <label for="comment-${Number(item.id)}">Comment</label>
-                <textarea id="comment-${Number(item.id)}" data-comment-id="${Number(item.id)}" placeholder="Add notes, preferred release groups, quality, downloaded version, etc.">${escapeHtml(item.comment)}</textarea>
-              </div>
-
-              <div class="meta-grid">
-                <div class="meta-card">
-                  <div class="meta-label">Best release</div>
-                  <div class="meta-value">${escapeHtml(item.release?.bestGroup || '-')}</div>
-                </div>
-                <div class="meta-card">
-                  <div class="meta-label">Size / torrents</div>
-                  <div class="meta-value">${escapeHtml(item.release?.bestSize || '-')} - ${Number(item.release?.torrentCount || 0)} torrent${Number(item.release?.torrentCount || 0) === 1 ? '' : 's'}</div>
-                </div>
-                <div class="meta-card">
-                  <div class="meta-label">Added</div>
-                  <div class="meta-value">${escapeHtml(formatDateTime(item.addedAt))}</div>
-                </div>
-                <div class="meta-card">
-                  <div class="meta-label">Release updated</div>
-                  <div class="meta-value">${escapeHtml(item.release?.updatedAt ? formatDateTime(item.release.updatedAt) : '-')}</div>
-                </div>
-              </div>
-
-              <div class="actions-row">
-                <button class="mini-link" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}">${moveText}</button>
-                <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
-                <a class="mini-link" href="${escapeHtml(releaseUrl)}" target="_blank" rel="noreferrer">releases.moe</a>
-                <button class="danger-btn" data-remove-id="${Number(item.id)}">Remove</button>
-              </div>
-            </div>
-          </details>
-        `;
-
-        els.list.appendChild(article);
-      }
+      if (futureItems.length) els.list.appendChild(createBoardSection('Future releases', futureItems));
+      if (downloadedItems.length) els.list.appendChild(createBoardSection('Downloaded', downloadedItems));
     }
 
     function moveItem(id, category) {
