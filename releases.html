@@ -1673,11 +1673,16 @@
       applyDownloadedCollapse();
       applySettingsState();
 
-      const byBoard = {
-        found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
-        watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
-        downloaded: state.shows.filter((show) => show.downloaded || show.board === "downloaded")
-      };
+     const byBoard = {
+  found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
+  watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
+  downloaded: state.shows
+    .filter((show) => show.downloaded || show.board === "downloaded")
+    .sort((a, b) => a.title.localeCompare(b.title, undefined, {
+      sensitivity: "base",
+      numeric: true
+    }))
+};
 
       renderBoard("found", byBoard.found, els.foundList, els.foundCount);
       renderBoard("watching", byBoard.watching, els.watchingList, els.watchingCount);
