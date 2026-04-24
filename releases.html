@@ -1246,7 +1246,7 @@
             <div class="subtitle">${escapeHtml([altTitle, metadata].filter(Boolean).join(' - '))}</div>
           </div>
           <div class="actions-row">
-            <button class="mini-link" data-add-id="${Number(media.id)}" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? 'Added' : 'Add'}</button>
+            <button class="mini-link" type="button" data-add-id="${Number(media.id)}" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? 'Added' : 'Add'}</button>
             <a class="mini-link" href="${escapeHtml(media.siteUrl || `https://anilist.co/anime/${media.id}`)}" target="_blank" rel="noreferrer">AniList</a>
           </div>
         `;
@@ -1272,6 +1272,8 @@
       const title = normalizeTitle(media);
       const sameTitle = state.items.find((item) => normalizeLooseString(item.title) === normalizeLooseString(title) && Number(item.id) !== Number(id));
       state.items.push(mediaToBoardItem(media, 'watching'));
+      state.categoryFilter = 'all';
+      updateCategoryFilterButtons();
       sortItems();
       saveBoard();
       render();
@@ -1618,6 +1620,12 @@
       els.searchResults.addEventListener('click', (event) => {
         const button = event.target.closest('[data-add-id]');
         if (!button) return;
+        addSearchResult(button.dataset.addId);
+      });
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-add-id]');
+        if (!button || !els.searchResults.contains(button)) return;
+        event.preventDefault();
         addSearchResult(button.dataset.addId);
       });
 
