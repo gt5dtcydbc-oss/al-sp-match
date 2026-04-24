@@ -942,7 +942,13 @@
     }
 
     function saveSettings() {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettings()));
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettings()));
+        return true;
+      } catch (error) {
+        console.warn('Settings could not be saved:', error);
+        return false;
+      }
     }
 
     function loadBoard() {
@@ -958,12 +964,24 @@
       }
     }
 
-    function saveBoard() {
-      localStorage.setItem(BOARD_KEY, JSON.stringify({
-        version: 1,
-        lastCheckedAt: state.lastCheckedAt,
-        items: state.items
-      }));
+    function saveBoard({ quiet = false } = {}) {
+      try {
+        localStorage.setItem(BOARD_KEY, JSON.stringify({
+          version: 1,
+          lastCheckedAt: state.lastCheckedAt,
+          items: state.items
+        }));
+        return true;
+      } catch (error) {
+        console.warn('Board could not be saved:', error);
+        if (!quiet) {
+          showNotice(
+            'This browser blocked saving to local storage. The entry was added for this page session, but it may not persist after reload. Export JSON before closing the page.',
+            'error'
+          );
+        }
+        return false;
+      }
     }
 
     function rebuildSearchBlobs() {
@@ -1316,11 +1334,12 @@
       state.categoryFilter = 'all';
       updateCategoryFilterButtons();
       sortItems();
-      saveBoard();
       render();
       clearSearchResults();
+      const saved = saveBoard({ quiet: true });
       const duplicateHint = sameTitle ? ` Heads up: <strong>${escapeHtml(sameTitle.title)}</strong> has a very similar title already on the board.` : '';
-      showNotice(`Added <strong>${escapeHtml(title)}</strong> to Watching.${duplicateHint}`, sameTitle ? 'error' : 'success');
+      const saveHint = saved ? '' : ' Storage is blocked, so export JSON before closing the page or the change may be lost.';
+      showNotice(`Added <strong>${escapeHtml(title)}</strong> to Watching.${duplicateHint}${saveHint}`, saved && !sameTitle ? 'success' : 'error');
     }
 
     function addSearchResult(id, event) {
@@ -1651,6 +1670,15 @@
     }
 
     window.addAnimeSearchResult = addSearchResult;
+    window.__animeBoardDebug = () => ({
+      itemCount: state.items.length,
+      searchResultCount: state.searchResults.length,
+      canUseLocalStorage: (() => {
+        try { localStorage.setItem('__anime_board_test__', '1'); localStorage.removeItem('__anime_board_test__'); return true; }
+        catch { return false; }
+      })(),
+      currentFilter: state.categoryFilter
+    });
 
     function init() {
       applySettings(loadSettings());
