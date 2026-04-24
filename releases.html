@@ -6,20 +6,21 @@
   <title>AniList Releases Board</title>
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f6f7fb;
-      --surface: #ffffff;
-      --surface-soft: #f9fafc;
-      --text: #151923;
-      --muted: #697184;
-      --muted-2: #8b94a7;
-      --line: #e4e7ef;
-      --brand: #5f6df5;
-      --brand-strong: #4253ee;
-      --ok: #1b9a69;
-      --warn: #b7791f;
-      --danger: #c2413a;
-      --shadow: 0 18px 50px rgba(22, 29, 50, 0.08);
+      color-scheme: dark;
+      --bg: #0f1219;
+      --surface: #171b25;
+      --surface-soft: #202636;
+      --surface-softer: #252c3d;
+      --text: #edf1f8;
+      --muted: #a9b1c5;
+      --muted-2: #7f8aa1;
+      --line: #2d3547;
+      --brand: #8b96ff;
+      --brand-strong: #a8b0ff;
+      --ok: #45d49b;
+      --warn: #f2c36b;
+      --danger: #ff7b73;
+      --shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
       --radius: 22px;
       --radius-sm: 14px;
       --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -35,9 +36,9 @@
       font-family: var(--font);
       color: var(--text);
       background:
-        radial-gradient(circle at top left, rgba(95, 109, 245, 0.12), transparent 34rem),
-        radial-gradient(circle at top right, rgba(27, 154, 105, 0.08), transparent 30rem),
-        var(--bg);
+        radial-gradient(circle at top left, rgba(139, 150, 255, 0.14), transparent 32rem),
+        radial-gradient(circle at top right, rgba(69, 212, 155, 0.07), transparent 30rem),
+        linear-gradient(180deg, #111520 0%, #0d1017 100%);
     }
 
     button,
@@ -54,12 +55,12 @@
     .app {
       width: min(1440px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 32px 0 48px;
+      padding: 24px 0 48px;
     }
 
     .shell {
       display: grid;
-      gap: 22px;
+      gap: 18px;
     }
 
     .hero {
@@ -67,40 +68,92 @@
       grid-template-columns: 1fr auto;
       align-items: end;
       gap: 18px;
+      padding-bottom: 2px;
     }
 
     .eyebrow {
       margin: 0 0 8px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--muted);
+      color: var(--muted-2);
       font-weight: 800;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(2rem, 4vw, 4rem);
+      font-size: clamp(1.9rem, 4vw, 3.5rem);
       letter-spacing: -0.06em;
-      line-height: 0.96;
+      line-height: 0.98;
     }
 
     .subhead {
-      margin: 14px 0 0;
-      max-width: 720px;
+      margin: 10px 0 0;
+      max-width: 760px;
       color: var(--muted);
-      line-height: 1.55;
-      font-size: 1rem;
+      line-height: 1.5;
+      font-size: 0.98rem;
     }
 
-    .toolbar,
     .search-card,
     .board,
-    .toast {
-      background: rgba(255, 255, 255, 0.82);
-      border: 1px solid rgba(228, 231, 239, 0.86);
+    .toast,
+    .settings-card {
+      background: rgba(23, 27, 37, 0.88);
+      border: 1px solid rgba(45, 53, 71, 0.92);
       box-shadow: var(--shadow);
       backdrop-filter: blur(16px);
+    }
+
+    .settings-card {
+      border-radius: calc(var(--radius) + 6px);
+      padding: 4px 14px 14px;
+    }
+
+    .settings-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 54px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .settings-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .summary-title {
+      display: block;
+      font-weight: 950;
+      letter-spacing: -0.02em;
+    }
+
+    .summary-help {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted-2);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .settings-chevron {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      border: 1px solid var(--line);
+      font-weight: 950;
+      transition: 160ms ease;
+    }
+
+    .settings-card[open] .settings-chevron {
+      transform: rotate(180deg);
     }
 
     .toolbar {
@@ -108,8 +161,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 12px;
-      border-radius: calc(var(--radius) + 6px);
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
     }
 
     .toolbar-left,
@@ -132,7 +185,7 @@
       background: var(--surface-soft);
       border: 1px solid var(--line);
       font-size: 0.9rem;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .dot {
@@ -140,7 +193,7 @@
       height: 8px;
       border-radius: 999px;
       background: var(--ok);
-      box-shadow: 0 0 0 4px rgba(27, 154, 105, 0.12);
+      box-shadow: 0 0 0 4px rgba(69, 212, 155, 0.12);
     }
 
     .btn {
@@ -154,20 +207,21 @@
       background: var(--surface-soft);
       color: var(--text);
       border: 1px solid var(--line);
-      font-weight: 800;
+      font-weight: 850;
       transition: 160ms ease;
     }
 
     .btn:hover {
       transform: translateY(-1px);
-      border-color: #cfd5e5;
+      border-color: #465169;
+      background: var(--surface-softer);
     }
 
     .btn.primary {
       background: var(--brand);
-      color: white;
+      color: #0b0e17;
       border-color: transparent;
-      box-shadow: 0 12px 28px rgba(95, 109, 245, 0.28);
+      box-shadow: 0 12px 28px rgba(139, 150, 255, 0.22);
     }
 
     .btn.primary:hover {
@@ -212,26 +266,27 @@
       font-size: 1rem;
     }
 
+    .search-input::placeholder,
+    .notes-panel textarea::placeholder {
+      color: var(--muted-2);
+    }
+
     .search-input:focus {
-      border-color: rgba(95, 109, 245, 0.65);
-      box-shadow: 0 0 0 4px rgba(95, 109, 245, 0.12);
-      background: #fff;
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.12);
+      background: #252c3d;
     }
 
     .results {
       display: none;
-      position: absolute;
-      z-index: 20;
-      left: 14px;
-      right: 14px;
-      top: calc(100% - 6px);
+      margin-top: 10px;
       max-height: 440px;
       overflow: auto;
       padding: 8px;
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 20px;
-      box-shadow: 0 24px 70px rgba(22, 29, 50, 0.16);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
     }
 
     .results.open {
@@ -261,8 +316,18 @@
       height: 64px;
       border-radius: 12px;
       object-fit: cover;
-      background: linear-gradient(135deg, #dfe4f4, #f5f6fa);
+      background: linear-gradient(135deg, #30384b, #1e2432);
       border: 1px solid var(--line);
+    }
+
+    .thumb {
+      width: 50px;
+      height: 68px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #30384b, #1e2432);
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
     }
 
     .result-title,
@@ -276,10 +341,10 @@
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: 6px;
+      margin-top: 7px;
       color: var(--muted);
       font-size: 0.82rem;
-      font-weight: 650;
+      font-weight: 700;
     }
 
     .badge {
@@ -292,26 +357,26 @@
       border: 1px solid var(--line);
       color: var(--muted);
       font-size: 0.76rem;
-      font-weight: 800;
+      font-weight: 850;
       white-space: nowrap;
     }
 
     .badge.found {
       color: var(--ok);
-      background: rgba(27, 154, 105, 0.08);
-      border-color: rgba(27, 154, 105, 0.18);
+      background: rgba(69, 212, 155, 0.10);
+      border-color: rgba(69, 212, 155, 0.2);
     }
 
     .badge.watching {
       color: var(--warn);
-      background: rgba(183, 121, 31, 0.08);
-      border-color: rgba(183, 121, 31, 0.2);
+      background: rgba(242, 195, 107, 0.10);
+      border-color: rgba(242, 195, 107, 0.22);
     }
 
     .badge.downloaded {
       color: var(--brand-strong);
-      background: rgba(95, 109, 245, 0.09);
-      border-color: rgba(95, 109, 245, 0.18);
+      background: rgba(139, 150, 255, 0.12);
+      border-color: rgba(139, 150, 255, 0.22);
     }
 
     .boards {
@@ -356,7 +421,7 @@
       border: 1px solid var(--line);
       color: var(--muted);
       font-size: 0.78rem;
-      font-weight: 900;
+      font-weight: 950;
     }
 
     .collapse-btn {
@@ -366,13 +431,13 @@
       background: var(--surface-soft);
       border: 1px solid var(--line);
       color: var(--muted);
-      font-weight: 900;
+      font-weight: 950;
       transition: 160ms ease;
     }
 
     .collapse-btn:hover {
       color: var(--text);
-      border-color: #cfd5e5;
+      border-color: #465169;
     }
 
     .board-list {
@@ -391,14 +456,14 @@
     .show-card {
       overflow: hidden;
       border-radius: 20px;
-      background: var(--surface);
+      background: rgba(32, 38, 54, 0.72);
       border: 1px solid var(--line);
-      box-shadow: 0 10px 24px rgba(22, 29, 50, 0.06);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
     }
 
     .card-main {
       display: grid;
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: auto 50px 1fr auto;
       align-items: start;
       gap: 10px;
       padding: 12px;
@@ -437,13 +502,13 @@
       color: var(--muted);
       background: var(--surface-soft);
       border: 1px solid var(--line);
-      font-weight: 900;
+      font-weight: 950;
     }
 
     .notes-toggle[aria-expanded="true"] {
       color: var(--brand-strong);
-      border-color: rgba(95, 109, 245, 0.25);
-      background: rgba(95, 109, 245, 0.08);
+      border-color: rgba(139, 150, 255, 0.25);
+      background: rgba(139, 150, 255, 0.10);
     }
 
     .remove-btn {
@@ -452,17 +517,17 @@
       border-radius: 999px;
       color: var(--muted-2);
       background: transparent;
-      font-weight: 900;
+      font-weight: 950;
     }
 
     .remove-btn:hover {
       color: var(--danger);
-      background: rgba(194, 65, 58, 0.08);
+      background: rgba(255, 123, 115, 0.10);
     }
 
     .notes-panel {
       display: none;
-      padding: 0 12px 12px;
+      padding: 0 12px 12px 94px;
     }
 
     .show-card.notes-open .notes-panel {
@@ -477,26 +542,26 @@
       border: 1px solid var(--line);
       border-radius: 16px;
       outline: none;
-      background: var(--surface-soft);
+      background: #151923;
       color: var(--text);
       line-height: 1.4;
     }
 
     .notes-panel textarea:focus {
-      border-color: rgba(95, 109, 245, 0.65);
-      box-shadow: 0 0 0 4px rgba(95, 109, 245, 0.10);
-      background: #fff;
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
+      background: #111722;
     }
 
     .empty {
       padding: 22px 14px;
-      border: 1px dashed #d5dbea;
+      border: 1px dashed #39445c;
       border-radius: 20px;
       text-align: center;
       color: var(--muted);
-      background: rgba(249, 250, 252, 0.62);
+      background: rgba(32, 38, 54, 0.42);
       line-height: 1.45;
-      font-weight: 650;
+      font-weight: 700;
     }
 
     .toast-area {
@@ -513,12 +578,12 @@
       padding: 14px 16px;
       border-radius: 18px;
       color: var(--text);
-      font-weight: 750;
+      font-weight: 800;
       line-height: 1.4;
     }
 
     .toast.error {
-      border-color: rgba(194, 65, 58, 0.24);
+      border-color: rgba(255, 123, 115, 0.24);
     }
 
     .kbd {
@@ -531,7 +596,7 @@
       font-weight: 900;
     }
 
-    @media (max-width: 1040px) {
+    @media (max-width: 1120px) {
       .boards {
         grid-template-columns: 1fr;
       }
@@ -544,7 +609,7 @@
     @media (max-width: 720px) {
       .app {
         width: min(100% - 18px, 1440px);
-        padding-top: 18px;
+        padding-top: 16px;
       }
 
       .hero,
@@ -576,6 +641,19 @@
         grid-column: 2;
         width: max-content;
       }
+
+      .card-main {
+        grid-template-columns: auto 46px 1fr auto;
+      }
+
+      .thumb {
+        width: 46px;
+        height: 64px;
+      }
+
+      .notes-panel {
+        padding-left: 12px;
+      }
     }
   </style>
 </head>
@@ -586,42 +664,9 @@
         <div>
           <p class="eyebrow">AniList × releases.moe</p>
           <h1>Release Board</h1>
-          <p class="subhead">
-            Add anime from AniList, then let the board sort them by whether releases.moe has an entry.
-            Downloaded items stay tucked away until you need them.
-          </p>
+          <p class="subhead">Track shows at a glance. Found, Watching, and Downloaded stay visible first; search and settings sit below the board.</p>
         </div>
       </header>
-
-      <section class="toolbar" aria-label="Board tools">
-        <div class="toolbar-left">
-          <span class="status-pill"><span class="dot" aria-hidden="true"></span><span id="statusText">Ready</span></span>
-          <button class="btn" id="checkAllBtn" type="button">Check status</button>
-        </div>
-        <div class="toolbar-right">
-          <button class="btn" id="exportBtn" type="button">Export JSON</button>
-          <div class="import-wrap">
-            <input class="file-input" id="importFile" type="file" accept="application/json,.json" />
-            <button class="btn" id="importBtn" type="button">Import JSON</button>
-          </div>
-          <button class="btn danger" id="clearBtn" type="button">Clear</button>
-        </div>
-      </section>
-
-      <section class="search-card" aria-label="Search AniList">
-        <div class="search-row">
-          <input
-            class="search-input"
-            id="searchInput"
-            type="search"
-            autocomplete="off"
-            placeholder="Search AniList, e.g. Cowboy Bebop"
-            aria-label="Search AniList for anime"
-          />
-          <button class="btn primary" id="searchBtn" type="button">Search</button>
-        </div>
-        <div class="results" id="results" role="listbox" aria-label="AniList search results"></div>
-      </section>
 
       <section class="boards" aria-label="Release boards">
         <article class="board" data-board="found">
@@ -646,6 +691,46 @@
           <div class="board-list" id="downloadedList"></div>
         </article>
       </section>
+
+      <section class="search-card" aria-label="Search AniList">
+        <div class="search-row">
+          <input
+            class="search-input"
+            id="searchInput"
+            type="search"
+            autocomplete="off"
+            placeholder="Search AniList, e.g. Cowboy Bebop"
+            aria-label="Search AniList for anime"
+          />
+          <button class="btn primary" id="searchBtn" type="button">Search</button>
+        </div>
+        <div class="results" id="results" role="listbox" aria-label="AniList search results"></div>
+      </section>
+
+      <details class="settings-card" id="settingsPanel">
+        <summary class="settings-summary">
+          <span>
+            <span class="summary-title">Settings</span>
+            <span class="summary-help">Status checks, JSON import/export, and board reset.</span>
+          </span>
+          <span class="settings-chevron" aria-hidden="true">⌄</span>
+        </summary>
+
+        <section class="toolbar" aria-label="Board tools">
+          <div class="toolbar-left">
+            <span class="status-pill"><span class="dot" aria-hidden="true"></span><span id="statusText">Ready</span></span>
+            <button class="btn" id="checkAllBtn" type="button">Check status</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn" id="exportBtn" type="button">Export JSON</button>
+            <div class="import-wrap">
+              <input class="file-input" id="importFile" type="file" accept="application/json,.json" />
+              <button class="btn" id="importBtn" type="button">Import JSON</button>
+            </div>
+            <button class="btn danger" id="clearBtn" type="button">Clear</button>
+          </div>
+        </section>
+      </details>
     </section>
   </main>
 
@@ -660,6 +745,7 @@
       shows: [],
       ui: {
         downloadedCollapsed: false,
+        settingsOpen: false,
         openNotes: {}
       }
     };
@@ -682,6 +768,7 @@
       downloadedCount: document.querySelector("#downloadedCount"),
       downloadedBoard: document.querySelector("#downloadedBoard"),
       toggleDownloadedBtn: document.querySelector("#toggleDownloadedBtn"),
+      settingsPanel: document.querySelector("#settingsPanel"),
       toastArea: document.querySelector("#toastArea")
     };
 
@@ -724,6 +811,10 @@
       els.importFile.addEventListener("change", importJson);
       els.clearBtn.addEventListener("click", clearBoard);
       els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
+      els.settingsPanel.addEventListener("toggle", () => {
+        state.ui.settingsOpen = els.settingsPanel.open;
+        saveState();
+      });
     }
 
     async function runSearch() {
@@ -923,6 +1014,7 @@
 
     function render() {
       applyDownloadedCollapse();
+      applySettingsState();
       const byBoard = {
         found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
         watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
@@ -967,26 +1059,24 @@
       const releaseBadge = isDownloaded
         ? '<span class="badge downloaded">Downloaded</span>'
         : show.releasesMoe?.found
-          ? '<span class="badge found">releases.moe found</span>'
+          ? '<span class="badge found">Found</span>'
           : '<span class="badge watching">Watching</span>';
       const meta = [show.format, show.seasonYear, show.episodes ? `${show.episodes} ep` : null]
         .filter(Boolean)
         .map(escapeHtml)
         .join(" · ");
-      const checked = show.releasesMoe?.checkedAt
-        ? `Checked ${formatDate(show.releasesMoe.checkedAt)}`
-        : "Not checked yet";
+      const fallbackPoster = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='136' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' rx='18' fill='%23252c3d'/%3E%3Cpath d='M25 93h50M32 42h36M32 58h36M32 74h24' stroke='%237f8aa1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E";
 
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
           <div class="card-main">
             <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} aria-label="Mark ${escapeAttr(show.title)} as downloaded" />
+            <img class="thumb" src="${escapeAttr(show.coverImage || fallbackPoster)}" alt="" loading="lazy" />
             <div class="card-content">
               <div class="card-title">${escapeHtml(show.title)}</div>
               <div class="card-meta">
                 ${meta ? `<span>${meta}</span>` : ""}
                 ${releaseBadge}
-                <span class="badge">${escapeHtml(checked)}</span>
               </div>
             </div>
             <div class="card-actions">
@@ -1086,6 +1176,7 @@
         state.shows = shows.map(normalizeImportedShow);
         state.ui = {
           downloadedCollapsed: Boolean(payload.ui?.downloadedCollapsed),
+          settingsOpen: Boolean(payload.ui?.settingsOpen),
           openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {}
         };
 
@@ -1157,6 +1248,10 @@
       els.toggleDownloadedBtn.title = state.ui.downloadedCollapsed ? "Expand Downloaded" : "Collapse Downloaded";
     }
 
+    function applySettingsState() {
+      els.settingsPanel.open = Boolean(state.ui.settingsOpen);
+    }
+
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
@@ -1170,6 +1265,7 @@
         state.shows = Array.isArray(saved.shows) ? saved.shows.map(normalizeImportedShow) : [];
         state.ui = {
           downloadedCollapsed: Boolean(saved.ui?.downloadedCollapsed),
+          settingsOpen: Boolean(saved.ui?.settingsOpen),
           openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {}
         };
       } catch (error) {
@@ -1203,19 +1299,6 @@
 
     function getTitle(title = {}) {
       return title.english || title.romaji || title.native || "Untitled";
-    }
-
-    function formatDate(value) {
-      try {
-        return new Intl.DateTimeFormat(undefined, {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        }).format(new Date(value));
-      } catch {
-        return "recently";
-      }
     }
 
     function debounce(fn, wait) {
