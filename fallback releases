@@ -806,7 +806,7 @@
         <summary class="options-summary">
           <span class="options-title">Options</span>
           <span class="options-summary-right">
-            <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
+            <span class="chip"><strong id="watchingListLabel">zrr / </strong></span>
             <span class="chip" id="visibleCountChip">Showing 0 titles</span>
             <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
           </span>
@@ -825,9 +825,9 @@
                   <div class="stat-help">Unique AniList shows in the selected custom list.</div>
                 </div>
                 <div class="stat">
-                  <div class="stat-label">Found on releases.moe</div>
+                  <div class="stat-label">Found on .moe</div>
                   <div class="stat-value" id="statFound">0</div>
-                  <div class="stat-help">Entries with a releases.moe page.</div>
+                  <div class="stat-help">Entries with a .moe page.</div>
                 </div>
                 <div class="stat">
                   <div class="stat-label">Still waiting</div>
@@ -850,11 +850,11 @@
                 </div>
                 <div class="field list">
                   <label for="listName">Custom list name</label>
-                  <input id="listName" value="releases" autocomplete="off" />
+                  <input id="listName" value="" autocomplete="off" />
                 </div>
                 <div class="field api">
-                  <label for="apiBase">releases.moe API base</label>
-                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+                  <label for="apiBase">.moe API base</label>
+                  <input id="apiBase" value="https://.moe" autocomplete="off" />
                 </div>
                 <div class="field search">
                   <label for="searchInput">Filter anime</label>
@@ -887,11 +887,11 @@
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v2';
+    const STORAGE_KEY = '-watchlist-settings-v2';
     const DEFAULTS = {
       username: 'zrr',
-      listName: 'releases',
-      apiBase: 'https://releases.moe'
+      listName: '',
+      apiBase: 'https://.moe'
     };
 
     const state = {
@@ -1168,7 +1168,7 @@
         const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-          const message = data?.message || `releases.moe request failed with ${response.status}`;
+          const message = data?.message || `.moe request failed with ${response.status}`;
           throw new Error(message);
         }
         results.push(...(data?.items || []));
@@ -1219,7 +1219,7 @@
         coverColor: media?.coverImage?.color || '#2d3e77',
         aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
         hasSeaDex: Boolean(entry),
-        entryUrl: entry ? `https://releases.moe/${media.id}/` : '',
+        entryUrl: entry ? `https://.moe/${media.id}/` : '',
         incomplete: Boolean(entry?.incomplete),
         notes: entry?.notes || '',
         theoreticalBest: entry?.theoreticalBest || '',
