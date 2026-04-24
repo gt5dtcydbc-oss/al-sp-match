@@ -38,7 +38,7 @@
         linear-gradient(180deg, #111520 0%, #0d1017 100%);
     }
 
-    button, input, textarea { font: inherit; }
+    button, input, textarea, select { font: inherit; }
     button { border: 0; cursor: pointer; }
     button:disabled { opacity: 0.62; cursor: not-allowed; transform: none !important; }
 
@@ -164,7 +164,7 @@
 
     .card-main {
       display: grid;
-      grid-template-columns: auto 50px 1fr auto;
+      grid-template-columns: auto 50px minmax(0, 1fr) auto;
       align-items: start;
       gap: 10px;
       padding: 12px;
@@ -267,6 +267,7 @@
     }
 
     .card-title {
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
@@ -274,7 +275,7 @@
       -webkit-box-orient: vertical;
     }
 
-    .result-meta, .card-meta {
+    .result-meta {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
@@ -284,9 +285,39 @@
       font-weight: 700;
     }
 
+    .card-meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .card-meta-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-status {
+      display: inline-flex;
+      justify-content: flex-end;
+      min-width: 98px;
+    }
+
+    .card-status .badge {
+      min-width: 96px;
+      justify-content: center;
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 5px;
       padding: 5px 8px;
       border-radius: 999px;
@@ -298,13 +329,15 @@
       white-space: nowrap;
     }
 
-    .badge.found {
+    .badge.found,
+    .badge.confidence-high {
       color: var(--ok);
       background: rgba(69, 212, 155, 0.10);
       border-color: rgba(69, 212, 155, 0.2);
     }
 
-    .badge.watching {
+    .badge.watching,
+    .badge.confidence-medium {
       color: var(--warn);
       background: rgba(242, 195, 107, 0.10);
       border-color: rgba(242, 195, 107, 0.22);
@@ -314,6 +347,20 @@
       color: var(--brand-strong);
       background: rgba(139, 150, 255, 0.12);
       border-color: rgba(139, 150, 255, 0.22);
+    }
+
+    .badge.confidence-low,
+    .badge.confidence-none,
+    .badge.duplicate {
+      color: var(--danger);
+      background: rgba(255, 123, 115, 0.10);
+      border-color: rgba(255, 123, 115, 0.24);
+    }
+
+    .badge.skipped {
+      color: var(--muted-2);
+      background: rgba(127, 138, 161, 0.10);
+      border-color: rgba(127, 138, 161, 0.24);
     }
 
     .card-actions {
@@ -359,19 +406,28 @@
 
     .show-card.notes-open .notes-panel { display: block; }
 
-    textarea {
+    textarea, select {
       width: 100%;
-      resize: vertical;
-      padding: 12px;
       border: 1px solid var(--line);
-      border-radius: 16px;
       outline: none;
       background: #151923;
       color: var(--text);
+    }
+
+    textarea {
+      resize: vertical;
+      padding: 12px;
+      border-radius: 16px;
       line-height: 1.4;
     }
 
-    textarea:focus {
+    select {
+      min-height: 42px;
+      padding: 0 12px;
+      border-radius: 999px;
+    }
+
+    textarea:focus, select:focus {
       border-color: rgba(139, 150, 255, 0.72);
       box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
       background: #111722;
@@ -431,7 +487,7 @@
 
     .result-item {
       display: grid;
-      grid-template-columns: 46px 1fr auto;
+      grid-template-columns: 46px minmax(0, 1fr) auto;
       gap: 12px;
       align-items: center;
       width: 100%;
@@ -571,7 +627,8 @@
 
     .batch-label textarea { min-height: 132px; }
 
-    .batch-actions {
+    .batch-actions,
+    .batch-review-actions {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -583,6 +640,133 @@
       font-size: 0.84rem;
       line-height: 1.45;
       font-weight: 700;
+    }
+
+    .batch-review {
+      display: grid;
+      gap: 12px;
+      margin-top: 6px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(32, 38, 54, 0.46);
+    }
+
+    .batch-review[hidden] { display: none; }
+
+    .batch-review-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .batch-review-title {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .batch-review-summary {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 750;
+      line-height: 1.45;
+    }
+
+    .batch-review-list {
+      display: grid;
+      gap: 10px;
+      max-height: 560px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .batch-row {
+      display: grid;
+      grid-template-columns: minmax(130px, 0.86fr) minmax(0, 1.5fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(23, 27, 37, 0.56);
+    }
+
+    .batch-row.skipped {
+      opacity: 0.68;
+    }
+
+    .batch-input-name {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .batch-input-label {
+      color: var(--muted-2);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .batch-input-value {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 950;
+    }
+
+    .batch-match {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .batch-match-main {
+      min-width: 0;
+      display: grid;
+      gap: 7px;
+    }
+
+    .batch-match-title-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .batch-match-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 950;
+    }
+
+    .batch-match-meta {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 750;
+    }
+
+    .batch-controls {
+      display: grid;
+      gap: 8px;
+      min-width: min(280px, 100%);
+    }
+
+    .batch-control-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
     }
 
     .empty {
@@ -619,6 +803,9 @@
     @media (max-width: 1120px) {
       .boards { grid-template-columns: 1fr; }
       .board { min-height: auto; }
+      .batch-row { grid-template-columns: 1fr; }
+      .batch-controls { min-width: 0; }
+      .batch-control-row { justify-content: flex-start; }
     }
 
     @media (max-width: 720px) {
@@ -640,14 +827,17 @@
         flex: 1;
       }
 
-      .batch-actions {
+      .batch-actions,
+      .batch-review-actions,
+      .batch-review-header {
         align-items: stretch;
         flex-direction: column;
       }
 
-      .batch-actions .btn { width: 100%; }
+      .batch-actions .btn,
+      .batch-review-actions .btn { width: 100%; }
 
-      .result-item { grid-template-columns: 42px 1fr; }
+      .result-item { grid-template-columns: 42px minmax(0, 1fr); }
 
       .result-item .badge {
         grid-column: 2;
@@ -655,7 +845,12 @@
       }
 
       .card-main {
-        grid-template-columns: auto 46px 1fr auto;
+        grid-template-columns: auto 46px minmax(0, 1fr);
+      }
+
+      .card-actions {
+        grid-column: 3;
+        justify-content: flex-end;
       }
 
       .thumb {
@@ -663,7 +858,22 @@
         height: 64px;
       }
 
+      .card-meta {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .card-status {
+        justify-content: flex-start;
+        min-width: 0;
+      }
+
+      .card-status .badge {
+        min-width: 92px;
+      }
+
       .notes-panel { padding-left: 12px; }
+      .batch-match-title-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -748,10 +958,24 @@
             <textarea id="batchInput" placeholder="Paste names here, one per line. Commas and semicolons also work.&#10;Example:&#10;Cowboy Bebop&#10;Frieren&#10;Dungeon Meshi"></textarea>
           </label>
           <div class="batch-actions">
-            <button class="btn primary" id="batchImportBtn" type="button">Add batch</button>
+            <button class="btn primary" id="batchImportBtn" type="button">Review batch</button>
             <button class="btn" id="batchClearBtn" type="button">Clear list</button>
           </div>
-          <div class="batch-note">The first AniList result is used for each name. Existing shows are skipped automatically.</div>
+          <div class="batch-note">Review the AniList matches before adding. You can change a result, skip rows, and duplicates are flagged automatically.</div>
+
+          <section class="batch-review" id="batchReview" hidden aria-label="Review batch matches">
+            <div class="batch-review-header">
+              <div>
+                <h3 class="batch-review-title">Review matches</h3>
+                <p class="batch-review-summary" id="batchReviewSummary">No matches prepared yet.</p>
+              </div>
+              <div class="batch-review-actions">
+                <button class="btn primary" id="batchConfirmBtn" type="button">Add selected</button>
+                <button class="btn" id="batchCancelBtn" type="button">Cancel review</button>
+              </div>
+            </div>
+            <div class="batch-review-list" id="batchReviewList"></div>
+          </section>
         </section>
       </details>
     </section>
@@ -773,6 +997,8 @@
       }
     };
 
+    let pendingBatchMatches = [];
+
     const els = {
       statusText: document.querySelector("#statusText"),
       searchInput: document.querySelector("#searchInput"),
@@ -786,6 +1012,11 @@
       batchInput: document.querySelector("#batchInput"),
       batchImportBtn: document.querySelector("#batchImportBtn"),
       batchClearBtn: document.querySelector("#batchClearBtn"),
+      batchReview: document.querySelector("#batchReview"),
+      batchReviewList: document.querySelector("#batchReviewList"),
+      batchReviewSummary: document.querySelector("#batchReviewSummary"),
+      batchConfirmBtn: document.querySelector("#batchConfirmBtn"),
+      batchCancelBtn: document.querySelector("#batchCancelBtn"),
       foundList: document.querySelector("#foundList"),
       watchingList: document.querySelector("#watchingList"),
       downloadedList: document.querySelector("#downloadedList"),
@@ -837,9 +1068,12 @@
       els.importFile.addEventListener("change", importJson);
       els.clearBtn.addEventListener("click", clearBoard);
       els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
-      els.batchImportBtn.addEventListener("click", importBatchNames);
+      els.batchImportBtn.addEventListener("click", prepareBatchReview);
+      els.batchConfirmBtn.addEventListener("click", confirmBatchImport);
+      els.batchCancelBtn.addEventListener("click", clearBatchReview);
       els.batchClearBtn.addEventListener("click", () => {
         els.batchInput.value = "";
+        clearBatchReview();
         els.batchInput.focus();
       });
 
@@ -908,6 +1142,61 @@
       return json?.data?.Page?.media ?? [];
     }
 
+    async function getAniListMediaById(id) {
+      const query = `
+        query AnimeById($id: Int) {
+          Media(id: $id, type: ANIME) {
+            id
+            title { romaji english native }
+            coverImage { medium large }
+            episodes
+            format
+            status
+            seasonYear
+            siteUrl
+          }
+        }
+      `;
+
+      const response = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          variables: { id: Number(id) }
+        })
+      });
+
+      if (!response.ok) throw new Error(`AniList returned ${response.status}`);
+      const json = await response.json();
+      return json?.data?.Media ?? null;
+    }
+
+    async function lookupBatchAniList(input) {
+      const directId = getAniListIdFromInput(input);
+
+      if (directId) {
+        const media = await getAniListMediaById(directId);
+        return media ? [media] : [];
+      }
+
+      return searchAniList(input);
+    }
+
+    function getAniListIdFromInput(input) {
+      const value = String(input || "").trim();
+      const urlMatch = value.match(/anilist\.co\/anime\/(\d+)/i);
+      if (urlMatch) return Number(urlMatch[1]);
+
+      const labelledMatch = value.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i);
+      if (labelledMatch) return Number(labelledMatch[1]);
+
+      return null;
+    }
+
     function renderResults(results) {
       if (!results.length) {
         els.results.innerHTML = '<div class="empty">No AniList results found.</div>';
@@ -916,11 +1205,8 @@
 
       els.results.innerHTML = results.map((media) => {
         const title = getTitle(media.title);
-        const alreadyAdded = state.shows.some((show) => show.anilistId === media.id);
-        const meta = [media.format, media.seasonYear, media.episodes ? `${media.episodes} ep` : null]
-          .filter(Boolean)
-          .map(escapeHtml)
-          .join(" · ");
+        const alreadyAdded = isMediaOnBoard(media);
+        const meta = getMediaMeta(media);
 
         return `
           <button class="result-item" type="button" data-add-id="${media.id}" ${alreadyAdded ? "disabled" : ""}>
@@ -929,7 +1215,7 @@
               <span class="result-title">${escapeHtml(title)}</span>
               <span class="result-meta">${meta || "Anime"}</span>
             </span>
-            <span class="badge">${alreadyAdded ? "Added" : "Add"}</span>
+            <span class="badge ${alreadyAdded ? "duplicate" : ""}">${alreadyAdded ? "Added" : "Add"}</span>
           </button>
         `;
       }).join("");
@@ -943,7 +1229,7 @@
     }
 
     async function addShow(media) {
-      if (state.shows.some((show) => show.anilistId === media.id)) {
+      if (isMediaOnBoard(media)) {
         toast("That show is already on your board.");
         return;
       }
@@ -991,7 +1277,7 @@
       };
     }
 
-    async function importBatchNames() {
+    async function prepareBatchReview() {
       const names = parseBatchNames(els.batchInput.value);
 
       if (!names.length) {
@@ -1000,29 +1286,183 @@
         return;
       }
 
+      pendingBatchMatches = [];
+      renderBatchReview();
+
+      setStatus(`Matching 0/${names.length}…`);
+      els.batchImportBtn.disabled = true;
+      els.batchConfirmBtn.disabled = true;
+      els.batchImportBtn.textContent = "Matching…";
+
+      try {
+        for (let index = 0; index < names.length; index++) {
+          const input = names[index];
+          setStatus(`Matching ${index + 1}/${names.length}…`);
+
+          try {
+            const results = await lookupBatchAniList(input);
+            const firstAvailable = results.find((media) => !isMediaOnBoard(media));
+            const selected = firstAvailable || results[0] || null;
+
+            pendingBatchMatches.push({
+              input,
+              results,
+              selectedId: selected?.id ?? null,
+              skipped: !selected,
+              error: null
+            });
+          } catch (error) {
+            console.error(error);
+            pendingBatchMatches.push({
+              input,
+              results: [],
+              selectedId: null,
+              skipped: true,
+              error: error.message || "failed"
+            });
+          }
+
+          renderBatchReview();
+        }
+      } finally {
+        els.batchImportBtn.disabled = false;
+        els.batchImportBtn.textContent = "Review batch";
+        setStatus("Ready");
+      }
+
+      renderBatchReview();
+
+      const addableCount = getAddableBatchMatches().length;
+      toast(addableCount ? `Review ${addableCount} selected match${addableCount === 1 ? "" : "es"} before adding.` : "No addable matches found.", addableCount ? "" : "error");
+    }
+
+    function renderBatchReview() {
+      if (!pendingBatchMatches.length) {
+        els.batchReview.hidden = true;
+        els.batchReviewList.innerHTML = "";
+        els.batchReviewSummary.textContent = "No matches prepared yet.";
+        els.batchConfirmBtn.disabled = true;
+        return;
+      }
+
+      els.batchReview.hidden = false;
+
+      const addable = getAddableBatchMatches();
+      const skipped = pendingBatchMatches.filter((match) => match.skipped).length;
+      const duplicates = pendingBatchMatches.filter((match) => {
+        const selected = getSelectedBatchMedia(match);
+        return selected && isMediaOnBoard(selected);
+      }).length;
+      const lowConfidence = pendingBatchMatches.filter((match) => {
+        const selected = getSelectedBatchMedia(match);
+        return selected && getMatchInfo(match.input, selected).level === "low" && !match.skipped;
+      }).length;
+
+      const summaryParts = [
+        `${addable.length} selected`,
+        skipped ? `${skipped} skipped` : null,
+        duplicates ? `${duplicates} already on board` : null,
+        lowConfidence ? `${lowConfidence} low-confidence` : null
+      ].filter(Boolean);
+
+      els.batchReviewSummary.textContent = summaryParts.join(" · ");
+      els.batchConfirmBtn.disabled = addable.length === 0;
+      els.batchConfirmBtn.textContent = `Add ${addable.length || "selected"}`;
+
+      els.batchReviewList.innerHTML = pendingBatchMatches.map(renderBatchReviewRow).join("");
+
+      els.batchReviewList.querySelectorAll("[data-batch-select]").forEach((select) => {
+        select.addEventListener("change", () => {
+          const match = pendingBatchMatches[Number(select.dataset.batchSelect)];
+          if (!match) return;
+          match.selectedId = select.value ? Number(select.value) : null;
+          match.skipped = !match.selectedId;
+          renderBatchReview();
+        });
+      });
+
+      els.batchReviewList.querySelectorAll("[data-batch-skip]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const match = pendingBatchMatches[Number(button.dataset.batchSkip)];
+          if (!match) return;
+          match.skipped = !match.skipped;
+          if (!match.selectedId && match.results[0]) match.selectedId = match.results[0].id;
+          renderBatchReview();
+        });
+      });
+    }
+
+    function renderBatchReviewRow(match, index) {
+      const selected = getSelectedBatchMedia(match);
+      const selectedAlreadyAdded = selected ? isMediaOnBoard(selected) : false;
+      const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
+      const rowClasses = ["batch-row", match.skipped ? "skipped" : ""].filter(Boolean).join(" ");
+      const posterSrc = escapeAttr(selected?.coverImage?.medium || selected?.coverImage?.large || getFallbackPoster());
+      const title = selected ? getTitle(selected.title) : "No AniList result";
+      const meta = selected ? getMediaMeta(selected) || "Anime" : (match.error ? escapeHtml(match.error) : "Try a more specific title or add manually.");
+      const options = match.results.length
+        ? match.results.map((media) => {
+            const optionMeta = [media.seasonYear, media.format].filter(Boolean).join(" · ");
+            const duplicateText = isMediaOnBoard(media) ? " — already on board" : "";
+            return `<option value="${media.id}" ${media.id === match.selectedId ? "selected" : ""}>${escapeHtml(getTitle(media.title))}${optionMeta ? ` (${escapeHtml(optionMeta)})` : ""}${duplicateText}</option>`;
+          }).join("")
+        : '<option value="">No results</option>';
+      const badgeClass = selectedAlreadyAdded ? "duplicate" : `confidence-${info.level}`;
+      const badgeText = selectedAlreadyAdded ? "Already added" : info.label;
+
+      return `
+        <article class="${rowClasses}">
+          <div class="batch-input-name">
+            <span class="batch-input-label">Input</span>
+            <span class="batch-input-value" title="${escapeAttr(match.input)}">${escapeHtml(match.input)}</span>
+          </div>
+
+          <div class="batch-match">
+            <img class="poster" src="${posterSrc}" alt="" loading="lazy" />
+            <div class="batch-match-main">
+              <div class="batch-match-title-row">
+                <span class="batch-match-title" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
+                <span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+              </div>
+              <div class="batch-match-meta">${meta}</div>
+            </div>
+          </div>
+
+          <div class="batch-controls">
+            <select data-batch-select="${index}" aria-label="Choose AniList match for ${escapeAttr(match.input)}" ${match.results.length ? "" : "disabled"}>
+              ${options}
+            </select>
+            <div class="batch-control-row">
+              <button class="btn" type="button" data-batch-skip="${index}">${match.skipped ? "Use row" : "Skip"}</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    async function confirmBatchImport() {
+      const matches = getAddableBatchMatches();
+
+      if (!matches.length) {
+        toast("No selected matches to add.");
+        return;
+      }
+
       const added = [];
       const skipped = [];
       const failed = [];
 
-      setStatus(`Batch adding 0/${names.length}…`);
-      els.batchImportBtn.disabled = true;
-      els.batchImportBtn.textContent = "Adding…";
+      els.batchConfirmBtn.disabled = true;
+      els.batchConfirmBtn.textContent = "Adding…";
+      setStatus(`Adding 0/${matches.length}…`);
 
       try {
-        for (let index = 0; index < names.length; index++) {
-          const name = names[index];
-          setStatus(`Batch adding ${index + 1}/${names.length}…`);
+        for (let index = 0; index < matches.length; index++) {
+          const { match, media } = matches[index];
+          setStatus(`Adding ${index + 1}/${matches.length}…`);
 
           try {
-            const results = await searchAniList(name);
-            const media = results[0];
-
-            if (!media) {
-              failed.push(`${name}: no AniList result`);
-              continue;
-            }
-
-            if (state.shows.some((show) => show.anilistId === media.id)) {
+            if (isMediaOnBoard(media)) {
               skipped.push(getTitle(media.title));
               continue;
             }
@@ -1035,19 +1475,23 @@
             saveState();
           } catch (error) {
             console.error(error);
-            failed.push(`${name}: ${error.message || "failed"}`);
+            failed.push(`${match.input}: ${error.message || "failed"}`);
           }
         }
       } finally {
-        els.batchImportBtn.disabled = false;
-        els.batchImportBtn.textContent = "Add batch";
         setStatus("Ready");
+        els.batchConfirmBtn.disabled = false;
       }
 
       render();
       saveState();
 
-      if (added.length) els.batchInput.value = "";
+      if (added.length) {
+        els.batchInput.value = "";
+        clearBatchReview();
+      } else {
+        renderBatchReview();
+      }
 
       const parts = [];
       if (added.length) parts.push(`${added.length} added`);
@@ -1059,6 +1503,24 @@
       if (failed.length) {
         console.warn("Batch import failures:", failed);
       }
+    }
+
+    function getAddableBatchMatches() {
+      return pendingBatchMatches
+        .filter((match) => !match.skipped)
+        .map((match) => ({ match, media: getSelectedBatchMedia(match) }))
+        .filter(({ media }) => media && !isMediaOnBoard(media));
+    }
+
+    function getSelectedBatchMedia(match) {
+      if (!match?.results?.length || !match.selectedId) return null;
+      return match.results.find((media) => media.id === Number(match.selectedId)) || null;
+    }
+
+    function clearBatchReview() {
+      pendingBatchMatches = [];
+      renderBatchReview();
+      setStatus("Ready");
     }
 
     function parseBatchNames(value) {
@@ -1073,6 +1535,80 @@
           seen.add(key);
           return true;
         });
+    }
+
+    function getMatchInfo(input, media) {
+      if (!media) return { level: "none", label: "No match", score: 0 };
+
+      const directId = getAniListIdFromInput(input);
+      if (directId && Number(directId) === Number(media.id)) {
+        return { level: "high", label: "Direct ID", score: 1 };
+      }
+
+      const query = normalizeTitle(input).replace(/\b(?:anilist|alid|al)\b\s*\d+\b/g, "").trim();
+      const queryWithoutYear = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, ""));
+      const titles = getMediaTitles(media).map(normalizeTitle);
+      const year = getYearFromText(input);
+
+      let bestScore = 0;
+
+      for (const title of titles) {
+        const titleWithoutYear = title.replace(/\b(19|20)\d{2}\b/g, "").trim();
+        const candidates = [query, queryWithoutYear].filter(Boolean);
+
+        for (const candidate of candidates) {
+          if (!candidate || !title) continue;
+          if (title === candidate) bestScore = Math.max(bestScore, 1);
+          if (titleWithoutYear === candidate) bestScore = Math.max(bestScore, 0.96);
+          if (title.includes(candidate) || candidate.includes(titleWithoutYear)) bestScore = Math.max(bestScore, 0.76);
+          bestScore = Math.max(bestScore, tokenSimilarity(candidate, title));
+        }
+      }
+
+      if (year && Number(media.seasonYear) === year) bestScore += 0.12;
+      bestScore = Math.min(bestScore, 1);
+
+      if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore };
+      if (bestScore >= 0.6) return { level: "medium", label: "Check match", score: bestScore };
+      return { level: "low", label: "Low match", score: bestScore };
+    }
+
+    function normalizeTitle(value) {
+      return String(value || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function getMediaTitles(media) {
+      return [
+        media?.title?.english,
+        media?.title?.romaji,
+        media?.title?.native
+      ].filter(Boolean);
+    }
+
+    function tokenSimilarity(a, b) {
+      const aTokens = new Set(String(a || "").split(" ").filter(Boolean));
+      const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
+      if (!aTokens.size || !bTokens.size) return 0;
+
+      let overlap = 0;
+      for (const token of aTokens) {
+        if (bTokens.has(token)) overlap++;
+      }
+
+      return overlap / Math.max(aTokens.size, bTokens.size);
+    }
+
+    function getYearFromText(value) {
+      const match = String(value || "").match(/\b((?:19|20)\d{2})\b/);
+      return match ? Number(match[1]) : null;
     }
 
     async function checkAllStatuses({ silent = false } = {}) {
@@ -1200,8 +1736,7 @@
         .filter(Boolean)
         .map(escapeHtml)
         .join(" · ");
-      const fallbackPoster = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='136' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' rx='18' fill='%23252c3d'/%3E%3Cpath d='M25 93h50M32 42h36M32 58h36M32 74h24' stroke='%237f8aa1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E";
-      const posterSrc = escapeAttr(show.coverImage || fallbackPoster);
+      const posterSrc = escapeAttr(show.coverImage || getFallbackPoster());
       const thumbHtml = releaseUrl
         ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" /></a>`
         : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" />`;
@@ -1217,8 +1752,8 @@
                 ${completeToggle}
               </div>
               <div class="card-meta">
-                ${meta ? `<span>${meta}</span>` : ""}
-                ${releaseBadge}
+                <span class="card-meta-text">${meta || "Anime"}</span>
+                <span class="card-status">${releaseBadge}</span>
               </div>
             </div>
             <div class="card-actions">
@@ -1385,6 +1920,7 @@
 
       state.shows = [];
       state.ui.openNotes = {};
+      clearBatchReview();
       render();
       saveState();
       toast("Board cleared.");
@@ -1460,6 +1996,21 @@
 
     function getTitle(title = {}) {
       return title.english || title.romaji || title.native || "Untitled";
+    }
+
+    function getMediaMeta(media) {
+      return [media.format, media.seasonYear, media.episodes ? `${media.episodes} ep` : null]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(" · ");
+    }
+
+    function isMediaOnBoard(media) {
+      return state.shows.some((show) => Number(show.anilistId) === Number(media?.id));
+    }
+
+    function getFallbackPoster() {
+      return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='136' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' rx='18' fill='%23252c3d'/%3E%3Cpath d='M25 93h50M32 42h36M32 58h36M32 74h24' stroke='%237f8aa1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E";
     }
 
     function debounce(fn, wait) {
