@@ -7,10 +7,8 @@
   <style>
     :root {
       --bg: #0b1020;
-      --bg-soft: #121933;
       --panel: #11182d;
       --panel-soft: #18213d;
-      --card: #131b31;
       --text: #eef2ff;
       --muted: #98a6cc;
       --line: rgba(255,255,255,0.08);
@@ -24,10 +22,6 @@
       --bad: #ff8d8d;
       --bad-soft: rgba(255,141,141,0.14);
       --shadow: 0 20px 50px rgba(0,0,0,0.28);
-      --radius-xl: 24px;
-      --radius-lg: 18px;
-      --radius-md: 14px;
-      --radius-sm: 12px;
     }
 
     * { box-sizing: border-box; }
@@ -40,13 +34,8 @@
     }
 
     a { color: inherit; text-decoration: none; }
-    code {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 8px;
-      padding: 2px 6px;
-      font-size: 0.92em;
-    }
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
 
     .app {
       width: min(1120px, calc(100vw - 24px));
@@ -61,375 +50,8 @@
       overflow: hidden;
     }
 
-    .options-panel {
-      border-top: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-    }
-
-    .options-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .options-summary::-webkit-details-marker { display: none; }
-
-    .options-summary::after {
-      content: '▾';
-      color: var(--muted);
-      margin-left: auto;
-      order: 3;
-      transition: transform 0.16s ease;
-    }
-
-    .options-panel[open] .options-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .options-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .options-summary-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .options-inner {
-      padding: 0 18px 18px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .options-stack {
-      display: grid;
-      gap: 14px;
-    }
-
-    .hero {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: var(--panel-soft);
-    }
-
-    .hero-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
-    }
-
-    .eyebrow {
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 12px;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(28px, 3.7vw, 42px);
-      line-height: 1.04;
-    }
-
-    .sub {
-      margin: 10px 0 0;
-      color: var(--muted);
-      max-width: 64ch;
-      line-height: 1.55;
-      font-size: 14px;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
-      flex: 0 0 auto;
-    }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
-    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
-
-    .stats-panel {
-      margin-bottom: 18px;
-      padding: 0;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .stats-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .stats-summary::-webkit-details-marker { display: none; }
-
-    .stats-summary::after {
-      content: '▾';
-      color: var(--muted);
-      transition: transform 0.16s ease;
-    }
-
-    .stats-panel[open] .stats-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      padding: 0 14px 14px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 18px;
-      padding: 14px 16px;
-      min-height: 96px;
-    }
-
-    .stat-label {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 28px;
-      line-height: 1;
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .stat-help {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 12px;
-      align-items: end;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
-    }
-
-    .field.username { grid-column: span 3; }
-    .field.list { grid-column: span 3; }
-    .field.api { grid-column: span 4; }
-    .field.search { grid-column: span 7; }
-    .field.filter { grid-column: span 3; }
-    .field.actions { grid-column: span 2; }
-
-    label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    input, button, .segmented {
-      font: inherit;
-    }
-
-    input {
-      width: 100%;
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line-strong);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: rgba(140,158,255,0.65);
-      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
-    }
-
-    .segmented {
-      display: inline-flex;
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 4px;
-      gap: 4px;
-      min-height: 48px;
-    }
-
-    .segmented button,
-    .ghost-btn,
-    .primary-btn,
-    .link-btn,
-    .mini-link {
-      border: 0;
-      cursor: pointer;
-      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
-    }
-
-    .segmented button {
-      flex: 1;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-      padding: 10px 12px;
-    }
-
-    .segmented button.active {
-      background: rgba(140,158,255,0.18);
-      color: var(--text);
-      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
-    }
-
-    .button-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .primary-btn,
-    .ghost-btn {
-      min-height: 48px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-weight: 800;
-      width: 100%;
-    }
-
-    .primary-btn {
-      color: white;
-      background: linear-gradient(135deg, #8c9eff, #a479ff);
-      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
-    }
-
-    .ghost-btn {
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-    }
-
-    .primary-btn:hover,
-    .ghost-btn:hover,
-    .link-btn:hover,
-    .mini-link:hover,
-    .segmented button:hover {
-      transform: translateY(-1px);
-    }
-
-    .primary-btn:disabled,
-    .ghost-btn:disabled {
-      opacity: 0.7;
-      cursor: progress;
-      transform: none;
-    }
-
-    .bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 22px;
-      border-bottom: 1px solid var(--line);
-      flex-wrap: wrap;
-    }
-
-    .bar-left,
-    .bar-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .notice {
-      margin: 18px 22px 0;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    .notice.error {
-      color: #ffd8d8;
-      background: rgba(255,141,141,0.08);
-      border-color: rgba(255,141,141,0.18);
-    }
-
-    .notice.success {
-      color: #d8ffef;
-      background: rgba(74,222,168,0.08);
-      border-color: rgba(74,222,168,0.18);
-    }
-
-    .content {
-      padding: 18px;
-    }
-
-    .list {
-      display: grid;
-      gap: 12px;
-    }
+    .content { padding: 18px; }
+    .list { display: grid; gap: 12px; }
 
     .item {
       background: rgba(255,255,255,0.03);
@@ -438,28 +60,13 @@
       overflow: hidden;
     }
 
-    .item-link,
-    .item-static {
+    .item-top {
       display: grid;
       grid-template-columns: 46px minmax(0, 1fr) auto;
       gap: 12px;
       align-items: center;
       padding: 10px 12px;
       min-height: 72px;
-    }
-
-    .item-link {
-      cursor: pointer;
-      transition: transform 0.16s ease, background 0.16s ease;
-    }
-
-    .item-link:hover {
-      background: rgba(255,255,255,0.035);
-      transform: translateY(-1px);
-    }
-
-    .item-static {
-      opacity: 0.96;
     }
 
     .poster {
@@ -491,24 +98,7 @@
       padding: 8px;
     }
 
-    .item-main {
-      min-width: 0;
-      display: grid;
-      gap: 6px;
-    }
-
-    .item-summary {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-      min-width: 0;
-    }
-
-    .title-block {
-      min-width: 0;
-      flex: 1 1 auto;
-    }
+    .item-main { min-width: 0; display: grid; gap: 6px; }
 
     .title {
       margin: 0;
@@ -519,6 +109,22 @@
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
     }
 
     .badges {
@@ -544,7 +150,54 @@
     .pill.ok { color: #d8ffef; background: var(--ok-soft); border-color: rgba(74,222,168,0.18); }
     .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
     .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
-    .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
+    .pill.muted { color: var(--muted); background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.08); }
+
+    details {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: #dce4ff;
+      font-weight: 800;
+      font-size: 13px;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    .entry-collapse {
+      margin: 0 12px 12px;
+      background: rgba(255,255,255,0.025);
+      border-color: rgba(255,255,255,0.055);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .entry-toggle {
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .entry-toggle::after {
+      content: 'Options';
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .entry-collapse[open] .entry-toggle::after { content: 'Hide'; }
+
+    .entry-details {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 12px;
+    }
 
     .meta-grid {
       display: grid;
@@ -575,13 +228,33 @@
       word-break: break-word;
     }
 
-    .meta-value.muted { color: var(--muted); }
+    .comment-box { display: grid; gap: 8px; }
 
-    .line-clamp-3 {
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    textarea, input, select {
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(140,158,255,0.65);
+      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
     }
 
     .actions-row {
@@ -591,127 +264,246 @@
       align-items: center;
     }
 
-    .link-btn,
-    .mini-link {
+    .primary-btn, .ghost-btn, .danger-btn, .mini-link {
+      border: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       font-weight: 800;
-      border-radius: 12px;
+      border-radius: 14px;
+    }
+
+    .primary-btn, .ghost-btn, .danger-btn {
+      min-height: 48px;
+      padding: 12px 14px;
+    }
+
+    .primary-btn {
+      color: white;
+      background: linear-gradient(135deg, #8c9eff, #a479ff);
+      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
+    }
+
+    .ghost-btn {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
       border: 1px solid var(--line);
     }
 
-    .link-btn {
-      min-height: 42px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.05);
-      color: var(--text);
-    }
-
-    .link-btn.primary {
-      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
-      border-color: rgba(140,158,255,0.24);
+    .danger-btn {
+      color: #ffdcdc;
+      background: rgba(255,141,141,0.1);
+      border: 1px solid rgba(255,141,141,0.18);
     }
 
     .mini-link {
-      padding: 6px 10px;
+      min-height: 36px;
+      padding: 8px 10px;
       background: rgba(255,255,255,0.04);
       color: var(--muted);
       font-size: 12px;
+      border: 1px solid var(--line);
     }
 
-    details {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 10px 12px;
+    .primary-btn:hover, .ghost-btn:hover, .danger-btn:hover, .mini-link:hover { transform: translateY(-1px); }
+    .primary-btn:disabled, .ghost-btn:disabled, .danger-btn:disabled, .mini-link:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+    .options-panel {
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
     }
 
-    summary {
+    .options-summary {
       cursor: pointer;
-      color: #dce4ff;
-      font-weight: 800;
-      font-size: 13px;
-      list-style: none;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    summary::-webkit-details-marker { display: none; }
+    .options-summary::after {
+      content: '▾';
+      color: var(--muted);
+      margin-left: auto;
+      order: 3;
+      transition: transform 0.16s ease;
+    }
 
-    .entry-collapse {
-      background: rgba(255,255,255,0.025);
-      border-color: rgba(255,255,255,0.055);
+    .options-panel[open] .options-summary::after { transform: rotate(180deg); }
+    .options-title { font-size: 14px; font-weight: 800; color: var(--text); }
+
+    .options-summary-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .options-inner {
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-soft);
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field { display: grid; gap: 7px; }
+    .field.search { grid-column: span 7; }
+    .field.category { grid-column: span 3; }
+    .field.actions { grid-column: span 2; }
+    .field.api { grid-column: span 7; }
+    .field.importexport { grid-column: span 5; }
+    .field.filter { grid-column: span 5; }
+    .field.local-search { grid-column: span 7; }
+
+    .segmented {
+      display: inline-flex;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+      min-height: 48px;
+    }
+
+    .segmented button {
+      flex: 1;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 10px 12px;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .segmented button.active {
+      background: rgba(140,158,255,0.18);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
+    }
+
+    .button-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .button-row > button { flex: 1 1 150px; }
+
+    .chip, .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
+      flex: 0 0 auto;
+    }
+
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
+    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
+
+    .notice {
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .notice.error { color: #ffd8d8; background: rgba(255,141,141,0.08); border-color: rgba(255,141,141,0.18); }
+    .notice.success { color: #d8ffef; background: rgba(74,222,168,0.08); border-color: rgba(74,222,168,0.18); }
+
+    .stats-panel {
       padding: 0;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
       overflow: hidden;
     }
 
-    .entry-toggle {
-      padding: 11px 12px;
+    .stats-summary {
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
     }
 
-    .entry-toggle::after {
-      content: 'Show details';
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
+    .stats-summary::after { content: '▾'; color: var(--muted); transition: transform 0.16s ease; }
+    .stats-panel[open] .stats-summary::after { transform: rotate(180deg); }
 
-    .entry-collapse[open] .entry-toggle::after {
-      content: 'Hide details';
-    }
-
-    .entry-details {
-      padding: 0 12px 12px;
+    .stats {
       display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
+      padding: 0 14px 14px;
     }
 
-    .torrent-list {
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-height: 96px;
+    }
+
+    .stat-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; line-height: 1; font-weight: 800; margin-bottom: 6px; }
+    .stat-help { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .search-results { display: grid; gap: 10px; margin-top: 12px; }
+
+    .search-result {
       display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
       gap: 10px;
-      margin-top: 12px;
-    }
-
-    .torrent {
-      border-radius: 14px;
-      padding: 11px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .torrent-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      margin-bottom: 6px;
-    }
-
-    .torrent-name {
-      font-weight: 800;
-      line-height: 1.4;
-    }
-
-    .torrent-meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      margin-bottom: 8px;
-    }
-
-    .footer-note {
-      margin-top: 16px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
+      align-items: center;
+      padding: 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.035);
     }
 
     .empty {
@@ -723,74 +515,34 @@
       background: rgba(255,255,255,0.03);
     }
 
+    .hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
     @media (max-width: 920px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .field.username,
-      .field.list,
-      .field.api,
-      .field.search,
-      .field.filter,
-      .field.actions { grid-column: span 6; }
+      .field.search, .field.category, .field.actions, .field.api, .field.importexport, .field.filter, .field.local-search { grid-column: span 6; }
     }
 
     @media (max-width: 680px) {
-      .app {
-        width: min(100vw - 12px, 1120px);
-        margin: 8px auto 18px;
-      }
-
+      .app { width: min(100vw - 12px, 1120px); margin: 8px auto 18px; }
       .shell { border-radius: 22px; }
-      .content { padding-left: 14px; padding-right: 14px; }
-      .hero { padding: 14px; }
-      .content { padding-top: 14px; padding-bottom: 14px; }
+      .content { padding: 14px; }
       .options-inner { padding: 0 14px 14px; }
+      .hero { padding: 14px; }
       .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
       .stat { padding: 12px; min-height: 0; }
       .stat-value { font-size: 24px; }
       .controls { grid-template-columns: 1fr; }
-      .field.username,
-      .field.list,
-      .field.api,
-      .field.search,
-      .field.filter,
-      .field.actions { grid-column: auto; }
-      .item {
-        border-radius: 16px;
-      }
-      .item-link,
-      .item-static {
-        grid-template-columns: 42px minmax(0, 1fr) auto;
-        gap: 10px;
-        padding: 10px;
-      }
-      .poster {
-        width: 42px;
-        border-radius: 10px;
-      }
+      .field.search, .field.category, .field.actions, .field.api, .field.importexport, .field.filter, .field.local-search { grid-column: auto; }
+      .item-top { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; padding: 10px; }
+      .item-actions { grid-column: 1 / -1; justify-content: flex-start; }
+      .poster { width: 42px; border-radius: 10px; }
       .title { font-size: 14px; }
-      .button-row { align-items: stretch; }
-      .button-row .primary-btn,
-      .button-row .ghost-btn { width: 100%; }
       .pill { white-space: normal; }
-      .notice { margin-left: 0; margin-right: 0; }
-
-      .options-summary {
-        padding: 12px 14px;
-      }
-
-      .options-summary-right {
-        width: 100%;
-      }
-
-      .options-summary::after {
-        margin-left: 0;
-      }
-
-      .options-summary-right .chip,
-      .options-summary-right .hero-badge {
-        flex: 1 1 auto;
-        justify-content: center;
-      }
+      .meta-grid { grid-template-columns: 1fr; }
+      .search-result { grid-template-columns: 42px minmax(0, 1fr); }
+      .search-result .actions-row { grid-column: 1 / -1; }
+      .options-summary-right { width: 100%; }
+      .options-summary-right .chip, .options-summary-right .hero-badge { flex: 1 1 auto; justify-content: center; }
     }
   </style>
 </head>
@@ -806,7 +558,6 @@
         <summary class="options-summary">
           <span class="options-title">Options</span>
           <span class="options-summary-right">
-            <span class="chip"><strong id="watchingListLabel">zrr / releases</strong></span>
             <span class="chip" id="visibleCountChip">Showing 0 titles</span>
             <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
           </span>
@@ -815,71 +566,84 @@
         <div class="options-inner">
           <div id="notice" class="notice" hidden></div>
 
-          <div class="options-stack">
-            <details class="stats-panel">
-              <summary class="stats-summary">Show stats</summary>
-              <div class="stats">
-                <div class="stat">
-                  <div class="stat-label">Anime in list</div>
-                  <div class="stat-value" id="statTotal">0</div>
-                  <div class="stat-help">Unique AniList shows in the selected custom list.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Found on releases.moe</div>
-                  <div class="stat-value" id="statFound">0</div>
-                  <div class="stat-help">Entries with a releases.moe page.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Still waiting</div>
-                  <div class="stat-value" id="statWaiting">0</div>
-                  <div class="stat-help">Tracked shows that are not listed yet.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Last checked</div>
-                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                  <div class="stat-help">Only refreshes on page load or manual reload.</div>
+          <section class="hero">
+            <h2 class="section-title">Add from AniList</h2>
+            <div class="controls">
+              <div class="field search">
+                <label for="aniListSearchInput">AniList search</label>
+                <input id="aniListSearchInput" placeholder="Search anime title" autocomplete="off" />
+              </div>
+              <div class="field category">
+                <label for="addCategory">Add to</label>
+                <select id="addCategory">
+                  <option value="watching">Future releases</option>
+                  <option value="downloaded">Downloaded</option>
+                </select>
+              </div>
+              <div class="field actions">
+                <label>Search</label>
+                <button id="aniListSearchBtn" class="primary-btn">Search</button>
+              </div>
+            </div>
+            <div id="searchResults" class="search-results" hidden></div>
+          </section>
+
+          <section class="hero">
+            <h2 class="section-title">Board</h2>
+            <div class="controls">
+              <div class="field local-search">
+                <label for="boardSearchInput">Filter board</label>
+                <input id="boardSearchInput" placeholder="Search titles or comments" autocomplete="off" />
+              </div>
+              <div class="field filter">
+                <label>View</label>
+                <div class="segmented" id="categoryFilter">
+                  <button type="button" data-filter="all" class="active">All</button>
+                  <button type="button" data-filter="watching">Future</button>
+                  <button type="button" data-filter="downloaded">Downloaded</button>
                 </div>
               </div>
-            </details>
-
-            <section class="hero" id="settingsPanel">
-              <div class="controls">
-                <div class="field username">
-                  <label for="username">AniList username</label>
-                  <input id="username" value="zrr" autocomplete="off" />
-                </div>
-                <div class="field list">
-                  <label for="listName">Custom list name</label>
-                  <input id="listName" value="releases" autocomplete="off" />
-                </div>
-                <div class="field api">
-                  <label for="apiBase">releases.moe API base</label>
-                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
-                </div>
-                <div class="field search">
-                  <label for="searchInput">Filter anime</label>
-                  <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
-                </div>
-                <div class="field filter">
-                  <label>Status view</label>
-                  <div class="segmented" id="statusFilter">
-                    <button type="button" data-filter="all" class="active">All</button>
-                    <button type="button" data-filter="found">Found</button>
-                    <button type="button" data-filter="waiting">Waiting</button>
-                  </div>
-                </div>
-                <div class="field actions">
-                  <label>Actions</label>
-                  <div class="button-row">
-                    <button id="refreshBtn" class="primary-btn">Reload</button>
-                    <button id="resetBtn" class="ghost-btn">Reset</button>
-                  </div>
+              <div class="field api">
+                <label for="apiBase">.moe API base</label>
+                <input id="apiBase" value="https://releases.moe" autocomplete="off" />
+              </div>
+              <div class="field importexport">
+                <label>Actions</label>
+                <div class="button-row">
+                  <button id="checkReleasesBtn" class="primary-btn">Check releases</button>
+                  <button id="exportBtn" class="ghost-btn">Export JSON</button>
+                  <button id="importBtn" class="ghost-btn">Import JSON</button>
                 </div>
               </div>
+            </div>
+            <input id="importFile" class="hidden-file" type="file" accept="application/json" />
+          </section>
 
-           
-            </section>
-          </div>
+          <details class="stats-panel">
+            <summary class="stats-summary">Show stats</summary>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-label">Anime on board</div>
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-help">Manually added AniList shows.</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Future releases</div>
+                <div class="stat-value" id="statWatching">0</div>
+                <div class="stat-help">Titles you are still tracking.</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Downloaded</div>
+                <div class="stat-value" id="statDownloaded">0</div>
+                <div class="stat-help">Titles you already have.</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Last checked</div>
+                <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
+                <div class="stat-help">Release status is checked manually.</div>
+              </div>
+            </div>
+          </details>
         </div>
       </details>
     </div>
@@ -887,72 +651,44 @@
 
   <script>
     const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = 'releases-watchlist-settings-v2';
-    const DEFAULTS = {
-      username: 'zrr',
-      listName: 'releases',
-      apiBase: 'https://releases.moe'
-    };
+    const SETTINGS_KEY = 'anime-release-board-settings-v1';
+    const BOARD_KEY = 'anime-release-board-v1';
+
+    const DEFAULTS = { apiBase: 'https://releases.moe' };
 
     const state = {
       items: [],
       lastCheckedAt: null,
       isLoading: false,
-      filter: 'all',
-      search: ''
+      categoryFilter: 'all',
+      boardSearch: '',
+      searchResults: []
     };
 
     const els = {
-      username: document.getElementById('username'),
-      listName: document.getElementById('listName'),
-      apiBase: document.getElementById('apiBase'),
-      searchInput: document.getElementById('searchInput'),
-      refreshBtn: document.getElementById('refreshBtn'),
-      resetBtn: document.getElementById('resetBtn'),
-      statusDot: document.getElementById('statusDot'),
-      statusText: document.getElementById('statusText'),
-      watchingListLabel: document.getElementById('watchingListLabel'),
-      visibleCountChip: document.getElementById('visibleCountChip'),
-      statusFilter: document.getElementById('statusFilter'),
-      notice: document.getElementById('notice'),
-      optionsPanel: document.getElementById('optionsPanel'),
       list: document.getElementById('list'),
       emptyState: document.getElementById('emptyState'),
+      optionsPanel: document.getElementById('optionsPanel'),
+      notice: document.getElementById('notice'),
+      statusDot: document.getElementById('statusDot'),
+      statusText: document.getElementById('statusText'),
+      visibleCountChip: document.getElementById('visibleCountChip'),
+      aniListSearchInput: document.getElementById('aniListSearchInput'),
+      aniListSearchBtn: document.getElementById('aniListSearchBtn'),
+      addCategory: document.getElementById('addCategory'),
+      searchResults: document.getElementById('searchResults'),
+      boardSearchInput: document.getElementById('boardSearchInput'),
+      categoryFilter: document.getElementById('categoryFilter'),
+      apiBase: document.getElementById('apiBase'),
+      checkReleasesBtn: document.getElementById('checkReleasesBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      importBtn: document.getElementById('importBtn'),
+      importFile: document.getElementById('importFile'),
       statTotal: document.getElementById('statTotal'),
-      statFound: document.getElementById('statFound'),
-      statWaiting: document.getElementById('statWaiting'),
+      statWatching: document.getElementById('statWatching'),
+      statDownloaded: document.getElementById('statDownloaded'),
       statChecked: document.getElementById('statChecked')
     };
-
-    function loadSettings() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return { ...DEFAULTS };
-        const parsed = JSON.parse(raw);
-        return { ...DEFAULTS, ...parsed };
-      } catch {
-        return { ...DEFAULTS };
-      }
-    }
-
-    function getSettings() {
-      return {
-        username: els.username.value.trim() || DEFAULTS.username,
-        listName: els.listName.value.trim() || DEFAULTS.listName,
-        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
-      };
-    }
-
-    function applySettings(settings) {
-      els.username.value = settings.username;
-      els.listName.value = settings.listName;
-      els.apiBase.value = settings.apiBase;
-      els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
-    }
-
-    function saveSettings() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
-    }
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -961,6 +697,45 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+    function normalizeTitle(media) {
+      return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
+    }
+
+    function getAltTitle(media) {
+      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
+        .filter(Boolean)
+        .filter((value, index, arr) => arr.indexOf(value) === index);
+      if (names.length <= 1) return '';
+      return names.slice(1).join(' - ');
+    }
+
+    function normalizeLooseString(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function formatDateTime(value) {
+      if (!value) return 'Never';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }).format(date);
+    }
+
+    function formatBytes(bytes) {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return '-';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let n = value;
+      let i = 0;
+      while (n >= 1024 && i < units.length - 1) {
+        n /= 1024;
+        i += 1;
+      }
+      return `${n.toFixed(n >= 100 || i === 0 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
     }
 
     function setStatus(kind, text) {
@@ -982,39 +757,90 @@
       els.notice.innerHTML = '';
     }
 
-    function formatDateTime(value) {
-      if (!value) return 'Never';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '—';
-      return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric', month: 'short', day: '2-digit',
-        hour: '2-digit', minute: '2-digit'
-      }).format(date);
+    function getSettings() {
+      return {
+        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
+      };
     }
 
-    function formatBytes(bytes) {
-      const value = Number(bytes);
-      if (!Number.isFinite(value) || value <= 0) return '—';
-      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-      let n = value;
-      let i = 0;
-      while (n >= 1024 && i < units.length - 1) {
-        n /= 1024;
-        i += 1;
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return { ...DEFAULTS };
+        return { ...DEFAULTS, ...JSON.parse(raw) };
+      } catch {
+        return { ...DEFAULTS };
       }
-      return `${n.toFixed(n >= 100 || i === 0 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
     }
 
-    function normalizeTitle(media) {
-      return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
+    function applySettings(settings) {
+      els.apiBase.value = settings.apiBase || DEFAULTS.apiBase;
     }
 
-    function getAltTitle(media) {
-      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
-        .filter(Boolean)
-        .filter((value, index, arr) => arr.indexOf(value) === index);
-      if (names.length <= 1) return '';
-      return names.slice(1).join(' • ');
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettings()));
+    }
+
+    function normalizeRelease(release) {
+      return {
+        hasSeaDex: Boolean(release?.hasSeaDex),
+        incomplete: Boolean(release?.incomplete),
+        entryUrl: String(release?.entryUrl || ''),
+        notes: String(release?.notes || ''),
+        theoreticalBest: String(release?.theoreticalBest || ''),
+        updatedAt: release?.updatedAt || '',
+        bestSize: String(release?.bestSize || '-'),
+        bestGroup: String(release?.bestGroup || ''),
+        torrentCount: Number(release?.torrentCount || 0)
+      };
+    }
+
+    function normalizeBoardItem(item) {
+      if (!item || item.id == null) return null;
+      return {
+        id: Number(item.id),
+        title: String(item.title || `AniList #${item.id}`),
+        altTitle: String(item.altTitle || ''),
+        cover: String(item.cover || ''),
+        coverColor: String(item.coverColor || '#2d3e77'),
+        aniListUrl: String(item.aniListUrl || `https://anilist.co/anime/${item.id}`),
+        category: item.category === 'downloaded' ? 'downloaded' : 'watching',
+        comment: String(item.comment || ''),
+        addedAt: item.addedAt || new Date().toISOString(),
+        downloadedAt: item.downloadedAt || null,
+        release: normalizeRelease(item.release),
+        searchBlob: ''
+      };
+    }
+
+    function loadBoard() {
+      try {
+        const raw = localStorage.getItem(BOARD_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        state.items = Array.isArray(parsed?.items) ? parsed.items.map(normalizeBoardItem).filter(Boolean) : [];
+        state.lastCheckedAt = parsed?.lastCheckedAt || null;
+      } catch {
+        state.items = [];
+        state.lastCheckedAt = null;
+      }
+    }
+
+    function saveBoard() {
+      localStorage.setItem(BOARD_KEY, JSON.stringify({
+        version: 1,
+        lastCheckedAt: state.lastCheckedAt,
+        items: state.items
+      }));
+    }
+
+    function rebuildSearchBlobs() {
+      state.items = state.items.map((item) => ({
+        ...item,
+        searchBlob: [item.title, item.altTitle, item.comment, item.release?.notes, item.release?.bestGroup, item.category]
+          .join(' ')
+          .toLowerCase()
+      }));
     }
 
     async function postAniList(query, variables) {
@@ -1032,50 +858,41 @@
       return data.data;
     }
 
-    async function fetchAniListCustomList(username, listName) {
+    async function searchAniList(term) {
       const query = `
-        query ($userName: String!) {
-          MediaListCollection(userName: $userName, type: ANIME) {
-            lists {
-              name
-              isCustomList
-              entries {
-                media {
-                  id
-                  siteUrl
-                  title { romaji english native }
-                  coverImage { large color }
-                }
-              }
+        query ($search: String!) {
+          Page(page: 1, perPage: 10) {
+            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+              id
+              siteUrl
+              format
+              status
+              season
+              seasonYear
+              title { romaji english native }
+              coverImage { large color }
             }
           }
         }
       `;
+      const data = await postAniList(query, { search: term });
+      return data?.Page?.media || [];
+    }
 
-      const data = await postAniList(query, { userName: username });
-      const lists = data?.MediaListCollection?.lists || [];
-      const wanted = lists.find((list) =>
-        list?.isCustomList &&
-        String(list?.name || '').trim().toLowerCase() === listName.trim().toLowerCase()
-      );
-
-      if (!wanted) {
-        const available = lists
-          .filter((list) => list?.isCustomList)
-          .map((list) => list.name)
-          .filter(Boolean);
-        const extra = available.length
-          ? ` Available custom lists: ${available.map(escapeHtml).join(', ')}.`
-          : ' No public custom lists were returned for this account.';
-        throw new Error(`Custom list <strong>${escapeHtml(listName)}</strong> was not found for <strong>${escapeHtml(username)}</strong>.${extra}`);
-      }
-
-      const deduped = new Map();
-      for (const entry of wanted.entries || []) {
-        const media = entry?.media;
-        if (media?.id) deduped.set(media.id, media);
-      }
-      return Array.from(deduped.values());
+    function mediaToBoardItem(media, category) {
+      return normalizeBoardItem({
+        id: media.id,
+        title: normalizeTitle(media),
+        altTitle: getAltTitle(media),
+        cover: media?.coverImage?.large || '',
+        coverColor: media?.coverImage?.color || '#2d3e77',
+        aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
+        category,
+        comment: '',
+        addedAt: new Date().toISOString(),
+        downloadedAt: category === 'downloaded' ? new Date().toISOString() : null,
+        release: normalizeRelease(null)
+      });
     }
 
     function chunk(array, size) {
@@ -1084,8 +901,8 @@
       return out;
     }
 
-    function normalizeLooseString(value) {
-      return String(value || '').trim().toLowerCase();
+    function buildSeaDexFilter(ids) {
+      return '(' + ids.map((id) => `alID=${Number(id)}`).join(' || ') + ')';
     }
 
     function getTorrentSignature(torrent) {
@@ -1127,9 +944,7 @@
           return n;
         };
 
-        if (score(torrent) > score(existing)) {
-          byKey.set(key, torrent);
-        }
+        if (score(torrent) > score(existing)) byKey.set(key, torrent);
       }
       return Array.from(byKey.values());
     }
@@ -1142,14 +957,10 @@
         n += Math.min((entry?.expand?.trs || []).length, 10) * 5;
         n += entry?.comparison ? 5 : 0;
         const updated = Date.parse(entry?.updated || '') || 0;
-        n += Math.floor(updated / 1_000_000_000);
+        n += Math.floor(updated / 1000000000);
         return n;
       };
       return score(candidate) > score(existing) ? candidate : existing;
-    }
-
-    function buildSeaDexFilter(ids) {
-      return '(' + ids.map((id) => `alID=${Number(id)}`).join(' || ') + ')';
     }
 
     async function fetchSeaDexByAniListIds(ids, apiBase) {
@@ -1168,7 +979,7 @@
         const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-          const message = data?.message || `releases.moe request failed with ${response.status}`;
+          const message = data?.message || `.moe request failed with ${response.status}`;
           throw new Error(message);
         }
         results.push(...(data?.items || []));
@@ -1199,65 +1010,175 @@
       })[0];
     }
 
-    function buildViewModel(media, entry) {
-      const bestTorrent = entry ? pickBestTorrent(entry) : null;
-      const comparisons = entry?.comparison
-        ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
-        : [];
+    function buildReleaseInfo(mediaId, entry) {
+      if (!entry) return normalizeRelease(null);
       const torrents = dedupeTorrents(entry?.expand?.trs || []);
+      const bestTorrent = pickBestTorrent(entry);
       const bestSize = bestTorrent
         ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
-        : '—';
-      const rawTorrentCount = (entry?.expand?.trs || []).length;
-      const duplicateTorrentCount = Math.max(0, rawTorrentCount - torrents.length);
+        : '-';
 
-      return {
-        id: media.id,
-        title: normalizeTitle(media),
-        altTitle: getAltTitle(media),
-        cover: media?.coverImage?.large || '',
-        coverColor: media?.coverImage?.color || '#2d3e77',
-        aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
-        hasSeaDex: Boolean(entry),
-        entryUrl: entry ? `https://releases.moe/${media.id}/` : '',
+      return normalizeRelease({
+        hasSeaDex: true,
         incomplete: Boolean(entry?.incomplete),
+        entryUrl: `https://releases.moe/${mediaId}/`,
         notes: entry?.notes || '',
         theoreticalBest: entry?.theoreticalBest || '',
         updatedAt: entry?.updated || '',
-        comparisons,
-        bestTorrent,
         bestSize,
-        torrents,
-        rawTorrentCount,
-        duplicateTorrentCount,
-        searchBlob: [
-          normalizeTitle(media),
-          getAltTitle(media),
-          entry?.notes || '',
-          bestTorrent?.releaseGroup || '',
-          (bestTorrent?.tags || []).join(' ')
-        ].join(' ').toLowerCase()
-      };
+        bestGroup: bestTorrent?.releaseGroup || '',
+        torrentCount: torrents.length
+      });
+    }
+
+    function setLoading(isLoading, statusText = 'Ready') {
+      state.isLoading = isLoading;
+      els.aniListSearchBtn.disabled = isLoading;
+      els.checkReleasesBtn.disabled = isLoading;
+      els.exportBtn.disabled = isLoading;
+      els.importBtn.disabled = isLoading;
+      if (isLoading) setStatus('', statusText);
+    }
+
+    async function runAniListSearch() {
+      const term = els.aniListSearchInput.value.trim();
+      if (!term) {
+        showNotice('Type an anime title to search AniList.', 'error');
+        return;
+      }
+
+      setLoading(true, 'Searching AniList...');
+      clearNotice();
+
+      try {
+        state.searchResults = await searchAniList(term);
+        renderSearchResults();
+        setStatus('ok', 'Ready');
+        if (!state.searchResults.length) showNotice('No AniList results found.', 'error');
+      } catch (error) {
+        setStatus('bad', 'Error');
+        showNotice(`AniList search failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderSearchResults() {
+      els.searchResults.innerHTML = '';
+      els.searchResults.hidden = !state.searchResults.length;
+
+      for (const media of state.searchResults) {
+        const alreadyAdded = state.items.some((item) => Number(item.id) === Number(media.id));
+        const result = document.createElement('div');
+        result.className = 'search-result';
+        const title = normalizeTitle(media);
+        const altTitle = getAltTitle(media);
+        const metadata = [media.format, media.seasonYear].filter(Boolean).join(' - ');
+        const poster = media?.coverImage?.large
+          ? `<img src="${escapeHtml(media.coverImage.large)}" alt="${escapeHtml(title)} cover" loading="lazy" />`
+          : `<div class="poster-fallback">No cover</div>`;
+
+        result.innerHTML = `
+          <div class="poster">${poster}</div>
+          <div class="item-main">
+            <h3 class="title">${escapeHtml(title)}</h3>
+            <div class="subtitle">${escapeHtml([altTitle, metadata].filter(Boolean).join(' - '))}</div>
+          </div>
+          <div class="actions-row">
+            <button class="mini-link" data-add-id="${Number(media.id)}" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? 'Added' : 'Add'}</button>
+            <a class="mini-link" href="${escapeHtml(media.siteUrl || `https://anilist.co/anime/${media.id}`)}" target="_blank" rel="noreferrer">AniList</a>
+          </div>
+        `;
+        els.searchResults.appendChild(result);
+      }
+    }
+
+    function addSearchResult(id) {
+      const media = state.searchResults.find((item) => Number(item.id) === Number(id));
+      if (!media) return;
+      if (state.items.some((item) => Number(item.id) === Number(id))) {
+        showNotice('That anime is already on your board.', 'error');
+        return;
+      }
+      state.items.push(mediaToBoardItem(media, els.addCategory.value));
+      sortItems();
+      saveBoard();
+      render();
+      renderSearchResults();
+      showNotice(`Added <strong>${escapeHtml(normalizeTitle(media))}</strong> to your board.`, 'success');
+    }
+
+    function sortItems() {
+      state.items.sort((a, b) => {
+        if (a.category !== b.category) return a.category === 'watching' ? -1 : 1;
+        const aStatus = a.release?.hasSeaDex ? 0 : 1;
+        const bStatus = b.release?.hasSeaDex ? 0 : 1;
+        return aStatus - bStatus || a.title.localeCompare(b.title);
+      });
+    }
+
+    async function checkReleases() {
+      if (!state.items.length) {
+        showNotice('Your board is empty. Add anime from AniList first.', 'error');
+        return;
+      }
+
+      saveSettings();
+      setLoading(true, 'Checking releases...');
+      clearNotice();
+
+      try {
+        const settings = getSettings();
+        const ids = state.items.map((item) => item.id);
+        const seaDexMap = await fetchSeaDexByAniListIds(ids, settings.apiBase);
+        state.items = state.items.map((item) => ({
+          ...item,
+          release: buildReleaseInfo(item.id, seaDexMap.get(Number(item.id)) || null)
+        }));
+        state.lastCheckedAt = new Date().toISOString();
+        sortItems();
+        saveBoard();
+        setStatus('ok', 'Ready');
+        render();
+
+        const found = state.items.filter((item) => item.release?.hasSeaDex).length;
+        showNotice(
+          `Checked <strong>${state.items.length}</strong> titles. <strong>${found}</strong> ${found === 1 ? 'title has' : 'titles have'} a releases.moe page.`,
+          'success'
+        );
+      } catch (error) {
+        setStatus('bad', 'Error');
+        showNotice(
+          `Release check failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}<br><br>` +
+          `If AniList works but releases.moe is blocked in your browser, use a tiny proxy in front of the releases.moe API and point the API base field at that proxy.`,
+          'error'
+        );
+      } finally {
+        setLoading(false);
+      }
     }
 
     function getVisibleItems() {
-      const term = state.search.trim().toLowerCase();
+      rebuildSearchBlobs();
+      const term = state.boardSearch.trim().toLowerCase();
       return state.items.filter((item) => {
-        if (state.filter === 'found' && !item.hasSeaDex) return false;
-        if (state.filter === 'waiting' && item.hasSeaDex) return false;
+        if (state.categoryFilter !== 'all' && item.category !== state.categoryFilter) return false;
         if (term && !item.searchBlob.includes(term)) return false;
         return true;
       });
+    }
+
+    function getReleaseBadge(item) {
+      if (item.release?.hasSeaDex && item.release?.incomplete) return ['warn', 'Incomplete'];
+      if (item.release?.hasSeaDex) return ['ok', 'Found'];
+      return ['bad', 'Waiting'];
     }
 
     function render() {
       const visibleItems = getVisibleItems();
       els.list.innerHTML = '';
       els.emptyState.hidden = visibleItems.length > 0;
-      els.statTotal.textContent = String(state.items.length);
-      els.statFound.textContent = String(state.items.filter((item) => item.hasSeaDex).length);
-      els.statWaiting.textContent = String(state.items.filter((item) => !item.hasSeaDex).length);
-      els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
+      renderStatsOnly();
       els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
 
       if (!visibleItems.length) return;
@@ -1265,145 +1186,231 @@
       for (const item of visibleItems) {
         const article = document.createElement('article');
         article.className = 'item';
-
         const poster = item.cover
           ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
           : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+        const [statusClass, statusText] = getReleaseBadge(item);
+        const categoryText = item.category === 'downloaded' ? 'Downloaded' : 'Future';
+        const moveText = item.category === 'downloaded' ? 'Move to future' : 'Mark downloaded';
+        const moveTarget = item.category === 'downloaded' ? 'watching' : 'downloaded';
+        const releaseUrl = item.release?.entryUrl || `https://releases.moe/${item.id}/`;
 
-        let statusClass = 'bad';
-        let statusText = 'Waiting';
-        if (item.hasSeaDex && item.incomplete) {
-          statusClass = 'warn';
-          statusText = 'Incomplete';
-        } else if (item.hasSeaDex) {
-          statusClass = 'ok';
-          statusText = 'Found';
-        }
-
-        const cardInner = `
-          <div class="poster">${poster}</div>
-          <div class="item-main">
-            <div class="title-block">
+        article.innerHTML = `
+          <div class="item-top">
+            <div class="poster">${poster}</div>
+            <div class="item-main">
               <h2 class="title">${escapeHtml(item.title)}</h2>
+              <div class="subtitle">${escapeHtml(item.altTitle || 'No alternate title')}</div>
+            </div>
+            <div class="item-actions">
+              <div class="badges">
+                <span class="pill ${statusClass}">${statusText}</span>
+                <span class="pill muted">${categoryText}</span>
+              </div>
             </div>
           </div>
-          <div class="badges">
-            <span class="pill ${statusClass}">${statusText}</span>
-          </div>
-        `;
 
-        if (item.hasSeaDex && item.entryUrl) {
-          article.innerHTML = `
-            <a
-              class="item-link"
-              href="${escapeHtml(item.entryUrl)}"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open ${escapeHtml(item.title)} on releases.moe"
-              title="Open on releases.moe"
-            >
-              ${cardInner}
-            </a>
-          `;
-        } else {
-          article.innerHTML = `
-            <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
-              ${cardInner}
+          <details class="entry-collapse">
+            <summary class="entry-toggle">Manage</summary>
+            <div class="entry-details">
+              <div class="comment-box">
+                <label for="comment-${Number(item.id)}">Comment</label>
+                <textarea id="comment-${Number(item.id)}" data-comment-id="${Number(item.id)}" placeholder="Add notes, preferred release groups, quality, downloaded version, etc.">${escapeHtml(item.comment)}</textarea>
+              </div>
+
+              <div class="meta-grid">
+                <div class="meta-card">
+                  <div class="meta-label">Best release</div>
+                  <div class="meta-value">${escapeHtml(item.release?.bestGroup || '-')}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">Size / torrents</div>
+                  <div class="meta-value">${escapeHtml(item.release?.bestSize || '-')} - ${Number(item.release?.torrentCount || 0)} torrent${Number(item.release?.torrentCount || 0) === 1 ? '' : 's'}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">Added</div>
+                  <div class="meta-value">${escapeHtml(formatDateTime(item.addedAt))}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">Release updated</div>
+                  <div class="meta-value">${escapeHtml(item.release?.updatedAt ? formatDateTime(item.release.updatedAt) : '-')}</div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="mini-link" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}">${moveText}</button>
+                <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
+                <a class="mini-link" href="${escapeHtml(releaseUrl)}" target="_blank" rel="noreferrer">releases.moe</a>
+                <button class="danger-btn" data-remove-id="${Number(item.id)}">Remove</button>
+              </div>
             </div>
-          `;
-        }
+          </details>
+        `;
 
         els.list.appendChild(article);
       }
     }
 
-    async function runRefresh(showSuccess = true) {
-      if (state.isLoading) return;
-      const settings = getSettings();
-      saveSettings();
-      applySettings(settings);
-      state.isLoading = true;
-      els.refreshBtn.disabled = true;
-      setStatus('', 'Refreshing…');
-      clearNotice();
-
-      try {
-        const anime = await fetchAniListCustomList(settings.username, settings.listName);
-        const seaDexMap = await fetchSeaDexByAniListIds(anime.map((media) => media.id), settings.apiBase);
-        state.items = anime
-          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null))
-          .sort((a, b) => Number(b.hasSeaDex) - Number(a.hasSeaDex) || a.title.localeCompare(b.title));
-        state.lastCheckedAt = new Date();
-        setStatus('ok', 'Ready');
-        render();
-
-        if (showSuccess) {
-          const found = state.items.filter((item) => item.hasSeaDex).length;
-          showNotice(
-            `Loaded <strong>${state.items.length}</strong> anime from <strong>${escapeHtml(settings.username)}</strong> / <strong>${escapeHtml(settings.listName)}</strong>. ` +
-            `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe.`,
-            'success'
-          );
-        } else if (els.optionsPanel) {
-          els.optionsPanel.open = false;
-        }
-      } catch (error) {
-        setStatus('bad', 'Error');
-        const message = error instanceof Error ? error.message : String(error);
-        showNotice(
-          `Refresh failed. ${message}<br><br>` +
-          `If AniList works but releases.moe is blocked in your browser, the next step is a tiny proxy in front of the releases.moe API and pointing the API base field at that proxy.`,
-          'error'
-        );
-      } finally {
-        state.isLoading = false;
-        els.refreshBtn.disabled = false;
-      }
-    }
-
-    function resetDefaults() {
-      applySettings(DEFAULTS);
-      state.search = '';
-      state.filter = 'all';
-      els.searchInput.value = '';
-      updateFilterButtons();
-      saveSettings();
-      runRefresh(true);
-    }
-
-    function updateFilterButtons() {
-      [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
-        button.classList.toggle('active', button.dataset.filter === state.filter);
+    function moveItem(id, category) {
+      state.items = state.items.map((item) => {
+        if (Number(item.id) !== Number(id)) return item;
+        return {
+          ...item,
+          category,
+          downloadedAt: category === 'downloaded' ? new Date().toISOString() : null
+        };
       });
+      sortItems();
+      saveBoard();
+      render();
+    }
+
+    function removeItem(id) {
+      const item = state.items.find((candidate) => Number(candidate.id) === Number(id));
+      const ok = confirm(`Remove ${item?.title || 'this title'} from your board?`);
+      if (!ok) return;
+      state.items = state.items.filter((candidate) => Number(candidate.id) !== Number(id));
+      saveBoard();
+      render();
+      showNotice('Removed title from your board.', 'success');
+    }
+
+    function updateComment(id, comment) {
+      state.items = state.items.map((item) => Number(item.id) === Number(id) ? { ...item, comment } : item);
+      saveBoard();
+      renderStatsOnly();
+    }
+
+    function renderStatsOnly() {
+      els.statTotal.textContent = String(state.items.length);
+      els.statWatching.textContent = String(state.items.filter((item) => item.category === 'watching').length);
+      els.statDownloaded.textContent = String(state.items.filter((item) => item.category === 'downloaded').length);
+      els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
+    }
+
+    function updateCategoryFilterButtons() {
+      [...els.categoryFilter.querySelectorAll('button')].forEach((button) => {
+        button.classList.toggle('active', button.dataset.filter === state.categoryFilter);
+      });
+    }
+
+    function exportJson() {
+      saveSettings();
+      saveBoard();
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        settings: getSettings(),
+        lastCheckedAt: state.lastCheckedAt,
+        items: state.items
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `anime-release-board-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showNotice('Exported your board as JSON.', 'success');
+    }
+
+    async function importJson(file) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const importedItems = Array.isArray(parsed?.items) ? parsed.items.map(normalizeBoardItem).filter(Boolean) : [];
+        if (!importedItems.length) throw new Error('The file does not contain any board items.');
+
+        const shouldMerge = confirm('Press OK to merge with your current board. Press Cancel to replace your current board.');
+        if (shouldMerge) {
+          const byId = new Map(state.items.map((item) => [Number(item.id), item]));
+          for (const item of importedItems) {
+            const existing = byId.get(Number(item.id));
+            byId.set(Number(item.id), existing ? {
+              ...item,
+              ...existing,
+              release: existing.release?.hasSeaDex ? existing.release : item.release
+            } : item);
+          }
+          state.items = Array.from(byId.values());
+        } else {
+          state.items = importedItems;
+          state.lastCheckedAt = parsed?.lastCheckedAt || null;
+        }
+
+        if (parsed?.settings?.apiBase) {
+          applySettings({ ...DEFAULTS, ...parsed.settings });
+          saveSettings();
+        }
+
+        sortItems();
+        saveBoard();
+        render();
+        showNotice(`Imported <strong>${importedItems.length}</strong> title${importedItems.length === 1 ? '' : 's'}.`, 'success');
+      } catch (error) {
+        showNotice(`Import failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}`, 'error');
+      } finally {
+        els.importFile.value = '';
+      }
     }
 
     function init() {
       applySettings(loadSettings());
-      updateFilterButtons();
+      loadBoard();
+      sortItems();
+      updateCategoryFilterButtons();
+      render();
+      setStatus('ok', 'Ready');
 
-      els.refreshBtn.addEventListener('click', () => runRefresh(true));
-      els.resetBtn.addEventListener('click', resetDefaults);
-      els.searchInput.addEventListener('input', (event) => {
-        state.search = event.target.value || '';
+      els.aniListSearchBtn.addEventListener('click', runAniListSearch);
+      els.aniListSearchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') runAniListSearch();
+      });
+      els.searchResults.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-add-id]');
+        if (!button) return;
+        addSearchResult(button.dataset.addId);
+      });
+
+      els.checkReleasesBtn.addEventListener('click', checkReleases);
+      els.exportBtn.addEventListener('click', exportJson);
+      els.importBtn.addEventListener('click', () => els.importFile.click());
+      els.importFile.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        if (file) importJson(file);
+      });
+      els.apiBase.addEventListener('change', saveSettings);
+
+      els.boardSearchInput.addEventListener('input', (event) => {
+        state.boardSearch = event.target.value || '';
         render();
       });
-      els.statusFilter.addEventListener('click', (event) => {
+      els.categoryFilter.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-filter]');
         if (!button) return;
-        state.filter = button.dataset.filter;
-        updateFilterButtons();
+        state.categoryFilter = button.dataset.filter;
+        updateCategoryFilterButtons();
         render();
       });
 
-      [els.username, els.listName, els.apiBase].forEach((el) => {
-        el.addEventListener('change', () => {
-          saveSettings();
-          applySettings(getSettings());
-        });
+      els.list.addEventListener('click', (event) => {
+        const moveButton = event.target.closest('[data-move-id]');
+        if (moveButton) {
+          moveItem(moveButton.dataset.moveId, moveButton.dataset.moveTarget);
+          return;
+        }
+        const removeButton = event.target.closest('[data-remove-id]');
+        if (removeButton) removeItem(removeButton.dataset.removeId);
       });
 
-      render();
-      runRefresh(false);
+      els.list.addEventListener('input', (event) => {
+        const textarea = event.target.closest('[data-comment-id]');
+        if (!textarea) return;
+        updateComment(textarea.dataset.commentId, textarea.value);
+      });
     }
 
     init();
