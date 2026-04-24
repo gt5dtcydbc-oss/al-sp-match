@@ -1232,24 +1232,60 @@
         const alreadyAdded = state.items.some((item) => Number(item.id) === Number(media.id));
         const result = document.createElement('div');
         result.className = 'search-result';
+
         const title = normalizeTitle(media);
         const altTitle = getAltTitle(media);
         const metadata = [media.format, media.seasonYear].filter(Boolean).join(' - ');
-        const poster = media?.coverImage?.large
-          ? `<img src="${escapeHtml(media.coverImage.large)}" alt="${escapeHtml(title)} cover" loading="lazy" />`
-          : `<div class="poster-fallback">No cover</div>`;
 
-        result.innerHTML = `
-          <div class="poster">${poster}</div>
-          <div class="item-main">
-            <h3 class="title">${escapeHtml(title)}</h3>
-            <div class="subtitle">${escapeHtml([altTitle, metadata].filter(Boolean).join(' - '))}</div>
-          </div>
-          <div class="actions-row">
-            <button class="mini-link" type="button" data-add-id="${Number(media.id)}" onclick="window.addAnimeSearchResult && window.addAnimeSearchResult(${Number(media.id)}, event)" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? 'Added' : 'Add'}</button>
-            <a class="mini-link" href="${escapeHtml(media.siteUrl || `https://anilist.co/anime/${media.id}`)}" target="_blank" rel="noreferrer">AniList</a>
-          </div>
-        `;
+        const posterWrap = document.createElement('div');
+        posterWrap.className = 'poster';
+        if (media?.coverImage?.large) {
+          const img = document.createElement('img');
+          img.src = media.coverImage.large;
+          img.alt = `${title} cover`;
+          img.loading = 'lazy';
+          posterWrap.appendChild(img);
+        } else {
+          const fallback = document.createElement('div');
+          fallback.className = 'poster-fallback';
+          fallback.textContent = 'No cover';
+          posterWrap.appendChild(fallback);
+        }
+
+        const main = document.createElement('div');
+        main.className = 'item-main';
+        const heading = document.createElement('h3');
+        heading.className = 'title';
+        heading.textContent = title;
+        const subtitle = document.createElement('div');
+        subtitle.className = 'subtitle';
+        subtitle.textContent = [altTitle, metadata].filter(Boolean).join(' - ');
+        main.append(heading, subtitle);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions-row';
+
+        const addButton = document.createElement('button');
+        addButton.className = 'mini-link';
+        addButton.type = 'button';
+        addButton.dataset.addId = String(Number(media.id));
+        addButton.textContent = alreadyAdded ? 'Added' : 'Add';
+        addButton.disabled = alreadyAdded;
+        addButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          addMediaToBoard(media);
+        });
+
+        const aniListLink = document.createElement('a');
+        aniListLink.className = 'mini-link';
+        aniListLink.href = media.siteUrl || `https://anilist.co/anime/${media.id}`;
+        aniListLink.target = '_blank';
+        aniListLink.rel = 'noreferrer';
+        aniListLink.textContent = 'AniList';
+
+        actions.append(addButton, aniListLink);
+        result.append(posterWrap, main, actions);
         els.searchResults.appendChild(result);
       }
     }
@@ -1262,17 +1298,20 @@
       els.aniListSearchInput.value = '';
     }
 
-    function addSearchResult(id, event) {
-      if (event) { event.preventDefault(); event.stopPropagation(); }
-      console.log('Adding AniList result', id);
-      const media = state.searchResults.find((item) => Number(item.id) === Number(id));
-      if (!media) return;
-      if (state.items.some((item) => Number(item.id) === Number(id))) {
+    function addMediaToBoard(media) {
+      if (!media || media.id == null) {
+        showNotice('Could not add this result because AniList did not return a usable media ID.', 'error');
+        return;
+      }
+
+      const id = Number(media.id);
+      if (state.items.some((item) => Number(item.id) === id)) {
         showNotice('That anime is already on your board.', 'error');
         return;
       }
+
       const title = normalizeTitle(media);
-      const sameTitle = state.items.find((item) => normalizeLooseString(item.title) === normalizeLooseString(title) && Number(item.id) !== Number(id));
+      const sameTitle = state.items.find((item) => normalizeLooseString(item.title) === normalizeLooseString(title) && Number(item.id) !== id);
       state.items.push(mediaToBoardItem(media, 'watching'));
       state.categoryFilter = 'all';
       updateCategoryFilterButtons();
@@ -1282,6 +1321,12 @@
       clearSearchResults();
       const duplicateHint = sameTitle ? ` Heads up: <strong>${escapeHtml(sameTitle.title)}</strong> has a very similar title already on the board.` : '';
       showNotice(`Added <strong>${escapeHtml(title)}</strong> to Watching.${duplicateHint}`, sameTitle ? 'error' : 'success');
+    }
+
+    function addSearchResult(id, event) {
+      if (event) { event.preventDefault(); event.stopPropagation(); }
+      const media = state.searchResults.find((item) => Number(item.id) === Number(id));
+      addMediaToBoard(media);
     }
 
     function sortItems() {
@@ -1621,17 +1666,7 @@
         if (event.key === 'Enter') runAniListSearch();
       });
       els.clearSearchResultsBtn.addEventListener('click', clearSearchResults);
-      els.searchResults.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-add-id]');
-        if (!button) return;
-        addSearchResult(button.dataset.addId);
-      });
-      document.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-add-id]');
-        if (!button || !els.searchResults.contains(button)) return;
-        event.preventDefault();
-        addSearchResult(button.dataset.addId);
-      });
+      // Add buttons receive direct click handlers when search results are rendered.
 
       els.checkReleasesBtn.addEventListener('click', checkReleases);
       els.exportBtn.addEventListener('click', exportJson);
