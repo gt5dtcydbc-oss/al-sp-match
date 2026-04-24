@@ -1182,6 +1182,7 @@
       searchResults: [],
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
+      lastRssReleaseAt: 0, // ADDED: Track RSS staleness
       isLoading: false,
       activeSettingsId: null,
       healthStatus: "healthy",
@@ -1201,17 +1202,33 @@
       els.updateIndicator.classList.toggle("error", status === "error");
     }
 
+    // ADDED: Time formatter for footer
+    function timeAgo(ms) {
+      if (!ms) return "Never";
+      const mins = Math.floor((Date.now() - ms) / 60000);
+      if (mins < 1) return "< 1 min";
+      if (mins < 60) return `${mins} min`;
+      const hrs = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      if (hrs < 24) return `${hrs}h ${remMins}m`;
+      return `${Math.floor(hrs / 24)}d ${hrs % 24}h`;
+    }
+
+    // UPDATED: Dynamic footer render logic
     function renderFooterStatus() {
       const isUnhealthy = state.healthStatus === "unhealthy";
       const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
       const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
-      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
 
       let extra = "";
-      if (formattedSavedAt) {
-        extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
+      if (state.lastSuccessfulLoadAt) {
+        extra += ` · Board updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
       } else {
         extra += " · Waiting for first update";
+      }
+
+      if (state.lastRssReleaseAt) {
+        extra += ` · Newest RSS release ${timeAgo(state.lastRssReleaseAt)} ago`;
       }
 
       if (isUnhealthy && state.notes.length) {
@@ -1219,9 +1236,9 @@
       }
 
       els.footer.innerHTML = `
-  <span class="${statusClass}">${statusLabel}</span>${extra}
-  · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
-`;
+        <span class="${statusClass}">${statusLabel}</span>${extra}
+        · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
+      `;
     }
 
     async function graphQLRequest(query, variables) {
@@ -1741,6 +1758,7 @@
       try { localStorage.removeItem(BOARD_SNAPSHOT_KEY); } catch (_) {}
     }
 
+    // UPDATED: Save lastRssReleaseAt
     function saveBoardSnapshot() {
       const snapshot = {
         savedAt: Date.now(),
@@ -1750,6 +1768,7 @@
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
         healthStatus: state.healthStatus,
+        lastRssReleaseAt: state.lastRssReleaseAt,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -1757,6 +1776,7 @@
       state.lastSuccessfulLoadAt = snapshot.savedAt;
     }
 
+    // UPDATED: Load lastRssReleaseAt
     function hydrateBoardSnapshot() {
       const snapshot = loadBoardSnapshot();
       if (!snapshot?.userName) return false;
@@ -1771,6 +1791,7 @@
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
+      state.lastRssReleaseAt = Number(snapshot.lastRssReleaseAt) || 0;
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       if (!Number.isFinite(snapshotSavedAt)) {
@@ -2638,6 +2659,22 @@
           }
 
           nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+          
+          // ADDED: Calculate the newest RSS release for staleness tracking
+          let newest = 0;
+          for (const c of nextPrimaryCandidates) {
+            for (const item of c.items) {
+              if (item.date.getTime() > newest) newest = item.date.getTime();
+            }
+          }
+          state.lastRssReleaseAt = newest;
+          
+          // ADDED: Check if feed is >24 hours stale
+          const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+          if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
+            nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+          }
+
         } else {
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
@@ -2716,9 +2753,13 @@
       loadBoard({ reason, userName: state.userName });
     }
 
+    // UPDATED: Added renderFooterStatus() to the 30-second interval
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
-      setInterval(() => { if (state.items.length) renderBoard(state.items, true); }, COUNTDOWN_TICK_MS);
+      setInterval(() => { 
+        if (state.items.length) renderBoard(state.items, true); 
+        renderFooterStatus(); 
+      }, COUNTDOWN_TICK_MS);
     }
 
     let searchDebounceTimer = null;
