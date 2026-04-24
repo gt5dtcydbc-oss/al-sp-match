@@ -151,8 +151,6 @@
     .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
     .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
     .pill.muted { color: var(--muted); background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.08); }
-    .category-pill { cursor: pointer; }
-    .category-pill:hover { transform: translateY(-1px); background: rgba(140,158,255,0.12); color: var(--text); border-color: rgba(140,158,255,0.24); }
 
     details {
       background: rgba(255,255,255,0.03);
@@ -569,6 +567,81 @@
 
     .hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
+
+
+    .stale-chip { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
+
+    .advanced-card,
+    .api-settings,
+    .import-preview,
+    .option-section {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+    }
+
+    .advanced-card,
+    .import-preview,
+    .option-section {
+      padding: 13px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .advanced-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .section-subtitle,
+    .import-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .api-settings { padding: 0; overflow: hidden; }
+    .api-summary { padding: 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .api-summary::after { content: '▾'; color: var(--muted); transition: transform 0.16s ease; }
+    .api-settings[open] .api-summary::after { transform: rotate(180deg); }
+    .api-inner { padding: 0 13px 13px; display: grid; gap: 10px; }
+
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .toggle-row input { width: auto; accent-color: var(--accent); }
+
+    .option-heading {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .import-preview { border-color: rgba(255,212,121,0.18); background: rgba(255,212,121,0.07); }
+
+    .search-result-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
     @media (max-width: 920px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .field.search, .field.category, .field.actions, .field.api, .field.importexport, .field.filter, .field.local-search { grid-column: span 6; }
@@ -611,6 +684,7 @@
           <span class="options-title">Options</span>
           <span class="options-summary-right">
             <span class="chip" id="visibleCountChip">Showing 0 titles</span>
+            <span class="chip stale-chip" id="staleChip" hidden>Check releases</span>
             <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
           </span>
         </summary>
@@ -642,6 +716,7 @@
                 </div>
               </div>
             </div>
+            <div id="searchResultToolbar" class="search-result-toolbar" hidden><span id="searchResultCount">0 results</span><button id="clearSearchResultsBtn" class="mini-link" type="button">Clear results</button></div>
             <div id="searchResults" class="search-results" hidden></div>
           </section>
 
@@ -655,19 +730,41 @@
           <details class="stats-panel">
             <summary class="stats-summary">Advanced</summary>
             <div class="advanced-inner">
-              <div class="controls">
-                <div class="field api">
-                  <label for="apiBase">releases.moe API base</label>
-                  <input id="apiBase" value="https://releases.moe" autocomplete="off" />
-                </div>
-                <div class="field importexport">
-                  <label>Backup</label>
+              <section class="advanced-card">
+                <div class="advanced-card-top">
+                  <div>
+                    <h2 class="section-title">Backup and transfer</h2>
+                    <p class="section-subtitle">Export before moving browsers or before replacing your board with an import.</p>
+                  </div>
                   <div class="button-row">
                     <button id="exportBtn" class="ghost-btn">Export JSON</button>
-                    <button id="importBtn" class="ghost-btn">Import JSON</button>
+                    <button id="importBtn" class="ghost-btn">Choose import file</button>
                   </div>
                 </div>
-              </div>
+                <div id="importPreview" class="import-preview" hidden>
+                  <strong>Import ready</strong>
+                  <p class="import-copy" id="importSummary">No file selected.</p>
+                  <div class="button-row">
+                    <button id="importMergeBtn" class="primary-btn">Merge with current board</button>
+                    <button id="importReplaceBtn" class="danger-btn">Replace current board</button>
+                    <button id="importCancelBtn" class="ghost-btn">Cancel</button>
+                  </div>
+                </div>
+              </section>
+
+              <details class="api-settings">
+                <summary class="api-summary">API settings</summary>
+                <div class="api-inner">
+                  <label class="toggle-row">
+                    <input id="customApiToggle" type="checkbox" />
+                    Use a custom releases.moe API base. Leave this off unless your browser needs a proxy.
+                  </label>
+                  <div class="field api">
+                    <label for="apiBase">Custom API base</label>
+                    <input id="apiBase" value="https://releases.moe" autocomplete="off" disabled />
+                  </div>
+                </div>
+              </details>
 
               <div class="stats">
                 <div class="stat">
@@ -688,7 +785,7 @@
                 <div class="stat">
                   <div class="stat-label">Last checked</div>
                   <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                  <div class="stat-help">Release status is checked manually.</div>
+                  <div class="stat-help" id="statCheckedHelp">Release status checks automatically on page load and manually with Check releases.</div>
                 </div>
               </div>
             </div>
@@ -703,7 +800,7 @@
     const SETTINGS_KEY = 'anime-release-board-settings-v1';
     const BOARD_KEY = 'anime-release-board-v1';
 
-    const DEFAULTS = { apiBase: 'https://releases.moe' };
+    const DEFAULTS = { apiBase: 'https://releases.moe', useCustomApiBase: false };
 
     const state = {
       items: [],
@@ -711,7 +808,8 @@
       isLoading: false,
       categoryFilter: 'all',
       boardSearch: '',
-      searchResults: []
+      searchResults: [],
+      pendingImport: null
     };
 
     const els = {
@@ -722,20 +820,31 @@
       statusDot: document.getElementById('statusDot'),
       statusText: document.getElementById('statusText'),
       visibleCountChip: document.getElementById('visibleCountChip'),
+      staleChip: document.getElementById('staleChip'),
       aniListSearchInput: document.getElementById('aniListSearchInput'),
       aniListSearchBtn: document.getElementById('aniListSearchBtn'),
+      searchResultToolbar: document.getElementById('searchResultToolbar'),
+      searchResultCount: document.getElementById('searchResultCount'),
+      clearSearchResultsBtn: document.getElementById('clearSearchResultsBtn'),
       searchResults: document.getElementById('searchResults'),
       boardSearchInput: document.getElementById('boardSearchInput'),
       categoryFilter: document.getElementById('categoryFilter'),
+      customApiToggle: document.getElementById('customApiToggle'),
       apiBase: document.getElementById('apiBase'),
       checkReleasesBtn: document.getElementById('checkReleasesBtn'),
       exportBtn: document.getElementById('exportBtn'),
       importBtn: document.getElementById('importBtn'),
       importFile: document.getElementById('importFile'),
+      importPreview: document.getElementById('importPreview'),
+      importSummary: document.getElementById('importSummary'),
+      importMergeBtn: document.getElementById('importMergeBtn'),
+      importReplaceBtn: document.getElementById('importReplaceBtn'),
+      importCancelBtn: document.getElementById('importCancelBtn'),
       statTotal: document.getElementById('statTotal'),
       statWatching: document.getElementById('statWatching'),
       statDownloaded: document.getElementById('statDownloaded'),
-      statChecked: document.getElementById('statChecked')
+      statChecked: document.getElementById('statChecked'),
+      statCheckedHelp: document.getElementById('statCheckedHelp')
     };
 
     function escapeHtml(value) {
@@ -806,8 +915,12 @@
     }
 
     function getSettings() {
+      const useCustomApiBase = Boolean(els.customApiToggle?.checked);
       return {
-        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
+        useCustomApiBase,
+        apiBase: useCustomApiBase
+          ? (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
+          : DEFAULTS.apiBase
       };
     }
 
@@ -822,43 +935,14 @@
     }
 
     function applySettings(settings) {
-      els.apiBase.value = settings.apiBase || DEFAULTS.apiBase;
+      const merged = { ...DEFAULTS, ...settings };
+      if (els.customApiToggle) els.customApiToggle.checked = Boolean(merged.useCustomApiBase);
+      els.apiBase.value = merged.apiBase || DEFAULTS.apiBase;
+      els.apiBase.disabled = !Boolean(els.customApiToggle?.checked);
     }
 
     function saveSettings() {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettings()));
-    }
-
-    function normalizeRelease(release) {
-      return {
-        hasSeaDex: Boolean(release?.hasSeaDex),
-        incomplete: Boolean(release?.incomplete),
-        entryUrl: String(release?.entryUrl || ''),
-        notes: String(release?.notes || ''),
-        theoreticalBest: String(release?.theoreticalBest || ''),
-        updatedAt: release?.updatedAt || '',
-        bestSize: String(release?.bestSize || '-'),
-        bestGroup: String(release?.bestGroup || ''),
-        torrentCount: Number(release?.torrentCount || 0)
-      };
-    }
-
-    function normalizeBoardItem(item) {
-      if (!item || item.id == null) return null;
-      return {
-        id: Number(item.id),
-        title: String(item.title || `AniList #${item.id}`),
-        altTitle: String(item.altTitle || ''),
-        cover: String(item.cover || ''),
-        coverColor: String(item.coverColor || '#2d3e77'),
-        aniListUrl: String(item.aniListUrl || `https://anilist.co/anime/${item.id}`),
-        category: item.category === 'downloaded' ? 'downloaded' : 'watching',
-        comment: String(item.comment || ''),
-        addedAt: item.addedAt || new Date().toISOString(),
-        downloadedAt: item.downloadedAt || null,
-        release: normalizeRelease(item.release),
-        searchBlob: ''
-      };
     }
 
     function loadBoard() {
@@ -1141,6 +1225,8 @@
     function renderSearchResults() {
       els.searchResults.innerHTML = '';
       els.searchResults.hidden = !state.searchResults.length;
+      if (els.searchResultToolbar) els.searchResultToolbar.hidden = !state.searchResults.length;
+      if (els.searchResultCount) els.searchResultCount.textContent = `${state.searchResults.length} result${state.searchResults.length === 1 ? '' : 's'}`;
 
       for (const media of state.searchResults) {
         const alreadyAdded = state.items.some((item) => Number(item.id) === Number(media.id));
@@ -1168,6 +1254,14 @@
       }
     }
 
+    function clearSearchResults() {
+      state.searchResults = [];
+      els.searchResults.innerHTML = '';
+      els.searchResults.hidden = true;
+      if (els.searchResultToolbar) els.searchResultToolbar.hidden = true;
+      els.aniListSearchInput.value = '';
+    }
+
     function addSearchResult(id) {
       const media = state.searchResults.find((item) => Number(item.id) === Number(id));
       if (!media) return;
@@ -1175,12 +1269,15 @@
         showNotice('That anime is already on your board.', 'error');
         return;
       }
+      const title = normalizeTitle(media);
+      const sameTitle = state.items.find((item) => normalizeLooseString(item.title) === normalizeLooseString(title) && Number(item.id) !== Number(id));
       state.items.push(mediaToBoardItem(media, 'watching'));
       sortItems();
       saveBoard();
       render();
-      renderSearchResults();
-      showNotice(`Added <strong>${escapeHtml(normalizeTitle(media))}</strong> to your board.`, 'success');
+      clearSearchResults();
+      const duplicateHint = sameTitle ? ` Heads up: <strong>${escapeHtml(sameTitle.title)}</strong> has a very similar title already on the board.` : '';
+      showNotice(`Added <strong>${escapeHtml(title)}</strong> to Watching.${duplicateHint}`, sameTitle ? 'error' : 'success');
     }
 
     function sortItems() {
@@ -1192,7 +1289,7 @@
       });
     }
 
-    async function checkReleases() {
+    async function checkReleases({ silent = false } = {}) {
       if (!state.items.length) {
         showNotice('Your board is empty. Add anime from AniList first.', 'error');
         return;
@@ -1217,17 +1314,21 @@
         render();
 
         const found = state.items.filter((item) => item.release?.hasSeaDex).length;
-        showNotice(
-          `Checked <strong>${state.items.length}</strong> titles. <strong>${found}</strong> ${found === 1 ? 'title has' : 'titles have'} a releases.moe page.`,
-          'success'
-        );
+        if (!silent) {
+          showNotice(
+            `Checked <strong>${state.items.length}</strong> titles. <strong>${found}</strong> ${found === 1 ? 'title has' : 'titles have'} a releases.moe page.`,
+            'success'
+          );
+        }
       } catch (error) {
         setStatus('bad', 'Error');
-        showNotice(
-          `Release check failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}<br><br>` +
-          `If AniList works but releases.moe is blocked in your browser, use a tiny proxy in front of the releases.moe API and point the API base field at that proxy.`,
-          'error'
-        );
+        if (!silent) {
+          showNotice(
+            `Release check failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}<br><br>` +
+            `If AniList works but releases.moe is blocked in your browser, enable the custom API base under Advanced > API settings and point it at your proxy.`,
+            'error'
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -1271,7 +1372,7 @@
           <div class="item-actions">
             <div class="badges">
               <span class="pill ${statusClass}">${statusText}</span>
-              <button class="pill muted category-pill" type="button" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}" title="Click to move to ${escapeHtml(moveTarget === 'downloaded' ? 'Downloaded' : 'Watching')}">${categoryText}</button>
+              <span class="pill muted">${categoryText}</span>
             </div>
           </div>
         </div>
@@ -1279,36 +1380,45 @@
         <details class="entry-collapse">
           <summary class="entry-toggle">Manage</summary>
           <div class="entry-details">
-            <div class="comment-box">
-              <label for="comment-${Number(item.id)}">Comment</label>
-              <textarea id="comment-${Number(item.id)}" data-comment-id="${Number(item.id)}" placeholder="Add notes, preferred release groups, quality, downloaded version, etc.">${escapeHtml(item.comment)}</textarea>
-            </div>
+            <section class="option-section">
+              <h3 class="option-heading">Notes</h3>
+              <div class="comment-box">
+                <label for="comment-${Number(item.id)}">Comment</label>
+                <textarea id="comment-${Number(item.id)}" data-comment-id="${Number(item.id)}" placeholder="Add notes, preferred release groups, quality, downloaded version, etc.">${escapeHtml(item.comment)}</textarea>
+              </div>
+            </section>
 
-            <div class="meta-grid">
-              <div class="meta-card">
-                <div class="meta-label">Best release</div>
-                <div class="meta-value">${escapeHtml(item.release?.bestGroup || '-')}</div>
+            <section class="option-section">
+              <h3 class="option-heading">Release info</h3>
+              <div class="meta-grid">
+                <div class="meta-card">
+                  <div class="meta-label">Best release</div>
+                  <div class="meta-value">${escapeHtml(item.release?.bestGroup || '-')}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">Size / torrents</div>
+                  <div class="meta-value">${escapeHtml(item.release?.bestSize || '-')} - ${Number(item.release?.torrentCount || 0)} torrent${Number(item.release?.torrentCount || 0) === 1 ? '' : 's'}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">Added</div>
+                  <div class="meta-value">${escapeHtml(formatDateTime(item.addedAt))}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">Release updated</div>
+                  <div class="meta-value">${escapeHtml(item.release?.updatedAt ? formatDateTime(item.release.updatedAt) : '-')}</div>
+                </div>
               </div>
-              <div class="meta-card">
-                <div class="meta-label">Size / torrents</div>
-                <div class="meta-value">${escapeHtml(item.release?.bestSize || '-')} - ${Number(item.release?.torrentCount || 0)} torrent${Number(item.release?.torrentCount || 0) === 1 ? '' : 's'}</div>
-              </div>
-              <div class="meta-card">
-                <div class="meta-label">Added</div>
-                <div class="meta-value">${escapeHtml(formatDateTime(item.addedAt))}</div>
-              </div>
-              <div class="meta-card">
-                <div class="meta-label">Release updated</div>
-                <div class="meta-value">${escapeHtml(item.release?.updatedAt ? formatDateTime(item.release.updatedAt) : '-')}</div>
-              </div>
-            </div>
+            </section>
 
-            <div class="actions-row">
-              <button class="mini-link" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}">${moveText}</button>
-              <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
-              <a class="mini-link" href="${escapeHtml(releaseUrl)}" target="_blank" rel="noreferrer">releases.moe</a>
-              <button class="danger-btn" data-remove-id="${Number(item.id)}">Remove</button>
-            </div>
+            <section class="option-section">
+              <h3 class="option-heading">Actions</h3>
+              <div class="actions-row">
+                <button class="mini-link" data-move-id="${Number(item.id)}" data-move-target="${moveTarget}">${moveText}</button>
+                <a class="mini-link" href="${escapeHtml(item.aniListUrl)}" target="_blank" rel="noreferrer">AniList</a>
+                <a class="mini-link" href="${escapeHtml(releaseUrl)}" target="_blank" rel="noreferrer">releases.moe</a>
+                <button class="danger-btn" data-remove-id="${Number(item.id)}">Remove</button>
+              </div>
+            </section>
           </div>
         </details>
       `;
@@ -1374,11 +1484,35 @@
       renderStatsOnly();
     }
 
+    function getDaysSinceLastCheck() {
+      if (!state.lastCheckedAt) return Infinity;
+      const checkedAt = new Date(state.lastCheckedAt).getTime();
+      if (!Number.isFinite(checkedAt)) return Infinity;
+      return Math.floor((Date.now() - checkedAt) / 86400000);
+    }
+
+    function updateStaleChip() {
+      const days = getDaysSinceLastCheck();
+      const isStale = state.items.length > 0 && (!state.lastCheckedAt || days >= 3);
+      if (!els.staleChip) return;
+      els.staleChip.hidden = !isStale;
+      els.staleChip.textContent = !state.lastCheckedAt ? 'Not checked yet' : `Checked ${days}d ago`;
+    }
+
     function renderStatsOnly() {
       els.statTotal.textContent = String(state.items.length);
       els.statWatching.textContent = String(state.items.filter((item) => item.category === 'watching').length);
       els.statDownloaded.textContent = String(state.items.filter((item) => item.category === 'downloaded').length);
       els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
+      if (els.statCheckedHelp) {
+        const days = getDaysSinceLastCheck();
+        els.statCheckedHelp.textContent = !state.lastCheckedAt
+          ? 'Release status checks automatically on page load. This board has not been checked yet.'
+          : days >= 3
+            ? `Last release check was ${days} days ago. The board refreshes on page load, or you can check manually.`
+            : 'Release status checks automatically on page load and manually with Check releases.';
+      }
+      updateStaleChip();
     }
 
     function updateCategoryFilterButtons() {
@@ -1417,37 +1551,54 @@
         const importedItems = Array.isArray(parsed?.items) ? parsed.items.map(normalizeBoardItem).filter(Boolean) : [];
         if (!importedItems.length) throw new Error('The file does not contain any board items.');
 
-        const shouldMerge = confirm('Press OK to merge with your current board. Press Cancel to replace your current board.');
-        if (shouldMerge) {
-          const byId = new Map(state.items.map((item) => [Number(item.id), item]));
-          for (const item of importedItems) {
-            const existing = byId.get(Number(item.id));
-            byId.set(Number(item.id), existing ? {
-              ...item,
-              ...existing,
-              release: existing.release?.hasSeaDex ? existing.release : item.release
-            } : item);
-          }
-          state.items = Array.from(byId.values());
-        } else {
-          state.items = importedItems;
-          state.lastCheckedAt = parsed?.lastCheckedAt || null;
-        }
-
-        if (parsed?.settings?.apiBase) {
-          applySettings({ ...DEFAULTS, ...parsed.settings });
-          saveSettings();
-        }
-
-        sortItems();
-        saveBoard();
-        render();
-        showNotice(`Imported <strong>${importedItems.length}</strong> title${importedItems.length === 1 ? '' : 's'}.`, 'success');
+        state.pendingImport = { parsed, importedItems };
+        const currentCount = state.items.length;
+        els.importSummary.innerHTML = `File contains <strong>${importedItems.length}</strong> title${importedItems.length === 1 ? '' : 's'}. Your current board has <strong>${currentCount}</strong>. Merge keeps current comments/status where possible. Replace overwrites the current board, so export first if you may need a backup.`;
+        els.importPreview.hidden = false;
       } catch (error) {
         showNotice(`Import failed. ${escapeHtml(error instanceof Error ? error.message : String(error))}`, 'error');
       } finally {
         els.importFile.value = '';
       }
+    }
+
+    function finishImport(merge) {
+      if (!state.pendingImport) return;
+      const { parsed, importedItems } = state.pendingImport;
+
+      if (merge) {
+        const byId = new Map(state.items.map((item) => [Number(item.id), item]));
+        for (const item of importedItems) {
+          const existing = byId.get(Number(item.id));
+          byId.set(Number(item.id), existing ? {
+            ...item,
+            ...existing,
+            release: existing.release?.hasSeaDex ? existing.release : item.release
+          } : item);
+        }
+        state.items = Array.from(byId.values());
+      } else {
+        state.items = importedItems;
+        state.lastCheckedAt = parsed?.lastCheckedAt || null;
+      }
+
+      if (parsed?.settings?.apiBase) {
+        applySettings({ ...DEFAULTS, ...parsed.settings });
+        saveSettings();
+      }
+
+      state.pendingImport = null;
+      els.importPreview.hidden = true;
+      sortItems();
+      saveBoard();
+      render();
+      showNotice(`${merge ? 'Merged' : 'Replaced board with'} <strong>${importedItems.length}</strong> imported title${importedItems.length === 1 ? '' : 's'}.`, 'success');
+    }
+
+    function cancelImport() {
+      state.pendingImport = null;
+      els.importPreview.hidden = true;
+      els.importSummary.textContent = 'No file selected.';
     }
 
     function init() {
@@ -1457,11 +1608,13 @@
       updateCategoryFilterButtons();
       render();
       setStatus('ok', 'Ready');
+      if (state.items.length) checkReleases({ silent: true });
 
       els.aniListSearchBtn.addEventListener('click', runAniListSearch);
       els.aniListSearchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') runAniListSearch();
       });
+      els.clearSearchResultsBtn.addEventListener('click', clearSearchResults);
       els.searchResults.addEventListener('click', (event) => {
         const button = event.target.closest('[data-add-id]');
         if (!button) return;
@@ -1474,6 +1627,13 @@
       els.importFile.addEventListener('change', (event) => {
         const file = event.target.files?.[0];
         if (file) importJson(file);
+      });
+      els.importMergeBtn.addEventListener('click', () => finishImport(true));
+      els.importReplaceBtn.addEventListener('click', () => finishImport(false));
+      els.importCancelBtn.addEventListener('click', cancelImport);
+      els.customApiToggle.addEventListener('change', () => {
+        els.apiBase.disabled = !els.customApiToggle.checked;
+        saveSettings();
       });
       els.apiBase.addEventListener('change', saveSettings);
 
