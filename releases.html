@@ -1490,7 +1490,7 @@
       });
 
       els.list.addEventListener('click', (event) => {
-        const moveButton = event.target.closest('[data-move-id]');
+        const moveButton = event.target.closest('button[data-move-id]');
         if (moveButton) {
           moveItem(moveButton.dataset.moveId, moveButton.dataset.moveTarget);
           return;
