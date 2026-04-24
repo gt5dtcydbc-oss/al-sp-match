@@ -1,1412 +1,1487 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anime Releases Tracker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AniList Releases Board</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --bg-soft: #121933;
-      --panel: #11182d;
-      --panel-soft: #18213d;
-      --card: #131b31;
-      --text: #eef2ff;
-      --muted: #98a6cc;
-      --line: rgba(255,255,255,0.08);
-      --line-strong: rgba(255,255,255,0.12);
-      --accent: #8c9eff;
-      --accent-soft: rgba(140,158,255,0.16);
-      --ok: #4adea8;
-      --ok-soft: rgba(74,222,168,0.14);
-      --warn: #ffd479;
-      --warn-soft: rgba(255,212,121,0.14);
-      --bad: #ff8d8d;
-      --bad-soft: rgba(255,141,141,0.14);
-      --shadow: 0 20px 50px rgba(0,0,0,0.28);
-      --radius-xl: 24px;
-      --radius-lg: 18px;
-      --radius-md: 14px;
-      --radius-sm: 12px;
+      color-scheme: dark;
+      --bg: #0f1219;
+      --surface: #171b25;
+      --surface-soft: #202636;
+      --surface-softer: #252c3d;
+      --text: #edf1f8;
+      --muted: #a9b1c5;
+      --muted-2: #7f8aa1;
+      --line: #2d3547;
+      --brand: #8b96ff;
+      --brand-strong: #a8b0ff;
+      --ok: #45d49b;
+      --warn: #f2c36b;
+      --danger: #ff7b73;
+      --shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
+      --radius: 22px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
+
     body {
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background: var(--bg);
+      margin: 0;
       min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(139, 150, 255, 0.14), transparent 32rem),
+        radial-gradient(circle at top right, rgba(69, 212, 155, 0.07), transparent 30rem),
+        linear-gradient(180deg, #111520 0%, #0d1017 100%);
     }
 
-    a { color: inherit; text-decoration: none; }
-    code {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 8px;
-      padding: 2px 6px;
-      font-size: 0.92em;
-    }
+    button, input, textarea { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    button:disabled { opacity: 0.62; cursor: not-allowed; transform: none !important; }
 
     .app {
-      width: min(1120px, calc(100vw - 24px));
-      margin: 20px auto 40px;
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
     }
 
-    .shell {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      border-radius: 28px;
-      overflow: hidden;
-    }
-
-    .options-panel {
-      border-top: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-    }
-
-    .options-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .options-summary::-webkit-details-marker { display: none; }
-
-    .options-summary::after {
-      content: '▾';
-      color: var(--muted);
-      margin-left: auto;
-      order: 3;
-      transition: transform 0.16s ease;
-    }
-
-    .options-panel[open] .options-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .options-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .options-summary-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .options-inner {
-      padding: 0 18px 18px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .options-stack {
-      display: grid;
-      gap: 14px;
-    }
+    .shell { display: grid; gap: 18px; }
 
     .hero {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: var(--panel-soft);
-    }
-
-    .hero-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 18px;
+      padding-bottom: 2px;
     }
 
     .eyebrow {
-      color: var(--accent);
+      margin: 0 0 8px;
+      font-size: 0.76rem;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 12px;
+      color: var(--muted-2);
       font-weight: 800;
-      margin-bottom: 8px;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(28px, 3.7vw, 42px);
-      line-height: 1.04;
+      font-size: clamp(1.9rem, 4vw, 3.5rem);
+      letter-spacing: -0.06em;
+      line-height: 0.98;
     }
 
-    .sub {
+    .subhead {
       margin: 10px 0 0;
+      max-width: 760px;
       color: var(--muted);
-      max-width: 64ch;
-      line-height: 1.55;
-      font-size: 14px;
+      line-height: 1.5;
+      font-size: 0.98rem;
     }
 
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-      white-space: nowrap;
+    .search-card, .board, .toast, .settings-card {
+      background: rgba(23, 27, 37, 0.88);
+      border: 1px solid rgba(45, 53, 71, 0.92);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
     }
 
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(140,158,255,0.12);
-      flex: 0 0 auto;
-    }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(74,222,168,0.12); }
-    .dot.warn { background: var(--warn); box-shadow: 0 0 0 5px rgba(255,212,121,0.12); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 5px rgba(255,141,141,0.12); }
-
-    .stats-panel {
-      margin-bottom: 18px;
-      padding: 0;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 18px;
-      overflow: hidden;
+    .boards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
     }
 
-    .stats-summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
+    .board {
+      min-height: 280px;
+      border-radius: calc(var(--radius) + 4px);
+      padding: 14px;
+    }
+
+    .board-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-    }
-
-    .stats-summary::-webkit-details-marker { display: none; }
-
-    .stats-summary::after {
-      content: '▾';
-      color: var(--muted);
-      transition: transform 0.16s ease;
-    }
-
-    .stats-panel[open] .stats-summary::after {
-      transform: rotate(180deg);
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      padding: 0 14px 14px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 18px;
-      padding: 14px 16px;
-      min-height: 96px;
-    }
-
-    .stat-label {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 28px;
-      line-height: 1;
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .stat-help {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 12px;
-      align-items: end;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
-    }
-
-    .field.username { grid-column: span 3; }
-    .field.list { grid-column: span 3; }
-    .field.api { grid-column: span 4; }
-    .field.search { grid-column: span 7; }
-    .field.filter { grid-column: span 3; }
-    .field.actions { grid-column: span 2; }
-
-    label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    input, button, .segmented {
-      font: inherit;
-    }
-
-    input {
-      width: 100%;
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line-strong);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: rgba(140,158,255,0.65);
-      box-shadow: 0 0 0 4px rgba(140,158,255,0.14);
-    }
-
-    .segmented {
-      display: inline-flex;
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 4px;
-      gap: 4px;
-      min-height: 48px;
-    }
-
-    .segmented button,
-    .ghost-btn,
-    .primary-btn,
-    .link-btn,
-    .mini-link {
-      border: 0;
-      cursor: pointer;
-      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
-    }
-
-    .segmented button {
-      flex: 1;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-      padding: 10px 12px;
-    }
-
-    .segmented button.active {
-      background: rgba(140,158,255,0.18);
-      color: var(--text);
-      box-shadow: inset 0 0 0 1px rgba(140,158,255,0.22);
-    }
-
-    .button-row {
-      display: flex;
       gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .primary-btn,
-    .ghost-btn {
-      min-height: 48px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-weight: 800;
-      width: 100%;
-    }
-
-    .primary-btn {
-      color: white;
-      background: linear-gradient(135deg, #8c9eff, #a479ff);
-      box-shadow: 0 12px 28px rgba(140,158,255,0.28);
-    }
-
-    .ghost-btn {
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
-    }
-
-    .primary-btn:hover,
-    .ghost-btn:hover,
-    .link-btn:hover,
-    .mini-link:hover,
-    .segmented button:hover {
-      transform: translateY(-1px);
-    }
-
-    .primary-btn:disabled,
-    .ghost-btn:disabled {
-      opacity: 0.7;
-      cursor: progress;
-      transform: none;
-    }
-
-    .bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 22px;
+      margin-bottom: 12px;
+      padding: 2px 2px 10px;
       border-bottom: 1px solid var(--line);
-      flex-wrap: wrap;
     }
 
-    .bar-left,
-    .bar-right {
+    .board-title {
       display: flex;
-      gap: 10px;
       align-items: center;
-      flex-wrap: wrap;
+      gap: 9px;
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
     }
 
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
+    .count {
+      min-width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
       border-radius: 999px;
-      background: rgba(255,255,255,0.04);
+      background: var(--surface-soft);
       border: 1px solid var(--line);
       color: var(--muted);
-      font-size: 13px;
+      font-size: 0.78rem;
+      font-weight: 950;
     }
 
-    .notice {
-      margin: 18px 22px 0;
-      padding: 14px 16px;
-      border-radius: 16px;
+    .collapse-btn, .settings-chevron {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--surface-soft);
       border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
       color: var(--muted);
-      line-height: 1.55;
+      font-weight: 950;
+      transition: 160ms ease;
     }
 
-    .notice.error {
-      color: #ffd8d8;
-      background: rgba(255,141,141,0.08);
-      border-color: rgba(255,141,141,0.18);
+    .collapse-btn:hover {
+      color: var(--text);
+      border-color: #465169;
     }
 
-    .notice.success {
-      color: #d8ffef;
-      background: rgba(74,222,168,0.08);
-      border-color: rgba(74,222,168,0.18);
-    }
+    .board-list { display: grid; gap: 10px; }
+    .board.collapsed .board-list { display: none; }
+    .board.collapsed { min-height: auto; }
 
-    .content {
-      padding: 18px;
-    }
-
-    .list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .item {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--line);
-      border-radius: 18px;
+    .show-card {
       overflow: hidden;
+      border-radius: 20px;
+      background: rgba(32, 38, 54, 0.72);
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
     }
 
-    .item-link,
-    .item-static {
+    .card-main {
       display: grid;
-      grid-template-columns: 46px minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 10px 12px;
-      min-height: 72px;
+      grid-template-columns: auto 50px 1fr auto;
+      align-items: start;
+      gap: 10px;
+      padding: 12px;
     }
 
-    .item-link {
+    .download-check {
+      width: 22px;
+      height: 22px;
+      margin: 2px 0 0;
+      accent-color: var(--brand);
       cursor: pointer;
-      transition: transform 0.16s ease, background 0.16s ease;
     }
 
-    .item-link:hover {
-      background: rgba(255,255,255,0.035);
-      transform: translateY(-1px);
+    .thumb, .poster {
+      object-fit: cover;
+      background: linear-gradient(135deg, #30384b, #1e2432);
+      border: 1px solid var(--line);
     }
 
-    .item-static {
-      opacity: 0.96;
+    .thumb {
+      width: 50px;
+      height: 68px;
+      border-radius: 14px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+      transition: 160ms ease;
     }
 
     .poster {
       width: 46px;
-      aspect-ratio: 2 / 3;
+      height: 64px;
       border-radius: 12px;
-      overflow: hidden;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-      flex: 0 0 auto;
     }
 
-    .poster img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
+    .thumb-link {
+      display: inline-grid;
+      width: max-content;
+      border-radius: 14px;
+      outline: none;
     }
 
-    .poster-fallback {
-      width: 100%;
-      height: 100%;
-      display: grid;
-      place-items: center;
-      color: rgba(255,255,255,0.4);
-      font-size: 11px;
-      text-align: center;
-      padding: 8px;
+    .thumb-link:hover .thumb,
+    .thumb-link:focus-visible .thumb {
+      transform: translateY(-1px);
+      border-color: rgba(139, 150, 255, 0.55);
     }
 
-    .item-main {
-      min-width: 0;
-      display: grid;
-      gap: 6px;
-    }
+    .card-content { min-width: 0; }
 
-    .item-summary {
+    .title-row {
       display: flex;
-      justify-content: space-between;
-      gap: 10px;
       align-items: center;
+      gap: 8px;
       min-width: 0;
     }
 
-    .title-block {
-      min-width: 0;
-      flex: 1 1 auto;
+    .show-link {
+      color: inherit;
+      text-decoration: none;
+      outline: none;
     }
 
-    .title {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.3;
-      font-weight: 800;
+    .show-link:hover,
+    .show-link:focus-visible {
+      color: var(--brand-strong);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .complete-toggle {
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      color: var(--muted-2);
+      font-weight: 950;
+      line-height: 1;
+      transition: 160ms ease;
+    }
+
+    .complete-toggle:hover {
+      color: var(--text);
+      border-color: #465169;
+      background: var(--surface-softer);
+    }
+
+    .complete-toggle.active {
+      color: #0b0e17;
+      background: var(--ok);
+      border-color: transparent;
+      box-shadow: 0 0 0 4px rgba(69, 212, 155, 0.12);
+    }
+
+    .result-title, .card-title {
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .card-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
-      overflow: hidden;
     }
 
-    .badges {
+    .result-meta, .card-meta {
       display: flex;
-      gap: 8px;
-      flex-wrap: nowrap;
-      align-items: center;
-      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
     }
 
-    .pill {
+    .badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      padding: 5px 8px;
       border-radius: 999px;
-      padding: 7px 10px;
-      font-size: 12px;
-      font-weight: 800;
-      border: 1px solid transparent;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 850;
       white-space: nowrap;
     }
 
-    .pill.ok { color: #d8ffef; background: var(--ok-soft); border-color: rgba(74,222,168,0.18); }
-    .pill.warn { color: #fff1cc; background: var(--warn-soft); border-color: rgba(255,212,121,0.18); }
-    .pill.bad { color: #ffdcdc; background: var(--bad-soft); border-color: rgba(255,141,141,0.18); }
-    .pill.info { color: #dbe3ff; background: var(--accent-soft); border-color: rgba(140,158,255,0.2); }
+    .badge.found {
+      color: var(--ok);
+      background: rgba(69, 212, 155, 0.10);
+      border-color: rgba(69, 212, 155, 0.2);
+    }
 
-    .meta-grid {
+    .badge.watching {
+      color: var(--warn);
+      background: rgba(242, 195, 107, 0.10);
+      border-color: rgba(242, 195, 107, 0.22);
+    }
+
+    .badge.downloaded {
+      color: var(--brand-strong);
+      background: rgba(139, 150, 255, 0.12);
+      border-color: rgba(139, 150, 255, 0.22);
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .notes-toggle {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      font-weight: 950;
+    }
+
+    .notes-toggle[aria-expanded="true"] {
+      color: var(--brand-strong);
+      border-color: rgba(139, 150, 255, 0.25);
+      background: rgba(139, 150, 255, 0.10);
+    }
+
+    .remove-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      color: var(--muted-2);
+      background: transparent;
+      font-weight: 950;
+    }
+
+    .remove-btn:hover {
+      color: var(--danger);
+      background: rgba(255, 123, 115, 0.10);
+    }
+
+    .notes-panel {
+      display: none;
+      padding: 0 12px 12px 94px;
+    }
+
+    .show-card.notes-open .notes-panel { display: block; }
+
+    textarea {
+      width: 100%;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      outline: none;
+      background: #151923;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    textarea:focus {
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
+      background: #111722;
+    }
+
+    .notes-panel textarea { min-height: 92px; }
+
+    .search-card {
+      position: relative;
+      padding: 14px;
+      border-radius: calc(var(--radius) + 8px);
+    }
+
+    .search-row {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr auto;
       gap: 10px;
     }
 
-    .meta-card {
-      padding: 12px 13px;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      min-width: 0;
-    }
-
-    .meta-label {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
-    }
-
-    .meta-value {
-      font-size: 13px;
-      line-height: 1.5;
+    .search-input {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
       color: var(--text);
-      word-break: break-word;
+      outline: none;
+      transition: 160ms ease;
+      font-size: 1rem;
     }
 
-    .meta-value.muted { color: var(--muted); }
+    .search-input::placeholder, textarea::placeholder { color: var(--muted-2); }
 
-    .line-clamp-3 {
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    .search-input:focus {
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.12);
+      background: #252c3d;
     }
 
-    .actions-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+    .results {
+      display: none;
+      margin-top: 10px;
+      max-height: 440px;
+      overflow: auto;
+      padding: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+    }
+
+    .results.open {
+      display: grid;
+      gap: 6px;
+    }
+
+    .result-item {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 12px;
       align-items: center;
+      width: 100%;
+      padding: 10px;
+      text-align: left;
+      background: transparent;
+      border-radius: 16px;
+      color: var(--text);
     }
 
-    .link-btn,
-    .mini-link {
+    .result-item:hover { background: var(--surface-soft); }
+
+    .settings-card {
+      border-radius: calc(var(--radius) + 6px);
+      padding: 4px 14px 14px;
+    }
+
+    .settings-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 54px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .settings-summary::-webkit-details-marker { display: none; }
+
+    .summary-title {
+      display: block;
+      font-weight: 950;
+      letter-spacing: -0.02em;
+    }
+
+    .summary-help {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted-2);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .settings-chevron {
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .settings-card[open] .settings-chevron { transform: rotate(180deg); }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .toolbar-left, .toolbar-right, .import-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(69, 212, 155, 0.12);
+    }
+
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      font-weight: 800;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-    }
-
-    .link-btn {
-      min-height: 42px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.05);
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--surface-soft);
       color: var(--text);
+      border: 1px solid var(--line);
+      font-weight: 850;
+      transition: 160ms ease;
     }
 
-    .link-btn.primary {
-      background: linear-gradient(135deg, rgba(140,158,255,0.22), rgba(164,121,255,0.18));
-      border-color: rgba(140,158,255,0.24);
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: #465169;
+      background: var(--surface-softer);
     }
 
-    .mini-link {
-      padding: 6px 10px;
-      background: rgba(255,255,255,0.04);
+    .btn.primary {
+      background: var(--brand);
+      color: #0b0e17;
+      border-color: transparent;
+      box-shadow: 0 12px 28px rgba(139, 150, 255, 0.22);
+    }
+
+    .btn.primary:hover { background: var(--brand-strong); }
+    .btn.danger { color: var(--danger); }
+    .file-input { display: none; }
+
+    .batch-tools {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .batch-label {
+      display: grid;
+      gap: 6px;
       color: var(--muted);
-      font-size: 12px;
-    }
-
-    details {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 10px 12px;
-    }
-
-    summary {
-      cursor: pointer;
-      color: #dce4ff;
+      font-size: 0.9rem;
       font-weight: 800;
-      font-size: 13px;
-      list-style: none;
     }
 
-    summary::-webkit-details-marker { display: none; }
+    .batch-label textarea { min-height: 132px; }
 
-    .entry-collapse {
-      background: rgba(255,255,255,0.025);
-      border-color: rgba(255,255,255,0.055);
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .entry-toggle {
-      padding: 11px 12px;
+    .batch-actions {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .entry-toggle::after {
-      content: 'Show details';
-      color: var(--muted);
-      font-size: 12px;
+    .batch-note {
+      color: var(--muted-2);
+      font-size: 0.84rem;
+      line-height: 1.45;
       font-weight: 700;
     }
 
-    .entry-collapse[open] .entry-toggle::after {
-      content: 'Hide details';
+    .empty {
+      padding: 22px 14px;
+      border: 1px dashed #39445c;
+      border-radius: 20px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(32, 38, 54, 0.42);
+      line-height: 1.45;
+      font-weight: 700;
     }
 
-    .entry-details {
-      padding: 0 12px 12px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .torrent-list {
+    .toast-area {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 60;
       display: grid;
       gap: 10px;
-      margin-top: 12px;
+      width: min(420px, calc(100vw - 36px));
     }
 
-    .torrent {
-      border-radius: 14px;
-      padding: 11px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .torrent-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      margin-bottom: 6px;
-    }
-
-    .torrent-name {
+    .toast {
+      padding: 14px 16px;
+      border-radius: 18px;
+      color: var(--text);
       font-weight: 800;
       line-height: 1.4;
     }
 
-    .torrent-meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      margin-bottom: 8px;
+    .toast.error { border-color: rgba(255, 123, 115, 0.24); }
+
+    @media (max-width: 1120px) {
+      .boards { grid-template-columns: 1fr; }
+      .board { min-height: auto; }
     }
 
-    .footer-note {
-      margin-top: 16px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-
-    .empty {
-      padding: 40px 16px;
-      text-align: center;
-      color: var(--muted);
-      border: 1px dashed rgba(255,255,255,0.1);
-      border-radius: 18px;
-      background: rgba(255,255,255,0.03);
-    }
-
-    @media (max-width: 920px) {
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .field.username,
-      .field.list,
-      .field.api,
-      .field.search,
-      .field.filter,
-      .field.actions { grid-column: span 6; }
-    }
-
-    @media (max-width: 680px) {
+    @media (max-width: 720px) {
       .app {
-        width: min(100vw - 12px, 1120px);
-        margin: 8px auto 18px;
+        width: min(100% - 18px, 1440px);
+        padding-top: 16px;
       }
 
-      .shell { border-radius: 22px; }
-      .content { padding-left: 14px; padding-right: 14px; }
-      .hero { padding: 14px; }
-      .content { padding-top: 14px; padding-bottom: 14px; }
-      .options-inner { padding: 0 14px 14px; }
-      .stats { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
-      .stat { padding: 12px; min-height: 0; }
-      .stat-value { font-size: 24px; }
-      .controls { grid-template-columns: 1fr; }
-      .field.username,
-      .field.list,
-      .field.api,
-      .field.search,
-      .field.filter,
-      .field.actions { grid-column: auto; }
-      .item {
-        border-radius: 16px;
-      }
-      .item-link,
-      .item-static {
-        grid-template-columns: 42px minmax(0, 1fr) auto;
-        gap: 10px;
-        padding: 10px;
-      }
-      .poster {
-        width: 42px;
-        border-radius: 10px;
-      }
-      .title { font-size: 14px; }
-      .button-row { align-items: stretch; }
-      .button-row .primary-btn,
-      .button-row .ghost-btn { width: 100%; }
-      .pill { white-space: normal; }
-      .notice { margin-left: 0; margin-right: 0; }
+      .hero, .search-row { grid-template-columns: 1fr; }
 
-      .options-summary {
-        padding: 12px 14px;
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
       }
 
-      .options-summary-right {
-        width: 100%;
+      .toolbar-left, .toolbar-right, .import-wrap { width: 100%; }
+
+      .toolbar .btn, .import-wrap .btn {
+        flex: 1;
       }
 
-      .options-summary::after {
-        margin-left: 0;
+      .batch-actions {
+        align-items: stretch;
+        flex-direction: column;
       }
 
-      .options-summary-right .chip,
-      .options-summary-right .hero-badge {
-        flex: 1 1 auto;
-        justify-content: center;
+      .batch-actions .btn { width: 100%; }
+
+      .result-item { grid-template-columns: 42px 1fr; }
+
+      .result-item .badge {
+        grid-column: 2;
+        width: max-content;
       }
+
+      .card-main {
+        grid-template-columns: auto 46px 1fr auto;
+      }
+
+      .thumb {
+        width: 46px;
+        height: 64px;
+      }
+
+      .notes-panel { padding-left: 12px; }
     }
   </style>
 </head>
+
 <body>
-  <div class="app">
-    <div class="shell">
-      <section class="content">
-        <div id="list" class="list"></div>
-        <div id="emptyState" class="empty" hidden>No titles match the current filters.</div>
+  <main class="app">
+    <section class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AniList × releases.moe</p>
+          <h1>Release Board</h1>
+          <p class="subhead">Track shows at a glance. Found, Watching, and Downloaded stay visible first; search and settings sit below the board.</p>
+        </div>
+      </header>
+
+      <section class="boards" aria-label="Release boards">
+        <article class="board" data-board="found">
+          <header class="board-header">
+            <h2 class="board-title">Found <span class="count" id="foundCount">0</span></h2>
+          </header>
+          <div class="board-list" id="foundList"></div>
+        </article>
+
+        <article class="board" data-board="watching">
+          <header class="board-header">
+            <h2 class="board-title">Watching <span class="count" id="watchingCount">0</span></h2>
+          </header>
+          <div class="board-list" id="watchingList"></div>
+        </article>
+
+        <article class="board" data-board="downloaded" id="downloadedBoard">
+          <header class="board-header">
+            <h2 class="board-title">Downloaded <span class="count" id="downloadedCount">0</span></h2>
+            <button class="collapse-btn" id="toggleDownloadedBtn" type="button" aria-expanded="true" title="Collapse Downloaded">⌄</button>
+          </header>
+          <div class="board-list" id="downloadedList"></div>
+        </article>
       </section>
 
-      <details class="options-panel" id="optionsPanel">
-        <summary class="options-summary">
-          <span class="options-title">Options</span>
-          <span class="options-summary-right">
-            <span class="chip"><strong id="watchingListLabel">zrr / </strong></span>
-            <span class="chip" id="visibleCountChip">Showing 0 titles</span>
-            <span class="hero-badge"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></span>
+      <section class="search-card" aria-label="Search AniList">
+        <div class="search-row">
+          <input
+            class="search-input"
+            id="searchInput"
+            type="search"
+            autocomplete="off"
+            placeholder="Search AniList, e.g. Cowboy Bebop"
+            aria-label="Search AniList for anime"
+          />
+          <button class="btn primary" id="searchBtn" type="button">Search</button>
+        </div>
+        <div class="results" id="results" role="listbox" aria-label="AniList search results"></div>
+      </section>
+
+      <details class="settings-card" id="settingsPanel">
+        <summary class="settings-summary">
+          <span>
+            <span class="summary-title">Settings</span>
+            <span class="summary-help">Status checks, batch import, JSON import/export, and board reset.</span>
           </span>
+          <span class="settings-chevron" aria-hidden="true">⌄</span>
         </summary>
 
-        <div class="options-inner">
-          <div id="notice" class="notice" hidden></div>
-
-          <div class="options-stack">
-            <details class="stats-panel">
-              <summary class="stats-summary">Show stats</summary>
-              <div class="stats">
-                <div class="stat">
-                  <div class="stat-label">Anime in list</div>
-                  <div class="stat-value" id="statTotal">0</div>
-                  <div class="stat-help">Unique AniList shows in the selected custom list.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Found on .moe</div>
-                  <div class="stat-value" id="statFound">0</div>
-                  <div class="stat-help">Entries with a .moe page.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Still waiting</div>
-                  <div class="stat-value" id="statWaiting">0</div>
-                  <div class="stat-help">Tracked shows that are not listed yet.</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-label">Last checked</div>
-                  <div class="stat-value" id="statChecked" style="font-size:18px; line-height:1.2;">Never</div>
-                  <div class="stat-help">Only refreshes on page load or manual reload.</div>
-                </div>
-              </div>
-            </details>
-
-            <section class="hero" id="settingsPanel">
-              <div class="controls">
-                <div class="field username">
-                  <label for="username">AniList username</label>
-                  <input id="username" value="zrr" autocomplete="off" />
-                </div>
-                <div class="field list">
-                  <label for="listName">Custom list name</label>
-                  <input id="listName" value="" autocomplete="off" />
-                </div>
-                <div class="field api">
-                  <label for="apiBase">.moe API base</label>
-                  <input id="apiBase" value="https://.moe" autocomplete="off" />
-                </div>
-                <div class="field search">
-                  <label for="searchInput">Filter anime</label>
-                  <input id="searchInput" placeholder="Search titles in this list" autocomplete="off" />
-                </div>
-                <div class="field filter">
-                  <label>Status view</label>
-                  <div class="segmented" id="statusFilter">
-                    <button type="button" data-filter="all" class="active">All</button>
-                    <button type="button" data-filter="found">Found</button>
-                    <button type="button" data-filter="waiting">Waiting</button>
-                  </div>
-                </div>
-                <div class="field actions">
-                  <label>Actions</label>
-                  <div class="button-row">
-                    <button id="refreshBtn" class="primary-btn">Reload</button>
-                    <button id="resetBtn" class="ghost-btn">Reset</button>
-                  </div>
-                </div>
-              </div>
-
-           
-            </section>
+        <section class="toolbar" aria-label="Board tools">
+          <div class="toolbar-left">
+            <span class="status-pill"><span class="dot" aria-hidden="true"></span><span id="statusText">Ready</span></span>
+            <button class="btn" id="checkAllBtn" type="button">Check status</button>
           </div>
-        </div>
+          <div class="toolbar-right">
+            <button class="btn" id="exportBtn" type="button">Export JSON</button>
+            <div class="import-wrap">
+              <input class="file-input" id="importFile" type="file" accept="application/json,.json" />
+              <button class="btn" id="importBtn" type="button">Import JSON</button>
+            </div>
+            <button class="btn danger" id="clearBtn" type="button">Clear</button>
+          </div>
+        </section>
+
+        <section class="batch-tools" aria-label="Batch import shows">
+          <label class="batch-label" for="batchInput">
+            Batch add series
+            <textarea id="batchInput" placeholder="Paste names here, one per line. Commas and semicolons also work.&#10;Example:&#10;Cowboy Bebop&#10;Frieren&#10;Dungeon Meshi"></textarea>
+          </label>
+          <div class="batch-actions">
+            <button class="btn primary" id="batchImportBtn" type="button">Add batch</button>
+            <button class="btn" id="batchClearBtn" type="button">Clear list</button>
+          </div>
+          <div class="batch-note">The first AniList result is used for each name. Existing shows are skipped automatically.</div>
+        </section>
       </details>
-    </div>
-  </div>
+    </section>
+  </main>
+
+  <div class="toast-area" id="toastArea" aria-live="polite" aria-atomic="true"></div>
 
   <script>
-    const ANILIST_API = 'https://graphql.anilist.co';
-    const STORAGE_KEY = '-watchlist-settings-v2';
-    const DEFAULTS = {
-      username: 'zrr',
-      listName: '',
-      apiBase: 'https://.moe'
-    };
+    const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+    const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
+    const STORAGE_KEY = "anilist-releases-board:v1";
 
     const state = {
-      items: [],
-      lastCheckedAt: null,
-      isLoading: false,
-      filter: 'all',
-      search: ''
+      shows: [],
+      ui: {
+        downloadedCollapsed: false,
+        settingsOpen: false,
+        openNotes: {}
+      }
     };
 
     const els = {
-      username: document.getElementById('username'),
-      listName: document.getElementById('listName'),
-      apiBase: document.getElementById('apiBase'),
-      searchInput: document.getElementById('searchInput'),
-      refreshBtn: document.getElementById('refreshBtn'),
-      resetBtn: document.getElementById('resetBtn'),
-      statusDot: document.getElementById('statusDot'),
-      statusText: document.getElementById('statusText'),
-      watchingListLabel: document.getElementById('watchingListLabel'),
-      visibleCountChip: document.getElementById('visibleCountChip'),
-      statusFilter: document.getElementById('statusFilter'),
-      notice: document.getElementById('notice'),
-      optionsPanel: document.getElementById('optionsPanel'),
-      list: document.getElementById('list'),
-      emptyState: document.getElementById('emptyState'),
-      statTotal: document.getElementById('statTotal'),
-      statFound: document.getElementById('statFound'),
-      statWaiting: document.getElementById('statWaiting'),
-      statChecked: document.getElementById('statChecked')
+      statusText: document.querySelector("#statusText"),
+      searchInput: document.querySelector("#searchInput"),
+      searchBtn: document.querySelector("#searchBtn"),
+      results: document.querySelector("#results"),
+      checkAllBtn: document.querySelector("#checkAllBtn"),
+      exportBtn: document.querySelector("#exportBtn"),
+      importBtn: document.querySelector("#importBtn"),
+      importFile: document.querySelector("#importFile"),
+      clearBtn: document.querySelector("#clearBtn"),
+      batchInput: document.querySelector("#batchInput"),
+      batchImportBtn: document.querySelector("#batchImportBtn"),
+      batchClearBtn: document.querySelector("#batchClearBtn"),
+      foundList: document.querySelector("#foundList"),
+      watchingList: document.querySelector("#watchingList"),
+      downloadedList: document.querySelector("#downloadedList"),
+      foundCount: document.querySelector("#foundCount"),
+      watchingCount: document.querySelector("#watchingCount"),
+      downloadedCount: document.querySelector("#downloadedCount"),
+      downloadedBoard: document.querySelector("#downloadedBoard"),
+      toggleDownloadedBtn: document.querySelector("#toggleDownloadedBtn"),
+      settingsPanel: document.querySelector("#settingsPanel"),
+      toastArea: document.querySelector("#toastArea")
     };
 
-    function loadSettings() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return { ...DEFAULTS };
-        const parsed = JSON.parse(raw);
-        return { ...DEFAULTS, ...parsed };
-      } catch {
-        return { ...DEFAULTS };
-      }
+    const boardCopy = {
+      found: "Found",
+      watching: "Watching",
+      downloaded: "Downloaded"
+    };
+
+    const emptyCopy = {
+      found: "No matched releases yet.",
+      watching: "No shows waiting for releases.",
+      downloaded: "Nothing downloaded yet."
+    };
+
+    init();
+
+    function init() {
+      loadState();
+      bindEvents();
+      render();
+      checkAllStatuses({ silent: true });
     }
 
-    function getSettings() {
-      return {
-        username: els.username.value.trim() || DEFAULTS.username,
-        listName: els.listName.value.trim() || DEFAULTS.listName,
-        apiBase: (els.apiBase.value.trim() || DEFAULTS.apiBase).replace(/\/$/, '')
-      };
-    }
-
-    function applySettings(settings) {
-      els.username.value = settings.username;
-      els.listName.value = settings.listName;
-      els.apiBase.value = settings.apiBase;
-      els.watchingListLabel.textContent = `${settings.username} / ${settings.listName}`;
-    }
-
-    function saveSettings() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function setStatus(kind, text) {
-      els.statusDot.className = 'dot';
-      if (kind) els.statusDot.classList.add(kind);
-      els.statusText.textContent = text;
-    }
-
-    function showNotice(message, kind = '') {
-      els.notice.hidden = false;
-      els.notice.className = `notice ${kind}`.trim();
-      els.notice.innerHTML = message;
-      if (els.optionsPanel) els.optionsPanel.open = true;
-    }
-
-    function clearNotice() {
-      els.notice.hidden = true;
-      els.notice.className = 'notice';
-      els.notice.innerHTML = '';
-    }
-
-    function formatDateTime(value) {
-      if (!value) return 'Never';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '—';
-      return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric', month: 'short', day: '2-digit',
-        hour: '2-digit', minute: '2-digit'
-      }).format(date);
-    }
-
-    function formatBytes(bytes) {
-      const value = Number(bytes);
-      if (!Number.isFinite(value) || value <= 0) return '—';
-      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-      let n = value;
-      let i = 0;
-      while (n >= 1024 && i < units.length - 1) {
-        n /= 1024;
-        i += 1;
-      }
-      return `${n.toFixed(n >= 100 || i === 0 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
-    }
-
-    function normalizeTitle(media) {
-      return media?.title?.english || media?.title?.romaji || media?.title?.native || `AniList #${media?.id ?? 'unknown'}`;
-    }
-
-    function getAltTitle(media) {
-      const names = [media?.title?.romaji, media?.title?.english, media?.title?.native]
-        .filter(Boolean)
-        .filter((value, index, arr) => arr.indexOf(value) === index);
-      if (names.length <= 1) return '';
-      return names.slice(1).join(' • ');
-    }
-
-    async function postAniList(query, variables) {
-      const response = await fetch(ANILIST_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ query, variables })
+    function bindEvents() {
+      els.searchBtn.addEventListener("click", () => runSearch());
+      els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
+      els.searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeResults();
+        if (event.key === "Enter") runSearch();
       });
 
-      const data = await response.json().catch(() => null);
-      if (!response.ok || data?.errors) {
-        const message = data?.errors?.[0]?.message || `AniList request failed with ${response.status}`;
-        throw new Error(message);
-      }
-      return data.data;
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".search-card")) closeResults();
+      });
+
+      els.checkAllBtn.addEventListener("click", () => checkAllStatuses({ silent: false }));
+      els.exportBtn.addEventListener("click", exportJson);
+      els.importBtn.addEventListener("click", () => els.importFile.click());
+      els.importFile.addEventListener("change", importJson);
+      els.clearBtn.addEventListener("click", clearBoard);
+      els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
+      els.batchImportBtn.addEventListener("click", importBatchNames);
+      els.batchClearBtn.addEventListener("click", () => {
+        els.batchInput.value = "";
+        els.batchInput.focus();
+      });
+
+      els.settingsPanel.addEventListener("toggle", () => {
+        state.ui.settingsOpen = els.settingsPanel.open;
+        saveState();
+      });
     }
 
-    async function fetchAniListCustomList(username, listName) {
+    async function runSearch() {
+      const search = els.searchInput.value.trim();
+
+      if (!search) {
+        closeResults();
+        return;
+      }
+
+      setStatus("Searching AniList…");
+      els.results.classList.add("open");
+      els.results.innerHTML = '<div class="empty">Searching…</div>';
+
+      try {
+        const results = await searchAniList(search);
+        renderResults(results);
+        setStatus("Ready");
+      } catch (error) {
+        console.error(error);
+        els.results.innerHTML = '<div class="empty">AniList search failed. Try again in a moment.</div>';
+        setStatus("Search failed");
+        toast("Could not search AniList. The API may be rate-limiting requests or unavailable.", "error");
+      }
+    }
+
+    async function searchAniList(search) {
       const query = `
-        query ($userName: String!) {
-          MediaListCollection(userName: $userName, type: ANIME) {
-            lists {
-              name
-              isCustomList
-              entries {
-                media {
-                  id
-                  siteUrl
-                  title { romaji english native }
-                  coverImage { large color }
-                }
-              }
+        query SearchAnime($search: String, $page: Int, $perPage: Int) {
+          Page(page: $page, perPage: $perPage) {
+            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+              id
+              title { romaji english native }
+              coverImage { medium large }
+              episodes
+              format
+              status
+              seasonYear
+              siteUrl
             }
           }
         }
       `;
 
-      const data = await postAniList(query, { userName: username });
-      const lists = data?.MediaListCollection?.lists || [];
-      const wanted = lists.find((list) =>
-        list?.isCustomList &&
-        String(list?.name || '').trim().toLowerCase() === listName.trim().toLowerCase()
-      );
-
-      if (!wanted) {
-        const available = lists
-          .filter((list) => list?.isCustomList)
-          .map((list) => list.name)
-          .filter(Boolean);
-        const extra = available.length
-          ? ` Available custom lists: ${available.map(escapeHtml).join(', ')}.`
-          : ' No public custom lists were returned for this account.';
-        throw new Error(`Custom list <strong>${escapeHtml(listName)}</strong> was not found for <strong>${escapeHtml(username)}</strong>.${extra}`);
-      }
-
-      const deduped = new Map();
-      for (const entry of wanted.entries || []) {
-        const media = entry?.media;
-        if (media?.id) deduped.set(media.id, media);
-      }
-      return Array.from(deduped.values());
-    }
-
-    function chunk(array, size) {
-      const out = [];
-      for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
-      return out;
-    }
-
-    function normalizeLooseString(value) {
-      return String(value || '').trim().toLowerCase();
-    }
-
-    function getTorrentSignature(torrent) {
-      const files = (torrent?.files || [])
-        .map((file) => `${file?.name || ''}:${Number(file?.length) || 0}`)
-        .sort()
-        .join('|');
-      const tags = [...(torrent?.tags || [])].map((tag) => normalizeLooseString(tag)).sort().join('|');
-      return [
-        normalizeLooseString(torrent?.groupedUrl),
-        normalizeLooseString(torrent?.infohash),
-        normalizeLooseString(torrent?.releaseGroup),
-        normalizeLooseString(torrent?.tracker),
-        Number(torrent?.dualAudio) ? 'dual' : 'single',
-        tags,
-        files
-      ].join('::');
-    }
-
-    function dedupeTorrents(torrents) {
-      const byKey = new Map();
-      for (const torrent of torrents || []) {
-        const strongKey = normalizeLooseString(torrent?.groupedUrl) || normalizeLooseString(torrent?.infohash);
-        const fallbackKey = getTorrentSignature(torrent);
-        const key = strongKey || fallbackKey;
-        const existing = byKey.get(key);
-        if (!existing) {
-          byKey.set(key, torrent);
-          continue;
-        }
-
-        const score = (item) => {
-          let n = 0;
-          if (item?.isBest) n += 100;
-          if (item?.dualAudio) n += 20;
-          if (item?.url) n += 5;
-          if (item?.groupedUrl) n += 5;
-          if ((item?.files || []).length) n += 3;
-          return n;
-        };
-
-        if (score(torrent) > score(existing)) {
-          byKey.set(key, torrent);
-        }
-      }
-      return Array.from(byKey.values());
-    }
-
-    function choosePreferredEntry(existing, candidate) {
-      if (!existing) return candidate;
-      const score = (entry) => {
-        let n = 0;
-        if (!entry?.incomplete) n += 50;
-        n += Math.min((entry?.expand?.trs || []).length, 10) * 5;
-        n += entry?.comparison ? 5 : 0;
-        const updated = Date.parse(entry?.updated || '') || 0;
-        n += Math.floor(updated / 1_000_000_000);
-        return n;
-      };
-      return score(candidate) > score(existing) ? candidate : existing;
-    }
-
-    function buildSeaDexFilter(ids) {
-      return '(' + ids.map((id) => `alID=${Number(id)}`).join(' || ') + ')';
-    }
-
-    async function fetchSeaDexByAniListIds(ids, apiBase) {
-      if (!ids.length) return new Map();
-      const results = [];
-
-      for (const idChunk of chunk(ids, 25)) {
-        const params = new URLSearchParams({
-          filter: buildSeaDexFilter(idChunk),
-          expand: 'trs',
-          perPage: String(idChunk.length),
-          sort: '-updated'
-        });
-
-        const url = `${apiBase}/api/collections/entries/records?${params.toString()}`;
-        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-          const message = data?.message || `.moe request failed with ${response.status}`;
-          throw new Error(message);
-        }
-        results.push(...(data?.items || []));
-      }
-
-      const map = new Map();
-      for (const item of results) {
-        if (item?.alID == null) continue;
-        const key = Number(item.alID);
-        map.set(key, choosePreferredEntry(map.get(key), item));
-      }
-      return map;
-    }
-
-    function pickBestTorrent(entry) {
-      const torrents = dedupeTorrents(entry?.expand?.trs || []);
-      if (!torrents.length) return null;
-      return [...torrents].sort((a, b) => {
-        const score = (torrent) => {
-          let n = 0;
-          if (torrent?.isBest) n += 100;
-          if (torrent?.dualAudio) n += 20;
-          if (torrent?.groupedUrl) n += 5;
-          if (torrent?.url) n += 2;
-          return n;
-        };
-        return score(b) - score(a);
-      })[0];
-    }
-
-    function buildViewModel(media, entry) {
-      const bestTorrent = entry ? pickBestTorrent(entry) : null;
-      const comparisons = entry?.comparison
-        ? String(entry.comparison).split(',').map((part) => part.trim()).filter(Boolean)
-        : [];
-      const torrents = dedupeTorrents(entry?.expand?.trs || []);
-      const bestSize = bestTorrent
-        ? formatBytes((bestTorrent.files || []).reduce((sum, file) => sum + (Number(file?.length) || 0), 0))
-        : '—';
-      const rawTorrentCount = (entry?.expand?.trs || []).length;
-      const duplicateTorrentCount = Math.max(0, rawTorrentCount - torrents.length);
-
-      return {
-        id: media.id,
-        title: normalizeTitle(media),
-        altTitle: getAltTitle(media),
-        cover: media?.coverImage?.large || '',
-        coverColor: media?.coverImage?.color || '#2d3e77',
-        aniListUrl: media?.siteUrl || `https://anilist.co/anime/${media.id}`,
-        hasSeaDex: Boolean(entry),
-        entryUrl: entry ? `https://.moe/${media.id}/` : '',
-        incomplete: Boolean(entry?.incomplete),
-        notes: entry?.notes || '',
-        theoreticalBest: entry?.theoreticalBest || '',
-        updatedAt: entry?.updated || '',
-        comparisons,
-        bestTorrent,
-        bestSize,
-        torrents,
-        rawTorrentCount,
-        duplicateTorrentCount,
-        searchBlob: [
-          normalizeTitle(media),
-          getAltTitle(media),
-          entry?.notes || '',
-          bestTorrent?.releaseGroup || '',
-          (bestTorrent?.tags || []).join(' ')
-        ].join(' ').toLowerCase()
-      };
-    }
-
-    function getVisibleItems() {
-      const term = state.search.trim().toLowerCase();
-      return state.items.filter((item) => {
-        if (state.filter === 'found' && !item.hasSeaDex) return false;
-        if (state.filter === 'waiting' && item.hasSeaDex) return false;
-        if (term && !item.searchBlob.includes(term)) return false;
-        return true;
+      const response = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          variables: { search, page: 1, perPage: 8 }
+        })
       });
+
+      if (!response.ok) throw new Error(`AniList returned ${response.status}`);
+      const json = await response.json();
+      return json?.data?.Page?.media ?? [];
+    }
+
+    function renderResults(results) {
+      if (!results.length) {
+        els.results.innerHTML = '<div class="empty">No AniList results found.</div>';
+        return;
+      }
+
+      els.results.innerHTML = results.map((media) => {
+        const title = getTitle(media.title);
+        const alreadyAdded = state.shows.some((show) => show.anilistId === media.id);
+        const meta = [media.format, media.seasonYear, media.episodes ? `${media.episodes} ep` : null]
+          .filter(Boolean)
+          .map(escapeHtml)
+          .join(" · ");
+
+        return `
+          <button class="result-item" type="button" data-add-id="${media.id}" ${alreadyAdded ? "disabled" : ""}>
+            <img class="poster" src="${escapeAttr(media.coverImage?.medium ?? "")}" alt="" loading="lazy" />
+            <span>
+              <span class="result-title">${escapeHtml(title)}</span>
+              <span class="result-meta">${meta || "Anime"}</span>
+            </span>
+            <span class="badge">${alreadyAdded ? "Added" : "Add"}</span>
+          </button>
+        `;
+      }).join("");
+
+      els.results.querySelectorAll("[data-add-id]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const media = results.find((item) => item.id === Number(button.dataset.addId));
+          if (media) await addShow(media);
+        });
+      });
+    }
+
+    async function addShow(media) {
+      if (state.shows.some((show) => show.anilistId === media.id)) {
+        toast("That show is already on your board.");
+        return;
+      }
+
+      closeResults();
+      els.searchInput.value = "";
+      setStatus("Checking releases.moe…");
+
+      const show = makeShowFromMedia(media);
+      state.shows.unshift(show);
+      render();
+      saveState();
+
+      await refreshShowStatus(show, { forceMove: true });
+      render();
+      saveState();
+      setStatus("Ready");
+      toast(`${show.title} added to ${boardCopy[show.board]}.`);
+    }
+
+    function makeShowFromMedia(media) {
+      return {
+        id: crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        anilistId: media.id,
+        title: getTitle(media.title),
+        titleEnglish: media.title?.english ?? "",
+        titleRomaji: media.title?.romaji ?? "",
+        coverImage: media.coverImage?.medium || media.coverImage?.large || "",
+        format: media.format ?? "",
+        episodes: media.episodes ?? null,
+        seasonYear: media.seasonYear ?? null,
+        siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
+        board: "watching",
+        downloaded: false,
+        allAvailableDownloaded: false,
+        comments: "",
+        releasesMoe: {
+          found: false,
+          recordId: null,
+          checkedAt: null,
+          error: null
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    async function importBatchNames() {
+      const names = parseBatchNames(els.batchInput.value);
+
+      if (!names.length) {
+        toast("Paste at least one series name first.");
+        els.batchInput.focus();
+        return;
+      }
+
+      const added = [];
+      const skipped = [];
+      const failed = [];
+
+      setStatus(`Batch adding 0/${names.length}…`);
+      els.batchImportBtn.disabled = true;
+      els.batchImportBtn.textContent = "Adding…";
+
+      try {
+        for (let index = 0; index < names.length; index++) {
+          const name = names[index];
+          setStatus(`Batch adding ${index + 1}/${names.length}…`);
+
+          try {
+            const results = await searchAniList(name);
+            const media = results[0];
+
+            if (!media) {
+              failed.push(`${name}: no AniList result`);
+              continue;
+            }
+
+            if (state.shows.some((show) => show.anilistId === media.id)) {
+              skipped.push(getTitle(media.title));
+              continue;
+            }
+
+            const show = makeShowFromMedia(media);
+            state.shows.unshift(show);
+            await refreshShowStatus(show, { forceMove: true });
+            added.push(show.title);
+            render();
+            saveState();
+          } catch (error) {
+            console.error(error);
+            failed.push(`${name}: ${error.message || "failed"}`);
+          }
+        }
+      } finally {
+        els.batchImportBtn.disabled = false;
+        els.batchImportBtn.textContent = "Add batch";
+        setStatus("Ready");
+      }
+
+      render();
+      saveState();
+
+      if (added.length) els.batchInput.value = "";
+
+      const parts = [];
+      if (added.length) parts.push(`${added.length} added`);
+      if (skipped.length) parts.push(`${skipped.length} skipped`);
+      if (failed.length) parts.push(`${failed.length} failed`);
+
+      toast(parts.length ? `Batch complete: ${parts.join(", ")}.` : "No shows were added.", failed.length ? "error" : "");
+
+      if (failed.length) {
+        console.warn("Batch import failures:", failed);
+      }
+    }
+
+    function parseBatchNames(value) {
+      const seen = new Set();
+      return String(value || "")
+        .split(/[\n,;]+/)
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .filter((name) => {
+          const key = name.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+    }
+
+    async function checkAllStatuses({ silent = false } = {}) {
+      const candidates = state.shows.filter((show) => !show.downloaded);
+
+      if (!candidates.length) {
+        if (!silent) toast("No non-downloaded shows to check.");
+        return;
+      }
+
+      setStatus(`Checking ${candidates.length} show${candidates.length === 1 ? "" : "s"}…`);
+
+      for (const show of candidates) {
+        await refreshShowStatus(show, { forceMove: true });
+        render();
+        saveState();
+      }
+
+      setStatus("Ready");
+      if (!silent) toast("Status check complete.");
+    }
+
+    async function refreshShowStatus(show, { forceMove = false } = {}) {
+      try {
+        const match = await getReleaseEntry(show.anilistId);
+        show.releasesMoe = {
+          found: Boolean(match),
+          recordId: match?.id ?? null,
+          checkedAt: new Date().toISOString(),
+          error: null
+        };
+
+        if (!show.downloaded && forceMove) {
+          show.board = match ? "found" : "watching";
+        }
+
+        show.updatedAt = new Date().toISOString();
+      } catch (error) {
+        console.error(error);
+        show.releasesMoe = {
+          ...(show.releasesMoe || {}),
+          checkedAt: new Date().toISOString(),
+          error: error.message || "Unknown error"
+        };
+      }
+    }
+
+    async function getReleaseEntry(anilistId) {
+      const params = new URLSearchParams({
+        perPage: "1",
+        filter: `alID=${Number(anilistId)}`
+      });
+
+      const response = await fetch(`${RELEASES_ENDPOINT}?${params.toString()}`);
+      if (!response.ok) throw new Error(`releases.moe returned ${response.status}`);
+
+      const json = await response.json();
+      return json?.items?.[0] ?? null;
     }
 
     function render() {
-      const visibleItems = getVisibleItems();
-      els.list.innerHTML = '';
-      els.emptyState.hidden = visibleItems.length > 0;
-      els.statTotal.textContent = String(state.items.length);
-      els.statFound.textContent = String(state.items.filter((item) => item.hasSeaDex).length);
-      els.statWaiting.textContent = String(state.items.filter((item) => !item.hasSeaDex).length);
-      els.statChecked.textContent = state.lastCheckedAt ? formatDateTime(state.lastCheckedAt) : 'Never';
-      els.visibleCountChip.textContent = `Showing ${visibleItems.length} title${visibleItems.length === 1 ? '' : 's'}`;
+      applyDownloadedCollapse();
+      applySettingsState();
 
-      if (!visibleItems.length) return;
+      const byBoard = {
+        found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
+        watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
+        downloaded: state.shows.filter((show) => show.downloaded || show.board === "downloaded")
+      };
 
-      for (const item of visibleItems) {
-        const article = document.createElement('article');
-        article.className = 'item';
+      renderBoard("found", byBoard.found, els.foundList, els.foundCount);
+      renderBoard("watching", byBoard.watching, els.watchingList, els.watchingCount);
+      renderBoard("downloaded", byBoard.downloaded, els.downloadedList, els.downloadedCount);
+    }
 
-        const poster = item.cover
-          ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" />`
-          : `<div class="poster-fallback" style="background:${escapeHtml(item.coverColor)}22;">No cover</div>`;
+    function renderBoard(board, shows, listEl, countEl) {
+      countEl.textContent = shows.length;
 
-        let statusClass = 'bad';
-        let statusText = 'Waiting';
-        if (item.hasSeaDex && item.incomplete) {
-          statusClass = 'warn';
-          statusText = 'Incomplete';
-        } else if (item.hasSeaDex) {
-          statusClass = 'ok';
-          statusText = 'Found';
-        }
+      if (!shows.length) {
+        listEl.innerHTML = `<div class="empty">${emptyCopy[board]}</div>`;
+        return;
+      }
 
-        const cardInner = `
-          <div class="poster">${poster}</div>
-          <div class="item-main">
-            <div class="title-block">
-              <h2 class="title">${escapeHtml(item.title)}</h2>
+      listEl.innerHTML = shows.map(renderShowCard).join("");
+
+      listEl.querySelectorAll("[data-download-id]").forEach((checkbox) => {
+        checkbox.addEventListener("change", () => toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked));
+      });
+
+      listEl.querySelectorAll("[data-notes-id]").forEach((button) => {
+        button.addEventListener("click", () => toggleNotes(button.dataset.notesId));
+      });
+
+      listEl.querySelectorAll("[data-complete-id]").forEach((button) => {
+        button.addEventListener("click", () => toggleAllAvailableDownloaded(button.dataset.completeId));
+      });
+
+      listEl.querySelectorAll("[data-remove-id]").forEach((button) => {
+        button.addEventListener("click", () => removeShow(button.dataset.removeId));
+      });
+
+      listEl.querySelectorAll("[data-comment-id]").forEach((textarea) => {
+        textarea.addEventListener("input", debounce(() => updateComments(textarea.dataset.commentId, textarea.value), 180));
+      });
+    }
+
+    function renderShowCard(show) {
+      const isDownloaded = show.downloaded || show.board === "downloaded";
+      const isNotesOpen = Boolean(state.ui.openNotes[show.id]);
+      const releaseUrl = getReleaseMoeUrl(show);
+      const title = escapeHtml(show.title);
+      const titleHtml = releaseUrl
+        ? `<a class="show-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe">${title}</a>`
+        : title;
+      const completeActive = Boolean(show.allAvailableDownloaded);
+      const completeToggle = isDownloaded
+        ? `<button class="complete-toggle ${completeActive ? "active" : ""}" type="button" data-complete-id="${show.id}" aria-pressed="${completeActive}" title="${completeActive ? "All available material downloaded" : "Mark all available material as downloaded"}">*</button>`
+        : "";
+      const releaseBadge = isDownloaded
+        ? '<span class="badge downloaded">Downloaded</span>'
+        : show.releasesMoe?.found
+          ? '<span class="badge found">Found</span>'
+          : '<span class="badge watching">Watching</span>';
+      const meta = [show.format, show.seasonYear, show.episodes ? `${show.episodes} ep` : null]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(" · ");
+      const fallbackPoster = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='136' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' rx='18' fill='%23252c3d'/%3E%3Cpath d='M25 93h50M32 42h36M32 58h36M32 74h24' stroke='%237f8aa1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E";
+      const posterSrc = escapeAttr(show.coverImage || fallbackPoster);
+      const thumbHtml = releaseUrl
+        ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" /></a>`
+        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" />`;
+
+      return `
+        <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
+          <div class="card-main">
+            <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} aria-label="Mark ${escapeAttr(show.title)} as downloaded" />
+            ${thumbHtml}
+            <div class="card-content">
+              <div class="title-row">
+                <div class="card-title">${titleHtml}</div>
+                ${completeToggle}
+              </div>
+              <div class="card-meta">
+                ${meta ? `<span>${meta}</span>` : ""}
+                ${releaseBadge}
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments">✎</button>
+              <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove show">×</button>
             </div>
           </div>
-          <div class="badges">
-            <span class="pill ${statusClass}">${statusText}</span>
+          <div class="notes-panel">
+            <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
           </div>
-        `;
+        </article>
+      `;
+    }
 
-        if (item.hasSeaDex && item.entryUrl) {
-          article.innerHTML = `
-            <a
-              class="item-link"
-              href="${escapeHtml(item.entryUrl)}"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open ${escapeHtml(item.title)} on releases.moe"
-              title="Open on releases.moe"
-            >
-              ${cardInner}
-            </a>
-          `;
-        } else {
-          article.innerHTML = `
-            <div class="item-static" aria-disabled="true" title="No releases.moe page yet">
-              ${cardInner}
-            </div>
-          `;
-        }
+    async function toggleDownloadedStatus(showId, checked) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
 
-        els.list.appendChild(article);
+      show.downloaded = checked;
+      show.updatedAt = new Date().toISOString();
+
+      if (checked) {
+        show.previousBoard = show.board === "downloaded" ? show.previousBoard || "watching" : show.board;
+        show.board = "downloaded";
+        show.allAvailableDownloaded = Boolean(show.allAvailableDownloaded);
+        toast(`${show.title} moved to Downloaded.`);
+      } else {
+        show.downloaded = false;
+        show.allAvailableDownloaded = false;
+        show.board = show.releasesMoe?.found ? "found" : "watching";
+        await refreshShowStatus(show, { forceMove: true });
+        toast(`${show.title} moved to ${boardCopy[show.board]}.`);
       }
-    }
-
-    async function runRefresh(showSuccess = true) {
-      if (state.isLoading) return;
-      const settings = getSettings();
-      saveSettings();
-      applySettings(settings);
-      state.isLoading = true;
-      els.refreshBtn.disabled = true;
-      setStatus('', 'Refreshing…');
-      clearNotice();
-
-      try {
-        const anime = await fetchAniListCustomList(settings.username, settings.listName);
-        const seaDexMap = await fetchSeaDexByAniListIds(anime.map((media) => media.id), settings.apiBase);
-        state.items = anime
-          .map((media) => buildViewModel(media, seaDexMap.get(media.id) || null))
-          .sort((a, b) => Number(b.hasSeaDex) - Number(a.hasSeaDex) || a.title.localeCompare(b.title));
-        state.lastCheckedAt = new Date();
-        setStatus('ok', 'Ready');
-        render();
-
-        if (showSuccess) {
-          const found = state.items.filter((item) => item.hasSeaDex).length;
-          showNotice(
-            `Loaded <strong>${state.items.length}</strong> anime from <strong>${escapeHtml(settings.username)}</strong> / <strong>${escapeHtml(settings.listName)}</strong>. ` +
-            `<strong>${found}</strong> ${found === 1 ? 'title is' : 'titles are'} currently on releases.moe.`,
-            'success'
-          );
-        } else if (els.optionsPanel) {
-          els.optionsPanel.open = false;
-        }
-      } catch (error) {
-        setStatus('bad', 'Error');
-        const message = error instanceof Error ? error.message : String(error);
-        showNotice(
-          `Refresh failed. ${message}<br><br>` +
-          `If AniList works but releases.moe is blocked in your browser, the next step is a tiny proxy in front of the releases.moe API and pointing the API base field at that proxy.`,
-          'error'
-        );
-      } finally {
-        state.isLoading = false;
-        els.refreshBtn.disabled = false;
-      }
-    }
-
-    function resetDefaults() {
-      applySettings(DEFAULTS);
-      state.search = '';
-      state.filter = 'all';
-      els.searchInput.value = '';
-      updateFilterButtons();
-      saveSettings();
-      runRefresh(true);
-    }
-
-    function updateFilterButtons() {
-      [...els.statusFilter.querySelectorAll('button')].forEach((button) => {
-        button.classList.toggle('active', button.dataset.filter === state.filter);
-      });
-    }
-
-    function init() {
-      applySettings(loadSettings());
-      updateFilterButtons();
-
-      els.refreshBtn.addEventListener('click', () => runRefresh(true));
-      els.resetBtn.addEventListener('click', resetDefaults);
-      els.searchInput.addEventListener('input', (event) => {
-        state.search = event.target.value || '';
-        render();
-      });
-      els.statusFilter.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-filter]');
-        if (!button) return;
-        state.filter = button.dataset.filter;
-        updateFilterButtons();
-        render();
-      });
-
-      [els.username, els.listName, els.apiBase].forEach((el) => {
-        el.addEventListener('change', () => {
-          saveSettings();
-          applySettings(getSettings());
-        });
-      });
 
       render();
-      runRefresh(false);
+      saveState();
     }
 
-    init();
+    function toggleAllAvailableDownloaded(showId) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+
+      show.allAvailableDownloaded = !show.allAvailableDownloaded;
+      show.updatedAt = new Date().toISOString();
+      render();
+      saveState();
+    }
+
+    function toggleNotes(showId) {
+      state.ui.openNotes[showId] = !state.ui.openNotes[showId];
+      render();
+      saveState();
+    }
+
+    function updateComments(showId, comments) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+      show.comments = comments;
+      show.updatedAt = new Date().toISOString();
+      saveState();
+    }
+
+    function removeShow(showId) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+
+      const ok = confirm(`Remove “${show.title}” from the board?`);
+      if (!ok) return;
+
+      state.shows = state.shows.filter((item) => item.id !== showId);
+      delete state.ui.openNotes[showId];
+      render();
+      saveState();
+      toast(`${show.title} removed.`);
+    }
+
+    function exportJson() {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        shows: state.shows,
+        ui: state.ui
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `anilist-releases-board-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast("Board exported as JSON.");
+    }
+
+    async function importJson(event) {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        const shows = Array.isArray(payload) ? payload : payload.shows;
+
+        if (!Array.isArray(shows)) throw new Error("JSON must contain a shows array.");
+
+        state.shows = shows.map(normalizeImportedShow);
+        state.ui = {
+          downloadedCollapsed: Boolean(payload.ui?.downloadedCollapsed),
+          settingsOpen: Boolean(payload.ui?.settingsOpen),
+          openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {}
+        };
+
+        render();
+        saveState();
+        toast("Board imported. Checking statuses now…");
+        await checkAllStatuses({ silent: true });
+      } catch (error) {
+        console.error(error);
+        toast(`Import failed: ${error.message}`, "error");
+      }
+    }
+
+    function normalizeImportedShow(show) {
+      const id = show.id || (crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      const downloaded = Boolean(show.downloaded || show.board === "downloaded");
+      const releasesMoe = show.releasesMoe && typeof show.releasesMoe === "object"
+        ? show.releasesMoe
+        : { found: false, recordId: null, checkedAt: null, error: null };
+
+      return {
+        id,
+        anilistId: Number(show.anilistId || show.alID || show.idAnilist),
+        title: String(show.title || show.titleRomaji || show.titleEnglish || "Untitled"),
+        titleEnglish: String(show.titleEnglish || ""),
+        titleRomaji: String(show.titleRomaji || ""),
+        coverImage: String(show.coverImage || ""),
+        format: String(show.format || ""),
+        episodes: show.episodes ?? null,
+        seasonYear: show.seasonYear ?? null,
+        siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
+        board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
+        downloaded,
+        allAvailableDownloaded: Boolean(show.allAvailableDownloaded || show.allSeasonsDownloaded || show.completeDownloaded),
+        previousBoard: show.previousBoard || null,
+        comments: String(show.comments || ""),
+        releasesMoe: {
+          found: Boolean(releasesMoe.found),
+          recordId: releasesMoe.recordId ?? null,
+          checkedAt: releasesMoe.checkedAt ?? null,
+          error: releasesMoe.error ?? null
+        },
+        createdAt: show.createdAt || new Date().toISOString(),
+        updatedAt: show.updatedAt || new Date().toISOString()
+      };
+    }
+
+    function clearBoard() {
+      if (!state.shows.length) return;
+      const ok = confirm("Clear the whole board? Export first if you want a backup.");
+      if (!ok) return;
+
+      state.shows = [];
+      state.ui.openNotes = {};
+      render();
+      saveState();
+      toast("Board cleared.");
+    }
+
+    function toggleDownloaded() {
+      state.ui.downloadedCollapsed = !state.ui.downloadedCollapsed;
+      applyDownloadedCollapse();
+      saveState();
+    }
+
+    function applyDownloadedCollapse() {
+      els.downloadedBoard.classList.toggle("collapsed", Boolean(state.ui.downloadedCollapsed));
+      els.toggleDownloadedBtn.setAttribute("aria-expanded", String(!state.ui.downloadedCollapsed));
+      els.toggleDownloadedBtn.textContent = state.ui.downloadedCollapsed ? "›" : "⌄";
+      els.toggleDownloadedBtn.title = state.ui.downloadedCollapsed ? "Expand Downloaded" : "Collapse Downloaded";
+    }
+
+    function applySettingsState() {
+      els.settingsPanel.open = Boolean(state.ui.settingsOpen);
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const saved = JSON.parse(raw);
+        state.shows = Array.isArray(saved.shows) ? saved.shows.map(normalizeImportedShow) : [];
+        state.ui = {
+          downloadedCollapsed: Boolean(saved.ui?.downloadedCollapsed),
+          settingsOpen: Boolean(saved.ui?.settingsOpen),
+          openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {}
+        };
+      } catch (error) {
+        console.error(error);
+        localStorage.removeItem(STORAGE_KEY);
+        toast("Saved board data was invalid and has been reset.", "error");
+      }
+    }
+
+    function closeResults() {
+      els.results.classList.remove("open");
+      els.results.innerHTML = "";
+    }
+
+    function setStatus(text) {
+      els.statusText.textContent = text;
+    }
+
+    function toast(message, type = "") {
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.textContent = message;
+      els.toastArea.append(el);
+      window.setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(8px)";
+        el.style.transition = "240ms ease";
+        window.setTimeout(() => el.remove(), 260);
+      }, 3200);
+    }
+
+    function getReleaseMoeUrl(show) {
+      const anilistId = Number(show?.anilistId);
+      if (!show?.releasesMoe?.found || !Number.isFinite(anilistId)) return "";
+      return `https://releases.moe/${anilistId}/`;
+    }
+
+    function getTitle(title = {}) {
+      return title.english || title.romaji || title.native || "Untitled";
+    }
+
+    function debounce(fn, wait) {
+      let timeout;
+      return (...args) => {
+        window.clearTimeout(timeout);
+        timeout = window.setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replaceAll("`", "&#096;");
+    }
   </script>
 </body>
 </html>
