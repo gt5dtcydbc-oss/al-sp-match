@@ -1228,10 +1228,9 @@
       }
 
       if (state.lastRssReleaseAt) {
-  // This uses the formatSavedAt function we modified earlier to use your timezone!
-  const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
-  extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
-}
+        const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
+        extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
+      }
 
       if (isUnhealthy && state.notes.length) {
         extra += ` · ${escapeHtml(state.notes.join(" "))}`;
@@ -1603,6 +1602,12 @@
       return dateToWeekdayTime(date, timeZone);
     }
 
+    function formatMovedInfo(unixSeconds, timeZone) {
+      const date = new Date(unixSeconds * 1000);
+      const shortDate = new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric" }).format(date);
+      return { shortDate };
+    }
+
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(":").map(Number);
       return (h * 60) + m;
@@ -1954,11 +1959,14 @@
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        
         const isScheduleMoved =
           hasNextAiring &&
           Number.isFinite(nextAiringAt) &&
           nextAiringAt > nowSeconds &&
           (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
+          
+        const movedInfo = isScheduleMoved ? formatMovedInfo(nextAiringAt, timeZone) : null;
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
@@ -1977,7 +1985,8 @@
             hasNextAiring,
             totalEpisodes,
             displayEpisode,
-            isScheduleMoved
+            isScheduleMoved,
+            movedInfo
           });
           continue;
         }
@@ -2002,7 +2011,8 @@
             hasNextAiring,
             totalEpisodes,
             displayEpisode,
-            isScheduleMoved
+            isScheduleMoved,
+            movedInfo
           });
         }
       }
@@ -2278,7 +2288,7 @@
                         <div class="entry-meta">
                           ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
                           ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
-                          ${item.isScheduleMoved ? `<span class="chip moved">Schedule Moved</span>` : ""}
+                          ${item.isScheduleMoved ? `<span class="chip moved">Moved: ${escapeHtml(item.movedInfo?.shortDate)}</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
