@@ -437,6 +437,20 @@
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(18, 18, 18, 0.98));
       border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: opacity 0.2s, filter 0.2s;
+    }
+
+    .entry.on-break .thumb {
+      opacity: 0.4;
+      filter: grayscale(80%);
+    }
+
+    .entry.on-break .entry-title a {
+      color: var(--muted);
+    }
+
+    .entry.on-break .entry-meta > .chip:not(.moved) {
+      opacity: 0.4;
     }
 
     .thumb {
@@ -1602,12 +1616,6 @@
       return dateToWeekdayTime(date, timeZone);
     }
 
-    function formatMovedInfo(unixSeconds, timeZone) {
-      const date = new Date(unixSeconds * 1000);
-      const shortDate = new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric" }).format(date);
-      return { shortDate };
-    }
-
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(":").map(Number);
       return (h * 60) + m;
@@ -1965,8 +1973,6 @@
           Number.isFinite(nextAiringAt) &&
           nextAiringAt > nowSeconds &&
           (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
-          
-        const movedInfo = isScheduleMoved ? formatMovedInfo(nextAiringAt, timeZone) : null;
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
@@ -1985,8 +1991,7 @@
             hasNextAiring,
             totalEpisodes,
             displayEpisode,
-            isScheduleMoved,
-            movedInfo
+            isScheduleMoved
           });
           continue;
         }
@@ -2011,8 +2016,7 @@
             hasNextAiring,
             totalEpisodes,
             displayEpisode,
-            isScheduleMoved,
-            movedInfo
+            isScheduleMoved
           });
         }
       }
@@ -2277,7 +2281,7 @@
 
                     // IMAGES NOW RENDERED WITH DATA ATTRIBUTES FOR INDEXEDDB INJECTION
                     return `
-                    <article class="entry">
+                    <article class="entry ${item.isScheduleMoved ? 'on-break' : ''}">
                       <div class="thumb">
                        ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
@@ -2288,7 +2292,7 @@
                         <div class="entry-meta">
                           ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
                           ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
-                          ${item.isScheduleMoved ? `<span class="chip moved">Moved: ${escapeHtml(item.movedInfo?.shortDate)}</span>` : ""}
+                          ${item.isScheduleMoved ? `<span class="chip moved">On Break</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
