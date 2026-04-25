@@ -2080,7 +2080,7 @@
 
           output.push({
             ...item,
-            historyLog: entry.history.map(h => h.time).join(", ")
+            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
           continue;
         }
@@ -2110,7 +2110,7 @@
             sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved",
-            historyLog: rememberedHistory.map(h => h.time).join(", ")
+            historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
         } else {
           output.push(item);
