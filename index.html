@@ -1216,7 +1216,6 @@
       els.updateIndicator.classList.toggle("error", status === "error");
     }
 
-    // ADDED: Time formatter for footer
     function timeAgo(ms) {
       if (!ms) return "Never";
       const mins = Math.floor((Date.now() - ms) / 60000);
@@ -1228,7 +1227,6 @@
       return `${Math.floor(hrs / 24)}d ${hrs % 24}h`;
     }
 
-    // UPDATED: Dynamic footer render logic
     function renderFooterStatus() {
       const isUnhealthy = state.healthStatus === "unhealthy";
       const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
@@ -1773,7 +1771,6 @@
       try { localStorage.removeItem(BOARD_SNAPSHOT_KEY); } catch (_) {}
     }
 
-    // UPDATED: Save lastRssReleaseAt
     function saveBoardSnapshot() {
       const snapshot = {
         savedAt: Date.now(),
@@ -1791,7 +1788,6 @@
       state.lastSuccessfulLoadAt = snapshot.savedAt;
     }
 
-    // UPDATED: Load lastRssReleaseAt
     function hydrateBoardSnapshot() {
       const snapshot = loadBoardSnapshot();
       if (!snapshot?.userName) return false;
@@ -1849,7 +1845,6 @@
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
 
-      // Nuke any slot cache history + image blob not currently valid
       for (const id of Object.keys(cache)) {
         if (!validIds.has(id)) {
           delete cache[id];
@@ -1875,7 +1870,6 @@
         saveOverrides(userName, overrides);
       }
     }
-    // ----------------------------------
 
     function dedupeEntriesById(entries) {
       const map = new Map();
@@ -2039,18 +2033,28 @@
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
-          const currentEpisode = item.matchedEpisode;
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
 
-          const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
+          // --- NEW LOGIC: Use AniList target for stable deduplication & UI ---
+          let trackerEp = item.matchedEpisode; // Fallback just in case
+          if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
+            // AniList shows the *next* episode. The one that just released is displayEpisode - 1.
+            const releasedEp = Math.max(1, item.displayEpisode - 1);
+            trackerEp = String(releasedEp).padStart(2, "0");
+          } else if (trackerEp) {
+            trackerEp = String(trackerEp).padStart(2, "0");
+          }
 
-          if (currentEpisode && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+          // We now deduplicate based on AniList's expected episode
+          const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+
+          if (trackerEp && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
             entry.history.push({
               day: currentDay,
               time: currentTime,
               mins: toMinutes(currentTime),
-              episode: currentEpisode
+              episode: trackerEp
             });
 
             if (entry.history.length > 3) {
@@ -2279,7 +2283,6 @@
                       ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
                       : "";
 
-                    // IMAGES NOW RENDERED WITH DATA ATTRIBUTES FOR INDEXEDDB INJECTION
                     return `
                     <article class="entry ${item.isScheduleMoved ? 'on-break' : ''}">
                       <div class="thumb">
@@ -2329,7 +2332,6 @@
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
 
-      // TRIGGER ASYNC IMAGE LOAD
       loadImagesToDOM();
     }
 
@@ -2344,7 +2346,6 @@
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
-      // Trigger Hard Delete immediately
       pruneOrphanedStoredState(
         state.userName,
         state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
@@ -2647,9 +2648,8 @@
         ]);
 
         const nextNotes = [];
-        let nextCurrentEntries = state.currentEntries || []; // Fallback to cached AniList shows
+        let nextCurrentEntries = state.currentEntries || [];
 
-        // UPDATED: Handle AniList gracefully without throwing an error that breaks RSS
         if (aniListResult.status === "fulfilled") {
           nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
         } else {
@@ -2698,9 +2698,8 @@
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
-        // --- HARD DELETE MANUAL SHOWS IF COMPLETED ---
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
-        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { // Only run if AniList is up
+        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
           try {
             const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
             const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
@@ -2712,7 +2711,6 @@
               }
             }
           } catch(e) {
-            // Ignore if status check fails to avoid breaking main board
           }
         }
 
