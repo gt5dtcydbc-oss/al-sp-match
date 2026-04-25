@@ -1228,8 +1228,10 @@
       }
 
       if (state.lastRssReleaseAt) {
-        extra += ` · Newest RSS release ${timeAgo(state.lastRssReleaseAt)} ago`;
-      }
+  // This uses the formatSavedAt function we modified earlier to use your timezone!
+  const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
+  extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
+}
 
       if (isUnhealthy && state.notes.length) {
         extra += ` · ${escapeHtml(state.notes.join(" "))}`;
