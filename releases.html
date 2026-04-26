@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -252,6 +251,7 @@
       background: rgba(32, 38, 54, 0.72);
       border: 1px solid var(--line);
       box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
+      content-visibility: auto;
     }
 
     .card-main {
@@ -479,20 +479,6 @@
       100% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0); }
     }
 
-    .badge.confidence-low,
-    .badge.confidence-none,
-    .badge.duplicate {
-      color: var(--danger);
-      background: rgba(255, 123, 115, 0.10);
-      border-color: rgba(255, 123, 115, 0.24);
-    }
-
-    .badge.skipped {
-      color: var(--muted-2);
-      background: rgba(127, 138, 161, 0.10);
-      border-color: rgba(127, 138, 161, 0.24);
-    }
-
     .card-actions {
       display: flex;
       align-items: center;
@@ -583,8 +569,6 @@
       box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
       background: #111722;
     }
-
-    .notes-panel textarea { min-height: 92px; }
 
     .search-card {
       position: relative;
@@ -718,6 +702,13 @@
       border: 1px solid var(--line);
       font-size: 0.9rem;
       font-weight: 800;
+    }
+    
+    .last-checked-text {
+      color: var(--muted-2);
+      font-size: 0.8rem;
+      margin-left: 4px;
+      font-weight: 700;
     }
 
     .dot {
@@ -1096,6 +1087,7 @@
           <div class="toolbar-left">
             <span class="status-pill"><span class="dot" aria-hidden="true"></span><span id="statusText">Ready</span></span>
             <button class="btn" id="checkAllBtn" type="button">Check status</button>
+            <span class="last-checked-text" id="lastCheckedText"></span>
           </div>
           <div class="toolbar-right">
             <button class="btn" id="exportBtn" type="button">Export JSON</button>
@@ -1151,7 +1143,8 @@
         filterComplete: false,
         openNotes: {},
         franchiseNames: {},
-        collapsedFranchises: {}
+        collapsedFranchises: {},
+        lastChecked: null
       },
       localSearch: ""
     };
@@ -1160,6 +1153,7 @@
 
     const els = {
       statusText: document.querySelector("#statusText"),
+      lastCheckedText: document.querySelector("#lastCheckedText"),
       searchInput: document.querySelector("#searchInput"),
       boardSearchInput: document.querySelector("#boardSearchInput"),
       searchBtn: document.querySelector("#searchBtn"),
@@ -1214,7 +1208,8 @@
       
       bindEvents();
       render();
-      checkAllStatuses({ silent: true });
+      updateLastCheckedUI();
+      // NO API HAMMER HERE ANYMORE! Just pure local loading.
     }
 
     function bindEvents() {
@@ -1262,6 +1257,15 @@
         state.ui.settingsOpen = els.settingsPanel.open;
         saveState();
       });
+    }
+
+    function updateLastCheckedUI() {
+      if (state.ui.lastChecked) {
+        const date = new Date(state.ui.lastChecked);
+        els.lastCheckedText.textContent = `Last checked: ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      } else {
+        els.lastCheckedText.textContent = "";
+      }
     }
 
     async function runSearch() {
@@ -1425,7 +1429,7 @@
 
         return `
           <button class="result-item" type="button" data-add-id="${media.id}" ${alreadyAdded ? "disabled" : ""}>
-            <img class="poster" src="${escapeAttr(media.coverImage?.medium ?? "")}" alt="" loading="lazy" />
+            <img class="poster" src="${escapeAttr(media.coverImage?.medium ?? "")}" alt="" loading="lazy" decoding="async" />
             <span>
               <span class="result-title">${escapeHtml(title)}</span>
               <span class="result-meta">${meta || "Anime"}</span>
@@ -1660,7 +1664,7 @@
           </div>
 
           <div class="batch-match">
-            <img class="poster" src="${posterSrc}" alt="" loading="lazy" />
+            <img class="poster" src="${posterSrc}" alt="" loading="lazy" decoding="async" />
             <div class="batch-match-main">
               <div class="batch-match-title-row">
                 <span class="batch-match-title" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
@@ -1871,6 +1875,10 @@
         render();
         saveState();
       }
+
+      state.ui.lastChecked = new Date().toISOString();
+      saveState();
+      updateLastCheckedUI();
 
       setStatus("Ready");
       if (!silent) {
@@ -2160,8 +2168,8 @@
         .join(" · ");
       const posterSrc = escapeAttr(show.coverImage || getFallbackPoster());
       const thumbHtml = releaseUrl
-        ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" /></a>`
-        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" />`;
+        ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" /></a>`
+        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
 
       // Quick Add Logic
       const missingRelations = (show.relatedEntries || [])
@@ -2338,13 +2346,14 @@
           filterComplete: Boolean(payload.ui?.filterComplete),
           openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {},
           franchiseNames: payload.ui?.franchiseNames || {},
-          collapsedFranchises: payload.ui?.collapsedFranchises || {}
+          collapsedFranchises: payload.ui?.collapsedFranchises || {},
+          lastChecked: payload.ui?.lastChecked || null
         };
 
         render();
         saveState();
-        toast("Board imported. Checking statuses now…");
-        await checkAllStatuses({ silent: true });
+        updateLastCheckedUI();
+        toast("Board imported. Click 'Check status' to refresh data if needed.");
       } catch (error) {
         console.error(error);
         toast(`Import failed: ${error.message}`, "error");
@@ -2437,7 +2446,8 @@
           filterComplete: Boolean(saved.ui?.filterComplete),
           openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {},
           franchiseNames: saved.ui?.franchiseNames || {},
-          collapsedFranchises: saved.ui?.collapsedFranchises || {}
+          collapsedFranchises: saved.ui?.collapsedFranchises || {},
+          lastChecked: saved.ui?.lastChecked || null
         };
       } catch (error) {
         console.error(error);
