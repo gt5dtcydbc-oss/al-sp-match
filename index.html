@@ -381,7 +381,7 @@
     .day-head {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
+      align-items: center;
       gap: 12px;
       padding-bottom: 10px;
       margin-bottom: 12px;
@@ -389,7 +389,47 @@
     }
 
     .day-name { font-size: 1.02rem; font-weight: 800; }
+    
+    .day-head-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .day-count { font-size: 0.82rem; color: var(--muted); }
+
+    .day-collapse-btn {
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      padding: 0;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.16s, color 0.16s;
+    }
+
+    .day-collapse-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    .day-collapse-icon {
+      transition: transform 0.2s ease;
+    }
+
+    .day-column.collapsed .day-collapse-icon {
+      transform: rotate(-90deg);
+    }
+
+    .day-column.collapsed .time-group {
+      display: none;
+    }
 
     .time-group {
       display: grid;
@@ -1023,6 +1063,7 @@
     
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
+    const COLLAPSED_DAYS_KEY = "airing-board-collapsed-days-v1";
     
     // UPDATED REFRESH TIMERS TO SYNC
     const REFRESH_STALE_MS = 5 * 60 * 1000;
@@ -1152,6 +1193,19 @@
     }
     // ------------------------------
 
+    function loadJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : fallback;
+      } catch (_) { return fallback; }
+    }
+
+    function saveJSON(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+    }
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
@@ -1200,7 +1254,8 @@
       isLoading: false,
       activeSettingsId: null,
       healthStatus: "healthy",
-      lastNextSlotKey: null
+      lastNextSlotKey: null,
+      collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])) // Store for collapsed days
     };
 
     showMessage("info", "Ready.");
@@ -1732,19 +1787,6 @@
       return `${base}:${String(userName || "").trim().toLowerCase() || "default"}`;
     }
 
-    function loadJSON(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return fallback;
-        const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === "object" ? parsed : fallback;
-      } catch (_) { return fallback; }
-    }
-
-    function saveJSON(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
-    }
-
     function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
 
     function savePageSettings() {
@@ -1830,11 +1872,6 @@
       const cache = loadSlotCache(state.userName);
       delete cache[String(showId)];
       saveSlotCache(state.userName, cache);
-    }
-
-    function parseStoredTimestamp(value) {
-      const ms = Date.parse(String(value || ""));
-      return Number.isFinite(ms) ? ms : NaN;
     }
 
     // --- HARD DELETE CLEANUP ENGINE ---
@@ -2036,17 +2073,14 @@
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
 
-          // --- NEW LOGIC: Use AniList target for stable deduplication & UI ---
-          let trackerEp = item.matchedEpisode; // Fallback just in case
+          let trackerEp = item.matchedEpisode; 
           if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
-            // AniList shows the *next* episode. The one that just released is displayEpisode - 1.
             const releasedEp = Math.max(1, item.displayEpisode - 1);
             trackerEp = String(releasedEp).padStart(2, "0");
           } else if (trackerEp) {
             trackerEp = String(trackerEp).padStart(2, "0");
           }
 
-          // We now deduplicate based on AniList's expected episode
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
 
           if (trackerEp && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
@@ -2167,6 +2201,20 @@
       return { isNow, minutesUntil };
     }
 
+    // NEW HELPER: Detect if a specific slot has already happened
+    function hasAired(day, time, timeZone = DEFAULT_TIMEZONE) {
+      const now = getNowContext(timeZone);
+      const dayIndex = WEEKDAYS.indexOf(day);
+      const targetMinutes = toMinutes(time);
+      
+      const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
+      
+      if (dayOffset === 0) {
+        return now.totalMinutes >= targetMinutes;
+      }
+      return false; 
+    }
+
     function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
       let best = null;
       for (const dayBlock of grouped) {
@@ -2261,11 +2309,34 @@
       
       state.lastNextSlotKey = newNextSlotKey;
 
-      els.board.innerHTML = grouped.map(dayBlock => `
-        <section class="panel day-column">
+      els.board.innerHTML = grouped.map(dayBlock => {
+        const isCollapsed = state.collapsedDays.has(dayBlock.day);
+        
+        let airedCount = 0;
+        let totalCount = 0;
+        
+        dayBlock.slots.forEach(slot => {
+          const aired = hasAired(dayBlock.day, slot.time, DEFAULT_TIMEZONE);
+          slot.items.forEach(() => {
+            totalCount++;
+            if (aired) airedCount++;
+          });
+        });
+        
+        const countDisplay = isCollapsed ? `${airedCount}/${totalCount}` : totalCount;
+
+        return `
+        <section class="panel day-column ${isCollapsed ? 'collapsed' : ''}">
           <div class="day-head">
             <div class="day-name">${escapeHtml(dayBlock.day)}</div>
-            <div class="day-count">${dayBlock.slots.reduce((sum, slot) => sum + slot.items.length, 0)}</div>
+            <div class="day-head-right">
+              <div class="day-count" title="${airedCount} aired out of ${totalCount}">${countDisplay}</div>
+              <button class="day-collapse-btn" type="button" data-action="toggle-day" data-day="${escapeHtml(dayBlock.day)}" aria-label="Toggle ${escapeHtml(dayBlock.day)}">
+                <svg class="day-collapse-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
           </div>
           ${dayBlock.slots.map(slot => {
             const slotKey = `${dayBlock.day}::${slot.time}`;
@@ -2327,7 +2398,9 @@
             `;
           }).join("")}
         </section>
-      `).join("");
+      `;
+      }).join("");
+
       if (!grouped.length) {
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
@@ -2791,9 +2864,20 @@
     els.board.addEventListener("click", event => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
-      const id = button.dataset.id;
-      if (button.dataset.action === "open-show-settings") {
-        openSettingsModalForId(id);
+      
+      const action = button.dataset.action;
+      
+      if (action === "open-show-settings") {
+        openSettingsModalForId(button.dataset.id);
+      } else if (action === "toggle-day") {
+        const day = button.dataset.day;
+        if (state.collapsedDays.has(day)) {
+          state.collapsedDays.delete(day);
+        } else {
+          state.collapsedDays.add(day);
+        }
+        saveJSON(COLLAPSED_DAYS_KEY, Array.from(state.collapsedDays));
+        renderBoard(state.items); 
       }
     });
 
