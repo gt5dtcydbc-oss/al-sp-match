@@ -11,19 +11,19 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
   <style>
-    :root {
-      --bg: #080808;
-      --panel: #111111;
-      --panel-2: #181818;
-      --line: #2a2a2a;
-      --text: #f5f5f5;
-      --muted: #9a9a9a;
-      --accent: #ffffff;
-      --accent-2: #d9d9d9;
-      --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
-      --ok: #8ce2ae;
-      --warn: #ffd48a;
-    }
+:root {
+  --bg: #121418;
+  --panel: #1a1d22;
+  --panel-2: #232730;
+  --line: #343a46;
+  --text: #f3f5f7;
+  --muted: #a7afbc;
+  --accent: #c9d4ff;
+  --accent-2: #e4e9f7;
+  --shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  --ok: #8fe3b2;
+  --warn: #ffd38a;
+}
 
     * { box-sizing: border-box; }
 
@@ -437,6 +437,20 @@
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(18, 18, 18, 0.98));
       border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: opacity 0.2s, filter 0.2s;
+    }
+
+    .entry.on-break .thumb {
+      opacity: 0.4;
+      filter: grayscale(80%);
+    }
+
+    .entry.on-break .entry-title a {
+      color: var(--muted);
+    }
+
+    .entry.on-break .entry-meta > .chip:not(.moved) {
+      opacity: 0.4;
     }
 
     .thumb {
@@ -890,15 +904,15 @@
         <summary>
           <div>
             <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feed, proxy settings, and Cache</div>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feeds, proxy settings, and Cache</div>
           </div>
           <span class="manager-toggle-icon" aria-hidden="true">▾</span>
         </summary>
         <div class="top-dropdown-body">
           <div class="config-grid">
             <div class="field">
-              <label for="rssUrl">SubsPlease RSS URL</label>
-              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080" autocomplete="off" />
+              <label for="rssUrl">SubsPlease RSS URLs</label>
+              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
             </div>
             <div class="field">
               <label for="rssProxyTemplate">SubsPlease proxy</label>
@@ -1009,8 +1023,11 @@
     
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
-    const REFRESH_STALE_MS = 10 * 60 * 1000;
+    
+    // UPDATED REFRESH TIMERS TO SYNC
+    const REFRESH_STALE_MS = 5 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+    
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
@@ -1179,6 +1196,7 @@
       searchResults: [],
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
+      lastRssReleaseAt: 0, // ADDED: Track RSS staleness
       isLoading: false,
       activeSettingsId: null,
       healthStatus: "healthy",
@@ -1198,17 +1216,32 @@
       els.updateIndicator.classList.toggle("error", status === "error");
     }
 
+    function timeAgo(ms) {
+      if (!ms) return "Never";
+      const mins = Math.floor((Date.now() - ms) / 60000);
+      if (mins < 1) return "< 1 min";
+      if (mins < 60) return `${mins} min`;
+      const hrs = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      if (hrs < 24) return `${hrs}h ${remMins}m`;
+      return `${Math.floor(hrs / 24)}d ${hrs % 24}h`;
+    }
+
     function renderFooterStatus() {
       const isUnhealthy = state.healthStatus === "unhealthy";
       const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
       const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
-      const formattedSavedAt = formatSavedAt(state.lastSuccessfulLoadAt);
 
       let extra = "";
-      if (formattedSavedAt) {
-        extra += ` · Last updated ${escapeHtml(formattedSavedAt)}`;
+      if (state.lastSuccessfulLoadAt) {
+        extra += ` · Board updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
       } else {
         extra += " · Waiting for first update";
+      }
+
+      if (state.lastRssReleaseAt) {
+        const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
+        extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
       }
 
       if (isUnhealthy && state.notes.length) {
@@ -1216,16 +1249,17 @@
       }
 
       els.footer.innerHTML = `
-  <span class="${statusClass}">${statusLabel}</span>${extra}
-  · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
-`;
+        <span class="${statusClass}">${statusLabel}</span>${extra}
+        · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
+      `;
     }
 
     async function graphQLRequest(query, variables) {
       const response = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ query, variables })
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(15000) // Added safety timeout
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.errors) {
@@ -1259,8 +1293,11 @@
       let lastError = null;
       for (const target of targets) {
         try {
-          // CACHE NO-STORE FIX APPLIED HERE
-          const response = await fetch(target, { method: "GET", cache: "no-store" });
+          const response = await fetch(target, { 
+            method: "GET", 
+            cache: "no-store",
+            signal: AbortSignal.timeout(15000) // Added safety timeout
+          });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
         } catch (error) {
@@ -1268,6 +1305,104 @@
         }
       }
       throw lastError || new Error("Network request failed.");
+    }
+
+    function parseRssUrlList(raw) {
+      return String(raw || "")
+        .split(/[,\n]+/)
+        .map(value => value.trim())
+        .filter(Boolean);
+    }
+
+    function isSubsPleaseResolutionUrl(url, resolution) {
+      try {
+        const parsed = new URL(url);
+        return (
+          parsed.hostname === "subsplease.org" &&
+          parsed.pathname === "/rss/" &&
+          parsed.searchParams.get("r") === String(resolution)
+        );
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function getRssUrls() {
+      const urls = parseRssUrlList(els.rssUrl.value);
+      const output = urls.length ? urls : ["https://subsplease.org/rss/?r=1080"];
+
+      const hasSubsPlease1080 = output.some(url => isSubsPleaseResolutionUrl(url, 1080));
+      const hasSubsPlease720 = output.some(url => isSubsPleaseResolutionUrl(url, 720));
+
+      if (hasSubsPlease1080 && !hasSubsPlease720) {
+        output.push("https://subsplease.org/rss/?r=720");
+      }
+
+      return Array.from(new Set(output));
+    }
+
+    async function fetchRssFeedsWithOptionalProxy(urls, proxyTemplate) {
+      const uniqueUrls = Array.from(new Set((urls || []).map(url => String(url).trim()).filter(Boolean)));
+
+      const results = await Promise.all(uniqueUrls.map(async url => {
+        try {
+          // Append a cache-buster so proxies are forced to fetch fresh RSS data
+          const cacheBustedUrl = url.includes("?") 
+            ? `${url}&_cb=${Date.now()}` 
+            : `${url}?_cb=${Date.now()}`;
+
+          const text = await fetchTextWithOptionalProxy(cacheBustedUrl, proxyTemplate);
+          return { url, ok: true, text };
+        } catch (error) {
+          return {
+            url,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error || "RSS request failed.")
+          };
+        }
+      }));
+
+      return results;
+    }
+
+    function mergeFeedCandidates(candidates) {
+      const merged = new Map();
+
+      for (const candidate of candidates || []) {
+        if (!candidate?.title) continue;
+
+        const key = normalizeTitle(candidate.title);
+        if (!key) continue;
+
+        if (!merged.has(key)) {
+          merged.set(key, {
+            title: candidate.title,
+            variants: new Set(candidate.variants || []),
+            items: new Map()
+          });
+        }
+
+        const target = merged.get(key);
+
+        for (const variant of candidate.variants || []) {
+          if (variant) target.variants.add(variant);
+        }
+
+        for (const item of candidate.items || []) {
+          const itemKey = `${normalizeTitle(item.showTitle)}::${item.episode}`;
+          const existing = target.items.get(itemKey);
+
+          if (!existing || item.date.getTime() < existing.date.getTime()) {
+            target.items.set(itemKey, item);
+          }
+        }
+      }
+
+      return Array.from(merged.values()).map(candidate => ({
+        title: candidate.title,
+        variants: Array.from(candidate.variants),
+        items: Array.from(candidate.items.values()).sort((a, b) => b.date.getTime() - a.date.getTime())
+      }));
     }
 
     function normalizeTitle(text) {
@@ -1645,6 +1780,7 @@
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
         healthStatus: state.healthStatus,
+        lastRssReleaseAt: state.lastRssReleaseAt,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -1666,6 +1802,7 @@
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
+      state.lastRssReleaseAt = Number(snapshot.lastRssReleaseAt) || 0;
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       if (!Number.isFinite(snapshotSavedAt)) {
@@ -1708,7 +1845,6 @@
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
 
-      // Nuke any slot cache history + image blob not currently valid
       for (const id of Object.keys(cache)) {
         if (!validIds.has(id)) {
           delete cache[id];
@@ -1734,7 +1870,6 @@
         saveOverrides(userName, overrides);
       }
     }
-    // ----------------------------------
 
     function dedupeEntriesById(entries) {
       const map = new Map();
@@ -1826,6 +1961,7 @@
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        
         const isScheduleMoved =
           hasNextAiring &&
           Number.isFinite(nextAiringAt) &&
@@ -1897,18 +2033,28 @@
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
-          const currentEpisode = item.matchedEpisode;
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
 
-          const alreadySawThisEpisode = entry.history.some(h => h.episode === currentEpisode);
+          // --- NEW LOGIC: Use AniList target for stable deduplication & UI ---
+          let trackerEp = item.matchedEpisode; // Fallback just in case
+          if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
+            // AniList shows the *next* episode. The one that just released is displayEpisode - 1.
+            const releasedEp = Math.max(1, item.displayEpisode - 1);
+            trackerEp = String(releasedEp).padStart(2, "0");
+          } else if (trackerEp) {
+            trackerEp = String(trackerEp).padStart(2, "0");
+          }
 
-          if (currentEpisode && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+          // We now deduplicate based on AniList's expected episode
+          const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+
+          if (trackerEp && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
             entry.history.push({
               day: currentDay,
               time: currentTime,
               mins: toMinutes(currentTime),
-              episode: currentEpisode
+              episode: trackerEp
             });
 
             if (entry.history.length > 3) {
@@ -1938,7 +2084,7 @@
 
           output.push({
             ...item,
-            historyLog: entry.history.map(h => h.time).join(", ")
+            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
           continue;
         }
@@ -1968,7 +2114,7 @@
             sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
             matchedTitle: remembered.matchedTitle || "",
             cacheOrigin: remembered.origin || "saved",
-            historyLog: rememberedHistory.map(h => h.time).join(", ")
+            historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
         } else {
           output.push(item);
@@ -2137,9 +2283,8 @@
                       ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
                       : "";
 
-                    // IMAGES NOW RENDERED WITH DATA ATTRIBUTES FOR INDEXEDDB INJECTION
                     return `
-                    <article class="entry">
+                    <article class="entry ${item.isScheduleMoved ? 'on-break' : ''}">
                       <div class="thumb">
                        ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
                       </div>
@@ -2150,7 +2295,7 @@
                         <div class="entry-meta">
                           ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
                           ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
-                          ${item.isScheduleMoved ? `<span class="chip moved">Schedule Moved</span>` : ""}
+                          ${item.isScheduleMoved ? `<span class="chip moved">On Break</span>` : ""}
                           ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
                           ${item.source === "manual"
                             ? `<span class="chip manual">CUSTOM</span>`
@@ -2187,7 +2332,6 @@
         els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
       }
 
-      // TRIGGER ASYNC IMAGE LOAD
       loadImagesToDOM();
     }
 
@@ -2202,7 +2346,6 @@
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
-      // Trigger Hard Delete immediately
       pruneOrphanedStoredState(
         state.userName,
         state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
@@ -2490,6 +2633,7 @@
       const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
       const nextOverrides = loadOverrides(userName);
       const nextAddedShows = loadAddedShows(userName);
+      const rssUrls = getRssUrls();
 
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
@@ -2497,37 +2641,65 @@
       try {
         const [aniListResult, rssResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
-          fetchTextWithOptionalProxy(
-            els.rssUrl.value.trim(),
+          fetchRssFeedsWithOptionalProxy(
+            rssUrls,
             els.rssProxyTemplate.value.trim()
           )
         ]);
 
-        if (aniListResult.status !== "fulfilled") {
+        const nextNotes = [];
+        let nextCurrentEntries = state.currentEntries || [];
+
+        if (aniListResult.status === "fulfilled") {
+          nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+        } else {
           const reason = aniListResult.reason;
-          throw (reason instanceof Error ? reason : new Error(String(reason || "AniList request failed.")));
+          const errMsg = reason instanceof Error ? reason.message : String(reason || "Request failed.");
+          nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
         }
 
-        const nextNotes = [];
-        const nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
         let nextPrimaryCandidates = [];
 
         if (rssResult.status === "fulfilled") {
-          const primaryResult = String(rssResult.value || "").trim();
-          if (primaryResult) {
+          const allCandidates = [];
+
+          for (const feed of rssResult.value || []) {
+            if (!feed.ok) {
+              nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
+              continue;
+            }
+
+            const feedText = String(feed.text || "").trim();
+            if (!feedText) continue;
+
             try {
-              nextPrimaryCandidates = parseGenericFeed(primaryResult);
+              allCandidates.push(...parseGenericFeed(feedText));
             } catch (error) {
-              nextNotes.push(`SubsPlease: ${error.message}`);
+              nextNotes.push(`SubsPlease ${feed.url}: ${error.message}`);
             }
           }
+
+          nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+          
+          let newest = 0;
+          for (const c of nextPrimaryCandidates) {
+            for (const item of c.items) {
+              if (item.date.getTime() > newest) newest = item.date.getTime();
+            }
+          }
+          state.lastRssReleaseAt = newest;
+          
+          const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+          if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
+            nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+          }
+
         } else {
           nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
-        // --- HARD DELETE MANUAL SHOWS IF COMPLETED ---
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
-        if (addedIds.length > 0) {
+        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
           try {
             const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
             const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
@@ -2539,7 +2711,6 @@
               }
             }
           } catch(e) {
-            // Ignore if status check fails to avoid breaking main board
           }
         }
 
@@ -2571,7 +2742,7 @@
           : "";
 
         state.healthStatus = "unhealthy";
-        state.notes = [`AniList: ${message}`];
+        state.notes = [`Board update failed: ${message}`];
         setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
         renderFooterStatus();
@@ -2601,7 +2772,10 @@
 
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
-      setInterval(() => { if (state.items.length) renderBoard(state.items, true); }, COUNTDOWN_TICK_MS);
+      setInterval(() => { 
+        if (state.items.length) renderBoard(state.items, true); 
+        renderFooterStatus(); 
+      }, COUNTDOWN_TICK_MS);
     }
 
     let searchDebounceTimer = null;
