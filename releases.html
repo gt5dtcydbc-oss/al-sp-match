@@ -185,6 +185,29 @@
     .board.collapsed .board-list { display: none; }
     .board.collapsed { min-height: auto; }
 
+    .franchise-group {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid rgba(45, 53, 71, 0.4);
+      border-radius: calc(var(--radius) + 4px);
+      background: rgba(15, 18, 25, 0.3);
+    }
+
+    .franchise-header {
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted-2);
+      padding: 0 4px;
+    }
+
+    .franchise-cards {
+      display: grid;
+      gap: 10px;
+    }
+
     .show-card {
       overflow: hidden;
       border-radius: 20px;
@@ -337,12 +360,8 @@
     .card-status {
       display: inline-flex;
       justify-content: flex-end;
-      min-width: 98px;
-    }
-
-    .card-status .badge {
-      min-width: 96px;
-      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .badge {
@@ -380,6 +399,20 @@
       border-color: rgba(139, 150, 255, 0.22);
     }
 
+    .badge.update {
+      color: #fff;
+      background: rgba(139, 150, 255, 0.25);
+      border-color: var(--brand);
+      box-shadow: 0 0 8px rgba(139, 150, 255, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(139, 150, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0); }
+    }
+
     .badge.confidence-low,
     .badge.confidence-none,
     .badge.duplicate {
@@ -399,6 +432,26 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 6px;
+    }
+
+    .ack-btn {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid var(--brand);
+      background: rgba(139, 150, 255, 0.1);
+      color: var(--brand);
+      font-weight: 950;
+      line-height: 1;
+      transition: 160ms ease;
+    }
+
+    .ack-btn:hover {
+      background: var(--brand);
+      color: #0b0e17;
     }
 
     .notes-toggle {
@@ -902,10 +955,6 @@
         min-width: 0;
       }
 
-      .card-status .badge {
-        min-width: 92px;
-      }
-
       .notes-panel { padding-left: 12px; }
       .batch-match-title-row { grid-template-columns: 1fr; }
     }
@@ -1184,6 +1233,7 @@
               status
               seasonYear
               siteUrl
+              relations { edges { node { id } } }
             }
           }
         }
@@ -1218,6 +1268,7 @@
             status
             seasonYear
             siteUrl
+            relations { edges { node { id } } }
           }
         }
       `;
@@ -1326,6 +1377,7 @@
         episodes: media.episodes ?? null,
         seasonYear: media.seasonYear ?? null,
         siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
+        relatedIds: media.relations?.edges?.map((e) => e.node.id) || [],
         board: "watching",
         downloaded: false,
         allAvailableDownloaded: false,
@@ -1334,7 +1386,10 @@
           found: false,
           recordId: null,
           checkedAt: null,
-          error: null
+          error: null,
+          updated: null,
+          updateAvailable: false,
+          latestUpdated: null
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -1676,40 +1731,79 @@
     }
 
     async function checkAllStatuses({ silent = false } = {}) {
-      const candidates = state.shows.filter((show) => !show.downloaded);
+      // Check both missing shows and downloaded shows (for updates)
+      const candidates = state.shows;
 
       if (!candidates.length) {
-        if (!silent) toast("No non-downloaded shows to check.");
+        if (!silent) toast("No shows to check.");
         return;
       }
 
       setStatus(`Checking ${candidates.length} show${candidates.length === 1 ? "" : "s"}…`);
 
+      let updatesFound = 0;
+
       for (const show of candidates) {
-        await refreshShowStatus(show, { forceMove: true });
+        const hadUpdate = await refreshShowStatus(show, { forceMove: true });
+        if (hadUpdate) updatesFound++;
         render();
         saveState();
       }
 
       setStatus("Ready");
-      if (!silent) toast("Status check complete.");
+      if (!silent) {
+        if (updatesFound > 0) {
+          toast(`Status check complete. Found updates for ${updatesFound} show(s)!`);
+        } else {
+          toast("Status check complete.");
+        }
+      }
     }
 
     async function refreshShowStatus(show, { forceMove = false } = {}) {
       try {
         const match = await getReleaseEntry(show.anilistId);
+        const apiUpdated = match?.updated || null;
+        let updateTriggered = false;
+
+        const rm = show.releasesMoe || {};
+
         show.releasesMoe = {
           found: Boolean(match),
           recordId: match?.id ?? null,
           checkedAt: new Date().toISOString(),
-          error: null
+          error: null,
+          updated: rm.updated || null,
+          updateAvailable: Boolean(rm.updateAvailable),
+          latestUpdated: rm.latestUpdated || null
         };
+
+        if (match) {
+          if (!show.releasesMoe.updated) {
+            // First time seeing this API record locally, safely set internal timestamp
+            show.releasesMoe.updated = apiUpdated;
+          } else if (apiUpdated && apiUpdated !== show.releasesMoe.updated) {
+            // Timestamp is different than what we have saved
+            if (show.downloaded) {
+              if (new Date(apiUpdated) > new Date(show.releasesMoe.updated)) {
+                show.releasesMoe.updateAvailable = true;
+                show.releasesMoe.latestUpdated = apiUpdated;
+                updateTriggered = true;
+              }
+            } else {
+              // Show isn't downloaded anyway, just track the new timestamp internally
+              show.releasesMoe.updated = apiUpdated;
+            }
+          }
+        }
 
         if (!show.downloaded && forceMove) {
           show.board = match ? "found" : "watching";
         }
 
         show.updatedAt = new Date().toISOString();
+        return updateTriggered;
+
       } catch (error) {
         console.error(error);
         show.releasesMoe = {
@@ -1717,6 +1811,7 @@
           checkedAt: new Date().toISOString(),
           error: error.message || "Unknown error"
         };
+        return false;
       }
     }
 
@@ -1731,6 +1826,51 @@
 
       const json = await response.json();
       return json?.items?.[0] ?? null;
+    }
+
+    function groupShows(boardShows) {
+      const adj = new Map();
+      boardShows.forEach(s => {
+        adj.set(s.id, new Set());
+      });
+
+      // Build undirected graph using Anilist relations
+      for (let i = 0; i < boardShows.length; i++) {
+        for (let j = i + 1; j < boardShows.length; j++) {
+          const s1 = boardShows[i];
+          const s2 = boardShows[j];
+          if (s1.relatedIds?.includes(s2.anilistId) || s2.relatedIds?.includes(s1.anilistId)) {
+            adj.get(s1.id).add(s2.id);
+            adj.get(s2.id).add(s1.id);
+          }
+        }
+      }
+
+      const visited = new Set();
+      const groups = [];
+
+      for (const show of boardShows) {
+        if (!visited.has(show.id)) {
+          const component = [];
+          const q = [show.id];
+          visited.add(show.id);
+
+          while (q.length > 0) {
+            const curId = q.shift();
+            component.push(boardShows.find(s => s.id === curId));
+            
+            for (const neighborId of adj.get(curId)) {
+              if (!visited.has(neighborId)) {
+                visited.add(neighborId);
+                q.push(neighborId);
+              }
+            }
+          }
+          groups.push(component);
+        }
+      }
+
+      return groups;
     }
 
     function render() {
@@ -1773,7 +1913,23 @@
         return;
       }
 
-      listEl.innerHTML = shows.map(renderShowCard).join("");
+      const groups = groupShows(shows);
+      
+      listEl.innerHTML = groups.map(group => {
+        if (group.length === 1) return renderShowCard(group[0]);
+        
+        // Ensure franchise grouping looks chronologically sorted
+        const sortedGroup = group.sort((a, b) => (a.seasonYear || 9999) - (b.seasonYear || 9999));
+        const mainTitle = escapeHtml(sortedGroup[0].title);
+        const cardsHtml = sortedGroup.map(renderShowCard).join("");
+        
+        return `
+          <div class="franchise-group">
+            <div class="franchise-header">${mainTitle} Franchise</div>
+            <div class="franchise-cards">${cardsHtml}</div>
+          </div>
+        `;
+      }).join("");
 
       listEl.querySelectorAll("[data-download-id]").forEach((checkbox) => {
         checkbox.addEventListener("change", () => toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked));
@@ -1789,6 +1945,10 @@
 
       listEl.querySelectorAll("[data-remove-id]").forEach((button) => {
         button.addEventListener("click", () => removeShow(button.dataset.removeId));
+      });
+
+      listEl.querySelectorAll("[data-ack-id]").forEach((button) => {
+        button.addEventListener("click", () => acknowledgeUpdate(button.dataset.ackId));
       });
 
       listEl.querySelectorAll("[data-comment-id]").forEach((textarea) => {
@@ -1808,11 +1968,22 @@
       const completeToggle = isDownloaded
         ? `<button class="complete-toggle ${completeActive ? "active" : ""}" type="button" data-complete-id="${show.id}" aria-pressed="${completeActive}" title="${completeActive ? "All available material downloaded" : "Mark all available material as downloaded"}">*</button>`
         : "";
-      const releaseBadge = isDownloaded
-        ? '<span class="badge downloaded">Downloaded</span>'
-        : show.releasesMoe?.found
-          ? '<span class="badge found">Found</span>'
-          : '<span class="badge watching">Watching</span>';
+      const updateAvailable = show.releasesMoe?.updateAvailable;
+      const ackToggle = updateAvailable 
+          ? `<button class="ack-btn" type="button" data-ack-id="${show.id}" title="Mark update as downloaded">✓</button>`
+          : "";
+
+      let releaseBadge = "";
+      if (updateAvailable) {
+        releaseBadge = '<span class="badge update">Update</span>';
+      } else if (isDownloaded) {
+        releaseBadge = '<span class="badge downloaded">Downloaded</span>';
+      } else if (show.releasesMoe?.found) {
+        releaseBadge = '<span class="badge found">Found</span>';
+      } else {
+        releaseBadge = '<span class="badge watching">Watching</span>';
+      }
+
       const meta = [show.format, show.seasonYear, show.episodes ? `${show.episodes} ep` : null]
         .filter(Boolean)
         .map(escapeHtml)
@@ -1837,6 +2008,7 @@
               </div>
             </div>
             <div class="card-actions">
+              ${ackToggle}
               ${completeToggle}
               <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments">✎</button>
               <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove show">×</button>
@@ -1860,6 +2032,12 @@
         show.previousBoard = show.board === "downloaded" ? show.previousBoard || "watching" : show.board;
         show.board = "downloaded";
         show.allAvailableDownloaded = Boolean(show.allAvailableDownloaded);
+        
+        if (show.releasesMoe?.updateAvailable) {
+           show.releasesMoe.updateAvailable = false;
+           show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
+        }
+
         toast(`${show.title} moved to Downloaded.`);
       } else {
         show.downloaded = false;
@@ -1881,6 +2059,20 @@
       show.updatedAt = new Date().toISOString();
       render();
       saveState();
+    }
+
+    function acknowledgeUpdate(showId) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+
+      show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
+      show.releasesMoe.updateAvailable = false;
+      show.releasesMoe.latestUpdated = null;
+      show.updatedAt = new Date().toISOString();
+      
+      render();
+      saveState();
+      toast(`Update for ${show.title} acknowledged.`);
     }
 
     function toggleNotes(showId) {
@@ -1966,7 +2158,7 @@
       const downloaded = Boolean(show.downloaded || show.board === "downloaded");
       const releasesMoe = show.releasesMoe && typeof show.releasesMoe === "object"
         ? show.releasesMoe
-        : { found: false, recordId: null, checkedAt: null, error: null };
+        : { found: false, recordId: null, checkedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null };
 
       return {
         id,
@@ -1979,6 +2171,7 @@
         episodes: show.episodes ?? null,
         seasonYear: show.seasonYear ?? null,
         siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
+        relatedIds: Array.isArray(show.relatedIds) ? show.relatedIds.map(Number) : [],
         board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
         downloaded,
         allAvailableDownloaded: Boolean(show.allAvailableDownloaded || show.allSeasonsDownloaded || show.completeDownloaded),
@@ -1988,7 +2181,10 @@
           found: Boolean(releasesMoe.found),
           recordId: releasesMoe.recordId ?? null,
           checkedAt: releasesMoe.checkedAt ?? null,
-          error: releasesMoe.error ?? null
+          error: releasesMoe.error ?? null,
+          updated: releasesMoe.updated || null,
+          updateAvailable: Boolean(releasesMoe.updateAvailable),
+          latestUpdated: releasesMoe.latestUpdated || null
         },
         createdAt: show.createdAt || new Date().toISOString(),
         updatedAt: show.updatedAt || new Date().toISOString()
