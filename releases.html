@@ -81,6 +81,31 @@
       line-height: 1.5;
       font-size: 0.98rem;
     }
+    
+    .board-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .board-filter-input {
+      width: 100%;
+      min-width: 220px;
+      min-height: 42px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(23, 27, 37, 0.88);
+      color: var(--text);
+      outline: none;
+      transition: 160ms ease;
+      font-size: 0.95rem;
+    }
+
+    .board-filter-input:focus {
+      border-color: rgba(139, 150, 255, 0.72);
+      box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.12);
+    }
 
     .search-card, .board, .toast, .settings-card {
       background: rgba(23, 27, 37, 0.88);
@@ -132,6 +157,12 @@
       color: var(--muted);
       font-size: 0.78rem;
       font-weight: 950;
+    }
+
+    .board-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .collapse-btn, .settings-chevron {
@@ -235,8 +266,8 @@
 
     .complete-toggle {
       flex: 0 0 auto;
-      width: 24px;
-      height: 24px;
+      width: 34px;
+      height: 34px;
       display: inline-grid;
       place-items: center;
       border-radius: 999px;
@@ -366,6 +397,7 @@
     .card-actions {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 6px;
     }
 
@@ -815,6 +847,8 @@
       }
 
       .hero, .search-row { grid-template-columns: 1fr; }
+      .board-controls { width: 100%; }
+      .board-filter-input { width: 100%; max-width: 100%; }
 
       .toolbar {
         align-items: stretch;
@@ -887,6 +921,9 @@
           <h1>Release Board</h1>
           <p class="subhead">Track shows at a glance. Found, Watching, and Downloaded stay visible first; search and settings sit below the board.</p>
         </div>
+        <div class="board-controls">
+          <input type="text" id="boardSearchInput" class="board-filter-input" placeholder="Filter items on board..." aria-label="Filter board" autocomplete="off" />
+        </div>
       </header>
 
       <section class="boards" aria-label="Release boards">
@@ -907,7 +944,10 @@
         <article class="board" data-board="downloaded" id="downloadedBoard">
           <header class="board-header">
             <h2 class="board-title">Downloaded <span class="count" id="downloadedCount">0</span></h2>
-            <button class="collapse-btn" id="toggleDownloadedBtn" type="button" aria-expanded="true" title="Collapse Downloaded">⌄</button>
+            <div class="board-header-actions">
+              <button class="complete-toggle" id="filterCompleteBtn" type="button" aria-pressed="false" title="Show only completed (*)">*</button>
+              <button class="collapse-btn" id="toggleDownloadedBtn" type="button" aria-expanded="true" title="Collapse Downloaded">⌄</button>
+            </div>
           </header>
           <div class="board-list" id="downloadedList"></div>
         </article>
@@ -993,8 +1033,10 @@
       ui: {
         downloadedCollapsed: false,
         settingsOpen: false,
+        filterComplete: false,
         openNotes: {}
-      }
+      },
+      localSearch: ""
     };
 
     let pendingBatchMatches = [];
@@ -1002,6 +1044,7 @@
     const els = {
       statusText: document.querySelector("#statusText"),
       searchInput: document.querySelector("#searchInput"),
+      boardSearchInput: document.querySelector("#boardSearchInput"),
       searchBtn: document.querySelector("#searchBtn"),
       results: document.querySelector("#results"),
       checkAllBtn: document.querySelector("#checkAllBtn"),
@@ -1025,6 +1068,7 @@
       downloadedCount: document.querySelector("#downloadedCount"),
       downloadedBoard: document.querySelector("#downloadedBoard"),
       toggleDownloadedBtn: document.querySelector("#toggleDownloadedBtn"),
+      filterCompleteBtn: document.querySelector("#filterCompleteBtn"),
       settingsPanel: document.querySelector("#settingsPanel"),
       toastArea: document.querySelector("#toastArea")
     };
@@ -1045,6 +1089,12 @@
 
     function init() {
       loadState();
+      
+      if (state.ui.filterComplete) {
+        els.filterCompleteBtn.classList.add("active");
+        els.filterCompleteBtn.setAttribute("aria-pressed", "true");
+      }
+      
       bindEvents();
       render();
       checkAllStatuses({ silent: true });
@@ -1058,6 +1108,11 @@
         if (event.key === "Enter") runSearch();
       });
 
+      els.boardSearchInput.addEventListener("input", (e) => {
+        state.localSearch = e.target.value.toLowerCase();
+        render(); 
+      });
+
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".search-card")) closeResults();
       });
@@ -1068,6 +1123,15 @@
       els.importFile.addEventListener("change", importJson);
       els.clearBtn.addEventListener("click", clearBoard);
       els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
+      
+      els.filterCompleteBtn.addEventListener("click", () => {
+        state.ui.filterComplete = !state.ui.filterComplete;
+        els.filterCompleteBtn.classList.toggle("active", state.ui.filterComplete);
+        els.filterCompleteBtn.setAttribute("aria-pressed", state.ui.filterComplete);
+        render();
+        saveState();
+      });
+
       els.batchImportBtn.addEventListener("click", prepareBatchReview);
       els.batchConfirmBtn.addEventListener("click", confirmBatchImport);
       els.batchCancelBtn.addEventListener("click", clearBatchReview);
@@ -1673,16 +1737,28 @@
       applyDownloadedCollapse();
       applySettingsState();
 
-     const byBoard = {
-  found: state.shows.filter((show) => show.board === "found" && !show.downloaded),
-  watching: state.shows.filter((show) => show.board === "watching" && !show.downloaded),
-  downloaded: state.shows
-    .filter((show) => show.downloaded || show.board === "downloaded")
-    .sort((a, b) => a.title.localeCompare(b.title, undefined, {
-      sensitivity: "base",
-      numeric: true
-    }))
-};
+      let visibleShows = state.shows;
+      const query = state.localSearch || "";
+
+      if (query) {
+        visibleShows = visibleShows.filter(show =>
+          show.title.toLowerCase().includes(query) ||
+          (show.titleEnglish && show.titleEnglish.toLowerCase().includes(query)) ||
+          (show.titleRomaji && show.titleRomaji.toLowerCase().includes(query))
+        );
+      }
+
+      const byBoard = {
+        found: visibleShows.filter((show) => show.board === "found" && !show.downloaded),
+        watching: visibleShows.filter((show) => show.board === "watching" && !show.downloaded),
+        downloaded: visibleShows
+          .filter((show) => show.downloaded || show.board === "downloaded")
+          .filter((show) => !state.ui.filterComplete || show.allAvailableDownloaded)
+          .sort((a, b) => a.title.localeCompare(b.title, undefined, {
+            sensitivity: "base",
+            numeric: true
+          }))
+      };
 
       renderBoard("found", byBoard.found, els.foundList, els.foundCount);
       renderBoard("watching", byBoard.watching, els.watchingList, els.watchingCount);
@@ -1754,7 +1830,6 @@
             <div class="card-content">
               <div class="title-row">
                 <div class="card-title">${titleHtml}</div>
-                ${completeToggle}
               </div>
               <div class="card-meta">
                 <span class="card-meta-text">${meta || "Anime"}</span>
@@ -1762,6 +1837,7 @@
               </div>
             </div>
             <div class="card-actions">
+              ${completeToggle}
               <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments">✎</button>
               <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove show">×</button>
             </div>
@@ -1871,6 +1947,7 @@
         state.ui = {
           downloadedCollapsed: Boolean(payload.ui?.downloadedCollapsed),
           settingsOpen: Boolean(payload.ui?.settingsOpen),
+          filterComplete: Boolean(payload.ui?.filterComplete),
           openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {}
         };
 
@@ -1962,6 +2039,7 @@
         state.ui = {
           downloadedCollapsed: Boolean(saved.ui?.downloadedCollapsed),
           settingsOpen: Boolean(saved.ui?.settingsOpen),
+          filterComplete: Boolean(saved.ui?.filterComplete),
           openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {}
         };
       } catch (error) {
