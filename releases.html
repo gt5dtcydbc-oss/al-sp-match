@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -392,6 +393,34 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .quick-add-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .quick-add-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(139, 150, 255, 0.08);
+      border: 1px dashed rgba(139, 150, 255, 0.4);
+      color: var(--brand-strong);
+      font-size: 0.72rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .quick-add-pill:hover {
+      background: rgba(139, 150, 255, 0.2);
+      border-style: solid;
+      transform: translateY(-1px);
     }
 
     .card-status {
@@ -1274,8 +1303,17 @@
               siteUrl
               relations {
                 edges {
+                  relationType(version: 2)
                   node {
                     id
+                    type
+                    title { romaji english native }
+                    coverImage { medium large }
+                    episodes
+                    format
+                    status
+                    seasonYear
+                    siteUrl
                     relations { edges { node { id } } }
                   }
                 }
@@ -1316,8 +1354,17 @@
             siteUrl
             relations {
               edges {
+                relationType(version: 2)
                 node {
                   id
+                  type
+                  title { romaji english native }
+                  coverImage { medium large }
+                  episodes
+                  format
+                  status
+                  seasonYear
+                  siteUrl
                   relations { edges { node { id } } }
                 }
               }
@@ -1373,7 +1420,7 @@
 
       els.results.innerHTML = results.map((media) => {
         const title = getTitle(media.title);
-        const alreadyAdded = isMediaOnBoard(media);
+        const alreadyAdded = isMediaOnBoard({ id: media.id });
         const meta = getMediaMeta(media);
 
         return `
@@ -1397,7 +1444,7 @@
     }
 
     async function addShow(media) {
-      if (isMediaOnBoard(media)) {
+      if (isMediaOnBoard({ id: media.id })) {
         toast("That show is already on your board.");
         return;
       }
@@ -1420,9 +1467,19 @@
 
     function makeShowFromMedia(media) {
       const relatedIds = new Set();
+      const relatedEntries = [];
+      
       if (media.relations?.edges) {
         media.relations.edges.forEach(e => {
-          if (e.node.id) relatedIds.add(e.node.id);
+          if (e.node.id) {
+            relatedIds.add(e.node.id);
+            if (e.node.type === "ANIME") {
+              relatedEntries.push({
+                relationType: e.relationType,
+                media: e.node
+              });
+            }
+          }
           if (e.node.relations?.edges) {
             e.node.relations.edges.forEach(e2 => {
               if (e2.node.id) relatedIds.add(e2.node.id);
@@ -1443,6 +1500,7 @@
         seasonYear: media.seasonYear ?? null,
         siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
         relatedIds: Array.from(relatedIds),
+        relatedEntries: relatedEntries,
         board: "watching",
         downloaded: false,
         allAvailableDownloaded: false,
@@ -1485,7 +1543,7 @@
 
           try {
             const results = await lookupBatchAniList(input);
-            const firstAvailable = results.find((media) => !isMediaOnBoard(media));
+            const firstAvailable = results.find((media) => !isMediaOnBoard({ id: media.id }));
             const selected = firstAvailable || results[0] || null;
 
             pendingBatchMatches.push({
@@ -1535,7 +1593,7 @@
       const skipped = pendingBatchMatches.filter((match) => match.skipped).length;
       const duplicates = pendingBatchMatches.filter((match) => {
         const selected = getSelectedBatchMedia(match);
-        return selected && isMediaOnBoard(selected);
+        return selected && isMediaOnBoard({ id: selected.id });
       }).length;
       const lowConfidence = pendingBatchMatches.filter((match) => {
         const selected = getSelectedBatchMedia(match);
@@ -1578,7 +1636,7 @@
 
     function renderBatchReviewRow(match, index) {
       const selected = getSelectedBatchMedia(match);
-      const selectedAlreadyAdded = selected ? isMediaOnBoard(selected) : false;
+      const selectedAlreadyAdded = selected ? isMediaOnBoard({ id: selected.id }) : false;
       const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
       const rowClasses = ["batch-row", match.skipped ? "skipped" : ""].filter(Boolean).join(" ");
       const posterSrc = escapeAttr(selected?.coverImage?.medium || selected?.coverImage?.large || getFallbackPoster());
@@ -1587,7 +1645,7 @@
       const options = match.results.length
         ? match.results.map((media) => {
             const optionMeta = [media.seasonYear, media.format].filter(Boolean).join(" · ");
-            const duplicateText = isMediaOnBoard(media) ? " — already on board" : "";
+            const duplicateText = isMediaOnBoard({ id: media.id }) ? " — already on board" : "";
             return `<option value="${media.id}" ${media.id === match.selectedId ? "selected" : ""}>${escapeHtml(getTitle(media.title))}${optionMeta ? ` (${escapeHtml(optionMeta)})` : ""}${duplicateText}</option>`;
           }).join("")
         : '<option value="">No results</option>';
@@ -1646,7 +1704,7 @@
           setStatus(`Adding ${index + 1}/${matches.length}…`);
 
           try {
-            if (isMediaOnBoard(media)) {
+            if (isMediaOnBoard({ id: media.id })) {
               skipped.push(getTitle(media.title));
               continue;
             }
@@ -1693,7 +1751,7 @@
       return pendingBatchMatches
         .filter((match) => !match.skipped)
         .map((match) => ({ match, media: getSelectedBatchMedia(match) }))
-        .filter(({ media }) => media && !isMediaOnBoard(media));
+        .filter(({ media }) => media && !isMediaOnBoard({ id: media.id }));
     }
 
     function getSelectedBatchMedia(match) {
@@ -1980,13 +2038,10 @@
         
         const sortedGroup = group.sort((a, b) => (a.seasonYear || 9999) - (b.seasonYear || 9999));
         
-        // Stable ID for the franchise is the lowest Anilist ID in the current group
         const baseId = Math.min(...sortedGroup.map(s => s.anilistId));
-        
         const customName = state.ui.franchiseNames?.[baseId];
         const defaultName = escapeHtml(sortedGroup[0].title) + " Franchise";
         const displayName = customName ? escapeHtml(customName) : defaultName;
-        
         const isCollapsed = Boolean(state.ui.collapsedFranchises?.[baseId]);
         
         const cardsHtml = sortedGroup.map(renderShowCard).join("");
@@ -2057,6 +2112,18 @@
       listEl.querySelectorAll("[data-comment-id]").forEach((textarea) => {
         textarea.addEventListener("input", debounce(() => updateComments(textarea.dataset.commentId, textarea.value), 180));
       });
+
+      // Bind Quick Add pills
+      listEl.querySelectorAll("[data-quick-add-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const parentShow = state.shows.find(s => s.id === button.dataset.parentId);
+          const mediaId = Number(button.dataset.quickAddId);
+          if (parentShow && parentShow.relatedEntries) {
+            const rel = parentShow.relatedEntries.find(r => r.media.id === mediaId);
+            if (rel) addShow(rel.media);
+          }
+        });
+      });
     }
 
     function renderShowCard(show) {
@@ -2096,6 +2163,31 @@
         ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" /></a>`
         : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" />`;
 
+      // Quick Add Logic
+      const missingRelations = (show.relatedEntries || [])
+        .filter(rel => !isMediaOnBoard({ id: rel.media.id }))
+        .filter(rel => ["SEQUEL", "PREQUEL", "SIDE_STORY", "ALTERNATIVE", "SPIN_OFF"].includes(rel.relationType));
+
+      const uniqueMissing = [];
+      const seenIds = new Set();
+      for (const rel of missingRelations) {
+        if (!seenIds.has(rel.media.id)) {
+          seenIds.add(rel.media.id);
+          uniqueMissing.push(rel);
+        }
+      }
+
+      const quickAddHtml = uniqueMissing.length > 0 
+        ? `<div class="quick-add-row">` + 
+          uniqueMissing.map(rel => {
+            let label = rel.relationType === "SEQUEL" ? "Sequel" : 
+                        rel.relationType === "PREQUEL" ? "Prequel" : 
+                        rel.media.format === "MOVIE" ? "Movie" : "Related";
+            return `<button class="quick-add-pill" type="button" data-quick-add-id="${rel.media.id}" data-parent-id="${show.id}" title="Add ${escapeAttr(getTitle(rel.media.title))}">+ ${label}</button>`;
+          }).join("") + 
+          `</div>`
+        : "";
+
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
           <div class="card-main">
@@ -2109,6 +2201,7 @@
                 <span class="card-meta-text">${meta || "Anime"}</span>
                 <span class="card-status">${releaseBadge}</span>
               </div>
+              ${quickAddHtml}
             </div>
             <div class="card-actions">
               ${ackToggle}
@@ -2277,6 +2370,7 @@
         seasonYear: show.seasonYear ?? null,
         siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
         relatedIds: Array.isArray(show.relatedIds) ? show.relatedIds.map(Number) : [],
+        relatedEntries: Array.isArray(show.relatedEntries) ? show.relatedEntries : [],
         board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
         downloaded,
         allAvailableDownloaded: Boolean(show.allAvailableDownloaded || show.allSeasonsDownloaded || show.completeDownloaded),
