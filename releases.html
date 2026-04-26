@@ -188,19 +188,56 @@
     .franchise-group {
       display: grid;
       gap: 10px;
-      padding: 12px;
+      padding: 10px 12px 12px;
       border: 1px solid rgba(45, 53, 71, 0.4);
       border-radius: calc(var(--radius) + 4px);
       background: rgba(15, 18, 25, 0.3);
     }
 
-    .franchise-header {
-      font-size: 0.72rem;
+    .franchise-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px;
+    }
+
+    .franchise-header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .franchise-header-title {
+      font-size: 0.78rem;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--muted-2);
-      padding: 0 4px;
+    }
+
+    .franchise-toggle-btn, .franchise-rename-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted-2);
+      font-weight: 900;
+      display: inline-grid;
+      place-items: center;
+      transition: 160ms ease;
+    }
+
+    .franchise-toggle-btn:hover, .franchise-rename-btn:hover {
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    .franchise-group.collapsed .franchise-toggle-btn {
+      transform: rotate(-90deg);
+    }
+
+    .franchise-group.collapsed .franchise-cards {
+      display: none;
     }
 
     .franchise-cards {
@@ -1083,7 +1120,9 @@
         downloadedCollapsed: false,
         settingsOpen: false,
         filterComplete: false,
-        openNotes: {}
+        openNotes: {},
+        franchiseNames: {},
+        collapsedFranchises: {}
       },
       localSearch: ""
     };
@@ -1233,7 +1272,14 @@
               status
               seasonYear
               siteUrl
-              relations { edges { node { id } } }
+              relations {
+                edges {
+                  node {
+                    id
+                    relations { edges { node { id } } }
+                  }
+                }
+              }
             }
           }
         }
@@ -1268,7 +1314,14 @@
             status
             seasonYear
             siteUrl
-            relations { edges { node { id } } }
+            relations {
+              edges {
+                node {
+                  id
+                  relations { edges { node { id } } }
+                }
+              }
+            }
           }
         }
       `;
@@ -1366,6 +1419,18 @@
     }
 
     function makeShowFromMedia(media) {
+      const relatedIds = new Set();
+      if (media.relations?.edges) {
+        media.relations.edges.forEach(e => {
+          if (e.node.id) relatedIds.add(e.node.id);
+          if (e.node.relations?.edges) {
+            e.node.relations.edges.forEach(e2 => {
+              if (e2.node.id) relatedIds.add(e2.node.id);
+            });
+          }
+        });
+      }
+
       return {
         id: crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         anilistId: media.id,
@@ -1377,7 +1442,7 @@
         episodes: media.episodes ?? null,
         seasonYear: media.seasonYear ?? null,
         siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
-        relatedIds: media.relations?.edges?.map((e) => e.node.id) || [],
+        relatedIds: Array.from(relatedIds),
         board: "watching",
         downloaded: false,
         allAvailableDownloaded: false,
@@ -1731,7 +1796,6 @@
     }
 
     async function checkAllStatuses({ silent = false } = {}) {
-      // Check both missing shows and downloaded shows (for updates)
       const candidates = state.shows;
 
       if (!candidates.length) {
@@ -1780,10 +1844,8 @@
 
         if (match) {
           if (!show.releasesMoe.updated) {
-            // First time seeing this API record locally, safely set internal timestamp
             show.releasesMoe.updated = apiUpdated;
           } else if (apiUpdated && apiUpdated !== show.releasesMoe.updated) {
-            // Timestamp is different than what we have saved
             if (show.downloaded) {
               if (new Date(apiUpdated) > new Date(show.releasesMoe.updated)) {
                 show.releasesMoe.updateAvailable = true;
@@ -1791,7 +1853,6 @@
                 updateTriggered = true;
               }
             } else {
-              // Show isn't downloaded anyway, just track the new timestamp internally
               show.releasesMoe.updated = apiUpdated;
             }
           }
@@ -1834,7 +1895,6 @@
         adj.set(s.id, new Set());
       });
 
-      // Build undirected graph using Anilist relations
       for (let i = 0; i < boardShows.length; i++) {
         for (let j = i + 1; j < boardShows.length; j++) {
           const s1 = boardShows[i];
@@ -1918,19 +1978,62 @@
       listEl.innerHTML = groups.map(group => {
         if (group.length === 1) return renderShowCard(group[0]);
         
-        // Ensure franchise grouping looks chronologically sorted
         const sortedGroup = group.sort((a, b) => (a.seasonYear || 9999) - (b.seasonYear || 9999));
-        const mainTitle = escapeHtml(sortedGroup[0].title);
+        
+        // Stable ID for the franchise is the lowest Anilist ID in the current group
+        const baseId = Math.min(...sortedGroup.map(s => s.anilistId));
+        
+        const customName = state.ui.franchiseNames?.[baseId];
+        const defaultName = escapeHtml(sortedGroup[0].title) + " Franchise";
+        const displayName = customName ? escapeHtml(customName) : defaultName;
+        
+        const isCollapsed = Boolean(state.ui.collapsedFranchises?.[baseId]);
+        
         const cardsHtml = sortedGroup.map(renderShowCard).join("");
         
         return `
-          <div class="franchise-group">
-            <div class="franchise-header">${mainTitle} Franchise</div>
+          <div class="franchise-group ${isCollapsed ? 'collapsed' : ''}" data-franchise-id="${baseId}">
+            <div class="franchise-header-row">
+              <div class="franchise-header-left">
+                <button class="franchise-toggle-btn" type="button" data-toggle-franchise="${baseId}" aria-expanded="${!isCollapsed}" title="Toggle franchise collapse">⌄</button>
+                <span class="franchise-header-title">${displayName}</span>
+              </div>
+              <button class="franchise-rename-btn" type="button" data-rename-franchise="${baseId}" data-current-name="${escapeAttr(customName || "")}" title="Rename franchise">✎</button>
+            </div>
             <div class="franchise-cards">${cardsHtml}</div>
           </div>
         `;
       }).join("");
 
+      // Bind events for franchise tools
+      listEl.querySelectorAll("[data-toggle-franchise]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.toggleFranchise;
+          state.ui.collapsedFranchises[id] = !state.ui.collapsedFranchises[id];
+          render();
+          saveState();
+        });
+      });
+
+      listEl.querySelectorAll("[data-rename-franchise]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.renameFranchise;
+          const currentName = btn.dataset.currentName;
+          const newName = prompt("Enter a custom name for this franchise (leave blank to reset):", currentName);
+          
+          if (newName !== null) {
+            if (newName.trim() === "") {
+              delete state.ui.franchiseNames[id];
+            } else {
+              state.ui.franchiseNames[id] = newName.trim();
+            }
+            render();
+            saveState();
+          }
+        });
+      });
+
+      // Bind events for cards
       listEl.querySelectorAll("[data-download-id]").forEach((checkbox) => {
         checkbox.addEventListener("change", () => toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked));
       });
@@ -2140,7 +2243,9 @@
           downloadedCollapsed: Boolean(payload.ui?.downloadedCollapsed),
           settingsOpen: Boolean(payload.ui?.settingsOpen),
           filterComplete: Boolean(payload.ui?.filterComplete),
-          openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {}
+          openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {},
+          franchiseNames: payload.ui?.franchiseNames || {},
+          collapsedFranchises: payload.ui?.collapsedFranchises || {}
         };
 
         render();
@@ -2236,7 +2341,9 @@
           downloadedCollapsed: Boolean(saved.ui?.downloadedCollapsed),
           settingsOpen: Boolean(saved.ui?.settingsOpen),
           filterComplete: Boolean(saved.ui?.filterComplete),
-          openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {}
+          openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {},
+          franchiseNames: saved.ui?.franchiseNames || {},
+          collapsedFranchises: saved.ui?.collapsedFranchises || {}
         };
       } catch (error) {
         console.error(error);
