@@ -31,7 +31,6 @@
 </div>
 
 <script>
-    // 1. Logic to filter out non-English-friendly synonyms
     const isEnglishFriendly = (str) => /^[\x00-\x7F]*$/.test(str);
 
     async function generateFilter() {
@@ -64,12 +63,11 @@
         try {
             const response = await fetch('https://graphql.anilist.co', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query, variables: { name: username } })
             });
 
             const result = await response.json();
-
             if (result.errors) throw new Error(result.errors[0].message);
             if (!result.data || !result.data.MediaListCollection) throw new Error("User not found or list is private.");
 
@@ -79,30 +77,33 @@
             lists.forEach(list => {
                 list.entries.forEach(entry => {
                     const m = entry.media;
-                    
-                    // 2. Select Core Titles + English-Friendly Synonyms
                     const coreTitles = [m.title.romaji, m.title.english, m.title.native].filter(Boolean);
                     const cleanSynonyms = m.synonyms.filter(s => isEnglishFriendly(s));
                     let allPossibleTitles = [...new Set([...coreTitles, ...cleanSynonyms])];
 
                     allPossibleTitles.forEach(name => {
-                        // Skip very short ASCII tags like 'S2' to prevent false matches
                         if (name.length < 3 && !/[\u3040-\u30ff\u4e00-\u9faf]/.test(name)) return;
 
                         let clean = name.toLowerCase();
-
-                        // 3. FUZZY SEASON LOGIC
-                        // If title contains "Season 4", add a variant for "4th Season"
                         let variants = [clean];
-                        if (clean.includes('season ')) {
-                            variants.push(clean.replace(/season (\d+)/g, '$1th season'));
-                            variants.push(clean.replace(/season (\d+)/g, '$1st season'));
-                            variants.push(clean.replace(/season (\d+)/g, '$1nd season'));
-                            variants.push(clean.replace(/season (\d+)/g, '$1rd season'));
+
+                        // ADVANCED FUZZY LOGIC
+                        // Handles Season X <-> Xth Season <-> Part X
+                        if (clean.includes('season ') || clean.includes('part ')) {
+                            const numMatch = clean.match(/\d+/);
+                            if (numMatch) {
+                                const n = numMatch[0];
+                                const suffix = (n === '1' ? 'st' : n === '2' ? 'nd' : n === '3' ? 'rd' : 'th');
+                                const rootTitle = clean.split(/season|part/i)[0].trim();
+                                
+                                variants.push(`${rootTitle} ${n}`);
+                                variants.push(`${rootTitle} ${n}${suffix} season`);
+                                variants.push(`${rootTitle} season ${n}`);
+                                variants.push(`${rootTitle} part ${n}`);
+                            }
                         }
 
                         variants.forEach(v => {
-                            // Replace symbols with '?'
                             let pattern = v.replace(/[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/gi, '?');
                             pattern = pattern.replace(/\?+/g, '?').replace(/^\?+|\?+$/g, '');
                             
@@ -114,14 +115,9 @@
                 });
             });
 
-            if (filterEntries.length === 0) {
-                status.innerText = "No titles found in 'Watching' list.";
-                return;
-            }
-
-            // Remove duplicates and join with commas
-            output.value = [...new Set(filterEntries)].sort().join(',');
-            status.innerText = `Generated ${filterEntries.length} patterns for your season!`;
+            const final = [...new Set(filterEntries)].sort().join(',');
+            output.value = final;
+            status.innerText = `Generated ${filterEntries.length} patterns! (Optimized for Parts/Seasons)`;
             copyBtn.style.display = "block";
 
         } catch (err) {
