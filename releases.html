@@ -215,7 +215,7 @@
       color: var(--muted-2);
     }
 
-    .franchise-toggle-btn, .franchise-rename-btn {
+    .franchise-toggle-btn {
       width: 28px;
       height: 28px;
       border-radius: 8px;
@@ -227,7 +227,7 @@
       transition: 160ms ease;
     }
 
-    .franchise-toggle-btn:hover, .franchise-rename-btn:hover {
+    .franchise-toggle-btn:hover {
       background: var(--surface-soft);
       color: var(--text);
     }
@@ -405,34 +405,6 @@
       margin-right: auto;
     }
 
-    .quick-add-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .quick-add-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 8px;
-      border-radius: 6px;
-      background: rgba(139, 150, 255, 0.08);
-      border: 1px dashed rgba(139, 150, 255, 0.4);
-      color: var(--brand-strong);
-      font-size: 0.72rem;
-      font-weight: 800;
-      cursor: pointer;
-      transition: 160ms ease;
-    }
-
-    .quick-add-pill:hover {
-      background: rgba(139, 150, 255, 0.2);
-      border-style: solid;
-      transform: translateY(-1px);
-    }
-
     .card-status {
       display: inline-flex;
       justify-content: flex-end;
@@ -554,7 +526,7 @@
 
     .show-card.notes-open .notes-panel { display: block; }
 
-    textarea, select {
+    textarea, input.franchise-input, select {
       width: 100%;
       border: 1px solid var(--line);
       outline: none;
@@ -569,13 +541,21 @@
       line-height: 1.4;
     }
 
+    input.franchise-input {
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
     select {
       min-height: 42px;
       padding: 0 12px;
       border-radius: 999px;
     }
 
-    textarea:focus, select:focus {
+    textarea:focus, input.franchise-input:focus, select:focus {
       border-color: rgba(139, 150, 255, 0.72);
       box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
       background: #111722;
@@ -606,7 +586,7 @@
       font-size: 1rem;
     }
 
-    .search-input::placeholder, textarea::placeholder { color: var(--muted-2); }
+    .search-input::placeholder, textarea::placeholder, input.franchise-input::placeholder { color: var(--muted-2); }
 
     .search-input:focus {
       border-color: rgba(139, 150, 255, 0.72);
@@ -1147,7 +1127,6 @@
         settingsOpen: false,
         filterComplete: false,
         openNotes: {},
-        franchiseNames: {},
         collapsedFranchises: {}
       },
       localSearch: ""
@@ -1307,23 +1286,6 @@
               status
               seasonYear
               siteUrl
-              relations {
-                edges {
-                  relationType(version: 2)
-                  node {
-                    id
-                    type
-                    title { romaji english native }
-                    coverImage { medium large }
-                    episodes
-                    format
-                    status
-                    seasonYear
-                    siteUrl
-                    relations { edges { node { id } } }
-                  }
-                }
-              }
             }
           }
         }
@@ -1358,23 +1320,6 @@
             status
             seasonYear
             siteUrl
-            relations {
-              edges {
-                relationType(version: 2)
-                node {
-                  id
-                  type
-                  title { romaji english native }
-                  coverImage { medium large }
-                  episodes
-                  format
-                  status
-                  seasonYear
-                  siteUrl
-                  relations { edges { node { id } } }
-                }
-              }
-            }
           }
         }
       `;
@@ -1472,28 +1417,6 @@
     }
 
     function makeShowFromMedia(media) {
-      const relatedIds = new Set();
-      const relatedEntries = [];
-      
-      if (media.relations?.edges) {
-        media.relations.edges.forEach(e => {
-          if (e.node.id) {
-            relatedIds.add(e.node.id);
-            if (e.node.type === "ANIME") {
-              relatedEntries.push({
-                relationType: e.relationType,
-                media: e.node
-              });
-            }
-          }
-          if (e.node.relations?.edges) {
-            e.node.relations.edges.forEach(e2 => {
-              if (e2.node.id) relatedIds.add(e2.node.id);
-            });
-          }
-        });
-      }
-
       return {
         id: crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         anilistId: media.id,
@@ -1505,11 +1428,10 @@
         episodes: media.episodes ?? null,
         seasonYear: media.seasonYear ?? null,
         siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
-        relatedIds: Array.from(relatedIds),
-        relatedEntries: relatedEntries,
         board: "watching",
         downloaded: false,
         allAvailableDownloaded: false,
+        franchise: "",
         comments: "",
         releasesMoe: {
           found: false,
@@ -1951,50 +1873,33 @@
     }
 
     function groupShows(boardShows) {
-      const adj = new Map();
-      boardShows.forEach(s => {
-        adj.set(s.id, new Set());
+      const groupsMap = new Map();
+      const result = [];
+
+      boardShows.forEach(show => {
+        const fName = (show.franchise || "").trim();
+        if (!fName) {
+          // It's a standalone show
+          result.push({ isGroup: false, name: null, shows: [show] });
+        } else {
+          // It's part of a manual franchise group
+          const key = fName.toLowerCase();
+          if (!groupsMap.has(key)) {
+            const newGroup = { isGroup: true, name: fName, shows: [] };
+            groupsMap.set(key, newGroup);
+            result.push(newGroup); // Preserve order of first appearance
+          }
+          groupsMap.get(key).shows.push(show);
+        }
       });
 
-      for (let i = 0; i < boardShows.length; i++) {
-        for (let j = i + 1; j < boardShows.length; j++) {
-          const s1 = boardShows[i];
-          const s2 = boardShows[j];
-          if (s1.relatedIds?.includes(s2.anilistId) || s2.relatedIds?.includes(s1.anilistId)) {
-            adj.get(s1.id).add(s2.id);
-            adj.get(s2.id).add(s1.id);
-          }
-        }
-      }
-
-      const visited = new Set();
-      const groups = [];
-
-      for (const show of boardShows) {
-        if (!visited.has(show.id)) {
-          const component = [];
-          const q = [show.id];
-          visited.add(show.id);
-
-          while (q.length > 0) {
-            const curId = q.shift();
-            component.push(boardShows.find(s => s.id === curId));
-            
-            for (const neighborId of adj.get(curId)) {
-              if (!visited.has(neighborId)) {
-                visited.add(neighborId);
-                q.push(neighborId);
-              }
-            }
-          }
-          groups.push(component);
-        }
-      }
-
-      return groups;
+      return result;
     }
 
     function render() {
+      // 1. Memorize exact scroll position to prevent jump!
+      const scrollY = window.scrollY;
+
       applyDownloadedCollapse();
       applySettingsState();
 
@@ -2005,7 +1910,8 @@
         visibleShows = visibleShows.filter(show =>
           show.title.toLowerCase().includes(query) ||
           (show.titleEnglish && show.titleEnglish.toLowerCase().includes(query)) ||
-          (show.titleRomaji && show.titleRomaji.toLowerCase().includes(query))
+          (show.titleRomaji && show.titleRomaji.toLowerCase().includes(query)) ||
+          (show.franchise && show.franchise.toLowerCase().includes(query))
         );
       }
 
@@ -2024,6 +1930,9 @@
       renderBoard("found", byBoard.found, els.foundList, els.foundCount);
       renderBoard("watching", byBoard.watching, els.watchingList, els.watchingCount);
       renderBoard("downloaded", byBoard.downloaded, els.downloadedList, els.downloadedCount);
+
+      // 2. Instantly restore scroll position
+      window.scrollTo(0, scrollY);
     }
 
     function renderBoard(board, shows, listEl, countEl) {
@@ -2036,15 +1945,14 @@
 
       const groups = groupShows(shows);
       
-      listEl.innerHTML = groups.map(group => {
-        if (group.length === 1) return renderShowCard(group[0]);
+      listEl.innerHTML = groups.map(g => {
+        if (!g.isGroup && g.shows.length === 1) {
+          return renderShowCard(g.shows[0]);
+        }
         
-        const sortedGroup = group.sort((a, b) => (a.seasonYear || 9999) - (b.seasonYear || 9999));
-        
-        const baseId = Math.min(...sortedGroup.map(s => s.anilistId));
-        const customName = state.ui.franchiseNames?.[baseId];
-        const defaultName = escapeHtml(sortedGroup[0].title) + " Franchise";
-        const displayName = customName ? escapeHtml(customName) : defaultName;
+        const sortedGroup = g.shows.sort((a, b) => (a.seasonYear || 9999) - (b.seasonYear || 9999));
+        const displayName = escapeHtml(g.name);
+        const baseId = escapeAttr(g.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
         const isCollapsed = Boolean(state.ui.collapsedFranchises?.[baseId]);
         
         const cardsHtml = sortedGroup.map(renderShowCard).join("");
@@ -2056,7 +1964,6 @@
                 <button class="franchise-toggle-btn" type="button" data-toggle-franchise="${baseId}" aria-expanded="${!isCollapsed}" title="Toggle franchise collapse">⌄</button>
                 <span class="franchise-header-title">${displayName}</span>
               </div>
-              <button class="franchise-rename-btn" type="button" data-rename-franchise="${baseId}" data-current-name="${escapeAttr(customName || "")}" title="Rename franchise">✎</button>
             </div>
             <div class="franchise-cards">${cardsHtml}</div>
           </div>
@@ -2070,24 +1977,6 @@
           state.ui.collapsedFranchises[id] = !state.ui.collapsedFranchises[id];
           render();
           saveState();
-        });
-      });
-
-      listEl.querySelectorAll("[data-rename-franchise]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = btn.dataset.renameFranchise;
-          const currentName = btn.dataset.currentName;
-          const newName = prompt("Enter a custom name for this franchise (leave blank to reset):", currentName);
-          
-          if (newName !== null) {
-            if (newName.trim() === "") {
-              delete state.ui.franchiseNames[id];
-            } else {
-              state.ui.franchiseNames[id] = newName.trim();
-            }
-            render();
-            saveState();
-          }
         });
       });
 
@@ -2130,15 +2019,10 @@
         textarea.addEventListener("input", debounce(() => updateComments(textarea.dataset.commentId, textarea.value), 180));
       });
 
-      // Bind Quick Add pills
-      listEl.querySelectorAll("[data-quick-add-id]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const parentShow = state.shows.find(s => s.id === button.dataset.parentId);
-          const mediaId = Number(button.dataset.quickAddId);
-          if (parentShow && parentShow.relatedEntries) {
-            const rel = parentShow.relatedEntries.find(r => r.media.id === mediaId);
-            if (rel) addShow(rel.media);
-          }
+      // Bind franchise manual grouping input
+      listEl.querySelectorAll(".franchise-input").forEach((input) => {
+        input.addEventListener("change", (e) => {
+          updateFranchise(e.target.dataset.franchiseId, e.target.value);
         });
       });
     }
@@ -2184,31 +2068,6 @@
         ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" /></a>`
         : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
 
-      // Quick Add Logic
-      const missingRelations = (show.relatedEntries || [])
-        .filter(rel => !isMediaOnBoard({ id: rel.media.id }))
-        .filter(rel => ["SEQUEL", "PREQUEL", "SIDE_STORY", "ALTERNATIVE", "SPIN_OFF"].includes(rel.relationType));
-
-      const uniqueMissing = [];
-      const seenIds = new Set();
-      for (const rel of missingRelations) {
-        if (!seenIds.has(rel.media.id)) {
-          seenIds.add(rel.media.id);
-          uniqueMissing.push(rel);
-        }
-      }
-
-      const quickAddHtml = uniqueMissing.length > 0 
-        ? `<div class="quick-add-row">` + 
-          uniqueMissing.map(rel => {
-            let label = rel.relationType === "SEQUEL" ? "Sequel" : 
-                        rel.relationType === "PREQUEL" ? "Prequel" : 
-                        rel.media.format === "MOVIE" ? "Movie" : "Related";
-            return `<button class="quick-add-pill" type="button" data-quick-add-id="${rel.media.id}" data-parent-id="${show.id}" title="Add ${escapeAttr(getTitle(rel.media.title))}">+ ${label}</button>`;
-          }).join("") + 
-          `</div>`
-        : "";
-
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
           <div class="card-main">
@@ -2222,18 +2081,18 @@
                 <span class="card-meta-text">${meta || "Anime"}</span>
                 <span class="card-status">${releaseBadge}</span>
               </div>
-              ${quickAddHtml}
             </div>
             <div class="card-actions">
               <span class="card-checked-time" title="${show.releasesMoe?.checkedAt ? new Date(show.releasesMoe.checkedAt).toLocaleString() : ''}">✓ ${checkedAgo}</span>
               ${ackToggle}
               <button class="refresh-btn" type="button" data-refresh-id="${show.id}" title="Refresh status for this show">↻</button>
               ${completeToggle}
-              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments">✎</button>
+              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle edit / notes panel">✎</button>
               <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove show">×</button>
             </div>
           </div>
           <div class="notes-panel">
+            <input type="text" class="franchise-input" data-franchise-id="${show.id}" placeholder="Group name (e.g. Black Lagoon)" value="${escapeAttr(show.franchise || "")}" title="Group shows together by typing the same name here" />
             <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
           </div>
         </article>
@@ -2308,6 +2167,15 @@
       saveState();
     }
 
+    function updateFranchise(showId, franchiseName) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (!show) return;
+      show.franchise = franchiseName.trim();
+      show.updatedAt = new Date().toISOString();
+      render();
+      saveState();
+    }
+
     function removeShow(showId) {
       const show = state.shows.find((item) => item.id === showId);
       if (!show) return;
@@ -2360,7 +2228,6 @@
           settingsOpen: Boolean(payload.ui?.settingsOpen),
           filterComplete: Boolean(payload.ui?.filterComplete),
           openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {},
-          franchiseNames: payload.ui?.franchiseNames || {},
           collapsedFranchises: payload.ui?.collapsedFranchises || {}
         };
 
@@ -2391,12 +2258,11 @@
         episodes: show.episodes ?? null,
         seasonYear: show.seasonYear ?? null,
         siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
-        relatedIds: Array.isArray(show.relatedIds) ? show.relatedIds.map(Number) : [],
-        relatedEntries: Array.isArray(show.relatedEntries) ? show.relatedEntries : [],
         board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
         downloaded,
         allAvailableDownloaded: Boolean(show.allAvailableDownloaded || show.allSeasonsDownloaded || show.completeDownloaded),
         previousBoard: show.previousBoard || null,
+        franchise: String(show.franchise || show.group || ""),
         comments: String(show.comments || ""),
         releasesMoe: {
           found: Boolean(releasesMoe.found),
@@ -2458,7 +2324,6 @@
           settingsOpen: Boolean(saved.ui?.settingsOpen),
           filterComplete: Boolean(saved.ui?.filterComplete),
           openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {},
-          franchiseNames: saved.ui?.franchiseNames || {},
           collapsedFranchises: saved.ui?.collapsedFranchises || {}
         };
       } catch (error) {
