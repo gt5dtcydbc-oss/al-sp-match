@@ -5,59 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoBrr AniList Filter</title>
     <style>
-        :root { --primary: #3e5cf4; --primary-hover: #2a43cc; --bg: #f8f9fa; --card-bg: #ffffff; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #333; display: flex; justify-content: center; padding: 40px 20px; }
+        :root { --primary: #3e5cf4; --bg: #f8f9fa; --card-bg: #ffffff; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; }
         .card { background: var(--card-bg); width: 100%; max-width: 800px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        h1 { margin-top: 0; color: var(--primary); font-size: 24px; }
-        .description { font-size: 14px; color: #666; margin-bottom: 25px; }
         .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex-grow: 1; padding: 12px 16px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; transition: border-color 0.2s; }
-        input:focus { border-color: var(--primary); }
-        button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; transition: all 0.2s; }
-        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
+        input { flex-grow: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; }
+        button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; }
         #copyBtn { background: #28a745; margin-top: 10px; width: 100%; display: none; }
-        #copyBtn:hover { background: #218838; }
-        textarea { width: 100%; height: 250px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; resize: vertical; }
-        .status { font-size: 13px; font-weight: 600; margin-bottom: 5px; min-height: 18px; }
+        textarea { width: 100%; height: 250px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; }
+        .status { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+        .error { color: #dc3545; background: #fff5f5; padding: 10px; border-radius: 4px; border: 1px solid #dc3545; }
         .success { color: #28a745; }
-        .error { color: #dc3545; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h1>AniList ➔ AutoBrr</h1>
-    <p class="description">Fetches your <b>Watching</b> list and generates an aggressive filter string to catch releases across all groups and naming conventions.</p>
-    
     <div class="input-group">
-        <input type="text" id="username" placeholder="Enter AniList Username">
+        <input type="text" id="username" placeholder="AniList Username (e.g., 'Azu')">
         <button onclick="generateFilter()">Generate</button>
     </div>
-
     <div id="status" class="status"></div>
-    <textarea id="output" readonly placeholder="Resulting filter string..."></textarea>
+    <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
     <button id="copyBtn" onclick="copyToClipboard()">Copy to Clipboard</button>
 </div>
 
 <script>
     async function generateFilter() {
-        const username = document.getElementById('username').value.trim();
+        const username = document.getElementById('username').value.trim().replace('@', '');
         const status = document.getElementById('status');
         const output = document.getElementById('output');
         const copyBtn = document.getElementById('copyBtn');
 
         if (!username) return;
 
-        status.innerText = "Connecting to AniList...";
+        status.innerText = "Querying AniList...";
         status.className = "status";
         output.value = "";
         copyBtn.style.display = "none";
 
+        // Querying without the status filter inside GraphQL to be more robust
         const query = `
         query ($userName: String) {
-          MediaListCollection(userName: $userName, type: ANIME, status: WATCHING) {
+          MediaListCollection(userName: $userName, type: ANIME) {
             lists {
+              status
               entries {
                 media {
                   title { romaji english }
@@ -71,60 +64,57 @@
         try {
             const response = await fetch('https://graphql.anilist.co', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({ query, variables: { userName: username } })
             });
 
-            const json = await response.json();
-            if (!json.data.MediaListCollection) throw new Error("User not found");
+            const result = await response.json();
+
+            if (result.errors) {
+                const msg = result.errors[0].message;
+                throw new Error(msg === "Not Found." ? "User not found. Check your AniList URL name." : msg);
+            }
+
+            const collection = result.data.MediaListCollection;
+            if (!collection || !collection.lists) throw new Error("Could not retrieve lists.");
 
             let filterEntries = [];
+            // Only look at the "CURRENT" (Watching) list
+            const watchingList = collection.lists.find(l => l.status === "CURRENT");
 
-            json.data.MediaListCollection.lists.forEach(list => {
-                list.entries.forEach(entry => {
-                    const m = entry.media;
-                    const rawNames = [m.title.romaji, m.title.english, ...m.synonyms];
+            if (!watchingList || watchingList.entries.length === 0) {
+                throw new Error("User found, but 'Watching' list is empty or private.");
+            }
+
+            watchingList.entries.forEach(entry => {
+                const m = entry.media;
+                const rawNames = [m.title.romaji, m.title.english, ...m.synonyms];
+                
+                rawNames.forEach(name => {
+                    if (!name) return;
+                    // Lowercase and turn commas into wildcards (AutoBrr uses commas to separate items)
+                    let clean = name.toLowerCase().replace(/,/g, '?');
+                    // Turn separators (:, -, (, )) into '*'
+                    clean = clean.replace(/[:\-()]/g, '*');
+                    // Replace spaces/dots/junk with '?'
+                    clean = clean.replace(/[^a-z0-9*]/gi, '?');
+                    // Clean up double wildcards
+                    clean = clean.replace(/\?+/g, '?').replace(/\*+/g, '*').replace(/\?\*/g, '*').replace(/\*\?/g, '*');
+                    // Trim wildcards from edges
+                    clean = clean.replace(/^[?*]+|[?*]+$/g, '');
                     
-                    rawNames.forEach(name => {
-                        if (!name) return;
-
-                        // 1. Lowercase & transform separators (:, -, (, )) into '*'
-                        let clean = name.toLowerCase().replace(/[:\-()]/g, '*');
-                        
-                        // 2. Replace all other non-alphanumeric (spaces, dots, etc) with '?'
-                        clean = clean.replace(/[^a-z0-9*]/gi, '?');
-
-                        // 3. Deduplicate wildcards (e.g. '??' -> '?')
-                        clean = clean.replace(/\?+/g, '?').replace(/\*+/g, '*');
-
-                        // 4. Clean up wildcard collisions (e.g. '*?' -> '*')
-                        clean = clean.replace(/\?\*/g, '*').replace(/\*\?/g, '*');
-
-                        // 5. Trim wildcards from start/end before final wrapping
-                        clean = clean.replace(/^[?*]+|[?*]+$/g, '');
-                        
-                        // 6. Wrap in '*' to ensure it matches anywhere in the filename
-                        if (clean.length > 2) {
-                            filterEntries.push(`*${clean}*`);
-                        }
-                    });
+                    if (clean.length > 2) filterEntries.push(`*${clean}*`);
                 });
             });
 
             const finalFilter = [...new Set(filterEntries)].sort().join(',');
-            
-            if (finalFilter.length > 0) {
-                output.value = finalFilter;
-                status.innerText = `Found ${filterEntries.length} variants. Ready to copy!`;
-                status.className = "status success";
-                copyBtn.style.display = "block";
-            } else {
-                status.innerText = "No shows found in your 'Watching' list.";
-                status.className = "status error";
-            }
+            output.value = finalFilter;
+            status.innerText = `Success! Found ${watchingList.entries.length} shows (${filterEntries.length} variants).`;
+            status.className = "status success";
+            copyBtn.style.display = "block";
 
         } catch (err) {
-            status.innerText = "Error: Could not fetch list. Check the username.";
+            status.innerText = "Error: " + err.message;
             status.className = "status error";
         }
     }
@@ -132,13 +122,10 @@
     function copyToClipboard() {
         const output = document.getElementById('output');
         const copyBtn = document.getElementById('copyBtn');
-        
         output.select();
         navigator.clipboard.writeText(output.value);
-        
-        const originalText = copyBtn.innerText;
-        copyBtn.innerText = "Copied to Clipboard!";
-        setTimeout(() => { copyBtn.innerText = originalText; }, 2000);
+        copyBtn.innerText = "Copied!";
+        setTimeout(() => { copyBtn.innerText = "Copy to Clipboard"; }, 2000);
     }
 </script>
 </body>
