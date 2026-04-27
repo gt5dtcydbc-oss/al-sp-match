@@ -538,7 +538,7 @@
     .show-card.notes-open .notes-panel { display: block; }
     .show-card[data-kind="manga"] .notes-panel { padding-left: 72px; }
 
-    textarea, input.franchise-input, select {
+    textarea, input.franchise-input, input.rss-input, select {
       width: 100%;
       border: 1px solid var(--line);
       outline: none;
@@ -553,7 +553,7 @@
       line-height: 1.4;
     }
 
-    input.franchise-input {
+    input.franchise-input, input.rss-input {
       padding: 10px 12px;
       border-radius: 12px;
       margin-bottom: 8px;
@@ -567,7 +567,7 @@
       border-radius: 999px;
     }
 
-    textarea:focus, input.franchise-input:focus, select:focus {
+    textarea:focus, input.franchise-input:focus, input.rss-input:focus, select:focus {
       border-color: rgba(139, 150, 255, 0.72);
       box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.10);
       background: #111722;
@@ -599,7 +599,7 @@
       font-size: 1rem;
     }
 
-    .search-input::placeholder, textarea::placeholder, input.franchise-input::placeholder { color: var(--muted-2); }
+    .search-input::placeholder, textarea::placeholder, input.franchise-input::placeholder, input.rss-input::placeholder { color: var(--muted-2); }
 
     .search-input:focus {
       border-color: rgba(139, 150, 255, 0.72);
@@ -1183,8 +1183,7 @@
     const ANILIST_ENDPOINT = "https://graphql.anilist.co";
     const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
 
-    // Direct browser-first MangaUpdates setup. If CORS blocks this, put your own proxy base URL here.
-    // The proxy should forward paths like /series/search, /series/:id, and /series/:id/rss.
+    // Proxy setup
     const MANGAUPDATES_API_BASE = "https://api.mangaupdates.com/v1";
     const MANGAUPDATES_PROXY_ENDPOINT = "https://withered-waterfall-6fd3.gt5dtcydbc.workers.dev";
 
@@ -1265,7 +1264,6 @@
       bindEvents();
       render();
 
-      // Auto check ONLY the watching list. Anime uses releases.moe; manga uses MangaUpdates.
       checkWatchingStatuses();
     }
 
@@ -1590,6 +1588,7 @@
         allAvailableDownloaded: false,
         franchise: "",
         comments: "",
+        rssUrl: "", // Custom RSS Field
         mangaUpdates: {
           found: false,
           seriesId: null,
@@ -1832,10 +1831,6 @@
       if (failed.length) parts.push(`${failed.length} failed`);
 
       toast(parts.length ? `Batch complete: ${parts.join(", ")}.` : "No shows were added.", failed.length ? "error" : "");
-
-      if (failed.length) {
-        console.warn("Batch import failures:", failed);
-      }
     }
 
     function getAddableBatchMatches() {
@@ -2046,16 +2041,25 @@
       let updateTriggered = false;
 
       try {
-        if (!seriesId) {
-          matchedSeries = await findMangaUpdatesSeries(show);
-          seriesId = matchedSeries?.id ?? null;
+        // If an RSS URL is manually provided, we skip series lookup and fetch the RSS directly
+        const rssUrl = show.rssUrl?.trim();
+        let latest;
+
+        if (rssUrl) {
+          latest = await fetchLatestChapterFromRssUrl(rssUrl);
+        } else {
+          if (!seriesId) {
+            matchedSeries = await findMangaUpdatesSeries(show);
+            seriesId = matchedSeries?.id ?? null;
+          }
+
+          if (!seriesId) {
+            throw new Error("No MangaUpdates match found. Try adding a manual RSS URL.");
+          }
+
+          latest = await getMangaUpdatesLatestChapter(seriesId);
         }
 
-        if (!seriesId) {
-          throw new Error("No MangaUpdates match found");
-        }
-
-        const latest = await getMangaUpdatesLatestChapter(seriesId);
         const latestChapter = latest.chapter ?? null;
         const knownChapter = toNumber(previous.knownChapter ?? previous.latestChapter);
         const nextKnownChapter = knownChapter ?? latestChapter;
@@ -2069,7 +2073,7 @@
         show.mangaUpdates = {
           found: true,
           seriesId,
-          seriesUrl: matchedSeries?.url || previous.seriesUrl || makeMangaUpdatesSeriesUrl(seriesId),
+          seriesUrl: matchedSeries?.url || previous.seriesUrl || (seriesId ? makeMangaUpdatesSeriesUrl(seriesId) : null),
           title: matchedSeries?.title || previous.title || null,
           checkedAt: new Date().toISOString(),
           error: null,
@@ -2094,16 +2098,20 @@
           checkedAt: new Date().toISOString(),
           error: error.message || "Unknown error"
         };
-
-        if (forceMove) {
-          show.board = "watching";
-          show.downloaded = false;
-          show.allAvailableDownloaded = false;
-        }
-
         show.updatedAt = new Date().toISOString();
         return false;
       }
+    }
+
+    async function fetchLatestChapterFromRssUrl(rssUrl) {
+      // Fetch via proxy to avoid CORS
+      const rss = await mangaUpdatesFetch(rssUrl, {
+        headers: { "Accept": "application/rss+xml, application/xml, text/xml, */*" }
+      }, true);
+
+      const rssInfo = parseMangaUpdatesRss(rss);
+      if (rssInfo.chapter === null) throw new Error("Could not parse chapter from RSS feed.");
+      return rssInfo;
     }
 
     async function findMangaUpdatesSeries(show) {
@@ -2161,8 +2169,7 @@
     async function searchMangaUpdatesSeries(search) {
       const payloads = [
         { search, page: 1, perpage: 8 },
-        { search, page: 1, perPage: 8 },
-        { query: search, page: 1, perpage: 8 }
+        { query: search, page: 1, perPage: 8 }
       ];
 
       let lastError = null;
@@ -2179,10 +2186,9 @@
           });
 
           const items = extractMangaUpdatesSearchItems(json);
-          if (items.length || payload === payloads[payloads.length - 1]) return items;
+          if (items.length) return items;
         } catch (error) {
           lastError = error;
-          if (!String(error.message || "").includes("400")) break;
         }
       }
 
@@ -2192,14 +2198,11 @@
 
     async function getMangaUpdatesLatestChapter(seriesId) {
       try {
-        const rss = await mangaUpdatesFetch(`/series/${encodeURIComponent(seriesId)}/rss`, {
-          headers: { "Accept": "application/rss+xml, application/xml, text/xml, */*" }
-        });
-
-        const rssInfo = parseMangaUpdatesRss(rss);
-        if (rssInfo.chapter !== null) return rssInfo;
+        // Try the standard RSS for the series ID first
+        const rssUrl = `https://www.mangaupdates.com/rss.php?id=${encodeURIComponent(seriesId)}`;
+        return await fetchLatestChapterFromRssUrl(rssUrl);
       } catch (error) {
-        console.warn("MangaUpdates RSS lookup failed; trying series details.", error);
+        console.warn("RSS lookup failed; trying series details API.", error);
       }
 
       const detail = await mangaUpdatesFetch(`/series/${encodeURIComponent(seriesId)}`, {
@@ -2214,8 +2217,9 @@
       };
     }
 
-    async function mangaUpdatesFetch(path, options = {}) {
-      const response = await fetch(getMangaUpdatesApiUrl(path), options);
+    async function mangaUpdatesFetch(path, options = {}, isFullUrl = false) {
+      const url = isFullUrl ? `${MANGAUPDATES_PROXY_ENDPOINT}?url=${encodeURIComponent(path)}` : getMangaUpdatesApiUrl(path);
+      const response = await fetch(url, options);
       if (!response.ok) throw new Error(`MangaUpdates returned ${response.status}`);
 
       const text = await response.text();
@@ -2236,41 +2240,19 @@
     }
 
     function extractMangaUpdatesSearchItems(json) {
-      const containers = [
-        json,
-        json?.results,
-        json?.items,
-        json?.series,
-        json?.data,
-        json?.data?.results,
-        json?.data?.items,
-        json?.data?.series,
-        json?.records
-      ];
-
-      const rawItems = containers.find(Array.isArray) || [];
+      const rawItems = json?.results || json?.items || json?.records || [];
       return rawItems
         .map(normalizeMangaUpdatesSearchItem)
         .filter((item) => item.id && item.title);
     }
 
     function normalizeMangaUpdatesSearchItem(item) {
-      const record = item?.record || item?.series || item?.item || item || {};
-      const id = record.series_id ?? record.seriesId ?? record.id ?? item?.series_id ?? item?.seriesId ?? item?.id ?? null;
-      const title = record.title ?? record.name ?? item?.title ?? item?.hit_title ?? item?.hitTitle ?? "";
-      const url = record.url ?? item?.url ?? (id ? makeMangaUpdatesSeriesUrl(id) : "");
-      const aliasesRaw = record.aliases ?? record.associated ?? record.alt_titles ?? record.altTitles ?? item?.aliases ?? [];
-      const aliases = Array.isArray(aliasesRaw)
-        ? aliasesRaw.map((alias) => typeof alias === "string" ? alias : alias?.title || alias?.name).filter(Boolean)
-        : [];
-
-      return {
-        id,
-        title,
-        hitTitle: item?.hit_title ?? item?.hitTitle ?? "",
-        url,
-        aliases
-      };
+      const record = item?.record || item?.series || item || {};
+      const id = record.series_id ?? record.seriesId ?? record.id ?? null;
+      const title = record.title ?? record.name ?? "";
+      const url = id ? makeMangaUpdatesSeriesUrl(id) : "";
+      
+      return { id, title, url };
     }
 
     function parseMangaUpdatesRss(rssText) {
@@ -2278,16 +2260,12 @@
       const xml = parser.parseFromString(String(rssText || ""), "application/xml");
       const items = Array.from(xml.querySelectorAll("item"));
 
-      let best = {
-        chapter: null,
-        title: null,
-        date: null
-      };
+      let best = { chapter: null, title: null, date: null };
 
       for (const item of items) {
         const title = item.querySelector("title")?.textContent || "";
         const description = item.querySelector("description")?.textContent || "";
-        const pubDate = item.querySelector("pubDate")?.textContent || item.querySelector("date")?.textContent || "";
+        const pubDate = item.querySelector("pubDate")?.textContent || "";
         const chapter = extractChapterNumber(`${title} ${description}`);
 
         if (chapter !== null && (best.chapter === null || chapter > best.chapter)) {
@@ -2298,61 +2276,41 @@
           };
         }
       }
-
       return best;
     }
 
     function extractChapterFromObject(value) {
-      const seen = new Set();
       let best = null;
-
       function walk(node, key = "") {
-        if (node === null || node === undefined) return;
-        if (typeof node === "object") {
-          if (seen.has(node)) return;
-          seen.add(node);
-
-          if (Array.isArray(node)) {
-            node.forEach((child) => walk(child, key));
-            return;
+        if (!node || typeof node !== "object") {
+          if (/latest|last|chapter|chapters|release/i.test(key)) {
+            const chapter = extractChapterNumber(String(node));
+            if (chapter !== null && (best === null || chapter > best)) best = chapter;
           }
-
-          Object.entries(node).forEach(([childKey, childValue]) => walk(childValue, childKey));
           return;
         }
-
-        const keyLooksUseful = /latest|last|chapter|chapters|release/i.test(key);
-        if (!keyLooksUseful) return;
-
-        const chapter = extractChapterNumber(String(node));
-        if (chapter !== null && (best === null || chapter > best)) {
-          best = chapter;
-        }
+        Object.entries(node).forEach(([k, v]) => walk(v, k));
       }
-
       walk(value);
       return best;
     }
 
     function extractChapterNumber(text) {
-      const value = String(text || "");
-
       const chapterPatterns = [
         /\b(?:ch(?:apter)?|c)\.?\s*([0-9]+(?:\.[0-9]+)?)(?!\d)/i,
         /\bchapter\s*#?\s*([0-9]+(?:\.[0-9]+)?)(?!\d)/i
       ];
 
       for (const pattern of chapterPatterns) {
-        const match = value.match(pattern);
+        const match = text.match(pattern);
         if (match) return Number(match[1]);
       }
 
-      const allNumbers = Array.from(value.matchAll(/\b([0-9]+(?:\.[0-9]+)?)(?!\d)\b/g))
-        .map((match) => Number(match[1]))
-        .filter((number) => Number.isFinite(number) && number > 0 && number < 100000);
+      const allNumbers = Array.from(text.matchAll(/\b([0-9]+(?:\.[0-9]+)?)(?!\d)\b/g))
+        .map((m) => Number(m[1]))
+        .filter((n) => n > 0 && n < 100000);
 
-      if (!allNumbers.length) return null;
-      return Math.max(...allNumbers);
+      return allNumbers.length ? Math.max(...allNumbers) : null;
     }
 
     function makeMangaUpdatesSeriesUrl(seriesId) {
@@ -2394,11 +2352,7 @@
       if (query) {
         visibleShows = visibleShows.filter(show =>
           show.title.toLowerCase().includes(query) ||
-          (show.titleEnglish && show.titleEnglish.toLowerCase().includes(query)) ||
-          (show.titleRomaji && show.titleRomaji.toLowerCase().includes(query)) ||
-          (show.titleNative && show.titleNative.toLowerCase().includes(query)) ||
-          (show.franchise && show.franchise.toLowerCase().includes(query)) ||
-          (show.type && show.type.toLowerCase().includes(query))
+          (show.franchise && show.franchise.toLowerCase().includes(query))
         );
       }
 
@@ -2408,10 +2362,7 @@
         downloaded: visibleShows
           .filter((show) => !isManga(show) && (show.downloaded || show.board === "downloaded"))
           .filter((show) => !state.ui.filterComplete || show.allAvailableDownloaded)
-          .sort((a, b) => a.title.localeCompare(b.title, undefined, {
-            sensitivity: "base",
-            numeric: true
-          }))
+          .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }))
       };
 
       renderBoard("found", byBoard.found, els.foundList, els.foundCount);
@@ -2508,6 +2459,13 @@
           updateFranchise(e.target.dataset.franchiseId, e.target.value);
         });
       });
+
+      // RSS Input Listener
+      listEl.querySelectorAll(".rss-input").forEach((input) => {
+        input.addEventListener("change", (e) => {
+          updateRssUrl(e.target.dataset.rssId, e.target.value);
+        });
+      });
     }
 
     function renderShowCard(show) {
@@ -2520,69 +2478,46 @@
       const releaseUrl = getReleaseMoeUrl(show);
       const title = escapeHtml(show.title);
       const titleHtml = releaseUrl
-        ? `<a class="show-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe">${title}</a>`
+        ? `<a class="show-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer">${title}</a>`
         : title;
       const completeActive = Boolean(show.allAvailableDownloaded);
-      const completeToggle = isDownloaded
-        ? `<button class="complete-toggle ${completeActive ? "active" : ""}" type="button" data-complete-id="${show.id}" aria-pressed="${completeActive}" title="${completeActive ? "All available material downloaded" : "Mark all available material as downloaded"}">*</button>`
-        : "";
       const updateAvailable = show.releasesMoe?.updateAvailable;
       const ackToggle = updateAvailable 
-          ? `<button class="ack-btn" type="button" data-ack-id="${show.id}" title="Mark update as downloaded">✓</button>`
+          ? `<button class="ack-btn" type="button" data-ack-id="${show.id}">✓</button>`
           : "";
 
       const checkedAgo = show.releasesMoe?.checkedAt 
           ? formatTimeAgo(new Date(show.releasesMoe.checkedAt)) 
-          : "Never checked";
+          : "Never";
 
       let releaseBadge = "";
-      if (updateAvailable) {
-        releaseBadge = '<span class="badge update">Update</span>';
-      } else if (isDownloaded) {
-        releaseBadge = '<span class="badge downloaded">Downloaded</span>';
-      } else if (show.releasesMoe?.found) {
-        releaseBadge = '<span class="badge found">Found</span>';
-      } else if (show.releasesMoe?.error) {
-        releaseBadge = '<span class="badge error">Error</span>';
-      } else {
-        releaseBadge = '<span class="badge watching">Watching</span>';
-      }
+      if (updateAvailable) releaseBadge = '<span class="badge update">Update</span>';
+      else if (isDownloaded) releaseBadge = '<span class="badge downloaded">Downloaded</span>';
+      else if (show.releasesMoe?.found) releaseBadge = '<span class="badge found">Found</span>';
+      else releaseBadge = '<span class="badge watching">Watching</span>';
 
-      const meta = [show.format, show.seasonYear, show.episodes ? `${show.episodes} ep` : null]
-        .filter(Boolean)
-        .map(escapeHtml)
-        .join(" · ");
       const posterSrc = escapeAttr(show.coverImage || getFallbackPoster());
-      const thumbHtml = releaseUrl
-        ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" /></a>`
-        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
 
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-kind="anime" data-show-id="${show.id}">
           <div class="card-main">
-            <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} aria-label="Mark ${escapeAttr(show.title)} as downloaded" />
-            ${thumbHtml}
+            <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} />
+            <img class="thumb" src="${posterSrc}" alt="" />
             <div class="card-content">
-              <div class="title-row">
-                <div class="card-title">${titleHtml}</div>
-              </div>
-              <div class="card-meta">
-                <span class="card-meta-text">${meta || "Anime"}</span>
-                <span class="card-status">${releaseBadge}</span>
-              </div>
+              <div class="title-row"><div class="card-title">${titleHtml}</div></div>
+              <div class="card-meta"><span class="card-status">${releaseBadge}</span></div>
             </div>
             <div class="card-actions">
-              <span class="card-checked-time" title="${show.releasesMoe?.checkedAt ? new Date(show.releasesMoe.checkedAt).toLocaleString() : ""}">✓ ${checkedAgo}</span>
+              <span class="card-checked-time">✓ ${checkedAgo}</span>
               ${ackToggle}
-              <button class="refresh-btn" type="button" data-refresh-id="${show.id}" title="Refresh status for this show">↻</button>
-              ${completeToggle}
-              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle edit / notes panel">✎</button>
-              <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove show">×</button>
+              <button class="refresh-btn" type="button" data-refresh-id="${show.id}">↻</button>
+              <button class="notes-toggle" type="button" data-notes-id="${show.id}">✎</button>
+              <button class="remove-btn" type="button" data-remove-id="${show.id}">×</button>
             </div>
           </div>
           <div class="notes-panel">
-            <input type="text" class="franchise-input" data-franchise-id="${show.id}" placeholder="Group name (e.g. Black Lagoon)" value="${escapeAttr(show.franchise || "")}" title="Group shows together by typing the same name here" />
-            <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
+            <input type="text" class="franchise-input" data-franchise-id="${show.id}" placeholder="Group name" value="${escapeAttr(show.franchise || "")}" />
+            <textarea data-comment-id="${show.id}" placeholder="Comments…">${escapeHtml(show.comments || "")}</textarea>
           </div>
         </article>
       `;
@@ -2593,71 +2528,45 @@
       const mangaUrl = show.mangaUpdates?.seriesUrl || show.siteUrl || "";
       const title = escapeHtml(show.title);
       const titleHtml = mangaUrl
-        ? `<a class="show-link" href="${escapeAttr(mangaUrl)}" target="_blank" rel="noopener noreferrer" title="Open manga info">${title}</a>`
+        ? `<a class="show-link" href="${escapeAttr(mangaUrl)}" target="_blank" rel="noopener noreferrer">${title}</a>`
         : title;
 
       const checkedAgo = show.mangaUpdates?.checkedAt 
           ? formatTimeAgo(new Date(show.mangaUpdates.checkedAt)) 
-          : "Never checked";
+          : "Never";
 
       const latestChapter = show.mangaUpdates?.latestChapter;
-      const knownChapter = show.mangaUpdates?.knownChapter;
       const updateAvailable = Boolean(show.mangaUpdates?.updateAvailable);
       const ackToggle = updateAvailable
-        ? `<button class="ack-btn" type="button" data-ack-id="${show.id}" title="Mark latest chapter as seen">✓</button>`
+        ? `<button class="ack-btn" type="button" data-ack-id="${show.id}">✓</button>`
         : "";
 
       let mangaBadge = "";
-      if (updateAvailable) {
-        mangaBadge = `<span class="badge update">New ch. ${escapeHtml(formatChapter(latestChapter))}</span>`;
-      } else if (latestChapter !== null && latestChapter !== undefined) {
-        mangaBadge = `<span class="badge found">Ch. ${escapeHtml(formatChapter(latestChapter))}</span>`;
-      } else if (show.mangaUpdates?.error) {
-        mangaBadge = '<span class="badge error">MU error</span>';
-      } else {
-        mangaBadge = '<span class="badge watching">Watching</span>';
-      }
-
-      const meta = [
-        "Manga",
-        show.format,
-        show.seasonYear,
-        show.chapters ? `${show.chapters} ch` : null,
-        show.volumes ? `${show.volumes} vol` : null,
-        knownChapter !== null && knownChapter !== undefined ? `Seen ch. ${formatChapter(knownChapter)}` : null
-      ]
-        .filter(Boolean)
-        .map(escapeHtml)
-        .join(" · ");
+      if (updateAvailable) mangaBadge = `<span class="badge update">New ch. ${escapeHtml(formatChapter(latestChapter))}</span>`;
+      else if (latestChapter !== null) mangaBadge = `<span class="badge found">Ch. ${escapeHtml(formatChapter(latestChapter))}</span>`;
+      else mangaBadge = '<span class="badge watching">Watching</span>';
 
       const posterSrc = escapeAttr(show.coverImage || getFallbackPoster());
-      const thumbHtml = mangaUrl
-        ? `<a class="thumb-link" href="${escapeAttr(mangaUrl)}" target="_blank" rel="noopener noreferrer" title="Open manga info"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" /></a>`
-        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
 
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-kind="manga" data-show-id="${show.id}">
           <div class="card-main manga-card-main">
-            ${thumbHtml}
+            <img class="thumb" src="${posterSrc}" alt="" />
             <div class="card-content">
-              <div class="title-row">
-                <div class="card-title">${titleHtml}</div>
-              </div>
-              <div class="card-meta">
-                <span class="card-meta-text">${meta || "Manga"}</span>
-                <span class="card-status">${mangaBadge}</span>
-              </div>
+              <div class="title-row"><div class="card-title">${titleHtml}</div></div>
+              <div class="card-meta"><span class="card-status">${mangaBadge}</span></div>
             </div>
             <div class="card-actions">
-              <span class="card-checked-time" title="${show.mangaUpdates?.checkedAt ? new Date(show.mangaUpdates.checkedAt).toLocaleString() : ""}">✓ ${checkedAgo}</span>
+              <span class="card-checked-time">✓ ${checkedAgo}</span>
               ${ackToggle}
-              <button class="refresh-btn" type="button" data-refresh-id="${show.id}" title="Refresh MangaUpdates status">↻</button>
-              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments panel">✎</button>
-              <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove manga">×</button>
+              <button class="refresh-btn" type="button" data-refresh-id="${show.id}">↻</button>
+              <button class="notes-toggle" type="button" data-notes-id="${show.id}">✎</button>
+              <button class="remove-btn" type="button" data-remove-id="${show.id}">×</button>
             </div>
           </div>
           <div class="notes-panel">
-            <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
+            <input type="text" class="rss-input" data-rss-id="${show.id}" placeholder="Manual RSS URL (MangaUpdates)" value="${escapeAttr(show.rssUrl || "")}" />
+            <textarea data-comment-id="${show.id}" placeholder="Comments…">${escapeHtml(show.comments || "")}</textarea>
           </div>
         </article>
       `;
@@ -2671,22 +2580,14 @@
       show.updatedAt = new Date().toISOString();
 
       if (checked) {
-        show.previousBoard = show.board === "downloaded" ? show.previousBoard || "watching" : show.board;
         show.board = "downloaded";
-        show.allAvailableDownloaded = Boolean(show.allAvailableDownloaded);
-
         if (show.releasesMoe?.updateAvailable) {
            show.releasesMoe.updateAvailable = false;
            show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
         }
-
-        toast(`${show.title} moved to Downloaded.`);
       } else {
-        show.downloaded = false;
-        show.allAvailableDownloaded = false;
         show.board = show.releasesMoe?.found ? "found" : "watching";
         await refreshShowStatus(show, { forceMove: true });
-        toast(`${show.title} moved to ${boardCopy[show.board]}.`);
       }
 
       render();
@@ -2696,9 +2597,7 @@
     function toggleAllAvailableDownloaded(showId) {
       const show = state.shows.find((item) => item.id === showId);
       if (!show || isManga(show)) return;
-
       show.allAvailableDownloaded = !show.allAvailableDownloaded;
-      show.updatedAt = new Date().toISOString();
       render();
       saveState();
     }
@@ -2713,21 +2612,15 @@
           knownChapter: show.mangaUpdates?.latestChapter ?? show.mangaUpdates?.knownChapter ?? null,
           updateAvailable: false
         };
-        show.updatedAt = new Date().toISOString();
-        render();
-        saveState();
-        toast(`Latest chapter for ${show.title} marked as seen.`);
-        return;
+      } else {
+        show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
+        show.releasesMoe.updateAvailable = false;
+        show.releasesMoe.latestUpdated = null;
       }
 
-      show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
-      show.releasesMoe.updateAvailable = false;
-      show.releasesMoe.latestUpdated = null;
       show.updatedAt = new Date().toISOString();
-
       render();
       saveState();
-      toast(`Update for ${show.title} acknowledged.`);
     }
 
     function toggleNotes(showId) {
@@ -2738,193 +2631,90 @@
 
     function updateComments(showId, comments) {
       const show = state.shows.find((item) => item.id === showId);
-      if (!show) return;
-      show.comments = comments;
-      show.updatedAt = new Date().toISOString();
+      if (show) show.comments = comments;
       saveState();
     }
 
     function updateFranchise(showId, franchiseName) {
       const show = state.shows.find((item) => item.id === showId);
-      if (!show || isManga(show)) return;
-      show.franchise = franchiseName.trim();
-      show.updatedAt = new Date().toISOString();
+      if (show) show.franchise = franchiseName.trim();
       render();
+      saveState();
+    }
+
+    function updateRssUrl(showId, url) {
+      const show = state.shows.find((item) => item.id === showId);
+      if (show) show.rssUrl = url.trim();
       saveState();
     }
 
     function removeShow(showId) {
       const show = state.shows.find((item) => item.id === showId);
-      if (!show) return;
-
-      const ok = confirm(`Remove “${show.title}” from the board?`);
-      if (!ok) return;
-
-      state.shows = state.shows.filter((item) => item.id !== showId);
-      delete state.ui.openNotes[showId];
-      render();
-      saveState();
-      toast(`${show.title} removed.`);
+      if (show && confirm(`Remove “${show.title}”?`)) {
+        state.shows = state.shows.filter((item) => item.id !== showId);
+        render();
+        saveState();
+      }
     }
 
     function exportJson() {
-      const payload = {
-        version: 2,
-        exportedAt: new Date().toISOString(),
-        shows: state.shows,
-        ui: state.ui
-      };
-
+      const payload = { shows: state.shows, ui: state.ui };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `anilist-releases-board-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `releases-board-export.json`;
+      a.click();
       URL.revokeObjectURL(url);
-      toast("Board exported as JSON.");
     }
 
     async function importJson(event) {
       const file = event.target.files?.[0];
-      event.target.value = "";
       if (!file) return;
-
       try {
         const text = await file.text();
         const payload = JSON.parse(text);
-        const shows = Array.isArray(payload) ? payload : payload.shows;
-
-        if (!Array.isArray(shows)) throw new Error("JSON must contain a shows array.");
-
-        state.shows = shows.map(normalizeImportedShow);
+        state.shows = (payload.shows || payload).map(normalizeImportedShow);
         state.ui = normalizeImportedUi(payload.ui || {});
-
         render();
         saveState();
-        toast("Board imported. Refresh individual items if needed.");
-      } catch (error) {
-        console.error(error);
-        toast(`Import failed: ${error.message}`, "error");
-      }
+      } catch (e) { toast("Import failed.", "error"); }
     }
 
     function normalizeImportedShow(show) {
-      if (show?.type === "manga") {
-        return normalizeImportedManga(show);
-      }
-
+      if (show?.type === "manga") return normalizeImportedManga(show);
       return normalizeImportedAnime(show);
     }
 
     function normalizeImportedAnime(show) {
-      const id = show.id || (crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      const downloaded = Boolean(show.downloaded || show.board === "downloaded");
-      const releasesMoe = show.releasesMoe && typeof show.releasesMoe === "object"
-        ? show.releasesMoe
-        : { found: false, recordId: null, checkedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null };
-
       return {
-        id,
-        type: "anime",
-        anilistId: Number(show.anilistId || show.alID || show.idAnilist),
-        title: String(show.title || show.titleRomaji || show.titleEnglish || "Untitled"),
-        titleEnglish: String(show.titleEnglish || ""),
-        titleRomaji: String(show.titleRomaji || ""),
-        titleNative: String(show.titleNative || ""),
-        coverImage: String(show.coverImage || ""),
-        format: String(show.format || ""),
-        episodes: show.episodes ?? null,
-        seasonYear: show.seasonYear ?? null,
-        siteUrl: String(show.siteUrl || `https://anilist.co/anime/${show.anilistId || show.alID || ""}`),
-        board: downloaded ? "downloaded" : ["found", "watching"].includes(show.board) ? show.board : releasesMoe.found ? "found" : "watching",
-        downloaded,
-        allAvailableDownloaded: Boolean(show.allAvailableDownloaded || show.allSeasonsDownloaded || show.completeDownloaded),
-        previousBoard: show.previousBoard || null,
-        franchise: String(show.franchise || show.group || ""),
-        comments: String(show.comments || ""),
-        releasesMoe: {
-          found: Boolean(releasesMoe.found),
-          recordId: releasesMoe.recordId ?? null,
-          checkedAt: releasesMoe.checkedAt ?? null,
-          error: releasesMoe.error ?? null,
-          updated: releasesMoe.updated || null,
-          updateAvailable: Boolean(releasesMoe.updateAvailable),
-          latestUpdated: releasesMoe.latestUpdated || null
-        },
-        createdAt: show.createdAt || new Date().toISOString(),
-        updatedAt: show.updatedAt || new Date().toISOString()
+        ...makeShowFromMedia(show),
+        ...show,
+        board: show.board || "watching",
+        releasesMoe: show.releasesMoe || { found: false }
       };
     }
 
     function normalizeImportedManga(show) {
-      const id = show.id || (crypto.randomUUID ? crypto.randomUUID() : `manga-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      const mangaUpdates = show.mangaUpdates && typeof show.mangaUpdates === "object"
-        ? show.mangaUpdates
-        : { found: false, seriesId: null, seriesUrl: null, title: null, checkedAt: null, error: null, latestChapter: null, knownChapter: null, updateAvailable: false, latestReleaseTitle: null, latestReleaseDate: null };
-
       return {
-        id,
-        type: "manga",
-        anilistId: Number(show.anilistId || show.alID || show.idAnilist),
-        title: String(show.title || show.titleRomaji || show.titleEnglish || "Untitled"),
-        titleEnglish: String(show.titleEnglish || ""),
-        titleRomaji: String(show.titleRomaji || ""),
-        titleNative: String(show.titleNative || ""),
-        coverImage: String(show.coverImage || ""),
-        format: String(show.format || ""),
-        chapters: show.chapters ?? null,
-        volumes: show.volumes ?? null,
-        seasonYear: show.seasonYear ?? null,
-        siteUrl: String(show.siteUrl || `https://anilist.co/manga/${show.anilistId || show.alID || ""}`),
+        ...makeMangaFromMedia(show),
+        ...show,
         board: "watching",
-        downloaded: false,
-        allAvailableDownloaded: false,
-        previousBoard: null,
-        franchise: "",
-        comments: String(show.comments || ""),
-        mangaUpdates: {
-          found: Boolean(mangaUpdates.found),
-          seriesId: mangaUpdates.seriesId ?? mangaUpdates.id ?? null,
-          seriesUrl: mangaUpdates.seriesUrl || (mangaUpdates.seriesId ? makeMangaUpdatesSeriesUrl(mangaUpdates.seriesId) : null),
-          title: mangaUpdates.title || null,
-          checkedAt: mangaUpdates.checkedAt ?? null,
-          error: mangaUpdates.error ?? null,
-          latestChapter: mangaUpdates.latestChapter ?? null,
-          knownChapter: mangaUpdates.knownChapter ?? mangaUpdates.latestChapter ?? null,
-          updateAvailable: Boolean(mangaUpdates.updateAvailable),
-          latestReleaseTitle: mangaUpdates.latestReleaseTitle || null,
-          latestReleaseDate: mangaUpdates.latestReleaseDate || null
-        },
-        createdAt: show.createdAt || new Date().toISOString(),
-        updatedAt: show.updatedAt || new Date().toISOString()
+        rssUrl: show.rssUrl || "",
+        mangaUpdates: show.mangaUpdates || { found: false }
       };
     }
 
     function normalizeImportedUi(ui = {}) {
-      return {
-        downloadedCollapsed: Boolean(ui.downloadedCollapsed),
-        settingsOpen: Boolean(ui.settingsOpen),
-        filterComplete: Boolean(ui.filterComplete),
-        searchMode: ui.searchMode === "manga" ? "manga" : "anime",
-        openNotes: ui.openNotes && typeof ui.openNotes === "object" ? ui.openNotes : {},
-        collapsedFranchises: ui.collapsedFranchises && typeof ui.collapsedFranchises === "object" ? ui.collapsedFranchises : {}
-      };
+      return { ...state.ui, ...ui };
     }
 
     function clearBoard() {
-      if (!state.shows.length) return;
-      const ok = confirm("Clear the whole board? Export first if you want a backup.");
-      if (!ok) return;
-
-      state.shows = [];
-      state.ui.openNotes = {};
-      clearBatchReview();
-      render();
-      saveState();
-      toast("Board cleared.");
+      if (confirm("Clear board?")) {
+        state.shows = [];
+        render();
+        saveState();
+      }
     }
 
     function toggleDownloaded() {
@@ -2935,132 +2725,57 @@
 
     function applyDownloadedCollapse() {
       els.downloadedBoard.classList.toggle("collapsed", Boolean(state.ui.downloadedCollapsed));
-      els.toggleDownloadedBtn.setAttribute("aria-expanded", String(!state.ui.downloadedCollapsed));
       els.toggleDownloadedBtn.textContent = state.ui.downloadedCollapsed ? "›" : "⌄";
-      els.toggleDownloadedBtn.title = state.ui.downloadedCollapsed ? "Expand Downloaded" : "Collapse Downloaded";
     }
 
-    function applySettingsState() {
-      els.settingsPanel.open = Boolean(state.ui.settingsOpen);
-    }
+    function applySettingsState() { els.settingsPanel.open = Boolean(state.ui.settingsOpen); }
 
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
+    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
     function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
         const saved = JSON.parse(raw);
-        state.shows = Array.isArray(saved.shows) ? saved.shows.map(normalizeImportedShow) : [];
+        state.shows = saved.shows.map(normalizeImportedShow);
         state.ui = normalizeImportedUi(saved.ui || {});
-      } catch (error) {
-        console.error(error);
-        localStorage.removeItem(STORAGE_KEY);
-        toast("Saved board data was invalid and has been reset.", "error");
       }
     }
 
-    function closeResults() {
-      els.results.classList.remove("open");
-      els.results.innerHTML = "";
-    }
-
-    function setStatus(text) {
-      els.statusText.textContent = text;
-    }
+    function closeResults() { els.results.classList.remove("open"); }
+    function setStatus(text) { els.statusText.textContent = text; }
 
     function toast(message, type = "") {
       const el = document.createElement("div");
       el.className = `toast ${type}`;
       el.textContent = message;
       els.toastArea.append(el);
-      window.setTimeout(() => {
-        el.style.opacity = "0";
-        el.style.transform = "translateY(8px)";
-        el.style.transition = "240ms ease";
-        window.setTimeout(() => el.remove(), 260);
-      }, 3200);
+      setTimeout(() => el.remove(), 3000);
     }
 
     function getReleaseMoeUrl(show) {
-      const anilistId = Number(show?.anilistId);
-      if (isManga(show) || !show?.releasesMoe?.found || !Number.isFinite(anilistId)) return "";
-      return `https://releases.moe/${anilistId}/`;
+      return show?.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : "";
     }
 
-    function getTitle(title = {}) {
-      return title.english || title.romaji || title.native || "Untitled";
-    }
+    function getTitle(title = {}) { return title.english || title.romaji || title.native || "Untitled"; }
 
     function getMediaMeta(media, mediaType = "anime") {
-      if (mediaType === "manga") {
-        return [
-          media.format,
-          media.startDate?.year ?? media.seasonYear,
-          media.chapters ? `${media.chapters} ch` : null,
-          media.volumes ? `${media.volumes} vol` : null
-        ]
-          .filter(Boolean)
-          .map(escapeHtml)
-          .join(" · ");
-      }
-
-      return [media.format, media.seasonYear ?? media.startDate?.year, media.episodes ? `${media.episodes} ep` : null]
-        .filter(Boolean)
-        .map(escapeHtml)
-        .join(" · ");
+      return [media.format, media.seasonYear ?? media.startDate?.year].filter(Boolean).join(" · ");
     }
 
     function isMediaOnBoard(media, mediaType = "anime") {
-      return state.shows.some((show) =>
-        (show.type || "anime") === mediaType &&
-        Number(show.anilistId) === Number(media?.id)
-      );
+      return state.shows.some(s => s.type === mediaType && Number(s.anilistId) === Number(media?.id));
     }
 
-    function isManga(show) {
-      return show?.type === "manga";
-    }
+    function isManga(show) { return show?.type === "manga"; }
+    function toNumber(v) { return (v === null || v === undefined) ? null : Number(v); }
+    function formatChapter(v) { return v === null ? "?" : String(v); }
+    function getFallbackPoster() { return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' fill='%23252c3d'/%3E%3C/svg%3E"; }
+    function debounce(fn, wait) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; }
 
-    function toNumber(value) {
-      if (value === null || value === undefined || value === "") return null;
-      const number = Number(value);
-      return Number.isFinite(number) ? number : null;
+    function escapeHtml(v) {
+      return String(v ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#039;"}[m]));
     }
-
-    function formatChapter(value) {
-      const number = toNumber(value);
-      if (number === null) return "?";
-      return Number.isInteger(number) ? String(number) : String(number);
-    }
-
-    function getFallbackPoster() {
-      return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='136' viewBox='0 0 100 136'%3E%3Crect width='100' height='136' rx='18' fill='%23252c3d'/%3E%3Cpath d='M25 93h50M32 42h36M32 58h36M32 74h24' stroke='%237f8aa1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E";
-    }
-
-    function debounce(fn, wait) {
-      let timeout;
-      return (...args) => {
-        window.clearTimeout(timeout);
-        timeout = window.setTimeout(() => fn(...args), wait);
-      };
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function escapeAttr(value) {
-      return escapeHtml(value).replaceAll("`", "&#096;");
-    }
+    function escapeAttr(v) { return escapeHtml(v).replace(/`/g, "&#096;"); }
   </script>
 </body>
 </html>
