@@ -81,7 +81,7 @@
       line-height: 1.5;
       font-size: 0.98rem;
     }
-    
+
     .board-controls {
       display: flex;
       align-items: center;
@@ -259,6 +259,10 @@
       align-items: start;
       gap: 10px;
       padding: 12px;
+    }
+
+    .card-main.manga-card-main {
+      grid-template-columns: 50px minmax(0, 1fr) auto;
     }
 
     .download-check {
@@ -442,10 +446,17 @@
       border-color: rgba(242, 195, 107, 0.22);
     }
 
-    .badge.downloaded {
+    .badge.downloaded,
+    .badge.manga {
       color: var(--brand-strong);
       background: rgba(139, 150, 255, 0.12);
       border-color: rgba(139, 150, 255, 0.22);
+    }
+
+    .badge.error {
+      color: var(--danger);
+      background: rgba(255, 123, 115, 0.10);
+      border-color: rgba(255, 123, 115, 0.22);
     }
 
     .badge.update {
@@ -525,6 +536,7 @@
     }
 
     .show-card.notes-open .notes-panel { display: block; }
+    .show-card[data-kind="manga"] .notes-panel { padding-left: 72px; }
 
     textarea, input.franchise-input, select {
       width: 100%;
@@ -569,8 +581,9 @@
 
     .search-row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto auto;
       gap: 10px;
+      align-items: center;
     }
 
     .search-input {
@@ -592,6 +605,38 @@
       border-color: rgba(139, 150, 255, 0.72);
       box-shadow: 0 0 0 4px rgba(139, 150, 255, 0.12);
       background: #252c3d;
+    }
+
+    .mode-toggle {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      min-height: 52px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      align-items: center;
+    }
+
+    .mode-toggle-btn {
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 900;
+      transition: 160ms ease;
+    }
+
+    .mode-toggle-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mode-toggle-btn.active {
+      color: #0b0e17;
+      background: var(--brand);
+      box-shadow: 0 8px 18px rgba(139, 150, 255, 0.2);
     }
 
     .results {
@@ -944,6 +989,14 @@
       .board-controls { width: 100%; }
       .board-filter-input { width: 100%; max-width: 100%; }
 
+      .mode-toggle {
+        width: 100%;
+      }
+
+      .mode-toggle-btn {
+        flex: 1;
+      }
+
       .toolbar {
         align-items: stretch;
         flex-direction: column;
@@ -976,9 +1029,17 @@
         grid-template-columns: auto 46px minmax(0, 1fr);
       }
 
+      .card-main.manga-card-main {
+        grid-template-columns: 46px minmax(0, 1fr);
+      }
+
       .card-actions {
         grid-column: 3;
         justify-content: flex-end;
+      }
+
+      .manga-card-main .card-actions {
+        grid-column: 2;
       }
 
       .thumb {
@@ -997,7 +1058,8 @@
         margin-left: 0;
       }
 
-      .notes-panel { padding-left: 12px; }
+      .notes-panel,
+      .show-card[data-kind="manga"] .notes-panel { padding-left: 12px; }
       .batch-match-title-row { grid-template-columns: 1fr; }
     }
   </style>
@@ -1008,9 +1070,9 @@
     <section class="shell">
       <header class="hero">
         <div>
-          <p class="eyebrow">AniList × releases.moe</p>
+          <p class="eyebrow">AniList × releases.moe × MangaUpdates</p>
           <h1>Release Board</h1>
-          <p class="subhead">Track shows at a glance. Found, Watching, and Downloaded stay visible first; search and settings sit below the board.</p>
+          <p class="subhead">Track anime releases and manga chapter counts at a glance. Manga lives only in Watching and uses AniList for covers plus MangaUpdates for chapter checks.</p>
         </div>
         <div class="board-controls">
           <input type="text" id="boardSearchInput" class="board-filter-input" placeholder="Filter items on board..." aria-label="Filter board" autocomplete="off" />
@@ -1051,9 +1113,13 @@
             id="searchInput"
             type="search"
             autocomplete="off"
-            placeholder="Search AniList, e.g. Cowboy Bebop"
-            aria-label="Search AniList for anime"
+            placeholder="Search AniList anime, e.g. Cowboy Bebop"
+            aria-label="Search AniList"
           />
+          <div class="mode-toggle" role="group" aria-label="Search type">
+            <button class="mode-toggle-btn active" type="button" data-search-mode="anime" aria-pressed="true">Anime</button>
+            <button class="mode-toggle-btn" type="button" data-search-mode="manga" aria-pressed="false">Manga</button>
+          </div>
           <button class="btn primary" id="searchBtn" type="button">Search</button>
         </div>
         <div class="results" id="results" role="listbox" aria-label="AniList search results"></div>
@@ -1063,7 +1129,7 @@
         <summary class="settings-summary">
           <span>
             <span class="summary-title">Settings</span>
-            <span class="summary-help">Batch import, JSON import/export, and board reset.</span>
+            <span class="summary-help">Anime batch import, JSON import/export, and board reset.</span>
           </span>
           <span class="settings-chevron" aria-hidden="true">⌄</span>
         </summary>
@@ -1084,14 +1150,14 @@
 
         <section class="batch-tools" aria-label="Batch import shows">
           <label class="batch-label" for="batchInput">
-            Batch add series
-            <textarea id="batchInput" placeholder="Paste names here, one per line. Commas and semicolons also work.&#10;Example:&#10;Cowboy Bebop&#10;Frieren&#10;Dungeon Meshi"></textarea>
+            Batch add anime
+            <textarea id="batchInput" placeholder="Paste anime names here, one per line. Commas and semicolons also work.&#10;Example:&#10;Cowboy Bebop&#10;Frieren&#10;Dungeon Meshi"></textarea>
           </label>
           <div class="batch-actions">
             <button class="btn primary" id="batchImportBtn" type="button">Review batch</button>
             <button class="btn" id="batchClearBtn" type="button">Clear list</button>
           </div>
-          <div class="batch-note">Review the AniList matches before adding. You can change a result, skip rows, and duplicates are flagged automatically.</div>
+          <div class="batch-note">Batch import is intentionally anime-only. Review the AniList matches before adding.</div>
 
           <section class="batch-review" id="batchReview" hidden aria-label="Review batch matches">
             <div class="batch-review-header">
@@ -1116,6 +1182,12 @@
   <script>
     const ANILIST_ENDPOINT = "https://graphql.anilist.co";
     const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
+
+    // Direct browser-first MangaUpdates setup. If CORS blocks this, put your own proxy base URL here.
+    // The proxy should forward paths like /series/search, /series/:id, and /series/:id/rss.
+    const MANGAUPDATES_API_BASE = "https://api.mangaupdates.com/v1";
+    const MANGAUPDATES_PROXY_ENDPOINT = "";
+
     const STORAGE_KEY = "anilist-releases-board:v1";
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -1126,6 +1198,7 @@
         downloadedCollapsed: false,
         settingsOpen: false,
         filterComplete: false,
+        searchMode: "anime",
         openNotes: {},
         collapsedFranchises: {}
       },
@@ -1139,6 +1212,7 @@
       searchInput: document.querySelector("#searchInput"),
       boardSearchInput: document.querySelector("#boardSearchInput"),
       searchBtn: document.querySelector("#searchBtn"),
+      modeButtons: Array.from(document.querySelectorAll("[data-search-mode]")),
       results: document.querySelector("#results"),
       exportBtn: document.querySelector("#exportBtn"),
       importBtn: document.querySelector("#importBtn"),
@@ -1172,8 +1246,8 @@
     };
 
     const emptyCopy = {
-      found: "No matched releases yet.",
-      watching: "No shows waiting for releases.",
+      found: "No matched anime releases yet.",
+      watching: "No anime or manga waiting for updates.",
       downloaded: "Nothing downloaded yet."
     };
 
@@ -1181,16 +1255,17 @@
 
     function init() {
       loadState();
-      
+
       if (state.ui.filterComplete) {
         els.filterCompleteBtn.classList.add("active");
         els.filterCompleteBtn.setAttribute("aria-pressed", "true");
       }
-      
+
+      applySearchModeState();
       bindEvents();
       render();
-      
-      // Auto check ONLY the watching list
+
+      // Auto check ONLY the watching list. Anime uses releases.moe; manga uses MangaUpdates.
       checkWatchingStatuses();
     }
 
@@ -1200,6 +1275,12 @@
       els.searchInput.addEventListener("keydown", (event) => {
         if (event.key === "Escape") closeResults();
         if (event.key === "Enter") runSearch();
+      });
+
+      els.modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setSearchMode(button.dataset.searchMode);
+        });
       });
 
       els.boardSearchInput.addEventListener("input", (e) => {
@@ -1216,7 +1297,7 @@
       els.importFile.addEventListener("change", importJson);
       els.clearBtn.addEventListener("click", clearBoard);
       els.toggleDownloadedBtn.addEventListener("click", toggleDownloaded);
-      
+
       els.filterCompleteBtn.addEventListener("click", () => {
         state.ui.filterComplete = !state.ui.filterComplete;
         els.filterCompleteBtn.classList.toggle("active", state.ui.filterComplete);
@@ -1240,30 +1321,60 @@
       });
     }
 
+    function getSearchMode() {
+      return state.ui.searchMode === "manga" ? "manga" : "anime";
+    }
+
+    function setSearchMode(mode) {
+      state.ui.searchMode = mode === "manga" ? "manga" : "anime";
+      applySearchModeState();
+      closeResults();
+      saveState();
+
+      if (els.searchInput.value.trim()) {
+        runSearch();
+      }
+    }
+
+    function applySearchModeState() {
+      const mode = getSearchMode();
+      els.modeButtons.forEach((button) => {
+        const active = button.dataset.searchMode === mode;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+
+      els.searchInput.placeholder = mode === "manga"
+        ? "Search AniList manga, e.g. One Piece"
+        : "Search AniList anime, e.g. Cowboy Bebop";
+      els.searchInput.setAttribute("aria-label", mode === "manga" ? "Search AniList for manga" : "Search AniList for anime");
+    }
+
     function formatTimeAgo(date) {
-      if (!date) return "Never";
+      if (!date || Number.isNaN(date.getTime())) return "Never";
       const diff = (new Date() - date) / 1000;
       if (diff < 60) return "Just now";
-      if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-      return `${Math.floor(diff/86400)}d ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
     }
 
     async function runSearch() {
       const search = els.searchInput.value.trim();
+      const mode = getSearchMode();
 
       if (!search) {
         closeResults();
         return;
       }
 
-      setStatus("Searching AniList…");
+      setStatus(`Searching AniList ${mode}…`);
       els.results.classList.add("open");
       els.results.innerHTML = '<div class="empty">Searching…</div>';
 
       try {
-        const results = await searchAniList(search);
-        renderResults(results);
+        const results = await searchAniList(search, mode);
+        renderResults(results, mode);
         setStatus("Ready");
       } catch (error) {
         console.error(error);
@@ -1273,18 +1384,22 @@
       }
     }
 
-    async function searchAniList(search) {
+    async function searchAniList(search, mediaType = "anime") {
+      const anilistType = mediaType === "manga" ? "MANGA" : "ANIME";
       const query = `
-        query SearchAnime($search: String, $page: Int, $perPage: Int) {
+        query SearchMedia($search: String, $type: MediaType, $page: Int, $perPage: Int) {
           Page(page: $page, perPage: $perPage) {
-            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+            media(search: $search, type: $type, sort: SEARCH_MATCH) {
               id
               title { romaji english native }
               coverImage { medium large }
               episodes
+              chapters
+              volumes
               format
               status
               seasonYear
+              startDate { year }
               siteUrl
             }
           }
@@ -1299,7 +1414,7 @@
         },
         body: JSON.stringify({
           query,
-          variables: { search, page: 1, perPage: 8 }
+          variables: { search, type: anilistType, page: 1, perPage: 8 }
         })
       });
 
@@ -1308,17 +1423,21 @@
       return json?.data?.Page?.media ?? [];
     }
 
-    async function getAniListMediaById(id) {
+    async function getAniListMediaById(id, mediaType = "anime") {
+      const anilistType = mediaType === "manga" ? "MANGA" : "ANIME";
       const query = `
-        query AnimeById($id: Int) {
-          Media(id: $id, type: ANIME) {
+        query MediaById($id: Int, $type: MediaType) {
+          Media(id: $id, type: $type) {
             id
             title { romaji english native }
             coverImage { medium large }
             episodes
+            chapters
+            volumes
             format
             status
             seasonYear
+            startDate { year }
             siteUrl
           }
         }
@@ -1332,7 +1451,7 @@
         },
         body: JSON.stringify({
           query,
-          variables: { id: Number(id) }
+          variables: { id: Number(id), type: anilistType }
         })
       });
 
@@ -1345,11 +1464,11 @@
       const directId = getAniListIdFromInput(input);
 
       if (directId) {
-        const media = await getAniListMediaById(directId);
+        const media = await getAniListMediaById(directId, "anime");
         return media ? [media] : [];
       }
 
-      return searchAniList(input);
+      return searchAniList(input, "anime");
     }
 
     function getAniListIdFromInput(input) {
@@ -1363,7 +1482,7 @@
       return null;
     }
 
-    function renderResults(results) {
+    function renderResults(results, mediaType = getSearchMode()) {
       if (!results.length) {
         els.results.innerHTML = '<div class="empty">No AniList results found.</div>';
         return;
@@ -1371,17 +1490,18 @@
 
       els.results.innerHTML = results.map((media) => {
         const title = getTitle(media.title);
-        const alreadyAdded = isMediaOnBoard({ id: media.id });
-        const meta = getMediaMeta(media);
+        const alreadyAdded = isMediaOnBoard({ id: media.id }, mediaType);
+        const meta = getMediaMeta(media, mediaType);
+        const typeLabel = mediaType === "manga" ? "Manga" : "Anime";
 
         return `
           <button class="result-item" type="button" data-add-id="${media.id}" ${alreadyAdded ? "disabled" : ""}>
-            <img class="poster" src="${escapeAttr(media.coverImage?.medium ?? "")}" alt="" loading="lazy" decoding="async" />
+            <img class="poster" src="${escapeAttr(media.coverImage?.medium ?? media.coverImage?.large ?? getFallbackPoster())}" alt="" loading="lazy" decoding="async" />
             <span>
               <span class="result-title">${escapeHtml(title)}</span>
-              <span class="result-meta">${meta || "Anime"}</span>
+              <span class="result-meta">${meta || typeLabel}</span>
             </span>
-            <span class="badge ${alreadyAdded ? "duplicate" : ""}">${alreadyAdded ? "Added" : "Add"}</span>
+            <span class="badge ${alreadyAdded ? "duplicate" : mediaType === "manga" ? "manga" : ""}">${alreadyAdded ? "Added" : `Add ${typeLabel}`}</span>
           </button>
         `;
       }).join("");
@@ -1389,44 +1509,47 @@
       els.results.querySelectorAll("[data-add-id]").forEach((button) => {
         button.addEventListener("click", async () => {
           const media = results.find((item) => item.id === Number(button.dataset.addId));
-          if (media) await addShow(media);
+          if (media) await addMedia(media, mediaType);
         });
       });
     }
 
-    async function addShow(media) {
-      if (isMediaOnBoard({ id: media.id })) {
-        toast("That show is already on your board.");
+    async function addMedia(media, mediaType = getSearchMode()) {
+      if (isMediaOnBoard({ id: media.id }, mediaType)) {
+        toast(`That ${mediaType} is already on your board.`);
         return;
       }
 
       closeResults();
       els.searchInput.value = "";
-      setStatus("Checking releases.moe…");
 
-      const show = makeShowFromMedia(media);
-      state.shows.unshift(show);
+      const item = mediaType === "manga" ? makeMangaFromMedia(media) : makeShowFromMedia(media);
+      setStatus(mediaType === "manga" ? "Checking MangaUpdates…" : "Checking releases.moe…");
+
+      state.shows.unshift(item);
       render();
       saveState();
 
-      await refreshShowStatus(show, { forceMove: true });
+      await refreshShowStatus(item, { forceMove: true });
       render();
       saveState();
       setStatus("Ready");
-      toast(`${show.title} added to ${boardCopy[show.board]}.`);
+      toast(`${item.title} added to ${boardCopy[item.board]}.`);
     }
 
     function makeShowFromMedia(media) {
       return {
         id: crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        type: "anime",
         anilistId: media.id,
         title: getTitle(media.title),
         titleEnglish: media.title?.english ?? "",
         titleRomaji: media.title?.romaji ?? "",
+        titleNative: media.title?.native ?? "",
         coverImage: media.coverImage?.medium || media.coverImage?.large || "",
         format: media.format ?? "",
         episodes: media.episodes ?? null,
-        seasonYear: media.seasonYear ?? null,
+        seasonYear: media.seasonYear ?? media.startDate?.year ?? null,
         siteUrl: media.siteUrl ?? `https://anilist.co/anime/${media.id}`,
         board: "watching",
         downloaded: false,
@@ -1447,11 +1570,49 @@
       };
     }
 
+    function makeMangaFromMedia(media) {
+      return {
+        id: crypto.randomUUID ? crypto.randomUUID() : `manga-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        type: "manga",
+        anilistId: media.id,
+        title: getTitle(media.title),
+        titleEnglish: media.title?.english ?? "",
+        titleRomaji: media.title?.romaji ?? "",
+        titleNative: media.title?.native ?? "",
+        coverImage: media.coverImage?.medium || media.coverImage?.large || "",
+        format: media.format ?? "",
+        chapters: media.chapters ?? null,
+        volumes: media.volumes ?? null,
+        seasonYear: media.startDate?.year ?? media.seasonYear ?? null,
+        siteUrl: media.siteUrl ?? `https://anilist.co/manga/${media.id}`,
+        board: "watching",
+        downloaded: false,
+        allAvailableDownloaded: false,
+        franchise: "",
+        comments: "",
+        mangaUpdates: {
+          found: false,
+          seriesId: null,
+          seriesUrl: null,
+          title: null,
+          checkedAt: null,
+          error: null,
+          latestChapter: null,
+          knownChapter: null,
+          updateAvailable: false,
+          latestReleaseTitle: null,
+          latestReleaseDate: null
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
     async function prepareBatchReview() {
       const names = parseBatchNames(els.batchInput.value);
 
       if (!names.length) {
-        toast("Paste at least one series name first.");
+        toast("Paste at least one anime name first.");
         els.batchInput.focus();
         return;
       }
@@ -1471,7 +1632,7 @@
 
           try {
             const results = await lookupBatchAniList(input);
-            const firstAvailable = results.find((media) => !isMediaOnBoard({ id: media.id }));
+            const firstAvailable = results.find((media) => !isMediaOnBoard({ id: media.id }, "anime"));
             const selected = firstAvailable || results[0] || null;
 
             pendingBatchMatches.push({
@@ -1521,7 +1682,7 @@
       const skipped = pendingBatchMatches.filter((match) => match.skipped).length;
       const duplicates = pendingBatchMatches.filter((match) => {
         const selected = getSelectedBatchMedia(match);
-        return selected && isMediaOnBoard({ id: selected.id });
+        return selected && isMediaOnBoard({ id: selected.id }, "anime");
       }).length;
       const lowConfidence = pendingBatchMatches.filter((match) => {
         const selected = getSelectedBatchMedia(match);
@@ -1564,16 +1725,16 @@
 
     function renderBatchReviewRow(match, index) {
       const selected = getSelectedBatchMedia(match);
-      const selectedAlreadyAdded = selected ? isMediaOnBoard({ id: selected.id }) : false;
+      const selectedAlreadyAdded = selected ? isMediaOnBoard({ id: selected.id }, "anime") : false;
       const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
       const rowClasses = ["batch-row", match.skipped ? "skipped" : ""].filter(Boolean).join(" ");
       const posterSrc = escapeAttr(selected?.coverImage?.medium || selected?.coverImage?.large || getFallbackPoster());
       const title = selected ? getTitle(selected.title) : "No AniList result";
-      const meta = selected ? getMediaMeta(selected) || "Anime" : (match.error ? escapeHtml(match.error) : "Try a more specific title or add manually.");
+      const meta = selected ? getMediaMeta(selected, "anime") || "Anime" : (match.error ? escapeHtml(match.error) : "Try a more specific title or add manually.");
       const options = match.results.length
         ? match.results.map((media) => {
-            const optionMeta = [media.seasonYear, media.format].filter(Boolean).join(" · ");
-            const duplicateText = isMediaOnBoard({ id: media.id }) ? " — already on board" : "";
+            const optionMeta = [media.seasonYear ?? media.startDate?.year, media.format].filter(Boolean).join(" · ");
+            const duplicateText = isMediaOnBoard({ id: media.id }, "anime") ? " — already on board" : "";
             return `<option value="${media.id}" ${media.id === match.selectedId ? "selected" : ""}>${escapeHtml(getTitle(media.title))}${optionMeta ? ` (${escapeHtml(optionMeta)})` : ""}${duplicateText}</option>`;
           }).join("")
         : '<option value="">No results</option>';
@@ -1632,7 +1793,7 @@
           setStatus(`Adding ${index + 1}/${matches.length}…`);
 
           try {
-            if (isMediaOnBoard({ id: media.id })) {
+            if (isMediaOnBoard({ id: media.id }, "anime")) {
               skipped.push(getTitle(media.title));
               continue;
             }
@@ -1643,8 +1804,7 @@
             added.push(show.title);
             render();
             saveState();
-            
-            // Artificial delay to play nice with the API during batch adds
+
             await sleep(1000);
           } catch (error) {
             console.error(error);
@@ -1682,7 +1842,7 @@
       return pendingBatchMatches
         .filter((match) => !match.skipped)
         .map((match) => ({ match, media: getSelectedBatchMedia(match) }))
-        .filter(({ media }) => media && !isMediaOnBoard({ id: media.id }));
+        .filter(({ media }) => media && !isMediaOnBoard({ id: media.id }, "anime"));
     }
 
     function getSelectedBatchMedia(match) {
@@ -1738,7 +1898,7 @@
         }
       }
 
-      if (year && Number(media.seasonYear) === year) bestScore += 0.12;
+      if (year && Number(media.seasonYear ?? media.startDate?.year) === year) bestScore += 0.12;
       bestScore = Math.min(bestScore, 1);
 
       if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore };
@@ -1753,7 +1913,7 @@
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/&/g, " and ")
         .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
+        .replace(/\b(the|a|an|season|part|cour|tv|movie|manga|comic)\b/g, " ")
         .replace(/\s+/g, " ")
         .trim();
     }
@@ -1785,29 +1945,36 @@
     }
 
     async function checkWatchingStatuses() {
-      const watchingShows = state.shows.filter(show => show.board === "watching" && !show.downloaded);
-      if (!watchingShows.length) return;
+      const watchingItems = state.shows.filter(show => show.board === "watching" && (isManga(show) || !show.downloaded));
+      if (!watchingItems.length) return;
 
-      setStatus(`Auto-checking ${watchingShows.length} watching show${watchingShows.length === 1 ? "" : "s"}…`);
+      setStatus(`Auto-checking ${watchingItems.length} watching item${watchingItems.length === 1 ? "" : "s"}…`);
       let updatesFound = 0;
 
-      for (const show of watchingShows) {
+      for (const show of watchingItems) {
         const hadUpdate = await refreshShowStatus(show, { forceMove: true });
         if (hadUpdate) updatesFound++;
         render();
         saveState();
-        
-        // Polite delay between requests to avoid rate limits
+
         await sleep(1000);
       }
 
       setStatus("Ready");
       if (updatesFound > 0) {
-        toast(`Auto-check complete. Found updates for ${updatesFound} show(s)!`);
+        toast(`Auto-check complete. Found updates for ${updatesFound} item(s)!`);
       }
     }
 
     async function refreshShowStatus(show, { forceMove = false } = {}) {
+      if (isManga(show)) {
+        return refreshMangaStatus(show, { forceMove });
+      }
+
+      return refreshAnimeStatus(show, { forceMove });
+    }
+
+    async function refreshAnimeStatus(show, { forceMove = false } = {}) {
       try {
         const match = await getReleaseEntry(show.anilistId);
         const apiUpdated = match?.updated || null;
@@ -1872,22 +2039,340 @@
       return json?.items?.[0] ?? null;
     }
 
+    async function refreshMangaStatus(show, { forceMove = false } = {}) {
+      const previous = show.mangaUpdates || {};
+      let seriesId = previous.seriesId || null;
+      let matchedSeries = null;
+      let updateTriggered = false;
+
+      try {
+        if (!seriesId) {
+          matchedSeries = await findMangaUpdatesSeries(show);
+          seriesId = matchedSeries?.id ?? null;
+        }
+
+        if (!seriesId) {
+          throw new Error("No MangaUpdates match found");
+        }
+
+        const latest = await getMangaUpdatesLatestChapter(seriesId);
+        const latestChapter = latest.chapter ?? null;
+        const knownChapter = toNumber(previous.knownChapter ?? previous.latestChapter);
+        const nextKnownChapter = knownChapter ?? latestChapter;
+        const currentUpdateAvailable = Boolean(previous.updateAvailable);
+        const hasNewChapter = latestChapter !== null && knownChapter !== null && latestChapter > knownChapter;
+
+        if (hasNewChapter) {
+          updateTriggered = !currentUpdateAvailable;
+        }
+
+        show.mangaUpdates = {
+          found: true,
+          seriesId,
+          seriesUrl: matchedSeries?.url || previous.seriesUrl || makeMangaUpdatesSeriesUrl(seriesId),
+          title: matchedSeries?.title || previous.title || null,
+          checkedAt: new Date().toISOString(),
+          error: null,
+          latestChapter,
+          knownChapter: nextKnownChapter,
+          updateAvailable: currentUpdateAvailable || hasNewChapter,
+          latestReleaseTitle: latest.title || previous.latestReleaseTitle || null,
+          latestReleaseDate: latest.date || previous.latestReleaseDate || null
+        };
+
+        show.board = "watching";
+        show.downloaded = false;
+        show.allAvailableDownloaded = false;
+        show.updatedAt = new Date().toISOString();
+        return updateTriggered;
+
+      } catch (error) {
+        console.error(error);
+        show.mangaUpdates = {
+          ...previous,
+          found: Boolean(previous.found),
+          checkedAt: new Date().toISOString(),
+          error: error.message || "Unknown error"
+        };
+
+        if (forceMove) {
+          show.board = "watching";
+          show.downloaded = false;
+          show.allAvailableDownloaded = false;
+        }
+
+        show.updatedAt = new Date().toISOString();
+        return false;
+      }
+    }
+
+    async function findMangaUpdatesSeries(show) {
+      const candidates = [
+        show.titleRomaji,
+        show.titleEnglish,
+        show.title,
+        show.titleNative
+      ].filter(Boolean);
+
+      const seen = new Set();
+
+      for (const candidate of candidates) {
+        const key = normalizeTitle(candidate);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+
+        const results = await searchMangaUpdatesSeries(candidate);
+        if (!results.length) continue;
+
+        const scored = results.map((item) => ({
+          item,
+          score: getMangaUpdatesMatchScore(show, item)
+        })).sort((a, b) => b.score - a.score);
+
+        return scored[0].item;
+      }
+
+      return null;
+    }
+
+    function getMangaUpdatesMatchScore(show, item) {
+      const showTitles = [show.title, show.titleEnglish, show.titleRomaji, show.titleNative]
+        .filter(Boolean)
+        .map(normalizeTitle);
+
+      const itemTitles = [item.title, item.hitTitle, ...(item.aliases || [])]
+        .filter(Boolean)
+        .map(normalizeTitle);
+
+      let bestScore = 0;
+
+      for (const a of showTitles) {
+        for (const b of itemTitles) {
+          if (!a || !b) continue;
+          if (a === b) bestScore = Math.max(bestScore, 1);
+          if (a.includes(b) || b.includes(a)) bestScore = Math.max(bestScore, 0.82);
+          bestScore = Math.max(bestScore, tokenSimilarity(a, b));
+        }
+      }
+
+      return bestScore;
+    }
+
+    async function searchMangaUpdatesSeries(search) {
+      const payloads = [
+        { search, page: 1, perpage: 8 },
+        { search, page: 1, perPage: 8 },
+        { query: search, page: 1, perpage: 8 }
+      ];
+
+      let lastError = null;
+
+      for (const payload of payloads) {
+        try {
+          const json = await mangaUpdatesFetch("/series/search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const items = extractMangaUpdatesSearchItems(json);
+          if (items.length || payload === payloads[payloads.length - 1]) return items;
+        } catch (error) {
+          lastError = error;
+          if (!String(error.message || "").includes("400")) break;
+        }
+      }
+
+      if (lastError) throw lastError;
+      return [];
+    }
+
+    async function getMangaUpdatesLatestChapter(seriesId) {
+      try {
+        const rss = await mangaUpdatesFetch(`/series/${encodeURIComponent(seriesId)}/rss`, {
+          headers: { "Accept": "application/rss+xml, application/xml, text/xml, */*" }
+        });
+
+        const rssInfo = parseMangaUpdatesRss(rss);
+        if (rssInfo.chapter !== null) return rssInfo;
+      } catch (error) {
+        console.warn("MangaUpdates RSS lookup failed; trying series details.", error);
+      }
+
+      const detail = await mangaUpdatesFetch(`/series/${encodeURIComponent(seriesId)}`, {
+        headers: { "Accept": "application/json" }
+      });
+
+      const detailChapter = extractChapterFromObject(detail);
+      return {
+        chapter: detailChapter,
+        title: null,
+        date: null
+      };
+    }
+
+    async function mangaUpdatesFetch(path, options = {}) {
+      const response = await fetch(getMangaUpdatesApiUrl(path), options);
+      if (!response.ok) throw new Error(`MangaUpdates returned ${response.status}`);
+
+      const text = await response.text();
+      const contentType = response.headers.get("content-type") || "";
+
+      if (contentType.includes("json")) return JSON.parse(text);
+      if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
+        try { return JSON.parse(text); } catch (_) { /* fall through */ }
+      }
+
+      return text;
+    }
+
+    function getMangaUpdatesApiUrl(path) {
+      const base = (MANGAUPDATES_PROXY_ENDPOINT || MANGAUPDATES_API_BASE).replace(/\/$/, "");
+      const normalizedPath = String(path || "").startsWith("/") ? path : `/${path}`;
+      return `${base}${normalizedPath}`;
+    }
+
+    function extractMangaUpdatesSearchItems(json) {
+      const containers = [
+        json,
+        json?.results,
+        json?.items,
+        json?.series,
+        json?.data,
+        json?.data?.results,
+        json?.data?.items,
+        json?.data?.series,
+        json?.records
+      ];
+
+      const rawItems = containers.find(Array.isArray) || [];
+      return rawItems
+        .map(normalizeMangaUpdatesSearchItem)
+        .filter((item) => item.id && item.title);
+    }
+
+    function normalizeMangaUpdatesSearchItem(item) {
+      const record = item?.record || item?.series || item?.item || item || {};
+      const id = record.series_id ?? record.seriesId ?? record.id ?? item?.series_id ?? item?.seriesId ?? item?.id ?? null;
+      const title = record.title ?? record.name ?? item?.title ?? item?.hit_title ?? item?.hitTitle ?? "";
+      const url = record.url ?? item?.url ?? (id ? makeMangaUpdatesSeriesUrl(id) : "");
+      const aliasesRaw = record.aliases ?? record.associated ?? record.alt_titles ?? record.altTitles ?? item?.aliases ?? [];
+      const aliases = Array.isArray(aliasesRaw)
+        ? aliasesRaw.map((alias) => typeof alias === "string" ? alias : alias?.title || alias?.name).filter(Boolean)
+        : [];
+
+      return {
+        id,
+        title,
+        hitTitle: item?.hit_title ?? item?.hitTitle ?? "",
+        url,
+        aliases
+      };
+    }
+
+    function parseMangaUpdatesRss(rssText) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(String(rssText || ""), "application/xml");
+      const items = Array.from(xml.querySelectorAll("item"));
+
+      let best = {
+        chapter: null,
+        title: null,
+        date: null
+      };
+
+      for (const item of items) {
+        const title = item.querySelector("title")?.textContent || "";
+        const description = item.querySelector("description")?.textContent || "";
+        const pubDate = item.querySelector("pubDate")?.textContent || item.querySelector("date")?.textContent || "";
+        const chapter = extractChapterNumber(`${title} ${description}`);
+
+        if (chapter !== null && (best.chapter === null || chapter > best.chapter)) {
+          best = {
+            chapter,
+            title,
+            date: pubDate || null
+          };
+        }
+      }
+
+      return best;
+    }
+
+    function extractChapterFromObject(value) {
+      const seen = new Set();
+      let best = null;
+
+      function walk(node, key = "") {
+        if (node === null || node === undefined) return;
+        if (typeof node === "object") {
+          if (seen.has(node)) return;
+          seen.add(node);
+
+          if (Array.isArray(node)) {
+            node.forEach((child) => walk(child, key));
+            return;
+          }
+
+          Object.entries(node).forEach(([childKey, childValue]) => walk(childValue, childKey));
+          return;
+        }
+
+        const keyLooksUseful = /latest|last|chapter|chapters|release/i.test(key);
+        if (!keyLooksUseful) return;
+
+        const chapter = extractChapterNumber(String(node));
+        if (chapter !== null && (best === null || chapter > best)) {
+          best = chapter;
+        }
+      }
+
+      walk(value);
+      return best;
+    }
+
+    function extractChapterNumber(text) {
+      const value = String(text || "");
+
+      const chapterPatterns = [
+        /\b(?:ch(?:apter)?|c)\.?\s*([0-9]+(?:\.[0-9]+)?)(?!\d)/i,
+        /\bchapter\s*#?\s*([0-9]+(?:\.[0-9]+)?)(?!\d)/i
+      ];
+
+      for (const pattern of chapterPatterns) {
+        const match = value.match(pattern);
+        if (match) return Number(match[1]);
+      }
+
+      const allNumbers = Array.from(value.matchAll(/\b([0-9]+(?:\.[0-9]+)?)(?!\d)\b/g))
+        .map((match) => Number(match[1]))
+        .filter((number) => Number.isFinite(number) && number > 0 && number < 100000);
+
+      if (!allNumbers.length) return null;
+      return Math.max(...allNumbers);
+    }
+
+    function makeMangaUpdatesSeriesUrl(seriesId) {
+      return `https://www.mangaupdates.com/series.html?id=${encodeURIComponent(seriesId)}`;
+    }
+
     function groupShows(boardShows) {
       const groupsMap = new Map();
       const result = [];
 
       boardShows.forEach(show => {
-        const fName = (show.franchise || "").trim();
+        const fName = isManga(show) ? "" : (show.franchise || "").trim();
         if (!fName) {
-          // It's a standalone show
           result.push({ isGroup: false, name: null, shows: [show] });
         } else {
-          // It's part of a manual franchise group
           const key = fName.toLowerCase();
           if (!groupsMap.has(key)) {
             const newGroup = { isGroup: true, name: fName, shows: [] };
             groupsMap.set(key, newGroup);
-            result.push(newGroup); // Preserve order of first appearance
+            result.push(newGroup);
           }
           groupsMap.get(key).shows.push(show);
         }
@@ -1897,11 +2382,11 @@
     }
 
     function render() {
-      // 1. Memorize exact scroll position to prevent jump!
       const scrollY = window.scrollY;
 
       applyDownloadedCollapse();
       applySettingsState();
+      applySearchModeState();
 
       let visibleShows = state.shows;
       const query = state.localSearch || "";
@@ -1911,15 +2396,17 @@
           show.title.toLowerCase().includes(query) ||
           (show.titleEnglish && show.titleEnglish.toLowerCase().includes(query)) ||
           (show.titleRomaji && show.titleRomaji.toLowerCase().includes(query)) ||
-          (show.franchise && show.franchise.toLowerCase().includes(query))
+          (show.titleNative && show.titleNative.toLowerCase().includes(query)) ||
+          (show.franchise && show.franchise.toLowerCase().includes(query)) ||
+          (show.type && show.type.toLowerCase().includes(query))
         );
       }
 
       const byBoard = {
-        found: visibleShows.filter((show) => show.board === "found" && !show.downloaded),
-        watching: visibleShows.filter((show) => show.board === "watching" && !show.downloaded),
+        found: visibleShows.filter((show) => !isManga(show) && show.board === "found" && !show.downloaded),
+        watching: visibleShows.filter((show) => show.board === "watching" && (isManga(show) || !show.downloaded)),
         downloaded: visibleShows
-          .filter((show) => show.downloaded || show.board === "downloaded")
+          .filter((show) => !isManga(show) && (show.downloaded || show.board === "downloaded"))
           .filter((show) => !state.ui.filterComplete || show.allAvailableDownloaded)
           .sort((a, b) => a.title.localeCompare(b.title, undefined, {
             sensitivity: "base",
@@ -1931,7 +2418,6 @@
       renderBoard("watching", byBoard.watching, els.watchingList, els.watchingCount);
       renderBoard("downloaded", byBoard.downloaded, els.downloadedList, els.downloadedCount);
 
-      // 2. Instantly restore scroll position
       window.scrollTo(0, scrollY);
     }
 
@@ -1944,21 +2430,21 @@
       }
 
       const groups = groupShows(shows);
-      
+
       listEl.innerHTML = groups.map(g => {
         if (!g.isGroup && g.shows.length === 1) {
           return renderShowCard(g.shows[0]);
         }
-        
+
         const sortedGroup = g.shows.sort((a, b) => (a.seasonYear || 9999) - (b.seasonYear || 9999));
         const displayName = escapeHtml(g.name);
         const baseId = escapeAttr(g.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
         const isCollapsed = Boolean(state.ui.collapsedFranchises?.[baseId]);
-        
+
         const cardsHtml = sortedGroup.map(renderShowCard).join("");
-        
+
         return `
-          <div class="franchise-group ${isCollapsed ? 'collapsed' : ''}" data-franchise-id="${baseId}">
+          <div class="franchise-group ${isCollapsed ? "collapsed" : ""}" data-franchise-id="${baseId}">
             <div class="franchise-header-row">
               <div class="franchise-header-left">
                 <button class="franchise-toggle-btn" type="button" data-toggle-franchise="${baseId}" aria-expanded="${!isCollapsed}" title="Toggle franchise collapse">⌄</button>
@@ -1970,7 +2456,6 @@
         `;
       }).join("");
 
-      // Bind events for franchise tools
       listEl.querySelectorAll("[data-toggle-franchise]").forEach((btn) => {
         btn.addEventListener("click", () => {
           const id = btn.dataset.toggleFranchise;
@@ -1980,7 +2465,6 @@
         });
       });
 
-      // Bind events for cards
       listEl.querySelectorAll("[data-download-id]").forEach((checkbox) => {
         checkbox.addEventListener("change", () => toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked));
       });
@@ -2019,7 +2503,6 @@
         textarea.addEventListener("input", debounce(() => updateComments(textarea.dataset.commentId, textarea.value), 180));
       });
 
-      // Bind franchise manual grouping input
       listEl.querySelectorAll(".franchise-input").forEach((input) => {
         input.addEventListener("change", (e) => {
           updateFranchise(e.target.dataset.franchiseId, e.target.value);
@@ -2028,6 +2511,10 @@
     }
 
     function renderShowCard(show) {
+      return isManga(show) ? renderMangaCard(show) : renderAnimeCard(show);
+    }
+
+    function renderAnimeCard(show) {
       const isDownloaded = show.downloaded || show.board === "downloaded";
       const isNotesOpen = Boolean(state.ui.openNotes[show.id]);
       const releaseUrl = getReleaseMoeUrl(show);
@@ -2043,7 +2530,7 @@
       const ackToggle = updateAvailable 
           ? `<button class="ack-btn" type="button" data-ack-id="${show.id}" title="Mark update as downloaded">✓</button>`
           : "";
-      
+
       const checkedAgo = show.releasesMoe?.checkedAt 
           ? formatTimeAgo(new Date(show.releasesMoe.checkedAt)) 
           : "Never checked";
@@ -2055,6 +2542,8 @@
         releaseBadge = '<span class="badge downloaded">Downloaded</span>';
       } else if (show.releasesMoe?.found) {
         releaseBadge = '<span class="badge found">Found</span>';
+      } else if (show.releasesMoe?.error) {
+        releaseBadge = '<span class="badge error">Error</span>';
       } else {
         releaseBadge = '<span class="badge watching">Watching</span>';
       }
@@ -2069,7 +2558,7 @@
         : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
 
       return `
-        <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
+        <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-kind="anime" data-show-id="${show.id}">
           <div class="card-main">
             <input class="download-check" type="checkbox" data-download-id="${show.id}" ${isDownloaded ? "checked" : ""} aria-label="Mark ${escapeAttr(show.title)} as downloaded" />
             ${thumbHtml}
@@ -2083,7 +2572,7 @@
               </div>
             </div>
             <div class="card-actions">
-              <span class="card-checked-time" title="${show.releasesMoe?.checkedAt ? new Date(show.releasesMoe.checkedAt).toLocaleString() : ''}">✓ ${checkedAgo}</span>
+              <span class="card-checked-time" title="${show.releasesMoe?.checkedAt ? new Date(show.releasesMoe.checkedAt).toLocaleString() : ""}">✓ ${checkedAgo}</span>
               ${ackToggle}
               <button class="refresh-btn" type="button" data-refresh-id="${show.id}" title="Refresh status for this show">↻</button>
               ${completeToggle}
@@ -2099,9 +2588,84 @@
       `;
     }
 
+    function renderMangaCard(show) {
+      const isNotesOpen = Boolean(state.ui.openNotes[show.id]);
+      const mangaUrl = show.mangaUpdates?.seriesUrl || show.siteUrl || "";
+      const title = escapeHtml(show.title);
+      const titleHtml = mangaUrl
+        ? `<a class="show-link" href="${escapeAttr(mangaUrl)}" target="_blank" rel="noopener noreferrer" title="Open manga info">${title}</a>`
+        : title;
+
+      const checkedAgo = show.mangaUpdates?.checkedAt 
+          ? formatTimeAgo(new Date(show.mangaUpdates.checkedAt)) 
+          : "Never checked";
+
+      const latestChapter = show.mangaUpdates?.latestChapter;
+      const knownChapter = show.mangaUpdates?.knownChapter;
+      const updateAvailable = Boolean(show.mangaUpdates?.updateAvailable);
+      const ackToggle = updateAvailable
+        ? `<button class="ack-btn" type="button" data-ack-id="${show.id}" title="Mark latest chapter as seen">✓</button>`
+        : "";
+
+      let mangaBadge = "";
+      if (updateAvailable) {
+        mangaBadge = `<span class="badge update">New ch. ${escapeHtml(formatChapter(latestChapter))}</span>`;
+      } else if (latestChapter !== null && latestChapter !== undefined) {
+        mangaBadge = `<span class="badge found">Ch. ${escapeHtml(formatChapter(latestChapter))}</span>`;
+      } else if (show.mangaUpdates?.error) {
+        mangaBadge = '<span class="badge error">MU error</span>';
+      } else {
+        mangaBadge = '<span class="badge watching">Watching</span>';
+      }
+
+      const meta = [
+        "Manga",
+        show.format,
+        show.seasonYear,
+        show.chapters ? `${show.chapters} ch` : null,
+        show.volumes ? `${show.volumes} vol` : null,
+        knownChapter !== null && knownChapter !== undefined ? `Seen ch. ${formatChapter(knownChapter)}` : null
+      ]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(" · ");
+
+      const posterSrc = escapeAttr(show.coverImage || getFallbackPoster());
+      const thumbHtml = mangaUrl
+        ? `<a class="thumb-link" href="${escapeAttr(mangaUrl)}" target="_blank" rel="noopener noreferrer" title="Open manga info"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" /></a>`
+        : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
+
+      return `
+        <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-kind="manga" data-show-id="${show.id}">
+          <div class="card-main manga-card-main">
+            ${thumbHtml}
+            <div class="card-content">
+              <div class="title-row">
+                <div class="card-title">${titleHtml}</div>
+              </div>
+              <div class="card-meta">
+                <span class="card-meta-text">${meta || "Manga"}</span>
+                <span class="card-status">${mangaBadge}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <span class="card-checked-time" title="${show.mangaUpdates?.checkedAt ? new Date(show.mangaUpdates.checkedAt).toLocaleString() : ""}">✓ ${checkedAgo}</span>
+              ${ackToggle}
+              <button class="refresh-btn" type="button" data-refresh-id="${show.id}" title="Refresh MangaUpdates status">↻</button>
+              <button class="notes-toggle" type="button" data-notes-id="${show.id}" aria-expanded="${isNotesOpen}" title="Toggle comments panel">✎</button>
+              <button class="remove-btn" type="button" data-remove-id="${show.id}" title="Remove manga">×</button>
+            </div>
+          </div>
+          <div class="notes-panel">
+            <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
+          </div>
+        </article>
+      `;
+    }
+
     async function toggleDownloadedStatus(showId, checked) {
       const show = state.shows.find((item) => item.id === showId);
-      if (!show) return;
+      if (!show || isManga(show)) return;
 
       show.downloaded = checked;
       show.updatedAt = new Date().toISOString();
@@ -2110,7 +2674,7 @@
         show.previousBoard = show.board === "downloaded" ? show.previousBoard || "watching" : show.board;
         show.board = "downloaded";
         show.allAvailableDownloaded = Boolean(show.allAvailableDownloaded);
-        
+
         if (show.releasesMoe?.updateAvailable) {
            show.releasesMoe.updateAvailable = false;
            show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
@@ -2131,7 +2695,7 @@
 
     function toggleAllAvailableDownloaded(showId) {
       const show = state.shows.find((item) => item.id === showId);
-      if (!show) return;
+      if (!show || isManga(show)) return;
 
       show.allAvailableDownloaded = !show.allAvailableDownloaded;
       show.updatedAt = new Date().toISOString();
@@ -2143,11 +2707,24 @@
       const show = state.shows.find((item) => item.id === showId);
       if (!show) return;
 
+      if (isManga(show)) {
+        show.mangaUpdates = {
+          ...(show.mangaUpdates || {}),
+          knownChapter: show.mangaUpdates?.latestChapter ?? show.mangaUpdates?.knownChapter ?? null,
+          updateAvailable: false
+        };
+        show.updatedAt = new Date().toISOString();
+        render();
+        saveState();
+        toast(`Latest chapter for ${show.title} marked as seen.`);
+        return;
+      }
+
       show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
       show.releasesMoe.updateAvailable = false;
       show.releasesMoe.latestUpdated = null;
       show.updatedAt = new Date().toISOString();
-      
+
       render();
       saveState();
       toast(`Update for ${show.title} acknowledged.`);
@@ -2169,7 +2746,7 @@
 
     function updateFranchise(showId, franchiseName) {
       const show = state.shows.find((item) => item.id === showId);
-      if (!show) return;
+      if (!show || isManga(show)) return;
       show.franchise = franchiseName.trim();
       show.updatedAt = new Date().toISOString();
       render();
@@ -2192,7 +2769,7 @@
 
     function exportJson() {
       const payload = {
-        version: 1,
+        version: 2,
         exportedAt: new Date().toISOString(),
         shows: state.shows,
         ui: state.ui
@@ -2223,17 +2800,11 @@
         if (!Array.isArray(shows)) throw new Error("JSON must contain a shows array.");
 
         state.shows = shows.map(normalizeImportedShow);
-        state.ui = {
-          downloadedCollapsed: Boolean(payload.ui?.downloadedCollapsed),
-          settingsOpen: Boolean(payload.ui?.settingsOpen),
-          filterComplete: Boolean(payload.ui?.filterComplete),
-          openNotes: payload.ui?.openNotes && typeof payload.ui.openNotes === "object" ? payload.ui.openNotes : {},
-          collapsedFranchises: payload.ui?.collapsedFranchises || {}
-        };
+        state.ui = normalizeImportedUi(payload.ui || {});
 
         render();
         saveState();
-        toast("Board imported. Click 'Check status' to refresh data if needed.");
+        toast("Board imported. Refresh individual items if needed.");
       } catch (error) {
         console.error(error);
         toast(`Import failed: ${error.message}`, "error");
@@ -2241,6 +2812,14 @@
     }
 
     function normalizeImportedShow(show) {
+      if (show?.type === "manga") {
+        return normalizeImportedManga(show);
+      }
+
+      return normalizeImportedAnime(show);
+    }
+
+    function normalizeImportedAnime(show) {
       const id = show.id || (crypto.randomUUID ? crypto.randomUUID() : `show-${Date.now()}-${Math.random().toString(16).slice(2)}`);
       const downloaded = Boolean(show.downloaded || show.board === "downloaded");
       const releasesMoe = show.releasesMoe && typeof show.releasesMoe === "object"
@@ -2249,10 +2828,12 @@
 
       return {
         id,
+        type: "anime",
         anilistId: Number(show.anilistId || show.alID || show.idAnilist),
         title: String(show.title || show.titleRomaji || show.titleEnglish || "Untitled"),
         titleEnglish: String(show.titleEnglish || ""),
         titleRomaji: String(show.titleRomaji || ""),
+        titleNative: String(show.titleNative || ""),
         coverImage: String(show.coverImage || ""),
         format: String(show.format || ""),
         episodes: show.episodes ?? null,
@@ -2275,6 +2856,61 @@
         },
         createdAt: show.createdAt || new Date().toISOString(),
         updatedAt: show.updatedAt || new Date().toISOString()
+      };
+    }
+
+    function normalizeImportedManga(show) {
+      const id = show.id || (crypto.randomUUID ? crypto.randomUUID() : `manga-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      const mangaUpdates = show.mangaUpdates && typeof show.mangaUpdates === "object"
+        ? show.mangaUpdates
+        : { found: false, seriesId: null, seriesUrl: null, title: null, checkedAt: null, error: null, latestChapter: null, knownChapter: null, updateAvailable: false, latestReleaseTitle: null, latestReleaseDate: null };
+
+      return {
+        id,
+        type: "manga",
+        anilistId: Number(show.anilistId || show.alID || show.idAnilist),
+        title: String(show.title || show.titleRomaji || show.titleEnglish || "Untitled"),
+        titleEnglish: String(show.titleEnglish || ""),
+        titleRomaji: String(show.titleRomaji || ""),
+        titleNative: String(show.titleNative || ""),
+        coverImage: String(show.coverImage || ""),
+        format: String(show.format || ""),
+        chapters: show.chapters ?? null,
+        volumes: show.volumes ?? null,
+        seasonYear: show.seasonYear ?? null,
+        siteUrl: String(show.siteUrl || `https://anilist.co/manga/${show.anilistId || show.alID || ""}`),
+        board: "watching",
+        downloaded: false,
+        allAvailableDownloaded: false,
+        previousBoard: null,
+        franchise: "",
+        comments: String(show.comments || ""),
+        mangaUpdates: {
+          found: Boolean(mangaUpdates.found),
+          seriesId: mangaUpdates.seriesId ?? mangaUpdates.id ?? null,
+          seriesUrl: mangaUpdates.seriesUrl || (mangaUpdates.seriesId ? makeMangaUpdatesSeriesUrl(mangaUpdates.seriesId) : null),
+          title: mangaUpdates.title || null,
+          checkedAt: mangaUpdates.checkedAt ?? null,
+          error: mangaUpdates.error ?? null,
+          latestChapter: mangaUpdates.latestChapter ?? null,
+          knownChapter: mangaUpdates.knownChapter ?? mangaUpdates.latestChapter ?? null,
+          updateAvailable: Boolean(mangaUpdates.updateAvailable),
+          latestReleaseTitle: mangaUpdates.latestReleaseTitle || null,
+          latestReleaseDate: mangaUpdates.latestReleaseDate || null
+        },
+        createdAt: show.createdAt || new Date().toISOString(),
+        updatedAt: show.updatedAt || new Date().toISOString()
+      };
+    }
+
+    function normalizeImportedUi(ui = {}) {
+      return {
+        downloadedCollapsed: Boolean(ui.downloadedCollapsed),
+        settingsOpen: Boolean(ui.settingsOpen),
+        filterComplete: Boolean(ui.filterComplete),
+        searchMode: ui.searchMode === "manga" ? "manga" : "anime",
+        openNotes: ui.openNotes && typeof ui.openNotes === "object" ? ui.openNotes : {},
+        collapsedFranchises: ui.collapsedFranchises && typeof ui.collapsedFranchises === "object" ? ui.collapsedFranchises : {}
       };
     }
 
@@ -2319,13 +2955,7 @@
 
         const saved = JSON.parse(raw);
         state.shows = Array.isArray(saved.shows) ? saved.shows.map(normalizeImportedShow) : [];
-        state.ui = {
-          downloadedCollapsed: Boolean(saved.ui?.downloadedCollapsed),
-          settingsOpen: Boolean(saved.ui?.settingsOpen),
-          filterComplete: Boolean(saved.ui?.filterComplete),
-          openNotes: saved.ui?.openNotes && typeof saved.ui.openNotes === "object" ? saved.ui.openNotes : {},
-          collapsedFranchises: saved.ui?.collapsedFranchises || {}
-        };
+        state.ui = normalizeImportedUi(saved.ui || {});
       } catch (error) {
         console.error(error);
         localStorage.removeItem(STORAGE_KEY);
@@ -2357,7 +2987,7 @@
 
     function getReleaseMoeUrl(show) {
       const anilistId = Number(show?.anilistId);
-      if (!show?.releasesMoe?.found || !Number.isFinite(anilistId)) return "";
+      if (isManga(show) || !show?.releasesMoe?.found || !Number.isFinite(anilistId)) return "";
       return `https://releases.moe/${anilistId}/`;
     }
 
@@ -2365,15 +2995,46 @@
       return title.english || title.romaji || title.native || "Untitled";
     }
 
-    function getMediaMeta(media) {
-      return [media.format, media.seasonYear, media.episodes ? `${media.episodes} ep` : null]
+    function getMediaMeta(media, mediaType = "anime") {
+      if (mediaType === "manga") {
+        return [
+          media.format,
+          media.startDate?.year ?? media.seasonYear,
+          media.chapters ? `${media.chapters} ch` : null,
+          media.volumes ? `${media.volumes} vol` : null
+        ]
+          .filter(Boolean)
+          .map(escapeHtml)
+          .join(" · ");
+      }
+
+      return [media.format, media.seasonYear ?? media.startDate?.year, media.episodes ? `${media.episodes} ep` : null]
         .filter(Boolean)
         .map(escapeHtml)
         .join(" · ");
     }
 
-    function isMediaOnBoard(media) {
-      return state.shows.some((show) => Number(show.anilistId) === Number(media?.id));
+    function isMediaOnBoard(media, mediaType = "anime") {
+      return state.shows.some((show) =>
+        (show.type || "anime") === mediaType &&
+        Number(show.anilistId) === Number(media?.id)
+      );
+    }
+
+    function isManga(show) {
+      return show?.type === "manga";
+    }
+
+    function toNumber(value) {
+      if (value === null || value === undefined || value === "") return null;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function formatChapter(value) {
+      const number = toNumber(value);
+      if (number === null) return "?";
+      return Number.isInteger(number) ? String(number) : String(number);
     }
 
     function getFallbackPoster() {
