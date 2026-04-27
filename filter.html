@@ -3,27 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AutoBrr AniList Filter</title>
+    <title>Clean AutoBrr Filter</title>
     <style>
         :root { --primary: #3e5cf4; --bg: #f8f9fa; --card-bg: #ffffff; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; }
-        .card { background: var(--card-bg); width: 100%; max-width: 800px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .card { background: var(--card-bg); width: 100%; max-width: 850px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
         input { flex-grow: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; }
         button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; }
         #copyBtn { background: #28a745; margin-top: 10px; width: 100%; display: none; }
-        textarea { width: 100%; height: 250px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; }
+        textarea { width: 100%; height: 300px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; }
         .status { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
-        .error { color: #dc3545; background: #fff5f5; padding: 10px; border-radius: 4px; border: 1px solid #dc3545; }
-        .success { color: #28a745; }
+        .badge { display: inline-block; padding: 2px 8px; background: #e0e7ff; color: #3e5cf4; border-radius: 4px; font-size: 11px; margin-right: 5px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>AniList ➔ AutoBrr</h1>
+    <h1>AniList ➔ AutoBrr (Clean)</h1>
+    <p style="font-size: 14px; color: #666;">Targeting: <b>English, Romaji, and Japanese</b> only. Skipping other languages.</p>
+    
     <div class="input-group">
-        <input type="text" id="username" placeholder="AniList Username (e.g., 'Azu')">
+        <input type="text" id="username" placeholder="AniList Username">
         <button onclick="generateFilter()">Generate</button>
     </div>
     <div id="status" class="status"></div>
@@ -32,28 +33,29 @@
 </div>
 
 <script>
+    // Helper to check if a string is "English-friendly" (ASCII only)
+    // This removes titles with accents (Polish, French, Italian, etc.)
+    const isEnglishFriendly = (str) => /^[\x00-\x7F]*$/.test(str);
+
     async function generateFilter() {
-        const username = document.getElementById('username').value.trim().replace('@', '');
+        const username = document.getElementById('username').value.trim();
         const status = document.getElementById('status');
         const output = document.getElementById('output');
         const copyBtn = document.getElementById('copyBtn');
 
         if (!username) return;
 
-        status.innerText = "Querying AniList...";
-        status.className = "status";
+        status.innerText = "Fetching clean titles...";
         output.value = "";
         copyBtn.style.display = "none";
 
-        // Querying without the status filter inside GraphQL to be more robust
         const query = `
         query ($userName: String) {
-          MediaListCollection(userName: $userName, type: ANIME) {
+          MediaListCollection(userName: $userName, type: ANIME, status: WATCHING) {
             lists {
-              status
               entries {
                 media {
-                  title { romaji english }
+                  title { romaji english native }
                   synonyms
                 }
               }
@@ -64,68 +66,66 @@
         try {
             const response = await fetch('https://graphql.anilist.co', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query, variables: { userName: username } })
             });
 
             const result = await response.json();
-
-            if (result.errors) {
-                const msg = result.errors[0].message;
-                throw new Error(msg === "Not Found." ? "User not found. Check your AniList URL name." : msg);
-            }
-
             const collection = result.data.MediaListCollection;
-            if (!collection || !collection.lists) throw new Error("Could not retrieve lists.");
+
+            if (!collection) throw new Error("User not found or list is private.");
 
             let filterEntries = [];
-            // Only look at the "CURRENT" (Watching) list
-            const watchingList = collection.lists.find(l => l.status === "CURRENT");
 
-            if (!watchingList || watchingList.entries.length === 0) {
-                throw new Error("User found, but 'Watching' list is empty or private.");
-            }
-
-            watchingList.entries.forEach(entry => {
-                const m = entry.media;
-                const rawNames = [m.title.romaji, m.title.english, ...m.synonyms];
-                
-                rawNames.forEach(name => {
-                    if (!name) return;
-                    // Lowercase and turn commas into wildcards (AutoBrr uses commas to separate items)
-                    let clean = name.toLowerCase().replace(/,/g, '?');
-                    // Turn separators (:, -, (, )) into '*'
-                    clean = clean.replace(/[:\-()]/g, '*');
-                    // Replace spaces/dots/junk with '?'
-                    clean = clean.replace(/[^a-z0-9*]/gi, '?');
-                    // Clean up double wildcards
-                    clean = clean.replace(/\?+/g, '?').replace(/\*+/g, '*').replace(/\?\*/g, '*').replace(/\*\?/g, '*');
-                    // Trim wildcards from edges
-                    clean = clean.replace(/^[?*]+|[?*]+$/g, '');
+            collection.lists.forEach(list => {
+                list.entries.forEach(entry => {
+                    const m = entry.media;
                     
-                    if (clean.length > 2) filterEntries.push(`*${clean}*`);
+                    // 1. Grab Romaji, English, and Native Japanese
+                    const coreTitles = [m.title.romaji, m.title.english, m.title.native].filter(Boolean);
+                    
+                    // 2. Grab synonyms ONLY if they are English-friendly (ASCII)
+                    const cleanSynonyms = m.synonyms.filter(s => isEnglishFriendly(s));
+
+                    const allTitles = [...coreTitles, ...cleanSynonyms];
+                    
+                    allTitles.forEach(name => {
+                        // Skip if name is too short (like 'S2' or '8') to avoid false positives
+                        if (name.length < 3 && !/[\u3040-\u30ff\u4e00-\u9faf]/.test(name)) return;
+
+                        let clean = name.toLowerCase();
+                        
+                        // Keep Japanese characters, but replace everything else with wildcards
+                        // This regex says: Replace everything that is NOT a letter, number, or Japanese character
+                        clean = clean.replace(/[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/gi, '?');
+                        
+                        // Clean up consecutive wildcards
+                        clean = clean.replace(/\?+/g, '?');
+                        clean = clean.replace(/^\?+|\?+$/g, '');
+
+                        if (clean.length > 2) {
+                            filterEntries.push(`*${clean}*`);
+                        }
+                    });
                 });
             });
 
             const finalFilter = [...new Set(filterEntries)].sort().join(',');
             output.value = finalFilter;
-            status.innerText = `Success! Found ${watchingList.entries.length} shows (${filterEntries.length} variants).`;
-            status.className = "status success";
+            status.innerText = `Success! Filter now contains ${filterEntries.length} targeted English/Romaji/Japanese patterns.`;
             copyBtn.style.display = "block";
 
         } catch (err) {
             status.innerText = "Error: " + err.message;
-            status.className = "status error";
         }
     }
 
     function copyToClipboard() {
         const output = document.getElementById('output');
-        const copyBtn = document.getElementById('copyBtn');
         output.select();
         navigator.clipboard.writeText(output.value);
-        copyBtn.innerText = "Copied!";
-        setTimeout(() => { copyBtn.innerText = "Copy to Clipboard"; }, 2000);
+        document.getElementById('copyBtn').innerText = "Copied!";
+        setTimeout(() => { document.getElementById('copyBtn').innerText = "Copy to Clipboard"; }, 2000);
     }
 </script>
 </body>
