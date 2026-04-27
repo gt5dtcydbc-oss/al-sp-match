@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +11,8 @@
         .card { background: var(--card-bg); width: 100%; max-width: 850px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
         input { flex-grow: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; }
-        button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; }
+        button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; transition: opacity 0.2s; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
         #copyBtn { background: #28a745; margin-top: 10px; width: 100%; display: none; }
         textarea { width: 100%; height: 350px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; }
         .status { font-size: 13px; font-weight: 600; margin-bottom: 10px; min-height: 20px; }
@@ -23,7 +25,7 @@
     <h1>AniList ➔ AutoBrr</h1>
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username">
-        <button onclick="generateFilter()">Generate</button>
+        <button id="generateBtn" onclick="generateFilter()">Generate</button>
     </div>
     <div id="status" class="status"></div>
     <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
@@ -33,14 +35,25 @@
 <script>
     const isEnglishFriendly = (str) => /^[\x00-\x7F]*$/.test(str);
 
+    // Auto-load username from previous visits
+    document.addEventListener("DOMContentLoaded", () => {
+        const savedName = localStorage.getItem('anilist_username');
+        if (savedName) document.getElementById('username').value = savedName;
+    });
+
     async function generateFilter() {
-        const username = document.getElementById('username').value.trim();
+        const usernameInput = document.getElementById('username');
+        const username = usernameInput.value.trim();
         const status = document.getElementById('status');
         const output = document.getElementById('output');
         const copyBtn = document.getElementById('copyBtn');
+        const generateBtn = document.getElementById('generateBtn');
 
         if (!username) return;
 
+        // Save username and update UI state
+        localStorage.setItem('anilist_username', username);
+        generateBtn.disabled = true;
         status.innerText = "Querying AniList...";
         status.classList.remove('error');
         output.value = "";
@@ -52,7 +65,7 @@
             lists {
               entries {
                 media {
-                  title { romaji english native }
+                  title { romaji english }
                   synonyms
                 }
               }
@@ -77,24 +90,20 @@
             lists.forEach(list => {
                 list.entries.forEach(entry => {
                     const m = entry.media;
-                    const coreTitles = [m.title.romaji, m.title.english, m.title.native].filter(Boolean);
+                    const coreTitles = [m.title.romaji, m.title.english].filter(Boolean);
                     const cleanSynonyms = m.synonyms.filter(s => isEnglishFriendly(s));
                     let allPossibleTitles = [...new Set([...coreTitles, ...cleanSynonyms])];
 
                     allPossibleTitles.forEach(name => {
-                        if (name.length < 3 && !/[\u3040-\u30ff\u4e00-\u9faf]/.test(name)) return;
-
                         let clean = name.toLowerCase();
                         let variants = [clean];
 
-                        // ADVANCED FUZZY LOGIC
-                        // Handles Season X <-> Xth Season <-> Part X
-                        if (clean.includes('season ') || clean.includes('part ')) {
+                        if (clean.includes('season ') || clean.includes('part ') || clean.includes('cour ')) {
                             const numMatch = clean.match(/\d+/);
                             if (numMatch) {
                                 const n = numMatch[0];
                                 const suffix = (n === '1' ? 'st' : n === '2' ? 'nd' : n === '3' ? 'rd' : 'th');
-                                const rootTitle = clean.split(/season|part/i)[0].trim();
+                                const rootTitle = clean.split(/season|part|cour/i)[0].trim();
                                 
                                 variants.push(`${rootTitle} ${n}`);
                                 variants.push(`${rootTitle} ${n}${suffix} season`);
@@ -104,12 +113,9 @@
                         }
 
                         variants.forEach(v => {
-                            let pattern = v.replace(/[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/gi, '?');
+                            let pattern = v.replace(/[^a-z0-9]/gi, '?');
                             pattern = pattern.replace(/\?+/g, '?').replace(/^\?+|\?+$/g, '');
-                            
-                            if (pattern.length > 2) {
-                                filterEntries.push(`*${pattern}*`);
-                            }
+                            if (pattern.length > 2) filterEntries.push(`*${pattern}*`);
                         });
                     });
                 });
@@ -117,12 +123,15 @@
 
             const final = [...new Set(filterEntries)].sort().join(',');
             output.value = final;
-            status.innerText = `Generated ${filterEntries.length} patterns! (Optimized for Parts/Seasons)`;
+            status.innerText = `Generated ${filterEntries.length} clean patterns!`;
             copyBtn.style.display = "block";
 
         } catch (err) {
             status.innerText = "Error: " + err.message;
             status.classList.add('error');
+        } finally {
+            // Re-enable button regardless of success/fail
+            generateBtn.disabled = false;
         }
     }
 
@@ -130,8 +139,9 @@
         const output = document.getElementById('output');
         output.select();
         navigator.clipboard.writeText(output.value);
-        document.getElementById('copyBtn').innerText = "Copied!";
-        setTimeout(() => { document.getElementById('copyBtn').innerText = "Copy to Clipboard"; }, 2000);
+        const btn = document.getElementById('copyBtn');
+        btn.innerText = "Copied!";
+        setTimeout(() => { btn.innerText = "Copy to Clipboard"; }, 2000);
     }
 </script>
 </body>
