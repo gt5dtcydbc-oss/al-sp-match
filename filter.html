@@ -12,7 +12,7 @@
         input { flex-grow: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; }
         button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; }
         #copyBtn { background: #28a745; margin-top: 10px; width: 100%; display: none; }
-        textarea { width: 100%; height: 300px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; }
+        textarea { width: 100%; height: 350px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; }
         .status { font-size: 13px; font-weight: 600; margin-bottom: 10px; min-height: 20px; }
         .error { color: #dc3545; }
     </style>
@@ -31,6 +31,7 @@
 </div>
 
 <script>
+    // 1. Logic to filter out non-English-friendly synonyms
     const isEnglishFriendly = (str) => /^[\x00-\x7F]*$/.test(str);
 
     async function generateFilter() {
@@ -69,15 +70,8 @@
 
             const result = await response.json();
 
-            // Check if API returned errors
-            if (result.errors) {
-                throw new Error(result.errors[0].message);
-            }
-
-            // Safety check for data structure
-            if (!result.data || !result.data.MediaListCollection) {
-                throw new Error("User not found or profile is strictly private.");
-            }
+            if (result.errors) throw new Error(result.errors[0].message);
+            if (!result.data || !result.data.MediaListCollection) throw new Error("User not found or list is private.");
 
             const lists = result.data.MediaListCollection.lists;
             let filterEntries = [];
@@ -85,18 +79,37 @@
             lists.forEach(list => {
                 list.entries.forEach(entry => {
                     const m = entry.media;
+                    
+                    // 2. Select Core Titles + English-Friendly Synonyms
                     const coreTitles = [m.title.romaji, m.title.english, m.title.native].filter(Boolean);
                     const cleanSynonyms = m.synonyms.filter(s => isEnglishFriendly(s));
+                    let allPossibleTitles = [...new Set([...coreTitles, ...cleanSynonyms])];
 
-                    [...coreTitles, ...cleanSynonyms].forEach(name => {
+                    allPossibleTitles.forEach(name => {
+                        // Skip very short ASCII tags like 'S2' to prevent false matches
                         if (name.length < 3 && !/[\u3040-\u30ff\u4e00-\u9faf]/.test(name)) return;
 
                         let clean = name.toLowerCase();
-                        // Regex to keep alphanumeric and Japanese characters
-                        clean = clean.replace(/[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/gi, '?');
-                        clean = clean.replace(/\?+/g, '?').replace(/^\?+|\?+$/g, '');
 
-                        if (clean.length > 2) filterEntries.push(`*${clean}*`);
+                        // 3. FUZZY SEASON LOGIC
+                        // If title contains "Season 4", add a variant for "4th Season"
+                        let variants = [clean];
+                        if (clean.includes('season ')) {
+                            variants.push(clean.replace(/season (\d+)/g, '$1th season'));
+                            variants.push(clean.replace(/season (\d+)/g, '$1st season'));
+                            variants.push(clean.replace(/season (\d+)/g, '$1nd season'));
+                            variants.push(clean.replace(/season (\d+)/g, '$1rd season'));
+                        }
+
+                        variants.forEach(v => {
+                            // Replace symbols with '?'
+                            let pattern = v.replace(/[^a-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/gi, '?');
+                            pattern = pattern.replace(/\?+/g, '?').replace(/^\?+|\?+$/g, '');
+                            
+                            if (pattern.length > 2) {
+                                filterEntries.push(`*${pattern}*`);
+                            }
+                        });
                     });
                 });
             });
@@ -106,14 +119,14 @@
                 return;
             }
 
+            // Remove duplicates and join with commas
             output.value = [...new Set(filterEntries)].sort().join(',');
-            status.innerText = `Successfully generated ${filterEntries.length} patterns!`;
+            status.innerText = `Generated ${filterEntries.length} patterns for your season!`;
             copyBtn.style.display = "block";
 
         } catch (err) {
             status.innerText = "Error: " + err.message;
             status.classList.add('error');
-            console.error("Full Error:", err);
         }
     }
 
