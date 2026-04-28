@@ -25,7 +25,7 @@
 <body>
 
 <div class="card">
-    <h1>AniList ➔ AutoBrr</h1>
+    <h1>AniList -> AutoBrr</h1>
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
         <button id="generateBtn" onclick="generateFilter()">Generate</button>
@@ -52,6 +52,35 @@
         } catch {
             // Ignore storage failures in private/locked-down browsers.
         }
+    }
+
+    function foldCommonCharacters(value) {
+        return String(value)
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[×✕✖]/g, " x ")
+            .replace(/&/g, " and ")
+            .replace(/\+/g, " plus ")
+            .replace(/[‐‑‒–—―]/g, "-");
+    }
+
+    function toWildcardPattern(title) {
+        const tokens = foldCommonCharacters(title)
+            .toLowerCase()
+            .match(/[a-z0-9]+/g);
+
+        if (!tokens) return "";
+        return tokens.join("*");
+    }
+
+    function addWildcardPattern(filterEntries, rawPattern) {
+        const pattern = String(rawPattern || "").trim();
+        if (!pattern) return;
+
+        const compactLength = pattern.replace(/\*/g, "").length;
+        if (compactLength <= 2) return;
+
+        filterEntries.push(`*${pattern}*`);
     }
 
     function getSeasonInfo(cleanTitle) {
@@ -192,9 +221,7 @@
                         }
 
                         variants.forEach(v => {
-                            let pattern = v.replace(/[^a-z0-9]/gi, '?');
-                            pattern = pattern.replace(/\?+/g, '?').replace(/^\?+|\?+$/g, '');
-                            if (pattern.length > 2) filterEntries.push(`*${pattern}*`);
+                            addWildcardPattern(filterEntries, toWildcardPattern(v));
                         });
                     });
                 });
