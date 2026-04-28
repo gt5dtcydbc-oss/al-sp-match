@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoBrr Filter Gen</title>
+    <style>
+        :root { --primary: #3e5cf4; --bg: #f8f9fa; --card-bg: #ffffff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; margin: 0; }
+        .card { background: var(--card-bg); width: 100%; max-width: 850px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
+        h1 { margin-top: 0; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex-grow: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; min-width: 0; }
+        input:focus { border-color: var(--primary); }
+        button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; transition: opacity 0.2s; white-space: nowrap; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        #copyBtn { background: #28a745; margin-top: 10px; width: 100%; display: none; }
+        textarea { width: 100%; height: 350px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; resize: vertical; }
+        .status { font-size: 13px; font-weight: 600; margin-bottom: 10px; min-height: 20px; }
+        .error { color: #dc3545; }
+        .hint { color: #666; font-size: 12px; line-height: 1.4; margin: 8px 0 0; }
+        @media (max-width: 600px) {
+            .input-group { flex-direction: column; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>AniList -> AutoBrr</h1>
+    <div class="input-group">
+        <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
+        <button id="generateBtn" onclick="generateFilter()">Generate</button>
+    </div>
+    <div id="status" class="status"></div>
+    <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
+    <button id="copyBtn" onclick="copyToClipboard()">Copy to Clipboard</button>
+    <p class="hint">Only AniList entries with status CURRENT are included. AniList titles are enriched with MAL/Jikan titles when possible. Very short titles are emitted exactly instead of as broad wildcards.</p>
+</div>
+
+<script>
+    const ANILIST_API_URL = "https://graphql.anilist.co";
+    const JIKAN_API_URL = "https://api.jikan.moe/v4";
+    const JIKAN_DELAY_MS = 1200;
+    const JIKAN_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    const JIKAN_FUZZY_ACCEPT_SCORE = 70;
+
+    let lastJikanRequestAt = 0;
+
+    function safeGetItem(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch {
+            return null;
+        }
+    }
+
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch {
+            // Ignore locked-down/private-browser storage failures.
+        }
+    }
+
+    function safeRemoveItem(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch {
+            // Ignore locked-down/private-browser storage failures.
+        }
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function isEnglishFriendly(value) {
+        return /^[\x00-\x7F]*$/.test(String(value || ""));
+    }
+
+    function foldCommonCharacters(value) {
+        return String(value)
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[×✕✖]/g, " x ")
+            .replace(/&/g, " and ")
+            .replace(/\+/g, " plus ")
+            .replace(/½/g, " 1 2 ")
+            .replace(/[‐‑‒–—―]/g, "-");
+    }
+
+    function getTitleTokens(title) {
+        return foldCommonCharacters(title)
+            .toLowerCase()
+            .match(/[a-z0-9]+/g) || [];
+    }
+
+    function toWildcardPattern(title) {
+        const tokens = getTitleTokens(title);
+
+        if (!tokens.length) return "";
+
+        // Use * between tokens, not ?, so multi-character separators like ": ",
+        // " - ", "!! ", dots, spaces, and missing punctuation are all tolerated.
+        return tokens.join("*");
+    }
+
+    function normalizeForCompare(title) {
+        return getTitleTokens(title).join(" ");
+    }
+
+    function compactForCompare(title) {
+        return getTitleTokens(title).join("");
+    }
+
+    function uniqueTitles(rawTitles) {
+        const seen = new Set();
+        const unique = [];
+
+        rawTitles
+            .filter(Boolean)
+            .map(title => String(title).trim())
+            .filter(Boolean)
+            .forEach(title => {
+                const key = title.toLowerCase();
+                if (seen.has(key)) return;
+
+                seen.add(key);
+                unique.push(title);
+            });
+
+        return unique;
+    }
+
+    function ordinalSuffix(n) {
+        const num = Number(n);
+        const mod100 = num % 100;
+        if (mod100 >= 11 && mod100 <= 13) return `${num}th`;
+
+        switch (num % 10) {
+            case 1: return `${num}st`;
+            case 2: return `${num}nd`;
+            case 3: return `${num}rd`;
+            default: return `${num}th`;
+        }
+    }
+
+    function ordinalWord(n) {
+        return {
+            1: "first",
+            2: "second",
+            3: "third",
+            4: "fourth",
+            5: "fifth",
+            6: "sixth",
+            7: "seventh",
+            8: "eighth",
+            9: "ninth",
+            10: "tenth"
+        }[Number(n)] || null;
+    }
+
+    function romanNumeral(n) {
+        return {
+            1: "i",
+            2: "ii",
+            3: "iii",
+            4: "iv",
+            5: "v",
+            6: "vi",
+            7: "vii",
+            8: "viii",
+            9: "ix",
+            10: "x"
+        }[Number(n)] || null;
+    }
+
+    function stripTrailingSeparators(value) {
+        return value
+            .replace(/[\s:;,\.\-–—_]+$/g, "")
+            .replace(/^[\s:;,\.\-–—_]+/g, "")
+            .trim();
+    }
+
+    function expandBasicTitleVariants(title) {
+        const variants = new Set();
+        const original = String(title).trim();
+        if (!original) return variants;
+
+        variants.add(original);
+
+        // Apostrophes are commonly either separator-like or removed entirely in releases.
+        variants.add(original.replace(/[’'`´]/g, ""));
+
+        // Some releases use "and" while others omit ampersands entirely.
+        variants.add(original.replace(/\s*&\s*/g, " and "));
+        variants.add(original.replace(/\s*&\s*/g, " "));
+
+        // Common leading article omissions.
+        variants.add(original.replace(/^(the|a|an)\s+/i, ""));
+
+        return new Set([...variants].map(v => v.trim()).filter(Boolean));
+    }
+
+    function getSeasonInfo(title) {
+        const folded = foldCommonCharacters(title).toLowerCase();
+
+        const match =
+            folded.match(/\b(?:season|part|cour)\s*0*(\d+)\b/i) ||
+            folded.match(/\b0*(\d+)(?:st|nd|rd|th)\s+(?:season|part|cour)\b/i) ||
+            folded.match(/\bs0*(\d+)\b/i);
+
+        if (!match) return null;
+
+        const n = Number(match[1]);
+        if (!Number.isInteger(n) || n < 1 || n > 99) return null;
+
+        const rootTitle = stripTrailingSeparators(
+            String(title)
+                .replace(/\b(?:season|part|cour)\s*0*\d+\b/ig, "")
+                .replace(/\b0*\d+(?:st|nd|rd|th)\s+(?:season|part|cour)\b/ig, "")
+                .replace(/\bs0*\d+\b/ig, "")
+        );
+
+        if (!rootTitle) return null;
+
+        return { rootTitle, n };
+    }
+
+    function expandSeasonVariants(title) {
+        const info = getSeasonInfo(title);
+        if (!info) return new Set();
+
+        const { rootTitle, n } = info;
+        const padded = String(n).padStart(2, "0");
+        const ordinal = ordinalSuffix(n);
+        const ordinalAsWord = ordinalWord(n);
+        const roman = romanNumeral(n);
+
+        const variants = new Set([
+            `${rootTitle} ${n}`,
+            `${rootTitle} ${ordinal} season`,
+            `${rootTitle} season ${n}`,
+            `${rootTitle} part ${n}`,
+            `${rootTitle} cour ${n}`,
+            `${rootTitle} s${n}`,
+            `${rootTitle} s${padded}`
+        ]);
+
+        if (ordinalAsWord) variants.add(`${rootTitle} ${ordinalAsWord} season`);
+        if (roman) {
+            variants.add(`${rootTitle} ${roman}`);
+            variants.add(`${rootTitle} season ${roman}`);
+            variants.add(`${rootTitle} part ${roman}`);
+        }
+
+        return new Set([...variants].map(v => v.trim()).filter(Boolean));
+    }
+
+    function expandAllTitleVariants(title) {
+        const variants = new Set();
+
+        expandBasicTitleVariants(title).forEach(v => variants.add(v));
+        expandSeasonVariants(title).forEach(v => {
+            expandBasicTitleVariants(v).forEach(basic => variants.add(basic));
+        });
+
+        return variants;
+    }
+
+    function addPattern(patterns, rawPattern) {
+        const pattern = String(rawPattern || "").trim();
+        if (!pattern) return;
+
+        const compactLength = pattern.replace(/[\?\*]/g, "").length;
+        const containsWildcard = /[\?\*]/.test(pattern);
+
+        if (compactLength === 0) return;
+
+        // Avoid dangerous broad patterns like *86* or *k*.
+        // These are emitted exactly, which is safer for AutoBrr title fields.
+        if (compactLength <= 2 && !containsWildcard) {
+            patterns.add(pattern);
+            return;
+        }
+
+        // Skip ultra-short wildcard patterns such as k* or x*.
+        if (compactLength <= 2) return;
+
+        patterns.add(`*${pattern}*`);
+    }
+
+    function generatePatternsForTitle(title) {
+        const patterns = new Set();
+
+        expandAllTitleVariants(title).forEach(variant => {
+            addPattern(patterns, toWildcardPattern(variant));
+        });
+
+        return patterns;
+    }
+
+    function collectTitles(media) {
+        const rawTitles = [
+            media?.title?.romaji,
+            media?.title?.english,
+            ...(Array.isArray(media?.synonyms) ? media.synonyms : [])
+        ];
+
+        return uniqueTitles(rawTitles);
+    }
+
+    function collectJikanTitles(item) {
+        const rawTitles = [
+            item?.title,
+            item?.title_english,
+            // title_japanese is usually Japanese script, which this filter generator
+            // cannot tokenize usefully, so it is intentionally excluded by default.
+            ...(Array.isArray(item?.title_synonyms) ? item.title_synonyms : []),
+            ...(Array.isArray(item?.titles) ? item.titles.map(title => title?.title) : [])
+        ];
+
+        // Keep ASCII-ish titles only, matching the behavior of the wildcard tokenizer.
+        return uniqueTitles(rawTitles).filter(isEnglishFriendly);
+    }
+
+    function sortPatterns(patterns) {
+        return [...patterns].sort((a, b) => {
+            const cleanA = a.replace(/^\*/, "").replace(/\*$/, "");
+            const cleanB = b.replace(/^\*/, "").replace(/\*$/, "");
+            return cleanA.localeCompare(cleanB) || a.localeCompare(b);
+        });
+    }
+
+    function jikanCacheGet(key) {
+        const raw = safeGetItem(key);
+        if (!raw) return null;
+
+        try {
+            const cached = JSON.parse(raw);
+            if (!cached || Date.now() - cached.savedAt > JIKAN_CACHE_TTL_MS) {
+                safeRemoveItem(key);
+                return null;
+            }
+            return cached.value;
+        } catch {
+            safeRemoveItem(key);
+            return null;
+        }
+    }
+
+    function jikanCacheSet(key, value) {
+        safeSetItem(key, JSON.stringify({
+            savedAt: Date.now(),
+            value
+        }));
+    }
+
+    async function throttledJikanFetch(url) {
+        const elapsed = Date.now() - lastJikanRequestAt;
+        if (elapsed < JIKAN_DELAY_MS) {
+            await sleep(JIKAN_DELAY_MS - elapsed);
+        }
+
+        lastJikanRequestAt = Date.now();
+
+        const response = await fetch(url, {
+            headers: { "Accept": "application/json" }
+        });
+
+        let result;
+        try {
+            result = await response.json();
+        } catch {
+            throw new Error(`Jikan returned a non-JSON response. HTTP ${response.status}.`);
+        }
+
+        if (!response.ok) {
+            const message = result?.message || result?.error || `Jikan returned HTTP ${response.status}.`;
+            throw new Error(message);
+        }
+
+        return result;
+    }
+
+    async function getJikanAnimeByMalId(malId) {
+        const cacheKey = `autobrr_jikan_mal_${malId}`;
+        const cached = jikanCacheGet(cacheKey);
+        if (cached) return { item: cached, fromCache: true };
+
+        const result = await throttledJikanFetch(`${JIKAN_API_URL}/anime/${encodeURIComponent(malId)}`);
+        const item = result?.data || null;
+
+        if (item) jikanCacheSet(cacheKey, item);
+        return { item, fromCache: false };
+    }
+
+    async function searchJikanAnime(searchTerm) {
+        const normalizedTerm = normalizeForCompare(searchTerm);
+        const cacheKey = `autobrr_jikan_search_${normalizedTerm}`;
+        const cached = jikanCacheGet(cacheKey);
+        if (cached) return { items: cached, fromCache: true };
+
+        const url = `${JIKAN_API_URL}/anime?q=${encodeURIComponent(searchTerm)}&limit=5`;
+        const result = await throttledJikanFetch(url);
+        const items = Array.isArray(result?.data) ? result.data : [];
+
+        jikanCacheSet(cacheKey, items);
+        return { items, fromCache: false };
+    }
+
+    function tokenOverlapScore(a, b) {
+        const aTokens = new Set(getTitleTokens(a));
+        const bTokens = new Set(getTitleTokens(b));
+
+        if (!aTokens.size || !bTokens.size) return 0;
+
+        let overlap = 0;
+        aTokens.forEach(token => {
+            if (bTokens.has(token)) overlap++;
+        });
+
+        const smallerCoverage = overlap / Math.min(aTokens.size, bTokens.size);
+        const largerCoverage = overlap / Math.max(aTokens.size, bTokens.size);
+
+        return Math.round((smallerCoverage * 60) + (largerCoverage * 30));
+    }
+
+    function scoreJikanCandidate(anilistTitles, jikanItem) {
+        const jikanTitles = collectJikanTitles(jikanItem);
+        const aniNormalized = anilistTitles.map(normalizeForCompare).filter(Boolean);
+        const jikanNormalized = jikanTitles.map(normalizeForCompare).filter(Boolean);
+        const aniCompact = anilistTitles.map(compactForCompare).filter(Boolean);
+        const jikanCompact = jikanTitles.map(compactForCompare).filter(Boolean);
+
+        let best = 0;
+
+        for (const aniTitle of aniNormalized) {
+            for (const jikanTitle of jikanNormalized) {
+                if (aniTitle === jikanTitle) best = Math.max(best, 100);
+                else if (aniTitle.includes(jikanTitle) || jikanTitle.includes(aniTitle)) best = Math.max(best, 85);
+                else best = Math.max(best, tokenOverlapScore(aniTitle, jikanTitle));
+            }
+        }
+
+        for (const aniTitle of aniCompact) {
+            for (const jikanTitle of jikanCompact) {
+                if (aniTitle && aniTitle === jikanTitle) best = Math.max(best, 96);
+            }
+        }
+
+        return best;
+    }
+
+    function bestJikanSearchTerm(media, anilistTitles) {
+        return media?.title?.english
+            || media?.title?.romaji
+            || anilistTitles.find(isEnglishFriendly)
+            || anilistTitles[0]
+            || "";
+    }
+
+    async function getJikanTitlesForMedia(media, anilistTitles) {
+        // Best path: AniList gives the MAL ID, so Jikan lookup is exact and safe.
+        if (media?.idMal) {
+            const { item } = await getJikanAnimeByMalId(media.idMal);
+            return item ? collectJikanTitles(item) : [];
+        }
+
+        // Fallback path: only used when AniList has no MAL ID.
+        // This can be wrong for ambiguous titles, so it needs a high match score.
+        const searchTerm = bestJikanSearchTerm(media, anilistTitles);
+        if (!searchTerm) return [];
+
+        const { items } = await searchJikanAnime(searchTerm);
+        if (!items.length) return [];
+
+        const best = items
+            .map(item => ({ item, score: scoreJikanCandidate(anilistTitles, item) }))
+            .sort((a, b) => b.score - a.score)[0];
+
+        if (!best || best.score < JIKAN_FUZZY_ACCEPT_SCORE) return [];
+
+        return collectJikanTitles(best.item);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const usernameInput = document.getElementById("username");
+        const savedName = safeGetItem("anilist_username");
+
+        if (savedName) usernameInput.value = savedName;
+
+        usernameInput.addEventListener("keydown", event => {
+            if (event.key === "Enter") generateFilter();
+        });
+    });
+
+    async function generateFilter() {
+        const usernameInput = document.getElementById("username");
+        const username = usernameInput.value.trim();
+        const status = document.getElementById("status");
+        const output = document.getElementById("output");
+        const copyBtn = document.getElementById("copyBtn");
+        const generateBtn = document.getElementById("generateBtn");
+
+        if (!username) {
+            status.innerText = "Enter an AniList username.";
+            status.classList.add("error");
+            return;
+        }
+
+        safeSetItem("anilist_username", username);
+        generateBtn.disabled = true;
+        status.innerText = "Querying AniList...";
+        status.classList.remove("error");
+        output.value = "";
+        copyBtn.style.display = "none";
+
+        const query = `
+        query ($name: String) {
+          MediaListCollection(userName: $name, type: ANIME, status: CURRENT) {
+            lists {
+              entries {
+                media {
+                  id
+                  idMal
+                  title { romaji english }
+                  synonyms
+                }
+              }
+            }
+          }
+        }`;
+
+        try {
+            const response = await fetch(ANILIST_API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ query, variables: { name: username } })
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error(`AniList returned a non-JSON response. HTTP ${response.status}.`);
+            }
+
+            if (!response.ok) {
+                const retryAfter = response.headers.get("Retry-After");
+                const apiMessage = result?.errors?.map(error => error.message).join("; ");
+                let message = apiMessage || `AniList returned HTTP ${response.status}.`;
+
+                if (response.status === 429 && retryAfter) {
+                    message += ` Retry after ${retryAfter} seconds.`;
+                }
+
+                throw new Error(message);
+            }
+
+            if (result.errors?.length) {
+                throw new Error(result.errors.map(error => error.message).join("; "));
+            }
+
+            const collection = result?.data?.MediaListCollection;
+            if (!collection) throw new Error("User not found or list is private.");
+
+            const lists = Array.isArray(collection.lists) ? collection.lists : [];
+            const seenMediaIds = new Set();
+            const currentMedia = [];
+
+            lists.forEach(list => {
+                const entries = Array.isArray(list.entries) ? list.entries : [];
+
+                entries.forEach(entry => {
+                    const media = entry?.media;
+                    if (!media?.id || seenMediaIds.has(media.id)) return;
+
+                    seenMediaIds.add(media.id);
+                    currentMedia.push(media);
+                });
+            });
+
+            if (currentMedia.length === 0) {
+                throw new Error("No CURRENT anime were found on this AniList account.");
+            }
+
+            const allPatterns = new Set();
+            let jikanAddedTitleCount = 0;
+            let jikanErrorCount = 0;
+
+            for (let i = 0; i < currentMedia.length; i++) {
+                const media = currentMedia[i];
+                const displayTitle = media?.title?.english || media?.title?.romaji || `AniList ID ${media.id}`;
+
+                status.innerText = `Enriching with Jikan/MAL ${i + 1}/${currentMedia.length}: ${displayTitle}`;
+
+                const anilistTitles = collectTitles(media);
+                let combinedTitles = [...anilistTitles];
+
+                try {
+                    const jikanTitles = await getJikanTitlesForMedia(media, anilistTitles);
+                    const before = uniqueTitles(combinedTitles).length;
+                    combinedTitles = uniqueTitles([...combinedTitles, ...jikanTitles]);
+                    jikanAddedTitleCount += Math.max(0, combinedTitles.length - before);
+                } catch (error) {
+                    // Jikan enrichment should improve results, but it should not break AniList generation.
+                    console.warn(`Jikan failed for ${displayTitle}:`, error);
+                    jikanErrorCount++;
+                }
+
+                combinedTitles.forEach(title => {
+                    generatePatternsForTitle(title).forEach(pattern => allPatterns.add(pattern));
+                });
+            }
+
+            const finalPatterns = sortPatterns(allPatterns);
+
+            if (finalPatterns.length === 0) {
+                throw new Error("No usable title patterns were generated. Refusing to output an empty AutoBrr filter.");
+            }
+
+            const finalOutput = finalPatterns.join(",");
+            const charCount = finalOutput.length.toLocaleString();
+
+            output.value = finalOutput;
+            status.innerText = `Generated ${finalPatterns.length} unique patterns from ${seenMediaIds.size} current shows. Added ${jikanAddedTitleCount} MAL/Jikan titles. ${charCount} characters.`;
+
+            if (jikanErrorCount > 0) {
+                status.innerText += ` Jikan failed for ${jikanErrorCount} show${jikanErrorCount === 1 ? "" : "s"}, but AniList patterns were still generated.`;
+            }
+
+            if (finalOutput.length > 500000) {
+                status.innerText += " Warning: this is very large and may fail to save behind some reverse proxies.";
+            }
+
+            copyBtn.style.display = "block";
+        } catch (err) {
+            status.innerText = "Error: " + (err?.message || "Unknown error.");
+            status.classList.add("error");
+        } finally {
+            generateBtn.disabled = false;
+        }
+    }
+
+    async function copyToClipboard() {
+        const output = document.getElementById("output");
+        const btn = document.getElementById("copyBtn");
+
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable.");
+            await navigator.clipboard.writeText(output.value);
+        } catch {
+            output.focus();
+            output.select();
+            document.execCommand("copy");
+            output.setSelectionRange(0, 0);
+        }
+
+        btn.innerText = "Copied!";
+        setTimeout(() => {
+            btn.innerText = "Copy to Clipboard";
+        }, 2000);
+    }
+</script>
+</body>
+</html>
