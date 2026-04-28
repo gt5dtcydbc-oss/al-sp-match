@@ -28,7 +28,7 @@
 <body>
 
 <div class="card">
-    <h1>AniList ➔ AutoBrr</h1>
+    <h1>AniList -> AutoBrr</h1>
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
         <button id="generateBtn" onclick="generateFilter()">Generate</button>
@@ -70,13 +70,16 @@
     }
 
     function toWildcardPattern(title) {
-        return foldCommonCharacters(title)
+        const tokens = foldCommonCharacters(title)
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "?")
-            .replace(/\?+/g, "?")
-            .replace(/^\?+|\?+$/g, "");
-    }
+            .match(/[a-z0-9]+/g);
 
+        if (!tokens) return "";
+
+        // Use * between tokens, not ?, so multi-character separators like ": ",
+        // " - ", "!! ", dots, spaces, and missing punctuation are all tolerated.
+        return tokens.join("*");
+    }
 
     function ordinalSuffix(n) {
         const num = Number(n);
@@ -218,8 +221,8 @@
         const pattern = String(rawPattern || "").trim();
         if (!pattern) return;
 
-        const compactLength = pattern.replace(/\?/g, "").length;
-        const containsWildcard = pattern.includes("?");
+        const compactLength = pattern.replace(/[\?\*]/g, "").length;
+        const containsWildcard = /[\?\*]/.test(pattern);
 
         if (compactLength === 0) return;
 
@@ -230,7 +233,7 @@
             return;
         }
 
-        // Skip ultra-short wildcard patterns such as k? or x?.
+        // Skip ultra-short wildcard patterns such as k* or x*.
         if (compactLength <= 2) return;
 
         patterns.add(`*${pattern}*`);
