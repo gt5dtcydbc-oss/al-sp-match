@@ -77,11 +77,6 @@
             .replace(/^\?+|\?+$/g, "");
     }
 
-    function toCompactPattern(title) {
-        return foldCommonCharacters(title)
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "");
-    }
 
     function ordinalSuffix(n) {
         const num = Number(n);
@@ -245,11 +240,7 @@
         const patterns = new Set();
 
         expandAllTitleVariants(title).forEach(variant => {
-            const wildcard = toWildcardPattern(variant);
-            const compact = toCompactPattern(variant);
-
-            addPattern(patterns, wildcard);
-            addPattern(patterns, compact);
+            addPattern(patterns, toWildcardPattern(variant));
         });
 
         return patterns;
@@ -386,8 +377,16 @@
                 throw new Error("No usable title patterns were generated. Refusing to output an empty AutoBrr filter.");
             }
 
-            output.value = finalPatterns.join(",");
-            status.innerText = `Generated ${finalPatterns.length} unique patterns from ${seenMediaIds.size} current shows.`;
+            const finalOutput = finalPatterns.join(",");
+            const charCount = finalOutput.length.toLocaleString();
+
+            output.value = finalOutput;
+            status.innerText = `Generated ${finalPatterns.length} unique patterns from ${seenMediaIds.size} current shows. ${charCount} characters.`;
+
+            if (finalOutput.length > 500000) {
+                status.innerText += " Warning: this is very large and may fail to save behind some reverse proxies.";
+            }
+
             copyBtn.style.display = "block";
         } catch (err) {
             status.innerText = "Error: " + (err?.message || "Unknown error.");
