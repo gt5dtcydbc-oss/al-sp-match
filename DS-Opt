@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AniList + Jikan AutoBrr Filter Gen</title>
+    <style>
+        :root {
+            --primary: #3e5cf4;
+            --primary-dark: #3048c7;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --soft: #f3f4f6;
+            --success: #16a34a;
+            --warning: #d97706;
+            --error: #dc2626;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+
+        .card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 980px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(28px, 4vw, 42px);
+            letter-spacing: -0.04em;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin: 0 0 22px;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            min-width: 0;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 12px 20px;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            transition: opacity 0.2s, background 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) { background: var(--primary-dark); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .secondary-btn { background: #111827; }
+        .secondary-btn:hover:not(:disabled) { background: #374151; }
+        .danger-btn { background: #991b1b; }
+        .danger-btn:hover:not(:disabled) { background: #7f1d1d; }
+
+        .options {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin: 12px 0 18px;
+        }
+
+        .option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        .option input { margin-top: 3px; }
+        .option strong { display: block; font-size: 14px; }
+        .option span { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+
+        .status {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 0 12px;
+            min-height: 22px;
+        }
+
+        .status.success { color: var(--success); }
+        .status.error { color: var(--error); }
+        .status.warning { color: var(--warning); }
+
+        .progress-wrap {
+            display: none;
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: var(--soft);
+            margin-bottom: 14px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.25s ease;
+        }
+
+        textarea {
+            width: 100%;
+            height: 350px;
+            margin-top: 10px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            background: #fafafa;
+            resize: vertical;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        #copyBtn { display: none; background: #16a34a; flex: 1; }
+        #copyBtn:hover:not(:disabled) { background: #15803d; }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .metric {
+            border: 1px solid var(--border);
+            background: #fafafa;
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .metric-value {
+            display: block;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .metric-label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+            margin: 10px 0 0;
+        }
+
+        .log {
+            margin-top: 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            max-height: 260px;
+            overflow: auto;
+            display: none;
+        }
+
+        .log-line {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-line:last-child { border-bottom: 0; }
+        .log-line.ok { color: var(--success); }
+        .log-line.warn { color: var(--warning); }
+        .log-line.err { color: var(--error); }
+
+        @media (max-width: 900px) {
+            .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 760px) {
+            .input-group, .button-row { flex-direction: column; }
+            button { width: 100%; }
+            .options, .summary { grid-template-columns: 1fr; }
+            .card { padding: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>AniList + MAL → AutoBrr</h1>
+    <p class="subtitle">
+        Enter an AniList username. The page pulls CURRENT anime from AniList, enriches titles through Jikan/MAL when possible, then creates comma-separated AutoBrr wildcard filters.
+    </p>
+
+    <div class="input-group">
+        <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
+        <button id="generateBtn" type="button">Generate</button>
+    </div>
+
+    <div class="options">
+        <label class="option">
+            <input type="checkbox" id="useJikan" checked>
+            <span>
+                <strong>Enrich with MAL/Jikan titles</strong>
+                <span>Uses AniList MAL IDs first, then fuzzy Jikan search only when needed.</span>
+            </span>
+        </label>
+
+        <label class="option">
+            <input type="checkbox" id="includeNonAscii">
+            <span>
+                <strong>Include native / non-ASCII titles</strong>
+                <span>Off by default to avoid filters for Japanese-script release names.</span>
+            </span>
+        </label>
+
+        <label class="option">
+            <input type="checkbox" id="shortDescriptorVariants" checked>
+            <span>
+                <strong>Add shortened arc/saga variants</strong>
+                <span>Also matches names that drop trailing words like Arc, Saga, Chapter, Movie, Film, or Hen.</span>
+            </span>
+        </label>
+
+        <label class="option">
+            <input type="checkbox" id="showLog" checked>
+            <span>
+                <strong>Show match log</strong>
+                <span>Shows which MAL entries were accepted, skipped, failed, or pulled from cache.</span>
+            </span>
+        </label>
+    </div>
+
+    <div id="status" class="status"></div>
+    <div id="progressWrap" class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
+
+    <div class="summary" id="summary" style="display:none;">
+        <div class="metric"><span class="metric-value" id="animeCount">0</span><span class="metric-label">AniList anime</span></div>
+        <div class="metric"><span class="metric-value" id="jikanAddedCount">0</span><span class="metric-label">MAL titles added</span></div>
+        <div class="metric"><span class="metric-value" id="jikanErrorCount">0</span><span class="metric-label">Jikan failures</span></div>
+        <div class="metric"><span class="metric-value" id="patternCount">0</span><span class="metric-label">Patterns</span></div>
+        <div class="metric"><span class="metric-value" id="charCount">0</span><span class="metric-label">Characters</span></div>
+    </div>
+
+    <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
+
+    <div class="button-row">
+        <button id="copyBtn" type="button">Copy to Clipboard</button>
+        <button id="clearCacheBtn" type="button" class="secondary-btn">Clear Jikan Cache</button>
+    </div>
+
+    <p class="hint">
+        Only AniList entries with status CURRENT are included. Very short titles are emitted exactly instead of as broad wildcards. Jikan/MAL enrichment is cached locally for 7 days.
+    </p>
+
+    <div id="log" class="log"></div>
+</div>
+
+<script>
+    const ANILIST_API_URL = 'https://graphql.anilist.co';
+    const JIKAN_API_URL = 'https://api.jikan.moe/v4';
+    const JIKAN_DELAY_MS = 1200;
+    const JIKAN_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    const JIKAN_FALLBACK_ACCEPT_SCORE = 70;
+    const LARGE_OUTPUT_WARNING_LENGTH = 500000;
+
+    const els = {
+        username: document.getElementById('username'),
+        generateBtn: document.getElementById('generateBtn'),
+        useJikan: document.getElementById('useJikan'),
+        includeNonAscii: document.getElementById('includeNonAscii'),
+        shortDescriptorVariants: document.getElementById('shortDescriptorVariants'),
+        showLog: document.getElementById('showLog'),
+        status: document.getElementById('status'),
+        progressWrap: document.getElementById('progressWrap'),
+        progressBar: document.getElementById('progressBar'),
+        summary: document.getElementById('summary'),
+        animeCount: document.getElementById('animeCount'),
+        jikanAddedCount: document.getElementById('jikanAddedCount'),
+        jikanErrorCount: document.getElementById('jikanErrorCount'),
+        patternCount: document.getElementById('patternCount'),
+        charCount: document.getElementById('charCount'),
+        output: document.getElementById('output'),
+        copyBtn: document.getElementById('copyBtn'),
+        clearCacheBtn: document.getElementById('clearCacheBtn'),
+        log: document.getElementById('log')
+    };
+
+    let lastJikanRequestAt = 0;
+
+    const isEnglishFriendly = (value) => /^[\x00-\x7F]*$/.test(String(value || ''));
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function safeGetItem(key) {
+        try { return localStorage.getItem(key); } catch { return null; }
+    }
+
+    function safeSetItem(key, value) {
+        try { localStorage.setItem(key, value); } catch { /* ignore locked-down storage */ }
+    }
+
+    function safeRemoveItem(key) {
+        try { localStorage.removeItem(key); } catch { /* ignore locked-down storage */ }
+    }
+
+    function setStatus(message, type = '') {
+        els.status.textContent = message;
+        els.status.className = `status ${type}`.trim();
+    }
+
+    function setProgress(done, total) {
+        if (!total) {
+            els.progressWrap.style.display = 'none';
+            els.progressBar.style.width = '0%';
+            return;
+        }
+
+        els.progressWrap.style.display = 'block';
+        els.progressBar.style.width = `${Math.min(100, Math.round((done / total) * 100))}%`;
+    }
+
+    function resetUi() {
+        els.output.value = '';
+        els.copyBtn.style.display = 'none';
+        els.summary.style.display = 'none';
+        els.log.innerHTML = '';
+        els.log.style.display = els.showLog.checked ? 'block' : 'none';
+        setProgress(0, 0);
+    }
+
+    function logLine(message, kind = '') {
+        if (!els.showLog.checked) return;
+        els.log.style.display = 'block';
+        const div = document.createElement('div');
+        div.className = `log-line ${kind}`.trim();
+        div.textContent = message;
+        els.log.appendChild(div);
+        els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    // ---------- CHANGE 1: turn apostrophes and hyphens into spaces ----------
+    function foldCommonCharacters(value) {
+        return String(value)
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[×✕✖]/g, ' x ')
+            .replace(/&/g, ' and ')
+            .replace(/\+/g, ' plus ')
+            .replace(/½/g, ' 1 2 ')
+            // All dashes/hyphens → space (release groups often omit them)
+            .replace(/[‐‑‒–—―-]/g, ' ')
+            // Apostrophes / single quotes → space (so I's becomes i s, not is)
+            .replace(/[’'`´]/g, ' ')
+            .replace(/\s+/g, ' ')   // collapse multiple spaces
+            .trim();
+    }
+
+    function titleTokens(value) {
+        return foldCommonCharacters(value)
+            .toLowerCase()
+            .match(/[a-z0-9]+/g) || [];
+    }
+
+    function toWildcardPattern(title) {
+        const tokens = titleTokens(title);
+        if (!tokens.length) return '';
+        return tokens.join('*');
+    }
+
+    function addPattern(patterns, rawPattern) {
+        const pattern = String(rawPattern || '').trim();
+        if (!pattern) return;
+
+        const compactLength = pattern.replace(/[?*]/g, '').length;
+        const containsWildcard = /[?*]/.test(pattern);
+
+        if (compactLength === 0) return;
+
+        // Avoid dangerously broad filters like *86* or *x*.
+        // For very short non-wildcard titles, emit an exact match instead.
+        if (compactLength <= 2 && !containsWildcard) {
+            patterns.add(pattern);
+            // ---------- CHANGE 4: add padded variant for short numeric titles ----------
+            if (/^\d{1,2}$/.test(pattern)) {
+                patterns.add(`* ${pattern} *`);
+                patterns.add(`*[${pattern}]*`);
+            }
+            return;
+        }
+
+        if (compactLength <= 2) return;
+        patterns.add(`*${pattern}*`);
+    }
+
+    function normalizeForCompare(value) {
+        return titleTokens(value).join(' ');
+    }
+
+    function compactCompare(value) {
+        return titleTokens(value).join('');
+    }
+
+    function uniqueNonEmpty(items) {
+        const seen = new Set();
+        const out = [];
+
+        items.forEach(item => {
+            const value = String(item || '').trim();
+            if (!value) return;
+            const key = value.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push(value);
+        });
+
+        return out;
+    }
+
+    function ordinalSuffix(n) {
+        const num = Number(n);
+        if (!Number.isFinite(num)) return `${n}th`;
+        const mod100 = num % 100;
+        if (mod100 >= 11 && mod100 <= 13) return `${num}th`;
+        switch (num % 10) {
+            case 1: return `${num}st`;
+            case 2: return `${num}nd`;
+            case 3: return `${num}rd`;
+            default: return `${num}th`;
+        }
+    }
+
+    function ordinalWord(n) {
+        return {
+            1: 'first',
+            2: 'second',
+            3: 'third',
+            4: 'fourth',
+            5: 'fifth',
+            6: 'sixth',
+            7: 'seventh',
+            8: 'eighth',
+            9: 'ninth',
+            10: 'tenth'
+        }[Number(n)] || null;
+    }
+
+    function romanNumeral(n) {
+        return {
+            1: 'i',
+            2: 'ii',
+            3: 'iii',
+            4: 'iv',
+            5: 'v',
+            6: 'vi',
+            7: 'vii',
+            8: 'viii',
+            9: 'ix',
+            10: 'x'
+        }[Number(n)] || null;
+    }
+
+    function stripTrailingSeparators(value) {
+        return String(value)
+            .replace(/[\s:;,\.\-–—_]+$/g, '')
+            .replace(/^[\s:;,\.\-–—_]+/g, '')
+            .trim();
+    }
+
+    function expandBasicTitleVariants(title) {
+        const variants = new Set();
+        const original = String(title || '').trim();
+        if (!original) return variants;
+
+        variants.add(original);
+        variants.add(original.replace(/[’'`´]/g, ''));
+        variants.add(original.replace(/\s*&\s*/g, ' and '));
+        variants.add(original.replace(/\s*&\s*/g, ' '));
+        variants.add(original.replace(/^(the|a|an)\s+/i, ''));
+
+        return new Set([...variants].map(v => v.trim()).filter(Boolean));
+    }
+
+    function getSeasonInfo(title) {
+        const folded = foldCommonCharacters(title).toLowerCase();
+
+        const match =
+            folded.match(/\b(?:season|part|cour)\s*0*(\d+)\b/i) ||
+            folded.match(/\b0*(\d+)(?:st|nd|rd|th)\s+(?:season|part|cour)\b/i) ||
+            folded.match(/\bs0*(\d+)\b/i);
+
+        if (!match) return null;
+
+        const n = Number(match[1]);
+        if (!Number.isInteger(n) || n < 1 || n > 99) return null;
+
+        const rootTitle = stripTrailingSeparators(
+            String(title)
+                .replace(/\b(?:season|part|cour)\s*0*\d+\b/ig, '')
+                .replace(/\b0*\d+(?:st|nd|rd|th)\s+(?:season|part|cour)\b/ig, '')
+                .replace(/\bs0*\d+\b/ig, '')
+        );
+
+        if (!rootTitle) return null;
+        return { rootTitle, n };
+    }
+
+    function expandSeasonVariants(title) {
+        const info = getSeasonInfo(title);
+        if (!info) return new Set();
+
+        const { rootTitle, n } = info;
+        const padded = String(n).padStart(2, '0');
+        const ordinal = ordinalSuffix(n);
+        const ordinalAsWord = ordinalWord(n);
+        const roman = romanNumeral(n);
+
+        const variants = new Set([
+            `${rootTitle} ${n}`,
+            `${rootTitle} ${ordinal} season`,
+            `${rootTitle} season ${n}`,
+            `${rootTitle} part ${n}`,
+            `${rootTitle} cour ${n}`,
+            `${rootTitle} s${n}`,
+            `${rootTitle} s${padded}`,
+            `${rootTitle} season${n}`,
+            `${rootTitle} season${padded}`
+        ]);
+
+        if (ordinalAsWord) {
+            variants.add(`${rootTitle} ${ordinalAsWord} season`);
+            // ---------- CHANGE 2: ordinal cour / part variants ----------
+            variants.add(`${rootTitle} ${ordinalAsWord} cour`);
+            variants.add(`${rootTitle} ${ordinalAsWord} part`);
+        }
+        if (roman) {
+            variants.add(`${rootTitle} ${roman}`);
+            variants.add(`${rootTitle} season ${roman}`);
+            variants.add(`${rootTitle} part ${roman}`);
+            // ---------- CHANGE 2 (continued) ----------
+            variants.add(`${rootTitle} cour ${roman}`);
+        }
+
+        return new Set([...variants].map(v => v.trim()).filter(Boolean));
+    }
+
+    function expandTrailingDescriptorVariants(title) {
+        const variants = new Set();
+        const original = String(title || '').trim();
+        if (!original) return variants;
+
+        variants.add(original);
+
+        const shortened = original
+            .replace(/[\s:._-]+(arc|hen|saga|chapter|story|movie|film)$/i, '')
+            .trim();
+
+        if (shortened !== original && compactCompare(shortened).length >= 8) {
+            variants.add(shortened);
+        }
+
+        return variants;
+    }
+
+    function makeTitleVariants(title, options) {
+        const variants = new Set();
+        const original = String(title || '').trim();
+        if (!original) return [];
+
+        const descriptorVariants = options.shortDescriptorVariants
+            ? expandTrailingDescriptorVariants(original)
+            : new Set([original]);
+
+        descriptorVariants.forEach(descriptorVariant => {
+            expandBasicTitleVariants(descriptorVariant).forEach(v => variants.add(v));
+            expandSeasonVariants(descriptorVariant).forEach(seasonVariant => {
+                expandBasicTitleVariants(seasonVariant).forEach(v => variants.add(v));
+            });
+        });
+
+        return uniqueNonEmpty([...variants]);
+    }
+
+    function filterTitleListForAscii(titles, options) {
+        const unique = uniqueNonEmpty(titles);
+        return options.includeNonAscii ? unique : unique.filter(isEnglishFriendly);
+    }
+
+    function collectAniListTitles(media, options) {
+        const titles = [
+            media.title?.romaji,
+            media.title?.english,
+            media.title?.userPreferred,
+            ...(options.includeNonAscii ? [media.title?.native] : []),
+            ...(Array.isArray(media.synonyms) ? media.synonyms : [])
+        ];
+
+        return filterTitleListForAscii(titles, options);
+    }
+
+    function collectJikanTitles(item, options) {
+        const titles = [
+            item?.title,
+            item?.title_english,
+            ...(options.includeNonAscii ? [item?.title_japanese] : []),
+            ...(Array.isArray(item?.title_synonyms) ? item.title_synonyms : []),
+            ...(Array.isArray(item?.titles) ? item.titles.map(t => t?.title) : [])
+        ];
+
+        return filterTitleListForAscii(titles, options);
+    }
+
+    function tokenOverlapScore(a, b) {
+        const aTokens = new Set(titleTokens(a));
+        const bTokens = new Set(titleTokens(b));
+        if (!aTokens.size || !bTokens.size) return 0;
+
+        let intersection = 0;
+        aTokens.forEach(token => { if (bTokens.has(token)) intersection++; });
+        const smaller = Math.min(aTokens.size, bTokens.size);
+        const larger = Math.max(aTokens.size, bTokens.size);
+
+        const coverage = intersection / smaller;
+        const balance = intersection / larger;
+        return Math.round((coverage * 60) + (balance * 30));
+    }
+
+    function yearFromJikan(item) {
+        return item?.year || item?.aired?.prop?.from?.year || null;
+    }
+
+    function scoreJikanCandidate(anilistTitles, item, media, options) {
+        const jikanTitles = collectJikanTitles(item, options);
+        const aniNormalized = anilistTitles.map(normalizeForCompare).filter(Boolean);
+        const jikanNormalized = jikanTitles.map(normalizeForCompare).filter(Boolean);
+        const aniCompact = anilistTitles.map(compactCompare).filter(Boolean);
+        const jikanCompact = jikanTitles.map(compactCompare).filter(Boolean);
+
+        let best = 0;
+
+        for (const a of aniNormalized) {
+            for (const j of jikanNormalized) {
+                if (!a || !j) continue;
+                if (a === j) best = Math.max(best, 100);
+                else if (a.includes(j) || j.includes(a)) best = Math.max(best, 85);
+                else best = Math.max(best, tokenOverlapScore(a, j));
+            }
+        }
+
+        for (const a of aniCompact) {
+            for (const j of jikanCompact) {
+                if (!a || !j) continue;
+                if (a === j) best = Math.max(best, 96);
+            }
+        }
+
+        const aniYear = media?.startDate?.year || null;
+        const malYear = yearFromJikan(item);
+        if (aniYear && malYear) {
+            if (aniYear === malYear) best += 5;
+            else if (Math.abs(aniYear - malYear) >= 2) best -= 12;
+        }
+
+        return Math.max(0, Math.min(100, best));
+    }
+
+    function jikanCacheGet(key) {
+        const raw = safeGetItem(key);
+        if (!raw) return null;
+
+        try {
+            const parsed = JSON.parse(raw);
+            if (!parsed || Date.now() - parsed.savedAt > JIKAN_CACHE_TTL_MS) {
+                safeRemoveItem(key);
+                return null;
+            }
+            return parsed.value;
+        } catch {
+            safeRemoveItem(key);
+            return null;
+        }
+    }
+
+    function jikanCacheSet(key, value) {
+        safeSetItem(key, JSON.stringify({ savedAt: Date.now(), value }));
+    }
+
+    async function throttledJikanFetch(url) {
+        const now = Date.now();
+        const elapsed = now - lastJikanRequestAt;
+        if (elapsed < JIKAN_DELAY_MS) await sleep(JIKAN_DELAY_MS - elapsed);
+        lastJikanRequestAt = Date.now();
+
+        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+        let result;
+        try {
+            result = await response.json();
+        } catch {
+            throw new Error(`Jikan returned a non-JSON response. HTTP ${response.status}.`);
+        }
+
+        if (!response.ok) {
+            const message = result?.message || result?.error || `Jikan returned HTTP ${response.status}.`;
+            throw new Error(message);
+        }
+
+        return result;
+    }
+
+    async function getJikanByMalId(malId) {
+        const key = `autobrr:jikan:v3:mal:${malId}`;
+        const cached = jikanCacheGet(key);
+        if (cached) return { item: cached, fromCache: true };
+
+        const result = await throttledJikanFetch(`${JIKAN_API_URL}/anime/${encodeURIComponent(malId)}`);
+        const item = result?.data || null;
+        if (item) jikanCacheSet(key, item);
+        return { item, fromCache: false };
+    }
+
+    async function searchJikan(searchTerm) {
+        const normalized = normalizeForCompare(searchTerm);
+        const key = `autobrr:jikan:v3:search:${normalized}`;
+        const cached = jikanCacheGet(key);
+        if (cached) return { items: cached, fromCache: true };
+
+        const url = `${JIKAN_API_URL}/anime?q=${encodeURIComponent(searchTerm)}&limit=5`;
+        const result = await throttledJikanFetch(url);
+        const items = Array.isArray(result?.data) ? result.data : [];
+        jikanCacheSet(key, items);
+        return { items, fromCache: false };
+    }
+
+    function bestSearchTerm(media, anilistTitles) {
+        return media.title?.english
+            || media.title?.romaji
+            || media.title?.userPreferred
+            || anilistTitles.find(title => isEnglishFriendly(title))
+            || anilistTitles[0]
+            || '';
+    }
+
+    async function enrichWithJikan(media, anilistTitles, options) {
+        if (media.idMal) {
+            const { item, fromCache } = await getJikanByMalId(media.idMal);
+            if (!item) return { titles: [], status: 'miss', message: 'No MAL item returned.' };
+
+            const titles = collectJikanTitles(item, options);
+            return {
+                titles,
+                status: 'ok',
+                message: `${media.title?.userPreferred || media.title?.romaji || media.id}: exact MAL ID ${media.idMal}${fromCache ? ' from cache' : ''}; ${titles.length} titles.`
+            };
+        }
+
+        const term = bestSearchTerm(media, anilistTitles);
+        if (!term) return { titles: [], status: 'miss', message: 'No usable Jikan search term.' };
+
+        const { items, fromCache } = await searchJikan(term);
+        if (!items.length) {
+            return {
+                titles: [],
+                status: 'miss',
+                message: `${term}: no Jikan search results${fromCache ? ' from cache' : ''}.`
+            };
+        }
+
+        const scored = items
+            .map(item => ({ item, score: scoreJikanCandidate(anilistTitles, item, media, options) }))
+            .sort((a, b) => b.score - a.score);
+
+        const best = scored[0];
+        if (!best || best.score < JIKAN_FALLBACK_ACCEPT_SCORE) {
+            return {
+                titles: [],
+                status: 'warn',
+                message: `${term}: skipped fuzzy MAL match; best score ${best?.score || 0}.`
+            };
+        }
+
+        const titles = collectJikanTitles(best.item, options);
+        return {
+            titles,
+            status: 'ok',
+            message: `${term}: fuzzy MAL match ${best.item.mal_id || 'unknown'} score ${best.score}${fromCache ? ' from cache' : ''}; ${titles.length} titles.`
+        };
+    }
+
+    async function fetchAniListCurrent(username) {
+        const query = `
+            query ($name: String) {
+              MediaListCollection(userName: $name, type: ANIME, status: CURRENT) {
+                lists {
+                  entries {
+                    media {
+                      id
+                      idMal
+                      siteUrl
+                      format
+                      startDate { year month day }
+                      title { romaji english native userPreferred }
+                      synonyms
+                    }
+                  }
+                }
+              }
+            }
+        `;
+
+        const response = await fetch(ANILIST_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ query, variables: { name: username } })
+        });
+
+        let result;
+        try {
+            result = await response.json();
+        } catch {
+            throw new Error(`AniList returned a non-JSON response. HTTP ${response.status}.`);
+        }
+
+        if (!response.ok) {
+            const retryAfter = response.headers.get('Retry-After');
+            const apiMessage = result?.errors?.map(error => error.message).join('; ');
+            let message = apiMessage || `AniList returned HTTP ${response.status}.`;
+            if (response.status === 429 && retryAfter) message += ` Retry after ${retryAfter} seconds.`;
+            throw new Error(message);
+        }
+
+        if (result.errors?.length) {
+            throw new Error(result.errors.map(error => error.message).join('; '));
+        }
+
+        const collection = result.data?.MediaListCollection;
+        if (!collection) throw new Error('User not found or list is private.');
+
+        const uniqueById = new Map();
+        const lists = Array.isArray(collection.lists) ? collection.lists : [];
+
+        lists.forEach(list => {
+            const entries = Array.isArray(list.entries) ? list.entries : [];
+            entries.forEach(entry => {
+                const media = entry?.media;
+                if (!media?.id) return;
+                if (!uniqueById.has(media.id)) uniqueById.set(media.id, media);
+            });
+        });
+
+        return [...uniqueById.values()];
+    }
+
+    function buildFilterPatterns(mediaTitleMap, options) {
+        const patterns = new Set();
+
+        for (const titles of mediaTitleMap.values()) {
+            titles.forEach(title => {
+                makeTitleVariants(title, options).forEach(variant => {
+                    addPattern(patterns, toWildcardPattern(variant));
+                });
+            });
+        }
+
+        return [...patterns].sort((a, b) => {
+            const cleanA = a.replace(/^\*/, '').replace(/\*$/, '');
+            const cleanB = b.replace(/^\*/, '').replace(/\*$/, '');
+            return cleanA.localeCompare(cleanB) || a.localeCompare(b);
+        });
+    }
+
+    async function generateFilter() {
+        const username = els.username.value.trim();
+        if (!username) {
+            setStatus('Please enter an AniList username.', 'error');
+            return;
+        }
+
+        const options = {
+            useJikan: els.useJikan.checked,
+            includeNonAscii: els.includeNonAscii.checked,
+            shortDescriptorVariants: els.shortDescriptorVariants.checked
+        };
+
+        resetUi();
+        safeSetItem('anilist_username', username);
+        els.generateBtn.disabled = true;
+        els.clearCacheBtn.disabled = true;
+        setStatus('Querying AniList...');
+
+        try {
+            const mediaList = await fetchAniListCurrent(username);
+            if (!mediaList.length) throw new Error('No CURRENT anime found on this AniList account.');
+
+            const mediaTitleMap = new Map();
+            // ---------- CHANGE 3: add format-based variants (OVA, Movie, etc.) ----------
+            mediaList.forEach(media => {
+                const baseTitles = collectAniListTitles(media, options);
+                const extra = [];
+
+                const format = (media.format || '').toUpperCase();
+                const formatMap = {
+                    OVA: 'OVA',
+                    ONA: 'ONA',
+                    SPECIAL: 'Special',
+                    MOVIE: 'Movie',
+                    MUSIC: 'Music'
+                };
+                const formatWord = formatMap[format];
+                if (formatWord) {
+                    for (const t of baseTitles) {
+                        extra.push(`${t} ${formatWord}`);
+                        extra.push(`${t} (${formatWord})`);
+                    }
+                }
+
+                mediaTitleMap.set(media.id, uniqueNonEmpty([...baseTitles, ...extra]));
+            });
+
+            let jikanAdded = 0;
+            let jikanErrors = 0;
+
+            setProgress(0, mediaList.length);
+
+            for (let i = 0; i < mediaList.length; i++) {
+                const media = mediaList[i];
+                const name = media.title?.userPreferred || media.title?.english || media.title?.romaji || `AniList ${media.id}`;
+                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'}: ${i + 1}/${mediaList.length} — ${name}`);
+
+                if (options.useJikan) {
+                    try {
+                        const currentTitles = mediaTitleMap.get(media.id) || [];
+                        const enriched = await enrichWithJikan(media, currentTitles, options);
+                        const before = currentTitles.length;
+                        const merged = uniqueNonEmpty([...currentTitles, ...enriched.titles]);
+                        mediaTitleMap.set(media.id, merged);
+
+                        const added = Math.max(0, merged.length - before);
+                        jikanAdded += added;
+
+                        if (enriched.status === 'ok') logLine(`${enriched.message} Added ${added}.`, 'ok');
+                        else if (enriched.status === 'warn') logLine(enriched.message, 'warn');
+                        else logLine(`${name}: ${enriched.message}`, 'warn');
+                    } catch (error) {
+                        jikanErrors++;
+                        logLine(`${name}: Jikan error: ${error?.message || 'Unknown error.'}`, 'err');
+                    }
+                }
+
+                setProgress(i + 1, mediaList.length);
+            }
+
+            setStatus('Generating AutoBrr patterns...');
+            const uniqueEntries = buildFilterPatterns(mediaTitleMap, options);
+
+            if (uniqueEntries.length === 0) {
+                throw new Error('No usable title patterns were generated. Refusing to output an empty AutoBrr filter.');
+            }
+
+            const final = uniqueEntries.join(',');
+            els.output.value = final;
+            els.copyBtn.style.display = 'block';
+            els.summary.style.display = 'grid';
+            els.animeCount.textContent = mediaList.length.toLocaleString();
+            els.jikanAddedCount.textContent = jikanAdded.toLocaleString();
+            els.jikanErrorCount.textContent = jikanErrors.toLocaleString();
+            els.patternCount.textContent = uniqueEntries.length.toLocaleString();
+            els.charCount.textContent = final.length.toLocaleString();
+
+            let statusMessage = `Generated ${uniqueEntries.length.toLocaleString()} clean patterns from ${mediaList.length.toLocaleString()} AniList anime`;
+            if (options.useJikan) statusMessage += `, with ${jikanAdded.toLocaleString()} extra MAL/Jikan titles added`;
+            statusMessage += ` (${final.length.toLocaleString()} characters).`;
+
+            if (jikanErrors > 0) {
+                statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but AniList patterns were still generated.`;
+            }
+
+            const isLarge = final.length > LARGE_OUTPUT_WARNING_LENGTH;
+            if (isLarge) {
+                statusMessage += ' Warning: this output is very large and may be difficult to save or process in some AutoBrr/reverse-proxy setups.';
+            }
+
+            setStatus(statusMessage, isLarge ? 'warning' : 'success');
+        } catch (error) {
+            setStatus(`Error: ${error?.message || 'Unknown error.'}`, 'error');
+        } finally {
+            els.generateBtn.disabled = false;
+            els.clearCacheBtn.disabled = false;
+            setProgress(0, 0);
+        }
+    }
+
+    async function copyToClipboard() {
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable.');
+            await navigator.clipboard.writeText(els.output.value);
+        } catch {
+            els.output.focus();
+            els.output.select();
+            document.execCommand('copy');
+            els.output.setSelectionRange(0, 0);
+        }
+
+        const old = els.copyBtn.textContent;
+        els.copyBtn.textContent = 'Copied!';
+        setTimeout(() => { els.copyBtn.textContent = old; }, 1600);
+    }
+
+    function clearJikanCache() {
+        let removed = 0;
+        try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('autobrr:jikan:') || key.startsWith('autobrr_jikan_'))) {
+                    localStorage.removeItem(key);
+                    removed++;
+                }
+            }
+        } catch {
+            setStatus('Could not clear cache. Browser storage may be unavailable.', 'warning');
+            return;
+        }
+
+        setStatus(`Cleared ${removed.toLocaleString()} cached Jikan entr${removed === 1 ? 'y' : 'ies'}.`, 'success');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedName = safeGetItem('anilist_username');
+        if (savedName) els.username.value = savedName;
+
+        els.generateBtn.addEventListener('click', generateFilter);
+        els.copyBtn.addEventListener('click', copyToClipboard);
+        els.clearCacheBtn.addEventListener('click', clearJikanCache);
+        els.username.addEventListener('keydown', event => {
+            if (event.key === 'Enter') generateFilter();
+        });
+    });
+</script>
+</body>
+</html>
