@@ -5,22 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoBrr Filter Gen</title>
     <style>
-        :root { --primary: #3e5cf4; --bg: #f8f9fa; --card-bg: #ffffff; }
+        :root { --primary: #3e5cf4; --bg: #f8f9fa; --card-bg: #ffffff; --border: #eee; --muted: #666; --danger: #dc3545; --success: #28a745; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; margin: 0; }
-        .card { background: var(--card-bg); width: 100%; max-width: 850px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .card { background: var(--card-bg); width: 100%; max-width: 900px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
         h1 { margin-top: 0; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex-grow: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; outline: none; min-width: 0; }
-        input:focus { border-color: var(--primary); }
+        .input-group { display: flex; gap: 10px; margin-bottom: 14px; }
+        input[type="text"] { flex-grow: 1; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 16px; outline: none; min-width: 0; }
+        input[type="text"]:focus { border-color: var(--primary); }
         button { padding: 12px 24px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; transition: opacity 0.2s; white-space: nowrap; }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
-        #copyBtn { background: #28a745; margin-top: 10px; width: 100%; display: none; }
+        .button-row { display: flex; gap: 10px; margin-top: 10px; }
+        #copyBtn { background: var(--success); flex: 1; display: none; }
+        #clearCacheBtn { background: #111827; }
         textarea { width: 100%; height: 350px; margin-top: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; background: #fafafa; box-sizing: border-box; resize: vertical; }
         .status { font-size: 13px; font-weight: 600; margin-bottom: 10px; min-height: 20px; }
-        .error { color: #dc3545; }
-        .hint { color: #666; font-size: 12px; line-height: 1.4; margin: 8px 0 0; }
-        @media (max-width: 600px) {
-            .input-group { flex-direction: column; }
+        .error { color: var(--danger); }
+        .success { color: var(--success); }
+        .hint { color: var(--muted); font-size: 12px; line-height: 1.4; margin: 8px 0 0; }
+        .options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+        .option { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fafafa; font-size: 13px; line-height: 1.35; }
+        .option input { margin-top: 2px; }
+        .option strong { display: block; }
+        .option span { color: var(--muted); }
+        .progress-wrap { display: none; height: 8px; background: #e9ecef; border-radius: 999px; overflow: hidden; margin: 8px 0 12px; }
+        .progress-bar { height: 100%; width: 0%; background: var(--primary); transition: width 0.2s ease; }
+        .log { display: none; margin-top: 12px; max-height: 220px; overflow: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+        .log-line { padding: 7px 10px; border-bottom: 1px solid #eee; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.35; }
+        .log-line:last-child { border-bottom: 0; }
+        .log-ok { color: var(--success); }
+        .log-warn { color: #b45309; }
+        .log-error { color: var(--danger); }
+        @media (max-width: 700px) {
+            .input-group, .button-row { flex-direction: column; }
+            .options { grid-template-columns: 1fr; }
             button { width: 100%; }
         }
     </style>
@@ -33,10 +50,36 @@
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
         <button id="generateBtn" onclick="generateFilter()">Generate</button>
     </div>
+
+    <div class="options">
+        <label class="option">
+            <input type="checkbox" id="useJikan" checked>
+            <div><strong>Enrich with MAL/Jikan</strong><span>Uses exact MAL IDs from AniList first, then fuzzy search only if needed.</span></div>
+        </label>
+        <label class="option">
+            <input type="checkbox" id="includeNative">
+            <div><strong>Include native / non-ASCII titles</strong><span>Off by default because the wildcard tokenizer is ASCII-focused.</span></div>
+        </label>
+        <label class="option">
+            <input type="checkbox" id="shortDescriptorVariants" checked>
+            <div><strong>Add shortened Arc/Saga variants</strong><span>Also tries titles that drop trailing Arc, Saga, Chapter, Hen, Movie, or Film.</span></div>
+        </label>
+        <label class="option">
+            <input type="checkbox" id="showLog" checked>
+            <div><strong>Show Jikan log</strong><span>Displays accepted, skipped, cached, and failed MAL/Jikan lookups.</span></div>
+        </label>
+    </div>
+
     <div id="status" class="status"></div>
+    <div id="progressWrap" class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
+
     <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
-    <button id="copyBtn" onclick="copyToClipboard()">Copy to Clipboard</button>
-    <p class="hint">Only AniList entries with status CURRENT are included. AniList titles are enriched with MAL/Jikan titles when possible. Very short titles are emitted exactly instead of as broad wildcards.</p>
+    <div class="button-row">
+        <button id="copyBtn" onclick="copyToClipboard()">Copy to Clipboard</button>
+        <button id="clearCacheBtn" onclick="clearJikanCache()">Clear Jikan Cache</button>
+    </div>
+    <p class="hint">Only AniList entries with status CURRENT are included. Very short titles are emitted exactly instead of as broad wildcards. Jikan/MAL enrichment is cached locally for 7 days.</p>
+    <div id="log" class="log"></div>
 </div>
 
 <script>
@@ -99,11 +142,7 @@
 
     function toWildcardPattern(title) {
         const tokens = getTitleTokens(title);
-
         if (!tokens.length) return "";
-
-        // Use * between tokens, not ?, so multi-character separators like ": ",
-        // " - ", "!! ", dots, spaces, and missing punctuation are all tolerated.
         return tokens.join("*");
     }
 
@@ -126,7 +165,6 @@
             .forEach(title => {
                 const key = title.toLowerCase();
                 if (seen.has(key)) return;
-
                 seen.add(key);
                 unique.push(title);
             });
@@ -190,15 +228,9 @@
         if (!original) return variants;
 
         variants.add(original);
-
-        // Apostrophes are commonly either separator-like or removed entirely in releases.
         variants.add(original.replace(/[’'`´]/g, ""));
-
-        // Some releases use "and" while others omit ampersands entirely.
         variants.add(original.replace(/\s*&\s*/g, " and "));
         variants.add(original.replace(/\s*&\s*/g, " "));
-
-        // Common leading article omissions.
         variants.add(original.replace(/^(the|a|an)\s+/i, ""));
 
         return new Set([...variants].map(v => v.trim()).filter(Boolean));
@@ -225,7 +257,6 @@
         );
 
         if (!rootTitle) return null;
-
         return { rootTitle, n };
     }
 
@@ -259,12 +290,35 @@
         return new Set([...variants].map(v => v.trim()).filter(Boolean));
     }
 
-    function expandAllTitleVariants(title) {
+    function expandTrailingDescriptorVariants(title) {
         const variants = new Set();
+        const original = String(title).trim();
+        if (!original) return variants;
 
-        expandBasicTitleVariants(title).forEach(v => variants.add(v));
-        expandSeasonVariants(title).forEach(v => {
-            expandBasicTitleVariants(v).forEach(basic => variants.add(basic));
+        variants.add(original);
+
+        const shortened = original
+            .replace(/\s+(arc|hen|saga|chapter|story|movie|film)$/i, "")
+            .trim();
+
+        if (shortened !== original && compactForCompare(shortened).length >= 8) {
+            variants.add(shortened);
+        }
+
+        return variants;
+    }
+
+    function expandAllTitleVariants(title, options) {
+        const variants = new Set();
+        const descriptorVariants = options.shortDescriptorVariants
+            ? expandTrailingDescriptorVariants(title)
+            : new Set([String(title).trim()].filter(Boolean));
+
+        descriptorVariants.forEach(descriptorVariant => {
+            expandBasicTitleVariants(descriptorVariant).forEach(v => variants.add(v));
+            expandSeasonVariants(descriptorVariant).forEach(v => {
+                expandBasicTitleVariants(v).forEach(basic => variants.add(basic));
+            });
         });
 
         return variants;
@@ -279,51 +333,50 @@
 
         if (compactLength === 0) return;
 
-        // Avoid dangerous broad patterns like *86* or *k*.
-        // These are emitted exactly, which is safer for AutoBrr title fields.
         if (compactLength <= 2 && !containsWildcard) {
             patterns.add(pattern);
             return;
         }
 
-        // Skip ultra-short wildcard patterns such as k* or x*.
         if (compactLength <= 2) return;
 
         patterns.add(`*${pattern}*`);
     }
 
-    function generatePatternsForTitle(title) {
+    function generatePatternsForTitle(title, options) {
         const patterns = new Set();
 
-        expandAllTitleVariants(title).forEach(variant => {
+        expandAllTitleVariants(title, options).forEach(variant => {
             addPattern(patterns, toWildcardPattern(variant));
         });
 
         return patterns;
     }
 
-    function collectTitles(media) {
+    function collectTitles(media, options) {
         const rawTitles = [
             media?.title?.romaji,
             media?.title?.english,
+            media?.title?.userPreferred,
+            ...(options.includeNative ? [media?.title?.native] : []),
             ...(Array.isArray(media?.synonyms) ? media.synonyms : [])
         ];
 
-        return uniqueTitles(rawTitles);
+        const titles = uniqueTitles(rawTitles);
+        return options.includeNative ? titles : titles.filter(isEnglishFriendly);
     }
 
-    function collectJikanTitles(item) {
+    function collectJikanTitles(item, options) {
         const rawTitles = [
             item?.title,
             item?.title_english,
-            // title_japanese is usually Japanese script, which this filter generator
-            // cannot tokenize usefully, so it is intentionally excluded by default.
+            ...(options.includeNative ? [item?.title_japanese] : []),
             ...(Array.isArray(item?.title_synonyms) ? item.title_synonyms : []),
             ...(Array.isArray(item?.titles) ? item.titles.map(title => title?.title) : [])
         ];
 
-        // Keep ASCII-ish titles only, matching the behavior of the wildcard tokenizer.
-        return uniqueTitles(rawTitles).filter(isEnglishFriendly);
+        const titles = uniqueTitles(rawTitles);
+        return options.includeNative ? titles : titles.filter(isEnglishFriendly);
     }
 
     function sortPatterns(patterns) {
@@ -332,6 +385,45 @@
             const cleanB = b.replace(/^\*/, "").replace(/\*$/, "");
             return cleanA.localeCompare(cleanB) || a.localeCompare(b);
         });
+    }
+
+    function setStatus(message, type = "") {
+        const status = document.getElementById("status");
+        status.innerText = message;
+        status.className = `status ${type}`.trim();
+    }
+
+    function setProgress(done, total) {
+        const wrap = document.getElementById("progressWrap");
+        const bar = document.getElementById("progressBar");
+
+        if (!total) {
+            wrap.style.display = "none";
+            bar.style.width = "0%";
+            return;
+        }
+
+        wrap.style.display = "block";
+        bar.style.width = `${Math.round((done / total) * 100)}%`;
+    }
+
+    function logLine(message, type = "") {
+        if (!document.getElementById("showLog").checked) return;
+
+        const log = document.getElementById("log");
+        log.style.display = "block";
+
+        const line = document.createElement("div");
+        line.className = `log-line ${type ? `log-${type}` : ""}`.trim();
+        line.textContent = message;
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function resetLog() {
+        const log = document.getElementById("log");
+        log.innerHTML = "";
+        log.style.display = document.getElementById("showLog").checked ? "block" : "none";
     }
 
     function jikanCacheGet(key) {
@@ -352,23 +444,16 @@
     }
 
     function jikanCacheSet(key, value) {
-        safeSetItem(key, JSON.stringify({
-            savedAt: Date.now(),
-            value
-        }));
+        safeSetItem(key, JSON.stringify({ savedAt: Date.now(), value }));
     }
 
     async function throttledJikanFetch(url) {
         const elapsed = Date.now() - lastJikanRequestAt;
-        if (elapsed < JIKAN_DELAY_MS) {
-            await sleep(JIKAN_DELAY_MS - elapsed);
-        }
+        if (elapsed < JIKAN_DELAY_MS) await sleep(JIKAN_DELAY_MS - elapsed);
 
         lastJikanRequestAt = Date.now();
 
-        const response = await fetch(url, {
-            headers: { "Accept": "application/json" }
-        });
+        const response = await fetch(url, { headers: { "Accept": "application/json" } });
 
         let result;
         try {
@@ -428,8 +513,12 @@
         return Math.round((smallerCoverage * 60) + (largerCoverage * 30));
     }
 
-    function scoreJikanCandidate(anilistTitles, jikanItem) {
-        const jikanTitles = collectJikanTitles(jikanItem);
+    function yearFromJikan(item) {
+        return item?.year || item?.aired?.prop?.from?.year || null;
+    }
+
+    function scoreJikanCandidate(anilistTitles, jikanItem, media, options) {
+        const jikanTitles = collectJikanTitles(jikanItem, options);
         const aniNormalized = anilistTitles.map(normalizeForCompare).filter(Boolean);
         const jikanNormalized = jikanTitles.map(normalizeForCompare).filter(Boolean);
         const aniCompact = anilistTitles.map(compactForCompare).filter(Boolean);
@@ -451,39 +540,78 @@
             }
         }
 
-        return best;
+        const aniYear = media?.startDate?.year || null;
+        const jikanYear = yearFromJikan(jikanItem);
+
+        if (aniYear && jikanYear) {
+            if (aniYear === jikanYear) best += 5;
+            else if (Math.abs(aniYear - jikanYear) >= 2) best -= 12;
+        }
+
+        return Math.max(0, Math.min(100, best));
     }
 
     function bestJikanSearchTerm(media, anilistTitles) {
         return media?.title?.english
             || media?.title?.romaji
+            || media?.title?.userPreferred
             || anilistTitles.find(isEnglishFriendly)
             || anilistTitles[0]
             || "";
     }
 
-    async function getJikanTitlesForMedia(media, anilistTitles) {
-        // Best path: AniList gives the MAL ID, so Jikan lookup is exact and safe.
+    async function getJikanTitlesForMedia(media, anilistTitles, options) {
         if (media?.idMal) {
-            const { item } = await getJikanAnimeByMalId(media.idMal);
-            return item ? collectJikanTitles(item) : [];
+            const { item, fromCache } = await getJikanAnimeByMalId(media.idMal);
+            const titles = item ? collectJikanTitles(item, options) : [];
+
+            logLine(`${media?.title?.userPreferred || media?.title?.romaji || media.id}: exact MAL ID ${media.idMal}${fromCache ? " from cache" : ""}; ${titles.length} Jikan title(s).`, "ok");
+            return titles;
         }
 
-        // Fallback path: only used when AniList has no MAL ID.
-        // This can be wrong for ambiguous titles, so it needs a high match score.
         const searchTerm = bestJikanSearchTerm(media, anilistTitles);
-        if (!searchTerm) return [];
+        if (!searchTerm) {
+            logLine(`${media?.id}: skipped Jikan search; no usable search title.`, "warn");
+            return [];
+        }
 
-        const { items } = await searchJikanAnime(searchTerm);
-        if (!items.length) return [];
+        const { items, fromCache } = await searchJikanAnime(searchTerm);
+        if (!items.length) {
+            logLine(`${searchTerm}: no Jikan search results${fromCache ? " from cache" : ""}.`, "warn");
+            return [];
+        }
 
         const best = items
-            .map(item => ({ item, score: scoreJikanCandidate(anilistTitles, item) }))
+            .map(item => ({ item, score: scoreJikanCandidate(anilistTitles, item, media, options) }))
             .sort((a, b) => b.score - a.score)[0];
 
-        if (!best || best.score < JIKAN_FUZZY_ACCEPT_SCORE) return [];
+        if (!best || best.score < JIKAN_FUZZY_ACCEPT_SCORE) {
+            logLine(`${searchTerm}: skipped fuzzy Jikan match; best score ${best?.score || 0}.`, "warn");
+            return [];
+        }
 
-        return collectJikanTitles(best.item);
+        const titles = collectJikanTitles(best.item, options);
+        logLine(`${searchTerm}: accepted fuzzy Jikan match MAL ${best.item?.mal_id || "unknown"} with score ${best.score}${fromCache ? " from cache" : ""}; ${titles.length} Jikan title(s).`, "ok");
+        return titles;
+    }
+
+    function clearJikanCache() {
+        let removed = 0;
+
+        try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith("autobrr_jikan_")) {
+                    localStorage.removeItem(key);
+                    removed++;
+                }
+            }
+        } catch {
+            setStatus("Could not clear Jikan cache. Browser storage may be unavailable.", "error");
+            return;
+        }
+
+        setStatus(`Cleared ${removed} cached Jikan entr${removed === 1 ? "y" : "ies"}.`, "success");
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -500,21 +628,28 @@
     async function generateFilter() {
         const usernameInput = document.getElementById("username");
         const username = usernameInput.value.trim();
-        const status = document.getElementById("status");
         const output = document.getElementById("output");
         const copyBtn = document.getElementById("copyBtn");
         const generateBtn = document.getElementById("generateBtn");
+        const clearCacheBtn = document.getElementById("clearCacheBtn");
 
         if (!username) {
-            status.innerText = "Enter an AniList username.";
-            status.classList.add("error");
+            setStatus("Enter an AniList username.", "error");
             return;
         }
 
+        const options = {
+            useJikan: document.getElementById("useJikan").checked,
+            includeNative: document.getElementById("includeNative").checked,
+            shortDescriptorVariants: document.getElementById("shortDescriptorVariants").checked
+        };
+
         safeSetItem("anilist_username", username);
         generateBtn.disabled = true;
-        status.innerText = "Querying AniList...";
-        status.classList.remove("error");
+        clearCacheBtn.disabled = true;
+        setStatus("Querying AniList...");
+        setProgress(0, 0);
+        resetLog();
         output.value = "";
         copyBtn.style.display = "none";
 
@@ -526,7 +661,9 @@
                 media {
                   id
                   idMal
-                  title { romaji english }
+                  format
+                  startDate { year month day }
+                  title { romaji english native userPreferred }
                   synonyms
                 }
               }
@@ -594,29 +731,35 @@
             let jikanAddedTitleCount = 0;
             let jikanErrorCount = 0;
 
+            setProgress(0, currentMedia.length);
+
             for (let i = 0; i < currentMedia.length; i++) {
                 const media = currentMedia[i];
-                const displayTitle = media?.title?.english || media?.title?.romaji || `AniList ID ${media.id}`;
+                const displayTitle = media?.title?.userPreferred || media?.title?.english || media?.title?.romaji || `AniList ID ${media.id}`;
 
-                status.innerText = `Enriching with Jikan/MAL ${i + 1}/${currentMedia.length}: ${displayTitle}`;
+                setStatus(`${options.useJikan ? "Enriching with Jikan/MAL" : "Generating patterns"} ${i + 1}/${currentMedia.length}: ${displayTitle}`);
 
-                const anilistTitles = collectTitles(media);
+                const anilistTitles = collectTitles(media, options);
                 let combinedTitles = [...anilistTitles];
 
-                try {
-                    const jikanTitles = await getJikanTitlesForMedia(media, anilistTitles);
-                    const before = uniqueTitles(combinedTitles).length;
-                    combinedTitles = uniqueTitles([...combinedTitles, ...jikanTitles]);
-                    jikanAddedTitleCount += Math.max(0, combinedTitles.length - before);
-                } catch (error) {
-                    // Jikan enrichment should improve results, but it should not break AniList generation.
-                    console.warn(`Jikan failed for ${displayTitle}:`, error);
-                    jikanErrorCount++;
+                if (options.useJikan) {
+                    try {
+                        const jikanTitles = await getJikanTitlesForMedia(media, anilistTitles, options);
+                        const before = uniqueTitles(combinedTitles).length;
+                        combinedTitles = uniqueTitles([...combinedTitles, ...jikanTitles]);
+                        jikanAddedTitleCount += Math.max(0, combinedTitles.length - before);
+                    } catch (error) {
+                        console.warn(`Jikan failed for ${displayTitle}:`, error);
+                        logLine(`${displayTitle}: Jikan failed: ${error?.message || "Unknown error."}`, "error");
+                        jikanErrorCount++;
+                    }
                 }
 
                 combinedTitles.forEach(title => {
-                    generatePatternsForTitle(title).forEach(pattern => allPatterns.add(pattern));
+                    generatePatternsForTitle(title, options).forEach(pattern => allPatterns.add(pattern));
                 });
+
+                setProgress(i + 1, currentMedia.length);
             }
 
             const finalPatterns = sortPatterns(allPatterns);
@@ -629,22 +772,27 @@
             const charCount = finalOutput.length.toLocaleString();
 
             output.value = finalOutput;
-            status.innerText = `Generated ${finalPatterns.length} unique patterns from ${seenMediaIds.size} current shows. Added ${jikanAddedTitleCount} MAL/Jikan titles. ${charCount} characters.`;
+
+            let message = `Generated ${finalPatterns.length} unique patterns from ${seenMediaIds.size} current shows. `;
+            if (options.useJikan) message += `Added ${jikanAddedTitleCount} MAL/Jikan titles. `;
+            message += `${charCount} characters.`;
 
             if (jikanErrorCount > 0) {
-                status.innerText += ` Jikan failed for ${jikanErrorCount} show${jikanErrorCount === 1 ? "" : "s"}, but AniList patterns were still generated.`;
+                message += ` Jikan failed for ${jikanErrorCount} show${jikanErrorCount === 1 ? "" : "s"}, but AniList patterns were still generated.`;
             }
 
             if (finalOutput.length > 500000) {
-                status.innerText += " Warning: this is very large and may fail to save behind some reverse proxies.";
+                message += " Warning: this is very large and may fail to save behind some reverse proxies.";
             }
 
+            setStatus(message, "success");
             copyBtn.style.display = "block";
         } catch (err) {
-            status.innerText = "Error: " + (err?.message || "Unknown error.");
-            status.classList.add("error");
+            setStatus("Error: " + (err?.message || "Unknown error."), "error");
         } finally {
             generateBtn.disabled = false;
+            clearCacheBtn.disabled = false;
+            setProgress(0, 0);
         }
     }
 
