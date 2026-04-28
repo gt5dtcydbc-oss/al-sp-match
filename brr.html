@@ -718,27 +718,44 @@
         safeSetItem(key, JSON.stringify({ savedAt: Date.now(), value }));
     }
 
+    let aniListCooldownUntil = 0;
+
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
+
+    // -- UPGRADED JIKAN FETCHER (Now with Timeout) --
     async function throttledJikanFetch(url) {
         const now = Date.now();
         const elapsed = now - lastJikanRequestAt;
         if (elapsed < JIKAN_DELAY_MS) await sleep(JIKAN_DELAY_MS - elapsed);
         lastJikanRequestAt = Date.now();
 
-        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-
-        let result;
         try {
-            result = await response.json();
-        } catch {
-            throw new Error(`Jikan returned a non-JSON response. HTTP ${response.status}.`);
-        }
+            const response = await fetch(url, { 
+                headers: { 'Accept': 'application/json' },
+                signal: timeoutSignal(15000) // Stop infinite hanging
+            });
 
-        if (!response.ok) {
-            const message = result?.message || result?.error || `Jikan returned HTTP ${response.status}.`;
-            throw new Error(message);
-        }
+            let result = await response.json().catch(() => null);
 
-        return result;
+            if (!result) throw new Error(`Jikan returned a non-JSON response. HTTP ${response.status}.`);
+
+            if (!response.ok) {
+                const message = result?.message || result?.error || `Jikan returned HTTP ${response.status}.`;
+                throw new Error(message);
+            }
+
+            return result;
+        } catch (error) {
+            if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                throw new Error("Request to Jikan timed out.");
+            }
+            throw error;
+        }
     }
 
     async function getJikanByMalId(malId) {
@@ -820,20 +837,20 @@
         };
     }
 
-    async function fetchAniListCurrent(username) {
+    // -- UPGRADED ANILIST FETCHER (Auto-retries & Cooldowns) --
+    async function fetchAniListCurrent(username, retries = 2) {
+        if (Date.now() < aniListCooldownUntil) {
+            await sleep(aniListCooldownUntil - Date.now());
+        }
+
         const query = `
             query ($name: String) {
               MediaListCollection(userName: $name, type: ANIME, status: CURRENT) {
                 lists {
                   entries {
                     media {
-                      id
-                      idMal
-                      siteUrl
-                      format
-                      startDate { year month day }
-                      title { romaji english native userPreferred }
-                      synonyms
+                      id idMal siteUrl format startDate { year month day }
+                      title { romaji english native userPreferred } synonyms
                     }
                   }
                 }
@@ -841,50 +858,56 @@
             }
         `;
 
-        const response = await fetch(ANILIST_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ query, variables: { name: username } })
-        });
-
-        let result;
         try {
-            result = await response.json();
-        } catch {
-            throw new Error(`AniList returned a non-JSON response. HTTP ${response.status}.`);
-        }
-
-        if (!response.ok) {
-            const retryAfter = response.headers.get('Retry-After');
-            const apiMessage = result?.errors?.map(error => error.message).join('; ');
-            let message = apiMessage || `AniList returned HTTP ${response.status}.`;
-            if (response.status === 429 && retryAfter) message += ` Retry after ${retryAfter} seconds.`;
-            throw new Error(message);
-        }
-
-        if (result.errors?.length) {
-            throw new Error(result.errors.map(error => error.message).join('; '));
-        }
-
-        const collection = result.data?.MediaListCollection;
-        if (!collection) throw new Error('User not found or list is private.');
-
-        const uniqueById = new Map();
-        const lists = Array.isArray(collection.lists) ? collection.lists : [];
-
-        lists.forEach(list => {
-            const entries = Array.isArray(list.entries) ? list.entries : [];
-            entries.forEach(entry => {
-                const media = entry?.media;
-                if (!media?.id) return;
-                if (!uniqueById.has(media.id)) uniqueById.set(media.id, media);
+            const response = await fetch(ANILIST_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ query, variables: { name: username } }),
+                signal: timeoutSignal(15000) // Stop infinite hanging
             });
-        });
 
-        return [...uniqueById.values()];
+            const result = await response.json().catch(() => ({}));
+
+            // Handle 429 Auto-Retry
+            if (response.status === 429) {
+                const retryAfter = Number(response.headers.get('Retry-After')) || 60;
+                aniListCooldownUntil = Date.now() + (retryAfter * 1000);
+                
+                if (retries > 0) {
+                    setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning');
+                    await sleep(retryAfter * 1000);
+                    return fetchAniListCurrent(username, retries - 1);
+                }
+                throw new Error("AniList rate limit reached. Try again later.");
+            }
+
+            if (!response.ok || result.errors) {
+                const message = result.errors?.map(err => err.message).join('; ') || `AniList returned HTTP ${response.status}.`;
+                throw new Error(message);
+            }
+
+            const collection = result.data?.MediaListCollection;
+            if (!collection) throw new Error('User not found or list is private.');
+
+            const uniqueById = new Map();
+            const lists = Array.isArray(collection.lists) ? collection.lists : [];
+
+            lists.forEach(list => {
+                const entries = Array.isArray(list.entries) ? list.entries : [];
+                entries.forEach(entry => {
+                    const media = entry?.media;
+                    if (!media?.id) return;
+                    if (!uniqueById.has(media.id)) uniqueById.set(media.id, media);
+                });
+            });
+
+            return [...uniqueById.values()];
+        } catch (error) {
+            if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                throw new Error("Request to AniList timed out.");
+            }
+            throw error;
+        }
     }
 
     function buildFilterPatterns(mediaTitleMap, options) {
