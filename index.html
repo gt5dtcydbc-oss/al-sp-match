@@ -2124,11 +2124,13 @@
           const currentTime = item.latestReleaseTime;
 
           let trackerEp = item.matchedEpisode; 
-          if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
+          if (trackerEp) {
+            // 1. Prefer the actual episode number parsed directly from the RSS feed
+            trackerEp = String(trackerEp).padStart(2, "0");
+          } else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
+            // 2. Fallback to AniList estimation if RSS didn't provide a clean episode number
             const releasedEp = Math.max(1, item.displayEpisode - 1);
             trackerEp = String(releasedEp).padStart(2, "0");
-          } else if (trackerEp) {
-            trackerEp = String(trackerEp).padStart(2, "0");
           }
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
