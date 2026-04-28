@@ -5,11 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Currently airing</title>
   
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-
   <style>
 :root {
   /* Softer, deep slate dark mode palette */
@@ -1060,7 +1055,7 @@
         </div>
 
         <div id="addShowResults" class="list-stack">
-          <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
+          <div class="empty">Type at least 3 characters to search currently airing AniList shows.</div>
         </div>
       </div>
     </div>
@@ -1085,6 +1080,8 @@
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     
     const COUNTDOWN_TICK_MS = 30 * 1000;
+    const SEARCH_DEBOUNCE_MS = 650;
+    const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
     const SCHEDULE_MOVED_THRESHOLD_SECONDS = (7 * 24 * 60 * 60) + (5 * 60 * 60);
@@ -1150,6 +1147,21 @@
     const DB_NAME = 'AiringBoardImages';
     const STORE_NAME = 'covers';
     let dbPromise = null;
+    let activeCoverObjectUrls = [];
+
+    function makeCachedCoverObjectUrl(blob) {
+      const objectUrl = URL.createObjectURL(blob);
+      activeCoverObjectUrls.push(objectUrl);
+      return objectUrl;
+    }
+
+    function revokeActiveCoverUrls() {
+      for (const url of activeCoverObjectUrls) {
+        URL.revokeObjectURL(url);
+      }
+
+      activeCoverObjectUrls = [];
+    }
 
     function getDB() {
       if (!dbPromise) {
@@ -1173,14 +1185,14 @@
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => resolve(null);
         });
-        if (blob) return URL.createObjectURL(blob);
+        if (blob) return makeCachedCoverObjectUrl(blob);
 
         const res = await fetch(url);
         if (!res.ok) throw new Error();
         const newBlob = await res.blob();
         const txW = db.transaction(STORE_NAME, 'readwrite');
         txW.objectStore(STORE_NAME).put(newBlob, id);
-        return URL.createObjectURL(newBlob);
+        return makeCachedCoverObjectUrl(newBlob);
       } catch (err) {
         return url;
       }
@@ -1251,6 +1263,16 @@
       modalClearOrRemoveBtn: document.getElementById("modalClearOrRemoveBtn"),
       modalSaveBtn: document.getElementById("modalSaveBtn")
     };
+
+    let aniListCooldownUntil = 0;
+
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
 
     const state = {
       userName: "",
@@ -1325,17 +1347,30 @@
     }
 
     async function graphQLRequest(query, variables) {
+      if (Date.now() < aniListCooldownUntil) {
+        throw new Error("AniList is temporarily rate-limited. Waiting before retrying.");
+      }
+
       const response = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ query, variables }),
-        signal: AbortSignal.timeout(15000) // Added safety timeout
+        signal: timeoutSignal(15000)
       });
+
       const data = await response.json().catch(() => ({}));
+
+      if (response.status === 429) {
+        const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+        aniListCooldownUntil = Date.now() + retryAfter * 1000;
+        throw new Error("AniList rate limit reached. Retrying later.");
+      }
+
       if (!response.ok || data.errors) {
         const message = data.errors?.map(err => err.message).join(" | ") || `Request failed (${response.status})`;
         throw new Error(message);
       }
+
       return data.data || {};
     }
 
@@ -2323,6 +2358,7 @@
       }
       
       state.lastNextSlotKey = newNextSlotKey;
+      revokeActiveCoverUrls();
 
       els.board.innerHTML = grouped.map(dayBlock => {
         const isCollapsed = state.collapsedDays.has(dayBlock.day);
@@ -2647,9 +2683,9 @@
       const addedIds = new Set(Object.keys(state.addedShows || {}).map(String));
 
       if (!state.searchResults.length) {
-        const text = els.addShowSearch.value.trim().length >= 2
+        const text = els.addShowSearch.value.trim().length >= SEARCH_MIN_LENGTH
           ? "No currently airing AniList matches found."
-          : "Type at least 2 characters to search currently airing AniList shows.";
+          : `Type at least ${SEARCH_MIN_LENGTH} characters to search currently airing AniList shows.`;
         els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
         return;
       }
@@ -2684,7 +2720,7 @@
     async function handleSearchInput() {
       const query = els.addShowSearch.value.trim();
       const token = ++state.searchToken;
-      if (query.length < 2) {
+      if (query.length < SEARCH_MIN_LENGTH) {
         state.searchResults = [];
         renderSearchResults();
         return;
@@ -2869,7 +2905,7 @@
     let searchDebounceTimer = null;
     els.addShowSearch.addEventListener("input", () => {
       clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(handleSearchInput, 250);
+      searchDebounceTimer = setTimeout(handleSearchInput, SEARCH_DEBOUNCE_MS);
     });
 
     els.addShowSearch.addEventListener("keydown", event => {
