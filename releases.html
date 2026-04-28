@@ -1354,38 +1354,70 @@
       }
     }
 
+    let aniListCooldownUntil = 0;
+
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
+
+    async function safeAniListRequest(query, variables, retries = 2) {
+      // 1. If we are currently on a rate-limit cooldown, pause this request until it's over
+      if (Date.now() < aniListCooldownUntil) {
+        await sleep(aniListCooldownUntil - Date.now());
+      }
+
+      try {
+        const response = await fetch(ANILIST_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ query, variables }),
+          signal: timeoutSignal(15000) // 2. Stop hanging after 15 seconds
+        });
+
+        const json = await response.json().catch(() => ({}));
+
+        // 3. Handle 429 Too Many Requests gracefully
+        if (response.status === 429) {
+          const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+          aniListCooldownUntil = Date.now() + (retryAfter * 1000);
+          
+          if (retries > 0) {
+            console.warn(`AniList Rate Limited. Pausing for ${retryAfter}s...`);
+            await sleep(retryAfter * 1000);
+            return safeAniListRequest(query, variables, retries - 1); // Try again automatically
+          }
+          throw new Error("AniList rate limit reached. Please try again later.");
+        }
+
+        if (!response.ok || json.errors) {
+          const message = json.errors?.map(err => err.message).join(" | ") || `AniList returned ${response.status}`;
+          throw new Error(message);
+        }
+
+        return json;
+      } catch (error) {
+        if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+          throw new Error("Request to AniList timed out.");
+        }
+        throw error;
+      }
+    }
+
     async function searchAniList(search) {
       const query = `
         query SearchAnime($search: String, $page: Int, $perPage: Int) {
           Page(page: $page, perPage: $perPage) {
             media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
-              id
-              title { romaji english native }
-              coverImage { medium large }
-              episodes
-              format
-              status
-              seasonYear
-              siteUrl
+              id title { romaji english native } coverImage { medium large }
+              episodes format status seasonYear siteUrl
             }
           }
         }
       `;
-
-      const response = await fetch(ANILIST_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({
-          query,
-          variables: { search, page: 1, perPage: 8 }
-        })
-      });
-
-      if (!response.ok) throw new Error(`AniList returned ${response.status}`);
-      const json = await response.json();
+      const json = await safeAniListRequest(query, { search, page: 1, perPage: 8 });
       return json?.data?.Page?.media ?? [];
     }
 
@@ -1393,32 +1425,12 @@
       const query = `
         query AnimeById($id: Int) {
           Media(id: $id, type: ANIME) {
-            id
-            title { romaji english native }
-            coverImage { medium large }
-            episodes
-            format
-            status
-            seasonYear
-            siteUrl
+            id title { romaji english native } coverImage { medium large }
+            episodes format status seasonYear siteUrl
           }
         }
       `;
-
-      const response = await fetch(ANILIST_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({
-          query,
-          variables: { id: Number(id) }
-        })
-      });
-
-      if (!response.ok) throw new Error(`AniList returned ${response.status}`);
-      const json = await response.json();
+      const json = await safeAniListRequest(query, { id: Number(id) });
       return json?.data?.Media ?? null;
     }
 
