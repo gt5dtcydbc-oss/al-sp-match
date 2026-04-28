@@ -585,7 +585,7 @@
         variants.add(original);
 
         const shortened = original
-            .replace(/\s+(arc|hen|saga|chapter|story|movie|film)$/i, '')
+            .replace(/[\s:._-]+(arc|hen|saga|chapter|story|movie|film)$/i, '')
             .trim();
 
         if (shortened !== original && compactCompare(shortened).length >= 8) {
