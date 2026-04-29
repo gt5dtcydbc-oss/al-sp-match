@@ -1209,12 +1209,12 @@
     async function loadImagesToDOM() {
       const imgs = document.querySelectorAll('img.lazy-cover');
       for (const img of imgs) {
-        img.classList.remove('lazy-cover'); // Prevent double processing
         const id = img.getAttribute('data-media-id');
         const url = img.getAttribute('data-original-url');
         if (id && url) {
           const localUrl = await getCachedImage(id, url);
           img.src = localUrl;
+          img.classList.remove('lazy-cover');
         }
       }
     }
@@ -1268,7 +1268,6 @@
 
     function timeoutSignal(ms) {
       if (AbortSignal.timeout) return AbortSignal.timeout(ms);
-
       const controller = new AbortController();
       setTimeout(() => controller.abort(), ms);
       return controller.signal;
@@ -1348,7 +1347,7 @@
 
     async function graphQLRequest(query, variables) {
       if (Date.now() < aniListCooldownUntil) {
-        throw new Error("AniList is temporarily rate-limited. Waiting before retrying.");
+        await new Promise(resolve => setTimeout(resolve, aniListCooldownUntil - Date.now()));
       }
 
       const response = await fetch(ENDPOINT, {
@@ -1401,7 +1400,7 @@
           const response = await fetch(target, { 
             method: "GET", 
             cache: "no-store",
-            signal: AbortSignal.timeout(15000) // Added safety timeout
+            signal: timeoutSignal(15000) // Consistent timeout helper
           });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
@@ -2133,18 +2132,20 @@
             trackerEp = String(releasedEp).padStart(2, "0");
           }
 
-          const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+          if (trackerEp) { // Only push if we have a valid episode number
+            const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
 
-          if (trackerEp && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
-            entry.history.push({
-              day: currentDay,
-              time: currentTime,
-              mins: toMinutes(currentTime),
-              episode: trackerEp
-            });
+            if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+              entry.history.push({
+                day: currentDay,
+                time: currentTime,
+                mins: toMinutes(currentTime),
+                episode: trackerEp
+              });
 
-            if (entry.history.length > 3) {
-              entry.history.shift();
+              if (entry.history.length > 3) {
+                entry.history.shift();
+              }
             }
           }
 
@@ -2355,10 +2356,7 @@
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       const newNextSlotKey = nextSlot ? nextSlot.key : null;
 
-      if (isTick && newNextSlotKey === state.lastNextSlotKey) {
-        return; 
-      }
-      
+      // Update state even if next slot unchanged – we still need to re-render for aired counts
       state.lastNextSlotKey = newNextSlotKey;
       revokeActiveCoverUrls();
 
