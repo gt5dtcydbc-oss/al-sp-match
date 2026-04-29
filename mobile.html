@@ -272,7 +272,7 @@
       background: var(--bg);
     }
 
-    /* ---------- New Card UI ---------- */
+    /* ---------- New Card UI (portrait, two-column) ---------- */
     .board-header {
       display: flex;
       align-items: center;
@@ -308,21 +308,36 @@
       border: 1px solid var(--line);
     }
 
+    /* Mobile-first: 2 columns, tablet: 3, desktop: 4 */
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 14px;
     }
 
+    @media (min-width: 600px) {
+      .card-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+    }
+
+    @media (min-width: 900px) {
+      .card-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+      }
+    }
+
     .day-section {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
 
     .day-section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       padding: 0 4px;
     }
 
@@ -343,10 +358,9 @@
     }
 
     .anime-card {
-      position: relative;
-      border-radius: 18px;
-      overflow: hidden;
       background: var(--panel);
+      border-radius: 16px;
+      overflow: hidden;
       box-shadow: var(--shadow);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       display: flex;
@@ -358,62 +372,48 @@
       box-shadow: 0 20px 32px rgba(0, 0, 0, 0.5);
     }
 
-    .anime-card-image {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
+    .anime-card.highlight-next {
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 18px rgba(164, 185, 255, 0.35);
+    }
+
+    .anime-card.on-break .anime-card-image-wrapper img {
+      opacity: 0.4;
+      filter: grayscale(70%);
+    }
+
+    .anime-card-image-wrapper {
+      aspect-ratio: 2 / 3;
+      overflow: hidden;
+      position: relative;
       background: var(--panel-2);
     }
 
-    .anime-card-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: linear-gradient(transparent 0%, rgba(15,17,25,0.92) 70%);
-      padding: 18px 14px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .anime-card-title {
-      font-weight: 800;
-      font-size: 1rem;
-      line-height: 1.25;
-      color: #fff;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .anime-card-episode {
-      font-size: 0.72rem;
-      color: var(--muted);
-      font-weight: 600;
+    .anime-card-image-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .anime-card-time-chip {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: 10px;
+      right: 10px;
       background: rgba(0, 0, 0, 0.55);
       backdrop-filter: blur(8px);
       color: #fff;
       border: 1px solid rgba(255,255,255,0.2);
       border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.75rem;
+      padding: 4px 9px;
+      font-size: 0.7rem;
       font-weight: 700;
     }
 
     .anime-card-badges {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 10px;
+      left: 10px;
       display: flex;
       gap: 6px;
     }
@@ -429,32 +429,38 @@
       border: 1px solid rgba(255,255,255,0.18);
     }
 
-    .badge-chip.moved {
-      color: #ffd38a;
-      border-color: rgba(255,210,138,0.35);
+    .badge-chip.moved { color: #ffd38a; border-color: rgba(255,210,138,0.35); }
+    .badge-chip.added { color: #c6d4ff; border-color: rgba(166,185,255,0.4); }
+
+    .anime-card-info {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .badge-chip.added {
-      color: #c6d4ff;
-      border-color: rgba(166, 185, 255, 0.4);
+    .anime-card-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      line-height: 1.3;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .anime-card.highlight-next {
-      border: 2px solid var(--accent);
-      box-shadow: 0 0 18px rgba(164, 185, 255, 0.35);
-    }
-
-    .anime-card.on-break .anime-card-image {
-      opacity: 0.4;
-      filter: grayscale(70%);
+    .anime-card-episode {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 600;
     }
 
     .anime-card-settings-btn {
       position: absolute;
-      bottom: 12px;
-      right: 12px;
-      width: 32px;
-      height: 32px;
+      bottom: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
       border-radius: 999px;
       background: rgba(0,0,0,0.45);
       backdrop-filter: blur(6px);
@@ -464,8 +470,8 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: background 0.2s;
       z-index: 5;
+      transition: background 0.2s;
     }
 
     .anime-card-settings-btn:hover {
@@ -580,7 +586,7 @@
       line-height: 1.45;
     }
 
-    /* ---------- Modal styles ---------- */
+    /* Modal styles (unchanged) */
     .modal {
       position: fixed;
       inset: 0;
@@ -714,7 +720,6 @@
     @media (max-width: 720px) {
       .wrap { padding: 12px 10px 36px; }
       .controls { padding: 16px; }
-      .card-grid { grid-template-columns: 1fr; }
       .top-dropdown > summary, .top-dropdown-body { padding-left: 16px; padding-right: 16px; }
       .modal {
         align-items: flex-end;
@@ -733,7 +738,7 @@
       .modal-footer { position: sticky; bottom: 0; z-index: 2; padding-bottom: calc(16px + env(safe-area-inset-bottom)); background: rgba(15,17,25,0.96); backdrop-filter: blur(12px); }
     }
 
-    /* ---------- Old footer and indicator (kept) ---------- */
+    /* Footer & indicator */
     .footer {
       margin-top: 14px;
       color: var(--muted);
@@ -760,9 +765,7 @@
       height: 9px;
       border-radius: 999px;
       background: rgba(var(--indicator-rgb), 0.92);
-      box-shadow:
-        0 0 0 1px rgba(var(--indicator-rgb), 0.12),
-        0 0 10px rgba(var(--indicator-rgb), 0.12);
+      box-shadow: 0 0 0 1px rgba(var(--indicator-rgb), 0.12), 0 0 10px rgba(var(--indicator-rgb), 0.12);
       z-index: 9999;
       opacity: 0.9;
       pointer-events: auto;
@@ -774,44 +777,18 @@
     }
 
     .update-indicator.flash {
-      animation:
-        indicatorBreathe 2.2s ease-in-out infinite,
-        indicatorFlash 0.95s ease;
+      animation: indicatorBreathe 2.2s ease-in-out infinite, indicatorFlash 0.95s ease;
     }
 
     @keyframes indicatorBreathe {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 0.72;
-        box-shadow:
-          0 0 0 1px rgba(var(--indicator-rgb), 0.10),
-          0 0 8px rgba(var(--indicator-rgb), 0.08);
-      }
-      50% {
-        transform: scale(1.12);
-        opacity: 0.98;
-        box-shadow:
-          0 0 0 1px rgba(var(--indicator-rgb), 0.16),
-          0 0 14px rgba(var(--indicator-rgb), 0.18);
-      }
+      0%, 100% { transform: scale(1); opacity: 0.72; box-shadow: 0 0 0 1px rgba(var(--indicator-rgb), 0.10), 0 0 8px rgba(var(--indicator-rgb), 0.08); }
+      50% { transform: scale(1.12); opacity: 0.98; box-shadow: 0 0 0 1px rgba(var(--indicator-rgb), 0.16), 0 0 14px rgba(var(--indicator-rgb), 0.18); }
     }
 
     @keyframes indicatorFlash {
-      0% {
-        box-shadow:
-          0 0 0 0 rgba(var(--indicator-rgb), 0.55),
-          0 0 10px rgba(var(--indicator-rgb), 0.18);
-      }
-      45% {
-        box-shadow:
-          0 0 0 10px rgba(var(--indicator-rgb), 0),
-          0 0 20px rgba(var(--indicator-rgb), 0.28);
-      }
-      100% {
-        box-shadow:
-          0 0 0 0 rgba(var(--indicator-rgb), 0),
-          0 0 10px rgba(var(--indicator-rgb), 0.12);
-      }
+      0% { box-shadow: 0 0 0 0 rgba(var(--indicator-rgb), 0.55), 0 0 10px rgba(var(--indicator-rgb), 0.18); }
+      45% { box-shadow: 0 0 0 10px rgba(var(--indicator-rgb), 0), 0 0 20px rgba(var(--indicator-rgb), 0.28); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--indicator-rgb), 0), 0 0 10px rgba(var(--indicator-rgb), 0.12); }
     }
   </style>
 </head>
@@ -2011,7 +1988,6 @@
             const releasedEp = Math.max(1, item.displayEpisode - 1);
             trackerEp = String(releasedEp).padStart(2, "0");
           } else {
-            // Fallback to unknown placeholder to still record the time sample
             trackerEp = "?";
           }
 
@@ -2208,7 +2184,7 @@
       return output;
     }
 
-    // ==================== NEW RENDER ====================
+    // ==================== NEW RENDER (portrait two-column cards) ====================
     function renderBoard(items, isTick = false) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
@@ -2283,32 +2259,34 @@
     }
 
     function cardHTML(item, displayTime, isNext) {
-      const epStr = item.hasNextAiring ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}` : "";
+      const epStr = item.hasNextAiring ? `EP ${item.displayEpisode}/${item.totalEpisodes}` : "";
       const title = escapeHtml(item.title);
       const coverUrl = item.cover || "";
       const id = String(item.id);
 
       return `
         <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''}" data-id="${id}">
-          ${coverUrl ? `<img class="lazy-cover anime-card-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy">` : ''}
-          <div class="anime-card-overlay">
+          <div class="anime-card-image-wrapper">
+            ${coverUrl ? `<img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy">` : ''}
+            <div class="anime-card-time-chip">${escapeHtml(displayTime)}</div>
+            <div class="anime-card-badges">
+              ${item.isScheduleMoved ? `<span class="badge-chip moved">Break</span>` : ''}
+              ${item.isAdded ? `<span class="badge-chip added">Added</span>` : ''}
+              ${item.source === "manual" ? `<span class="badge-chip" style="color:#ffd38a">CUSTOM</span>` : (item.source === "rss" || item.source === "cache") ? `<span class="badge-chip" style="color:#8fe3b2">RSS</span>` : ''}
+            </div>
+            <button class="anime-card-settings-btn" data-action="open-show-settings" data-id="${id}" aria-label="Adjust ${title}" title="Adjust show">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
+                <path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="17" cy="7" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                <circle cx="9" cy="17" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+              </svg>
+            </button>
+          </div>
+          <div class="anime-card-info">
             <div class="anime-card-title">${title}</div>
             ${epStr ? `<div class="anime-card-episode">${escapeHtml(epStr)}</div>` : ''}
           </div>
-          <div class="anime-card-time-chip">${escapeHtml(displayTime)}</div>
-          <div class="anime-card-badges">
-            ${item.isScheduleMoved ? `<span class="badge-chip moved">On Break</span>` : ''}
-            ${item.isAdded ? `<span class="badge-chip added">Added</span>` : ''}
-            ${item.source === "manual" ? `<span class="badge-chip" style="color:#ffd38a">CUSTOM</span>` : (item.source === "rss" || item.source === "cache") ? `<span class="badge-chip" style="color:#8fe3b2">RSS</span>` : ''}
-          </div>
-          <button class="anime-card-settings-btn" type="button" data-action="open-show-settings" data-id="${id}" aria-label="Adjust ${title}" title="Adjust show">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
-              <path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <circle cx="17" cy="7" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-              <circle cx="9" cy="17" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-            </svg>
-          </button>
         </div>
       `;
     }
