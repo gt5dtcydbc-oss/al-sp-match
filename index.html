@@ -2130,22 +2130,23 @@
             // 2. Fallback to AniList estimation if RSS didn't provide a clean episode number
             const releasedEp = Math.max(1, item.displayEpisode - 1);
             trackerEp = String(releasedEp).padStart(2, "0");
+          } else {
+            // 3. Fallback to unknown placeholder to still record the time sample
+            trackerEp = "?";
           }
 
-          if (trackerEp) { // Only push if we have a valid episode number
-            const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+          const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
 
-            if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
-              entry.history.push({
-                day: currentDay,
-                time: currentTime,
-                mins: toMinutes(currentTime),
-                episode: trackerEp
-              });
+          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+            entry.history.push({
+              day: currentDay,
+              time: currentTime,
+              mins: toMinutes(currentTime),
+              episode: trackerEp
+            });
 
-              if (entry.history.length > 3) {
-                entry.history.shift();
-              }
+            if (entry.history.length > 3) {
+              entry.history.shift();
             }
           }
 
