@@ -1159,7 +1159,6 @@
       for (const url of activeCoverObjectUrls) {
         URL.revokeObjectURL(url);
       }
-
       activeCoverObjectUrls = [];
     }
 
@@ -1620,7 +1619,10 @@
           if (!candidateNormalized) continue;
           const variantSeason = extractSeasonNumber(normalized);
           const candidateSeason = extractSeasonNumber(candidateNormalized);
-          const seasonPenalty = (variantSeason !== null && candidateSeason !== null && variantSeason !== candidateSeason) ? 5 : 0;
+          
+          // INCREASED PENALTY FOR SEASON MISMATCHES
+          const seasonPenalty = (variantSeason !== null && candidateSeason !== null && variantSeason !== candidateSeason) ? 40 : 0;
+          
           if (candidateNormalized === normalized) { best = Math.max(best, 100 - seasonPenalty); continue; }
           if (candidateCompact && compact && candidateCompact === compact) { best = Math.max(best, 98 - seasonPenalty); continue; }
           if (candidateNormalized.includes(normalized) || normalized.includes(candidateNormalized)) {
@@ -2255,7 +2257,7 @@
       return { isNow, minutesUntil };
     }
 
-    // HELPER: Detect if a specific slot has already happened
+    // HELPER: Detect if a specific slot has already happened (FIXED ROLLOVER BUG)
     function hasAired(day, time, timeZone = DEFAULT_TIMEZONE) {
       const now = getNowContext(timeZone);
       const dayIndex = WEEKDAYS.indexOf(day);
@@ -2263,9 +2265,17 @@
       
       const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
       
+      // If it's today, check if the current time has passed the target time
       if (dayOffset === 0) {
         return now.totalMinutes >= targetMinutes;
       }
+      
+      // If the show aired earlier in the week (up to 3 days ago), consider it "Aired" for this cycle.
+      // dayOffset 6 = yesterday, 5 = 2 days ago, 4 = 3 days ago.
+      if (dayOffset > 3) {
+        return true;
+      }
+      
       return false; 
     }
 
@@ -2352,12 +2362,11 @@
       `).join("");
     }
 
-    function renderBoard(items, isTick = false) {
+    function renderBoard(items) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       const newNextSlotKey = nextSlot ? nextSlot.key : null;
 
-      // Update state even if next slot unchanged – we still need to re-render for aired counts
       state.lastNextSlotKey = newNextSlotKey;
       revokeActiveCoverUrls();
 
@@ -2378,7 +2387,7 @@
         const countDisplay = isCollapsed ? `${airedCount}/${totalCount}` : totalCount;
 
         return `
-        <section class="panel day-column ${isCollapsed ? 'collapsed' : ''}">
+        <section class="panel day-column ${isCollapsed ? 'collapsed' : ''}" data-day="${escapeHtml(dayBlock.day)}">
           <div class="day-head">
             <div class="day-name">${escapeHtml(dayBlock.day)}</div>
             <div class="day-head-right">
@@ -2395,7 +2404,7 @@
             const isNext = nextSlot?.key === slotKey;
             const countdownText = isNext ? "Airing Next" : "";
             return `
-              <div class="time-group ${isNext ? "highlight-next" : ""}">
+              <div class="time-group ${isNext ? "highlight-next" : ""}" data-slot-key="${escapeHtml(slotKey)}">
                 <div class="time-pill">
                   ${escapeHtml(slot.time)}
                   ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
@@ -2458,6 +2467,53 @@
       }
 
       loadImagesToDOM();
+    }
+
+    // NEW FUNCTION: Updates highlights and counters WITHOUT triggering an innerHTML wipe
+    function updateTickVisuals() {
+      const grouped = groupForBoard(state.items);
+      const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
+      const nextSlotKey = nextSlot ? nextSlot.key : null;
+
+      // 1. Update Highlighting on Time Groups
+      document.querySelectorAll('.time-group').forEach(tg => {
+        const slotKey = tg.dataset.slotKey;
+        if (!slotKey) return;
+        
+        const timeText = slotKey.split('::')[1];
+        const isNext = slotKey === nextSlotKey;
+
+        tg.classList.toggle('highlight-next', isNext);
+
+        const timePill = tg.querySelector('.time-pill');
+        if (timePill) {
+          timePill.innerHTML = `${escapeHtml(timeText)} ${isNext ? `<span class="countdown-inline">· Airing Next</span>` : ""}`;
+        }
+      });
+
+      // 2. Recalculate and update fraction counters per day column
+      grouped.forEach(dayBlock => {
+        let airedCount = 0;
+        let totalCount = 0;
+
+        dayBlock.slots.forEach(slot => {
+          const aired = hasAired(dayBlock.day, slot.time, DEFAULT_TIMEZONE);
+          slot.items.forEach(() => {
+            totalCount++;
+            if (aired) airedCount++;
+          });
+        });
+
+        const col = document.querySelector(`.day-column[data-day="${escapeHtml(dayBlock.day)}"]`);
+        if (col) {
+          const countEl = col.querySelector('.day-count');
+          const isCollapsed = col.classList.contains('collapsed');
+          if (countEl) {
+            countEl.textContent = isCollapsed ? `${airedCount}/${totalCount}` : totalCount;
+            countEl.title = `${airedCount} aired out of ${totalCount}`;
+          }
+        }
+      });
     }
 
     function itemMap() {
@@ -2898,7 +2954,9 @@
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(() => { 
-        if (state.items.length) renderBoard(state.items, true); 
+        if (state.items.length) {
+          updateTickVisuals(); 
+        }
         renderFooterStatus(); 
       }, COUNTDOWN_TICK_MS);
     }
