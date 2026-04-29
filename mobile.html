@@ -810,7 +810,7 @@
   </div>
 
   <script>
-    // ==================== FULL JS (with split tap and stable episode) ====================
+    // ==================== FULL JS (with split tap, stable episode, and day-section fix) ====================
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
@@ -2079,7 +2079,7 @@
       return output;
     }
 
-    // ==================== UPDATE HIGHLIGHTS (flicker-free) ====================
+    // ==================== UPDATE HIGHLIGHTS (flicker-free, fixed day-section target) ====================
     function updateBoardHighlights() {
       const grouped = groupForBoard(state.items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
@@ -2107,15 +2107,16 @@
 
       const daySections = document.querySelectorAll('.day-section');
       for (const section of daySections) {
-        const header = section.querySelector('.day-section-name');
-        if (!header) continue;
-        const dayName = header.textContent.trim();
+        const dayName = section.dataset.day;
+        if (!dayName) continue;
         const dayItems = state.items.filter(i => i.day === dayName);
         const totalCount = dayItems.length;
         let airedCount = 0;
         for (const item of dayItems) {
           if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
         }
+        const header = section.querySelector('.day-section-name');
+        if (!header) continue;
         let countEl = header.querySelector('.day-count');
         if (!countEl) {
           countEl = document.createElement('span');
@@ -2166,7 +2167,8 @@
           for (const item of dayItems) {
             if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
           }
-          html += `<div class="day-section">
+          // Include data-day attribute for reliable day identification
+          html += `<div class="day-section" data-day="${escapeHtml(dayBlock.day)}">
             <div class="day-section-header">
               <span class="day-section-name">${escapeHtml(dayBlock.day)} <span class="day-count" style="font-size:0.8rem;color:var(--muted);margin-left:8px;">${airedCount}/${totalCount}</span></span>
               <button class="day-section-toggle" data-action="toggle-day" data-day="${escapeHtml(dayBlock.day)}">${collapsed ? 'Show' : 'Hide'}</button>
