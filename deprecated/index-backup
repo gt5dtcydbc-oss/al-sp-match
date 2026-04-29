@@ -1,0 +1,3034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Currently airing</title>
+  
+  <style>
+:root {
+  /* Softer, deep slate dark mode palette */
+  --bg: #14161f; 
+  --panel: #1e222d;
+  --panel-hover: #262b38;
+  --panel-2: #2b303f;
+  --line: #363d52;
+  --text: #f0f2f8;
+  --muted: #9aa4b8;
+  --accent: #b4c6ff;
+  --accent-2: #d6e0ff;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  --ok: #8fe3b2;
+  --warn: #ffd38a;
+}
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    .wrap {
+      max-width: 1540px;
+      margin: 0 auto;
+      padding: 24px 18px 42px;
+    }
+
+    .title {
+      margin: 0 0 16px;
+      font-size: clamp(1.5rem, 2vw, 2.2rem);
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .top-stack {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+      margin: 0;
+    }
+
+    .toolbar-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(260px, 1fr) auto;
+      align-items: end;
+    }
+
+    .config-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      align-items: end;
+    }
+
+    .field { display: grid; gap: 8px; }
+    .field label { color: var(--muted); font-size: 0.92rem; font-weight: 600; }
+
+    input, textarea, button, select { font: inherit; }
+
+    input[type="text"], input[type="time"], select, textarea {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="time"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(180, 198, 255, 0.15);
+    }
+
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: transform 0.16s ease, opacity 0.2s ease, background 0.2s ease;
+    }
+
+    button.primary {
+      color: #0a0a0a;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      box-shadow: 0 4px 12px rgba(180, 198, 255, 0.2);
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    button.secondary:hover {
+      background: var(--panel-hover);
+    }
+
+    button.ghost {
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--line);
+    }
+
+    button.ghost:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    button.danger {
+      color: #ffdede;
+      background: rgba(255, 120, 120, 0.12);
+      border: 1px solid rgba(255, 120, 120, 0.25);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.7; cursor: wait; transform: none; box-shadow: none; }
+
+    details {
+      margin: 0;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 700;
+      margin: 0;
+      user-select: none;
+    }
+
+    .message {
+      display: none;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .message.info {
+      display: block;
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--line);
+      color: var(--text);
+    }
+
+    .message.error {
+      display: block;
+      background: rgba(255, 120, 120, 0.12);
+      border-color: rgba(255, 120, 120, 0.28);
+      color: #ffd6d6;
+    }
+
+    .summary {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .summary-card { 
+      padding: 14px 16px; 
+    }
+    
+    .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; font-weight: 600; }
+    .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+
+    .section-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .top-dropdown {
+      margin: 0;
+      overflow: hidden;
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .top-dropdown > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      min-height: 82px;
+      background: linear-gradient(180deg, var(--panel), var(--bg));
+    }
+
+    .top-dropdown > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .manager-toggle-copy {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.45;
+      margin-top: 4px;
+      max-width: 62ch;
+    }
+
+    .manager-toggle-icon {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line);
+      color: #ededed;
+      font-size: 1rem;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .top-dropdown[open] .manager-toggle-icon {
+      transform: rotate(180deg);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .top-dropdown-body {
+      display: grid;
+      gap: 16px;
+      padding: 18px 20px 20px;
+      border-top: 1px solid var(--line);
+      background: var(--bg);
+    }
+
+    .list-stack {
+      display: grid;
+      gap: 10px;
+      max-height: clamp(320px, 55vh, 720px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .search-result {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--line);
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .row-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      align-items: center;
+    }
+
+    .row-title {
+      font-size: 0.94rem;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .row-subtitle {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 7px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 0.71rem;
+      font-weight: 700;
+    }
+
+    .chip.rss {
+      background: rgba(140, 226, 174, 0.11);
+      border-color: rgba(140, 226, 174, 0.18);
+      color: #d8ffe7;
+    }
+
+    .chip.fallback,
+    .chip.manual,
+    .chip.moved {
+      background: rgba(255, 212, 138, 0.11);
+      border-color: rgba(255, 212, 138, 0.18);
+      color: #fff0d6;
+    }
+
+    .chip.added {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+    }
+
+    .countdown-inline {
+      display: inline;
+      opacity: 0.92;
+      font-weight: 800;
+    }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .toggle input { width: auto; }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+      padding: 4px 0;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .board {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      align-items: start;
+    }
+
+    .day-column { padding: 14px; }
+
+    .day-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .day-name { font-size: 1.02rem; font-weight: 800; }
+    
+    .day-head-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .day-count { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+
+    .day-collapse-btn {
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      padding: 0;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.16s, color 0.16s;
+    }
+
+    .day-collapse-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    .day-collapse-icon {
+      transition: transform 0.2s ease;
+    }
+
+    .day-column.collapsed .day-collapse-icon {
+      transform: rotate(-90deg);
+    }
+
+    .day-column.collapsed .time-group {
+      display: none;
+    }
+
+    .time-group {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 6px;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+
+    .time-pill {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .highlight-next {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)) !important;
+      border: 1px solid var(--line) !important;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .highlight-next .time-pill {
+      background: var(--accent) !important;
+      color: #0a0a0a !important;
+      border-color: rgba(255,255,255,0.9);
+    }
+
+    .entry-list { display: grid; gap: 8px; }
+
+    .entry {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 9px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--line);
+      transition: opacity 0.2s, filter 0.2s;
+    }
+
+    .entry.on-break .thumb {
+      opacity: 0.4;
+      filter: grayscale(80%);
+    }
+
+    .entry.on-break .entry-title a {
+      color: var(--muted);
+    }
+
+    .entry.on-break .entry-meta > .chip:not(.moved) {
+      opacity: 0.4;
+    }
+
+    .thumb {
+      width: 38px;
+      height: 54px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg);
+      border: 1px solid var(--line);
+    }
+
+    .thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
+
+    .entry-title {
+      font-size: 0.9rem;
+      line-height: 1.3;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-title a { color: var(--text); text-decoration: none; }
+    .entry-title a:hover { color: var(--accent-2); }
+
+    .entry-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+    .entry-settings-btn {
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .entry-settings-btn svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+
+    .entry-settings-btn:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    .footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .footer-status-healthy {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .footer-status-unhealthy {
+      color: #ff8a8a;
+      font-weight: 700;
+    }
+
+    .update-indicator {
+      --indicator-rgb: 255, 255, 255;
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(var(--indicator-rgb), 0.92);
+      box-shadow:
+        0 0 0 1px rgba(var(--indicator-rgb), 0.12),
+        0 0 10px rgba(var(--indicator-rgb), 0.12);
+      z-index: 9999;
+      opacity: 0.9;
+      pointer-events: auto;
+      animation: indicatorBreathe 2.2s ease-in-out infinite;
+    }
+
+    .update-indicator.error {
+      --indicator-rgb: 255, 90, 90;
+    }
+
+    .update-indicator.flash {
+      animation:
+        indicatorBreathe 2.2s ease-in-out infinite,
+        indicatorFlash 0.95s ease;
+    }
+
+    @keyframes indicatorBreathe {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.72;
+        box-shadow:
+          0 0 0 1px rgba(var(--indicator-rgb), 0.10),
+          0 0 8px rgba(var(--indicator-rgb), 0.08);
+      }
+      50% {
+        transform: scale(1.12);
+        opacity: 0.98;
+        box-shadow:
+          0 0 0 1px rgba(var(--indicator-rgb), 0.16),
+          0 0 14px rgba(var(--indicator-rgb), 0.18);
+      }
+    }
+
+    @keyframes indicatorFlash {
+      0% {
+        box-shadow:
+          0 0 0 0 rgba(var(--indicator-rgb), 0.55),
+          0 0 10px rgba(var(--indicator-rgb), 0.18);
+      }
+      45% {
+        box-shadow:
+          0 0 0 10px rgba(var(--indicator-rgb), 0),
+          0 0 20px rgba(var(--indicator-rgb), 0.28);
+      }
+      100% {
+        box-shadow:
+          0 0 0 0 rgba(var(--indicator-rgb), 0),
+          0 0 10px rgba(var(--indicator-rgb), 0.12);
+      }
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      width: min(680px, 100%);
+      max-height: min(86vh, 900px);
+      display: grid;
+      gap: 0;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .modal.open .modal-dialog {
+      animation: modalIn 0.18s ease-out;
+    }
+
+    .modal-sheet-handle {
+      display: none;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--panel), var(--bg));
+    }
+
+    .modal-title {
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-subtitle {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.45;
+      margin-top: 4px;
+    }
+
+    .modal-close {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+      overflow: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      min-width: 0;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      padding: 16px 20px 20px;
+      border-top: 1px solid var(--line);
+      background: var(--bg);
+    }
+
+    .modal-note {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+    }
+
+    .modal-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: end;
+      min-width: 0;
+    }
+
+    .modal-grid > * {
+      min-width: 0;
+    }
+
+    .modal-grid > .field {
+      min-width: 0;
+    }
+
+    #modalTime {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    @keyframes modalIn {
+      from {
+        transform: translateY(8px);
+        opacity: 0.85;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes sheetIn {
+      from {
+        transform: translateY(28px);
+        opacity: 0.82;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .toolbar-grid,
+      .config-grid { grid-template-columns: 1fr; }
+
+      .modal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        padding: 18px 12px 36px;
+      }
+
+      .controls { padding: 16px; }
+
+      .top-dropdown > summary,
+      .top-dropdown-body {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .board { grid-template-columns: 1fr; }
+      .search-result { grid-template-columns: 1fr; }
+      .row-actions { justify-content: flex-start; }
+
+      .modal {
+        align-items: flex-end;
+        justify-content: stretch;
+        padding: 0;
+      }
+
+      .modal-dialog {
+        width: 100%;
+        max-height: min(90vh, 900px);
+        border-radius: 22px 22px 0 0;
+        border-bottom: 0;
+      }
+
+      .modal.open .modal-dialog {
+        animation: sheetIn 0.22s ease-out;
+      }
+
+      .modal-sheet-handle {
+        display: block;
+        width: 42px;
+        height: 5px;
+        margin: 10px auto 2px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.22);
+      }
+
+      .modal-head {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+
+      .modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        background: rgba(20, 22, 31, 0.95);
+        backdrop-filter: blur(12px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .wrap { padding: 8px 7px 16px; }
+      .title { margin-bottom: 10px; font-size: 1.25rem; }
+      .panel.controls { margin-bottom: 10px !important; }
+      .controls, .day-column { padding: 8px; }
+      .top-stack { margin-top: 14px !important; gap: 8px; }
+
+      .top-dropdown > summary,
+      .top-dropdown-body {
+        padding: 12px;
+        min-height: auto;
+      }
+
+      .manager-toggle-copy { font-size: 0.8rem; margin-top: 2px; }
+      .day-head { padding-bottom: 5px; margin-bottom: 6px; }
+      .day-name { font-size: 0.92rem; }
+      .day-count { font-size: 0.72rem; color: var(--muted); }
+      .time-group { gap: 5px; margin-bottom: 6px; padding: 2px; }
+      .time-pill { padding: 3px 7px; font-size: 0.68rem; }
+      .entry-list { gap: 4px; }
+      .entry {
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 5px;
+        border-radius: 12px;
+      }
+      .thumb { width: 40px; height: 58px; border-radius: 7px; }
+      .entry-body { gap: 2px; }
+      .entry-title { font-size: 0.84rem; line-height: 1.22; }
+      .entry-meta { gap: 4px; font-size: 0.64rem; }
+      .chip { padding: 2px 4px; font-size: 0.6rem; }
+      .footer { margin-top: 8px; font-size: 0.72rem; }
+      .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
+      .update-indicator { top: 9px; right: 9px; width: 8px; height: 8px; }
+
+      .entry-settings-btn {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+      }
+
+      .modal-head,
+      .modal-body,
+      .modal-footer {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">Currently airing</h1>
+
+    <section id="board" class="board"></section>
+
+    <section class="panel controls" style="margin-top: 16px; margin-bottom: 16px;">
+      <div class="toolbar-grid">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="button-row">
+          <button id="loadBtn" class="primary" type="button">Load</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="message" class="message" aria-live="polite"></div>
+
+    <div class="top-stack" style="margin-top: 32px;">
+      <details class="panel top-dropdown">
+        <summary>
+          <div>
+            <h2 class="section-title">Fetched Entries</h2>
+            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and RSS shows.</div>
+          </div>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
+        <div class="top-dropdown-body">
+          <section id="summary" class="summary"></section>
+        </div>
+      </details>
+
+      <details class="panel top-dropdown config-dropdown">
+        <summary>
+          <div>
+            <h2 class="section-title">Config</h2>
+            <div class="manager-toggle-copy">Expand to edit the SubsPlease feeds, proxy settings, and Cache</div>
+          </div>
+          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+        </summary>
+        <div class="top-dropdown-body">
+          <div class="config-grid">
+            <div class="field">
+              <label for="rssUrl">SubsPlease RSS URLs</label>
+              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="rssProxyTemplate">SubsPlease proxy</label>
+              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+            </div>
+          </div>
+          <div class="button-row" style="margin-top: 8px;">
+            <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
+            <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
+          </div>
+          <div class="helper" style="margin-top: 12px;">
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div id="footer" class="footer"></div>
+  </div>
+
+  <div id="updateIndicator" class="update-indicator" title="Waiting for first update"></div>
+
+  <div id="showSettingsModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <div>
+          <div id="showSettingsTitle" class="modal-title">Show settings</div>
+          <div id="showSettingsSubtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="closeShowSettingsBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="toggle">
+          <input id="modalUseCustom" type="checkbox" />
+          Use custom slot
+        </label>
+
+        <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
+        <div id="modalHistorySlot" class="modal-note" style="margin-top: -6px; display: none;"></div>
+
+        <div class="modal-grid">
+          <div class="field">
+            <label for="modalDay">Day</label>
+            <select id="modalDay">
+              <option>Monday</option>
+              <option>Tuesday</option>
+              <option>Wednesday</option>
+              <option>Thursday</option>
+              <option>Friday</option>
+              <option>Saturday</option>
+              <option>Sunday</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="modalTime">Time</label>
+            <input id="modalTime" type="text" value="18:00" inputmode="numeric" placeholder="HH:MM" />
+          </div>
+        </div>
+
+        <div id="modalCustomHelper" class="helper">
+          Custom slot is off. Turn it on to set your own day and time.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modalUseDetectedBtn" class="ghost" type="button">Use detected</button>
+        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear custom</button>
+        <button id="modalSaveBtn" class="primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addShowModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Add currently airing show</div>
+          <div class="modal-subtitle">Search AniList and add an extra airing show to your board.</div>
+        </div>
+        <button id="closeAddShowBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label for="addShowSearch">Search currently airing AniList shows</label>
+          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+        </div>
+
+        <div id="addShowResults" class="list-stack">
+          <div class="empty">Type at least 3 characters to search currently airing AniList shows.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ENDPOINT = "https://graphql.anilist.co";
+    const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
+    const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
+    const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
+    const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    
+    // Automatically detect the user's timezone, with Berlin as a fallback
+    const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin";
+    
+    const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
+    const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
+    const COLLAPSED_DAYS_KEY = "airing-board-collapsed-days-v1";
+    
+    // UPDATED REFRESH TIMERS TO SYNC
+    const REFRESH_STALE_MS = 5 * 60 * 1000;
+    const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+    
+    const COUNTDOWN_TICK_MS = 30 * 1000;
+    const SEARCH_DEBOUNCE_MS = 650;
+    const SEARCH_MIN_LENGTH = 3;
+    const AIRING_NOW_WINDOW_MINUTES = 15;
+    const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+    const SCHEDULE_MOVED_THRESHOLD_SECONDS = (7 * 24 * 60 * 60) + (5 * 60 * 60);
+
+    const TITLE_STOPWORDS = new Set([
+      "a","an","the","and","of","to","in","on",
+      "no","wo","ga","wa","ni","de","na","e","yo","mo",
+      "season","part","cour","movie","tv","ova","ona",
+      "s","s1","s2","s3","s4","s5","s6",
+      "1st","2nd","3rd","4th","5th","6th",
+      "1","2","3","4","5","6"
+    ]);
+
+    const MATCH_OVERRIDES = {
+      "Dan Da Dan Season 2": "Dandadan",
+      "Frieren: Beyond Journey's End Season 2": "Sousou no Frieren S2",
+      "Fire Force Season 3": "Enen no Shouboutai S3",
+      "Hell's Paradise Season 2": "Jigokuraku",
+      "The Apothecary Diaries Season 2": "Kusuriya no Hitorigoto S2"
+    };
+
+    const CURRENT_QUERY = `
+      query ($userName: String!) {
+        MediaListCollection(userName: $userName, type: ANIME, status: CURRENT) {
+          lists {
+            entries {
+              media {
+                id
+                siteUrl
+                format
+                status
+                episodes
+                coverImage { large medium }
+                title { userPreferred english romaji native }
+                synonyms
+                nextAiringEpisode { episode airingAt }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const SEARCH_QUERY = `
+      query ($search: String!) {
+        Page(page: 1, perPage: 10) {
+          media(search: $search, type: ANIME, status: RELEASING, sort: SEARCH_MATCH) {
+            id
+            siteUrl
+            format
+            status
+            episodes
+            coverImage { large medium }
+            title { userPreferred english romaji native }
+            synonyms
+            nextAiringEpisode { episode airingAt }
+          }
+        }
+      }
+    `;
+
+    // --- INDEXEDDB IMAGE PANTRY ---
+    const DB_NAME = 'AiringBoardImages';
+    const STORE_NAME = 'covers';
+    let dbPromise = null;
+    let activeCoverObjectUrls = [];
+
+    function makeCachedCoverObjectUrl(blob) {
+      const objectUrl = URL.createObjectURL(blob);
+      activeCoverObjectUrls.push(objectUrl);
+      return objectUrl;
+    }
+
+    function revokeActiveCoverUrls() {
+      for (const url of activeCoverObjectUrls) {
+        URL.revokeObjectURL(url);
+      }
+
+      activeCoverObjectUrls = [];
+    }
+
+    function getDB() {
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, 1);
+          request.onupgradeneeded = (e) => e.target.result.createObjectStore(STORE_NAME);
+          request.onsuccess = (e) => resolve(e.target.result);
+          request.onerror = (e) => reject(e.target.error);
+        });
+      }
+      return dbPromise;
+    }
+
+    async function getCachedImage(id, url) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const blob = await new Promise((resolve) => {
+          const req = store.get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+        if (blob) return makeCachedCoverObjectUrl(blob);
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const newBlob = await res.blob();
+        const txW = db.transaction(STORE_NAME, 'readwrite');
+        txW.objectStore(STORE_NAME).put(newBlob, id);
+        return makeCachedCoverObjectUrl(newBlob);
+      } catch (err) {
+        return url;
+      }
+    }
+
+    async function deleteCachedImage(id) {
+      try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+      } catch (e) {}
+    }
+
+    async function loadImagesToDOM() {
+      const imgs = document.querySelectorAll('img.lazy-cover');
+      for (const img of imgs) {
+        const id = img.getAttribute('data-media-id');
+        const url = img.getAttribute('data-original-url');
+        if (id && url) {
+          const localUrl = await getCachedImage(id, url);
+          img.src = localUrl;
+          img.classList.remove('lazy-cover');
+        }
+      }
+    }
+    // ------------------------------
+
+    function loadJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : fallback;
+      } catch (_) { return fallback; }
+    }
+
+    function saveJSON(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+    }
+
+    const els = {
+      username: document.getElementById("username"),
+      rssUrl: document.getElementById("rssUrl"),
+      rssProxyTemplate: document.getElementById("rssProxyTemplate"),
+      loadBtn: document.getElementById("loadBtn"),
+      clearMemoryBtn: document.getElementById("clearMemoryBtn"),
+      addShowSearch: document.getElementById("addShowSearch"),
+      addShowResults: document.getElementById("addShowResults"),
+      message: document.getElementById("message"),
+      summary: document.getElementById("summary"),
+      board: document.getElementById("board"),
+      footer: document.getElementById("footer"),
+      updateIndicator: document.getElementById("updateIndicator"),
+      openAddShowBtn: document.getElementById("openAddShowBtn"),
+      addShowModal: document.getElementById("addShowModal"),
+      closeAddShowBtn: document.getElementById("closeAddShowBtn"),
+      showSettingsModal: document.getElementById("showSettingsModal"),
+      closeShowSettingsBtn: document.getElementById("closeShowSettingsBtn"),
+      showSettingsTitle: document.getElementById("showSettingsTitle"),
+      showSettingsSubtitle: document.getElementById("showSettingsSubtitle"),
+      modalUseCustom: document.getElementById("modalUseCustom"),
+      modalDetectedSlot: document.getElementById("modalDetectedSlot"),
+      modalHistorySlot: document.getElementById("modalHistorySlot"),
+      modalDay: document.getElementById("modalDay"),
+      modalTime: document.getElementById("modalTime"),
+      modalCustomHelper: document.getElementById("modalCustomHelper"),
+      modalUseDetectedBtn: document.getElementById("modalUseDetectedBtn"),
+      modalClearOrRemoveBtn: document.getElementById("modalClearOrRemoveBtn"),
+      modalSaveBtn: document.getElementById("modalSaveBtn")
+    };
+
+    let aniListCooldownUntil = 0;
+
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
+
+    const state = {
+      userName: "",
+      currentEntries: [],
+      mergedEntries: [],
+      overrides: {},
+      addedShows: {},
+      primaryCandidates: [],
+      items: [],
+      notes: [],
+      totalAniListEntries: 0,
+      searchResults: [],
+      searchToken: 0,
+      lastSuccessfulLoadAt: 0,
+      lastRssReleaseAt: 0, // ADDED: Track RSS staleness
+      isLoading: false,
+      activeSettingsId: null,
+      healthStatus: "healthy",
+      lastNextSlotKey: null,
+      collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])) // Store for collapsed days
+    };
+
+    showMessage("info", "Ready.");
+    setUpdateIndicatorStatus("ok");
+
+    function showMessage(type, text) {
+      els.message.className = `message ${type}`;
+      els.message.textContent = text;
+    }
+
+    function setUpdateIndicatorStatus(status = "ok") {
+      if (!els.updateIndicator) return;
+      els.updateIndicator.classList.toggle("error", status === "error");
+    }
+
+    function timeAgo(ms) {
+      if (!ms) return "Never";
+      const mins = Math.floor((Date.now() - ms) / 60000);
+      if (mins < 1) return "< 1 min";
+      if (mins < 60) return `${mins} min`;
+      const hrs = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      if (hrs < 24) return `${hrs}h ${remMins}m`;
+      return `${Math.floor(hrs / 24)}d ${hrs % 24}h`;
+    }
+
+    function renderFooterStatus() {
+      const isUnhealthy = state.healthStatus === "unhealthy";
+      const statusLabel = isUnhealthy ? "Unhealthy" : "Healthy";
+      const statusClass = isUnhealthy ? "footer-status-unhealthy" : "footer-status-healthy";
+
+      let extra = "";
+      if (state.lastSuccessfulLoadAt) {
+        extra += ` · Board updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
+      } else {
+        extra += " · Waiting for first update";
+      }
+
+      if (state.lastRssReleaseAt) {
+        const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
+        extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
+      }
+
+      if (isUnhealthy && state.notes.length) {
+        extra += ` · ${escapeHtml(state.notes.join(" "))}`;
+      }
+
+      els.footer.innerHTML = `
+        <span class="${statusClass}">${statusLabel}</span>${extra}
+        · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
+      `;
+    }
+
+    async function graphQLRequest(query, variables) {
+      if (Date.now() < aniListCooldownUntil) {
+        await new Promise(resolve => setTimeout(resolve, aniListCooldownUntil - Date.now()));
+      }
+
+      const response = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ query, variables }),
+        signal: timeoutSignal(15000)
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 429) {
+        const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+        aniListCooldownUntil = Date.now() + retryAfter * 1000;
+        throw new Error("AniList rate limit reached. Retrying later.");
+      }
+
+      if (!response.ok || data.errors) {
+        const message = data.errors?.map(err => err.message).join(" | ") || `Request failed (${response.status})`;
+        throw new Error(message);
+      }
+
+      return data.data || {};
+    }
+
+    async function fetchAniListWatching(userName) {
+      const data = await graphQLRequest(CURRENT_QUERY, { userName });
+      const lists = data?.MediaListCollection?.lists || [];
+      const entries = [];
+      for (const list of lists) {
+        for (const entry of list.entries || []) {
+          if (entry?.media) entries.push(entry);
+        }
+      }
+      return entries;
+    }
+
+    async function searchAniListShows(search) {
+      const data = await graphQLRequest(SEARCH_QUERY, { search });
+      return (data?.Page?.media || []).filter(media => media?.status === "RELEASING");
+    }
+
+    async function fetchTextWithOptionalProxy(url, proxyTemplate) {
+      const targets = [];
+      if (proxyTemplate) targets.push(proxyTemplate.replace("%URL%", encodeURIComponent(url)));
+      targets.push(url);
+      let lastError = null;
+      for (const target of targets) {
+        try {
+          const response = await fetch(target, { 
+            method: "GET", 
+            cache: "no-store",
+            signal: timeoutSignal(15000) // Consistent timeout helper
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return await response.text();
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("Network request failed.");
+    }
+
+    function parseRssUrlList(raw) {
+      return String(raw || "")
+        .split(/[,\n]+/)
+        .map(value => value.trim())
+        .filter(Boolean);
+    }
+
+    function isSubsPleaseResolutionUrl(url, resolution) {
+      try {
+        const parsed = new URL(url);
+        return (
+          parsed.hostname === "subsplease.org" &&
+          parsed.pathname === "/rss/" &&
+          parsed.searchParams.get("r") === String(resolution)
+        );
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function getRssUrls() {
+      const urls = parseRssUrlList(els.rssUrl.value);
+      const output = urls.length ? urls : ["https://subsplease.org/rss/?r=1080"];
+
+      const hasSubsPlease1080 = output.some(url => isSubsPleaseResolutionUrl(url, 1080));
+      const hasSubsPlease720 = output.some(url => isSubsPleaseResolutionUrl(url, 720));
+
+      if (hasSubsPlease1080 && !hasSubsPlease720) {
+        output.push("https://subsplease.org/rss/?r=720");
+      }
+
+      return Array.from(new Set(output));
+    }
+
+    async function fetchRssFeedsWithOptionalProxy(urls, proxyTemplate) {
+      const uniqueUrls = Array.from(new Set((urls || []).map(url => String(url).trim()).filter(Boolean)));
+
+      const results = await Promise.all(uniqueUrls.map(async url => {
+        try {
+          // Append a cache-buster so proxies are forced to fetch fresh RSS data
+          const cacheBustedUrl = url.includes("?") 
+            ? `${url}&_cb=${Date.now()}` 
+            : `${url}?_cb=${Date.now()}`;
+
+          const text = await fetchTextWithOptionalProxy(cacheBustedUrl, proxyTemplate);
+          return { url, ok: true, text };
+        } catch (error) {
+          return {
+            url,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error || "RSS request failed.")
+          };
+        }
+      }));
+
+      return results;
+    }
+
+    function mergeFeedCandidates(candidates) {
+      const merged = new Map();
+
+      for (const candidate of candidates || []) {
+        if (!candidate?.title) continue;
+
+        const key = normalizeTitle(candidate.title);
+        if (!key) continue;
+
+        if (!merged.has(key)) {
+          merged.set(key, {
+            title: candidate.title,
+            variants: new Set(candidate.variants || []),
+            items: new Map()
+          });
+        }
+
+        const target = merged.get(key);
+
+        for (const variant of candidate.variants || []) {
+          if (variant) target.variants.add(variant);
+        }
+
+        for (const item of candidate.items || []) {
+          const itemKey = `${normalizeTitle(item.showTitle)}::${item.episode}`;
+          const existing = target.items.get(itemKey);
+
+          if (!existing || item.date.getTime() < existing.date.getTime()) {
+            target.items.set(itemKey, item);
+          }
+        }
+      }
+
+      return Array.from(merged.values()).map(candidate => ({
+        title: candidate.title,
+        variants: Array.from(candidate.variants),
+        items: Array.from(candidate.items.values()).sort((a, b) => b.date.getTime() - a.date.getTime())
+      }));
+    }
+
+    function normalizeTitle(text) {
+      return String(text || "")
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/['’`]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[×x]([0-9])/g, " x $1")
+        .replace(/\bsecond\b/g, "2nd")
+        .replace(/\bthird\b/g, "3rd")
+        .replace(/\bfourth\b/g, "4th")
+        .replace(/\bfirst\b/g, "1st")
+        .replace(/\bseason\b/g, " s ")
+        .replace(/\b2nd\b/g, " s2 ")
+        .replace(/\b3rd\b/g, " s3 ")
+        .replace(/\b4th\b/g, " s4 ")
+        .replace(/\b5th\b/g, " s5 ")
+        .replace(/\bsixth\b/g, " s6 ")
+        .replace(/\bii\b/g, " 2 ")
+        .replace(/\biii\b/g, " 3 ")
+        .replace(/\biv\b/g, " 4 ")
+        .replace(/\bvi\b/g, " 6 ")
+        .replace(/\bv\b/g, " 5 ")
+        .replace(/\bcour\b/g, " ")
+        .replace(/\bpart\b/g, " ")
+        .replace(/\bmovie\b/g, " ")
+        .replace(/\bthe animation\b/g, " ")
+        .replace(/[\/|:;,.!?"()[\]{}\-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function compactTitle(text) {
+      return normalizeTitle(text).replace(/\s+/g, "");
+    }
+
+    function stripCommonSuffixes(text) {
+      return String(text || "")
+        .replace(/\s*[:\-]\s*.+$/u, "")
+        .replace(/\s*\([^)]*\)\s*/gu, " ")
+        .replace(/\s+\b(s\d+|\d+)$|\s+season\s+\d+$/iu, "")
+        .trim();
+    }
+
+    function generateVariants(values) {
+      const variants = new Set();
+      for (const raw of values || []) {
+        if (!raw) continue;
+        const text = String(raw).trim();
+        if (!text) continue;
+        const normalized = normalizeTitle(text);
+        const compact = compactTitle(text);
+        const stripped = stripCommonSuffixes(text);
+        const strippedNormalized = normalizeTitle(stripped);
+        const strippedCompact = compactTitle(stripped);
+        [text, normalized, compact, stripped, strippedNormalized, strippedCompact].forEach(value => {
+          if (value) variants.add(value);
+        });
+        const seasonless = normalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
+        const strippedSeasonless = strippedNormalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
+        const compactSeasonless = seasonless.replace(/\s+/g, "");
+        const compactStrippedSeasonless = strippedSeasonless.replace(/\s+/g, "");
+        [seasonless, strippedSeasonless, compactSeasonless, compactStrippedSeasonless].forEach(value => {
+          if (value) variants.add(value);
+        });
+      }
+      return Array.from(variants).filter(Boolean);
+    }
+
+    function extractSeasonNumber(text) {
+      const normalized = normalizeTitle(text);
+      const match = normalized.match(/\bs(\d+)\b|\bseason\s*(\d+)\b/);
+      const number = match ? Number(match[1] || match[2]) : null;
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function tokens(text) {
+      return new Set(normalizeTitle(text).split(" ").filter(token => token && !TITLE_STOPWORDS.has(token)));
+    }
+
+    function distinctiveTokens(text) {
+      return Array.from(tokens(text)).filter(token => token.length >= 4);
+    }
+
+    function titleVariants(media) {
+      const seedTitles = [
+        media?.title?.userPreferred,
+        media?.title?.english,
+        media?.title?.romaji,
+        media?.title?.native,
+        ...(media?.synonyms || [])
+      ];
+      const variants = new Set(generateVariants(seedTitles));
+      const override = MATCH_OVERRIDES[media?.title?.userPreferred] || MATCH_OVERRIDES[media?.title?.english] || MATCH_OVERRIDES[media?.title?.romaji] || null;
+      if (override) generateVariants([override]).forEach(value => variants.add(value));
+      return Array.from(variants).filter(Boolean);
+    }
+
+    function scoreMatch(candidate, variants) {
+      if (!candidate || !Array.isArray(candidate.variants)) return 0;
+      let best = 0;
+      for (const variant of variants) {
+        const normalized = normalizeTitle(variant);
+        const compact = compactTitle(variant);
+        if (!normalized) continue;
+        for (const candidateVariant of candidate.variants) {
+          const candidateNormalized = normalizeTitle(candidateVariant);
+          const candidateCompact = compactTitle(candidateVariant);
+          if (!candidateNormalized) continue;
+          const variantSeason = extractSeasonNumber(normalized);
+          const candidateSeason = extractSeasonNumber(candidateNormalized);
+          const seasonPenalty = (variantSeason !== null && candidateSeason !== null && variantSeason !== candidateSeason) ? 5 : 0;
+          if (candidateNormalized === normalized) { best = Math.max(best, 100 - seasonPenalty); continue; }
+          if (candidateCompact && compact && candidateCompact === compact) { best = Math.max(best, 98 - seasonPenalty); continue; }
+          if (candidateNormalized.includes(normalized) || normalized.includes(candidateNormalized)) {
+            if (Math.min(candidateNormalized.length, normalized.length) >= 6) best = Math.max(best, 92 - seasonPenalty);
+          }
+          const a = tokens(candidateNormalized);
+          const b = tokens(normalized);
+          const overlapTokens = [...a].filter(token => b.has(token));
+          const overlap = overlapTokens.length;
+          const union = new Set([...a, ...b]).size || 1;
+          const ratio = overlap / union;
+          if (overlap >= 2 && ratio >= 0.70) best = Math.max(best, 90 - seasonPenalty);
+          else if (overlap >= 2 && ratio >= 0.50) best = Math.max(best, 84 - seasonPenalty);
+          else if (overlap >= 2 && ratio >= 0.34) best = Math.max(best, 78 - seasonPenalty);
+          const candidateDistinctive = distinctiveTokens(candidateNormalized);
+          const variantDistinctive = distinctiveTokens(normalized);
+          const distinctiveOverlap = candidateDistinctive.filter(token => variantDistinctive.includes(token));
+          if (distinctiveOverlap.length >= 2) {
+            best = Math.max(best, 86 - seasonPenalty);
+          } else if (distinctiveOverlap.length === 1) {
+            const token = distinctiveOverlap[0];
+            const longEnough = token.length >= 6;
+            const compactNear = candidateCompact.includes(token) && compact.includes(token);
+            const shortTitle = Math.min(candidateDistinctive.length, variantDistinctive.length) <= 2;
+            if (longEnough && (compactNear || shortTitle)) best = Math.max(best, 74 - seasonPenalty);
+          }
+        }
+      }
+      return best;
+    }
+
+    function parseReleaseTitle(rawTitle) {
+      const text = String(rawTitle || "").trim();
+      if (!text) return null;
+      const cleaned = text.replace(/^\[[^\]]+\]\s*/, "").trim();
+      if (/batch/i.test(cleaned)) return null;
+      const match = cleaned.match(/^(.*?)\s*-\s*([0-9]+(?:\.[0-9]+)?(?:v\d+)?(?:\s*-\s*[0-9]+(?:\.[0-9]+)?(?:v\d+)?)?)\s*(?:\([^)]+\))?/i);
+      if (!match) return null;
+      const showTitle = match[1].trim();
+      const episodeToken = match[2].replace(/\s+/g, "").replace(/v\d+/gi, "");
+      if (!showTitle || !episodeToken || episodeToken.includes("-")) return null;
+      return { showTitle, episode: episodeToken };
+    }
+
+    function parseXmlFeed(xmlText) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, "text/xml");
+      if (doc.querySelector("parsererror")) throw new Error("Feed could not be parsed as XML.");
+      const rawItems = Array.from(doc.querySelectorAll("item")).map(item => ({
+        title: item.querySelector("title")?.textContent?.trim() || "",
+        pubDate: item.querySelector("pubDate")?.textContent?.trim() || ""
+      }));
+      const deduped = new Map();
+      for (const item of rawItems) {
+        const parsed = parseReleaseTitle(item.title);
+        if (!parsed) continue;
+        const date = new Date(item.pubDate);
+        if (Number.isNaN(date.getTime())) continue;
+        const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
+        const existing = deduped.get(key);
+        if (!existing || date.getTime() < existing.date.getTime()) {
+          deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
+        }
+      }
+      const grouped = new Map();
+      for (const value of deduped.values()) {
+        if (!grouped.has(value.showTitle)) grouped.set(value.showTitle, []);
+        grouped.get(value.showTitle).push(value);
+      }
+      return Array.from(grouped.entries()).map(([title, items]) => ({
+        title,
+        variants: generateVariants([title]),
+        items: items.sort((a, b) => b.date.getTime() - a.date.getTime())
+      }));
+    }
+
+    function parseGenericFeed(text) {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return [];
+      return parseXmlFeed(trimmed);
+    }
+
+    function dateToWeekdayTime(date, timeZone) {
+      const safeDate = date instanceof Date ? date : new Date(date);
+      if (!Number.isFinite(safeDate.getTime())) return null;
+      const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(safeDate);
+      const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(safeDate);
+      return { weekday, time };
+    }
+
+    function getAniListWeekdayAndTime(unixSeconds, timeZone) {
+      const safeUnixSeconds = Number(unixSeconds);
+      if (!Number.isFinite(safeUnixSeconds)) return null;
+      const date = new Date(safeUnixSeconds * 1000);
+      return dateToWeekdayTime(date, timeZone);
+    }
+
+    function toMinutes(hhmm) {
+      const [h, m] = String(hhmm).split(":").map(Number);
+      return (h * 60) + m;
+    }
+
+    function minutesToHHMM(total) {
+      const rounded = Math.round(Number(total) || 0);
+      const normalized = ((rounded % 1440) + 1440) % 1440;
+      const h = Math.floor(normalized / 60);
+      const m = normalized % 60;
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    }
+
+    function median(values) {
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      if (!sorted.length) return null;
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
+    function medianTime(minutesArray) {
+      if (!minutesArray || !minutesArray.length) return null;
+      const base = minutesArray[0]; 
+      const adjusted = minutesArray.map(m => {
+        let diff = m - base;
+        if (diff > 720) diff -= 1440;
+        if (diff < -720) diff += 1440;
+        return base + diff;
+      });
+      const sorted = adjusted.sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const med = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+      return ((Math.round(med) % 1440) + 1440) % 1440;
+    }
+
+    function inferSlotFromReleases(releases, timeZone) {
+      const sample = releases.slice(0, 3).map(item => {
+        const slot = dateToWeekdayTime(item.date, timeZone);
+        return slot ? { weekday: slot.weekday, time: slot.time, minutes: toMinutes(slot.time) } : null;
+      }).filter(Boolean);
+      if (!sample.length) return null;
+      const counts = new Map();
+      sample.forEach(item => counts.set(item.weekday, (counts.get(item.weekday) || 0) + 1));
+      let chosenDay = sample[0].weekday;
+      let bestCount = counts.get(chosenDay) || 0;
+      for (const [day, count] of counts.entries()) {
+        if (count > bestCount) { bestCount = count; chosenDay = day; }
+      }
+      const dayItems = sample.filter(item => item.weekday === chosenDay);
+      const timeItems = dayItems.length ? dayItems : sample;
+      const chosenMinutes = medianTime(timeItems.map(item => item.minutes));
+      return {
+        day: chosenDay,
+        time: minutesToHHMM(chosenMinutes ?? sample[0].minutes),
+        sampleCount: sample.length
+      };
+    }
+
+    function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
+      const variants = titleVariants(media);
+      const safeCandidates = Array.isArray(candidates) ? candidates : [];
+      let best = null;
+      let bestScore = 0;
+      for (const candidate of safeCandidates) {
+        const score = scoreMatch(candidate, variants);
+        if (score > bestScore) { best = candidate; bestScore = score; }
+      }
+      if (!best || bestScore < 70 || !best.items.length) return null;
+
+      const slot = inferSlotFromReleases(best.items, timeZone);
+      if (!slot) return null;
+
+      const latestRelease = best.items[0];
+      const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
+
+      return {
+        day: slot.day,
+        time: slot.time,
+        source: sourceName,
+        sampleCount: slot.sampleCount || 1,
+        matchedTitle: best.title,
+        matchedEpisode: latestRelease?.episode || null,
+        latestReleaseDay: latestSlot?.weekday || null,
+        latestReleaseTime: latestSlot?.time || null
+      };
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function titleForMedia(media) {
+      return (
+        media?.title?.userPreferred ||
+        media?.title?.english ||
+        media?.title?.romaji ||
+        media?.title?.native ||
+        "Untitled"
+      );
+    }
+
+    function coverForMedia(media) {
+      return media?.coverImage?.large || media?.coverImage?.medium || "";
+    }
+
+    function slotCacheScopeKey(userName) {
+      return `${SLOT_CACHE_KEY}:${String(userName || "").trim().toLowerCase() || "default"}`;
+    }
+
+    function scopedKey(base, userName) {
+      return `${base}:${String(userName || "").trim().toLowerCase() || "default"}`;
+    }
+
+    function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
+
+    function savePageSettings() {
+      saveJSON(PAGE_SETTINGS_KEY, {
+        userName: els.username.value.trim(),
+        rssUrl: els.rssUrl.value.trim(),
+        rssProxyTemplate: els.rssProxyTemplate.value.trim()
+      });
+    }
+
+    function applySavedSettings() {
+      const settings = loadPageSettings();
+      if (settings.userName) els.username.value = settings.userName;
+      if (settings.rssUrl) els.rssUrl.value = settings.rssUrl;
+      if (settings.rssProxyTemplate) els.rssProxyTemplate.value = settings.rssProxyTemplate;
+    }
+
+    function loadBoardSnapshot() {
+      const snapshot = loadJSON(BOARD_SNAPSHOT_KEY, null);
+      return snapshot && typeof snapshot === "object" ? snapshot : null;
+    }
+
+    function clearBoardSnapshot() {
+      try { localStorage.removeItem(BOARD_SNAPSHOT_KEY); } catch (_) {}
+    }
+
+    function saveBoardSnapshot() {
+      const snapshot = {
+        savedAt: Date.now(),
+        userName: state.userName,
+        currentEntries: state.currentEntries,
+        primaryCandidates: state.primaryCandidates,
+        totalAniListEntries: state.totalAniListEntries,
+        notes: state.notes,
+        healthStatus: state.healthStatus,
+        lastRssReleaseAt: state.lastRssReleaseAt,
+        rssUrl: els.rssUrl.value.trim(),
+        rssProxyTemplate: els.rssProxyTemplate.value.trim()
+      };
+      saveJSON(BOARD_SNAPSHOT_KEY, snapshot);
+      state.lastSuccessfulLoadAt = snapshot.savedAt;
+    }
+
+    function hydrateBoardSnapshot() {
+      const snapshot = loadBoardSnapshot();
+      if (!snapshot?.userName) return false;
+      state.userName = String(snapshot.userName).trim();
+      els.username.value = state.userName;
+      if (snapshot.rssUrl) els.rssUrl.value = snapshot.rssUrl;
+      if (snapshot.rssProxyTemplate) els.rssProxyTemplate.value = snapshot.rssProxyTemplate;
+      state.overrides = loadOverrides(state.userName);
+      state.addedShows = loadAddedShows(state.userName);
+      state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
+      state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
+      state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
+      state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
+      state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
+      state.lastRssReleaseAt = Number(snapshot.lastRssReleaseAt) || 0;
+      const snapshotSavedAt = Number(snapshot.savedAt);
+      state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
+      if (!Number.isFinite(snapshotSavedAt)) {
+        try {
+          const repairedSnapshot = { ...snapshot, savedAt: 0 };
+          localStorage.setItem(BOARD_SNAPSHOT_KEY, JSON.stringify(repairedSnapshot));
+        } catch (_) {}
+      }
+      refreshBoardFromState();
+      setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
+      updateIndicatorTitle(state.lastSuccessfulLoadAt);
+      return true;
+    }
+
+    function loadSlotCache(userName) { return loadJSON(slotCacheScopeKey(userName), {}); }
+    function saveSlotCache(userName, cache) { saveJSON(slotCacheScopeKey(userName), cache); }
+    function clearSlotCache(userName) { try { localStorage.removeItem(slotCacheScopeKey(userName)); } catch (_) {} }
+    function loadOverrides(userName) { return loadJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), {}); }
+    function saveOverrides(userName, overrides) { saveJSON(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides); }
+    function loadAddedShows(userName) { return loadJSON(scopedKey(ADDED_SHOWS_KEY, userName), {}); }
+    function saveAddedShows(userName, addedShows) { saveJSON(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
+    function makeEntryFromMedia(media) { return { media }; }
+
+    function clearCachedSlotForShow(showId) {
+      const cache = loadSlotCache(state.userName);
+      delete cache[String(showId)];
+      saveSlotCache(state.userName, cache);
+    }
+
+    // --- HARD DELETE CLEANUP ENGINE ---
+    function pruneOrphanedStoredState(userName, validMediaIds) {
+      if (!userName) return;
+
+      const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
+      const cache = loadSlotCache(userName);
+      let cacheChanged = false;
+
+      for (const id of Object.keys(cache)) {
+        if (!validIds.has(id)) {
+          delete cache[id];
+          deleteCachedImage(id); // Delete from IndexedDB Pantry
+          cacheChanged = true;
+        }
+      }
+
+      if (cacheChanged) saveSlotCache(userName, cache);
+
+      const overrides = state.overrides && typeof state.overrides === "object" ? { ...state.overrides } : {};
+      let overridesChanged = false;
+
+      for (const id of Object.keys(overrides)) {
+        if (!validIds.has(id)) {
+          delete overrides[id];
+          overridesChanged = true;
+        }
+      }
+
+      if (overridesChanged) {
+        state.overrides = overrides;
+        saveOverrides(userName, overrides);
+      }
+    }
+
+    function dedupeEntriesById(entries) {
+      const map = new Map();
+      for (const entry of entries || []) {
+        const id = entry?.media?.id;
+        if (!id) continue;
+        if (!map.has(id)) map.set(id, entry);
+      }
+      return Array.from(map.values());
+    }
+
+    function isValidTime(value) {
+      return /^\d{2}:\d{2}$/.test(String(value || ""));
+    }
+
+    function overrideForMediaId(mediaId) {
+      const override = state.overrides?.[String(mediaId)];
+      if (!override) return null;
+      return {
+        enabled: Boolean(override.enabled),
+        day: WEEKDAYS.includes(override.day) ? override.day : "Monday",
+        time: isValidTime(override.time) ? override.time : "18:00"
+      };
+    }
+
+    function detectDefaultSlot(media, primaryCandidates, timeZone) {
+      const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+      const next = media?.nextAiringEpisode;
+
+      if (next?.airingAt) {
+        const airingSlot = getAniListWeekdayAndTime(next.airingAt, timeZone);
+        if (airingSlot) {
+          const { weekday: aniDay, time: aniTime } = airingSlot;
+          const aniMinutes = toMinutes(aniTime);
+
+          if (primary?.time) {
+            const rssMinutes = toMinutes(primary.time);
+            let diff = rssMinutes - aniMinutes;
+            if (diff > 720) diff -= 1440;
+            if (diff < -720) diff += 1440;
+
+            if (Math.abs(diff) <= 210) {
+              return {
+                day: aniDay,
+                time: primary.time,
+                source: "rss",
+                sampleCount: primary.sampleCount || 1,
+                matchedTitle: primary.matchedTitle || "",
+                matchedEpisode: primary.matchedEpisode || null,
+                latestReleaseDay: primary.latestReleaseDay || null,
+                latestReleaseTime: primary.latestReleaseTime || null
+              };
+            } else {
+              return {
+                day: aniDay,
+                time: minutesToHHMM(aniMinutes + 60),
+                source: "fallback",
+                sampleCount: 0,
+                matchedTitle: ""
+              };
+            }
+          }
+
+          return {
+            day: aniDay,
+            time: minutesToHHMM(aniMinutes + 60),
+            source: "fallback",
+            sampleCount: 0,
+            matchedTitle: ""
+          };
+        }
+      }
+
+      return primary || null;
+    }
+
+    function buildItems(entries, overrides, primaryCandidates, timeZone) {
+      const items = [];
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
+      for (const entry of entries) {
+        const media = entry.media;
+        if (!media?.id) continue;
+
+        const title = titleForMedia(media);
+        const cover = coverForMedia(media);
+        const nextEpisodeNumber = Number(media?.nextAiringEpisode?.episode);
+        const nextAiringAt = Number(media?.nextAiringEpisode?.airingAt);
+        const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
+        const totalEpisodes = media.episodes || "?";
+        const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        
+        const isScheduleMoved =
+          hasNextAiring &&
+          Number.isFinite(nextAiringAt) &&
+          nextAiringAt > nowSeconds &&
+          (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
+
+        const override = overrides?.[String(media.id)];
+        if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
+          items.push({
+            id: media.id,
+            title,
+            siteUrl: media.siteUrl || "#",
+            cover,
+            day: override.day,
+            time: override.time,
+            format: media.format || "",
+            source: "manual",
+            sampleCount: 1,
+            matchedTitle: "",
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            hasNextAiring,
+            totalEpisodes,
+            displayEpisode,
+            isScheduleMoved
+          });
+          continue;
+        }
+
+        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
+        if (primary) {
+          items.push({
+            id: media.id,
+            title,
+            siteUrl: media.siteUrl || "#",
+            cover,
+            day: primary.day,
+            time: primary.time,
+            format: media.format || "",
+            source: primary.source,
+            sampleCount: Math.min(primary.sampleCount || 1, 3),
+            matchedTitle: primary.matchedTitle || "",
+            matchedEpisode: primary.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || null,
+            latestReleaseTime: primary.latestReleaseTime || null,
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            hasNextAiring,
+            totalEpisodes,
+            displayEpisode,
+            isScheduleMoved
+          });
+        }
+      }
+      return items;
+    }
+
+    function applyCache(items) {
+      const cache = loadSlotCache(state.userName);
+      const output = [];
+
+      for (const item of items) {
+        const key = String(item.id);
+
+        if (item.source === "rss") {
+          let entry = cache[key];
+          if (!entry || typeof entry !== "object") {
+            entry = {};
+          }
+
+          entry.history = Array.isArray(entry.history) ? entry.history : [];
+          entry.origin = "rss";
+
+          const currentDay = item.latestReleaseDay;
+          const currentTime = item.latestReleaseTime;
+
+          let trackerEp = item.matchedEpisode; 
+          if (trackerEp) {
+            // 1. Prefer the actual episode number parsed directly from the RSS feed
+            trackerEp = String(trackerEp).padStart(2, "0");
+          } else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
+            // 2. Fallback to AniList estimation if RSS didn't provide a clean episode number
+            const releasedEp = Math.max(1, item.displayEpisode - 1);
+            trackerEp = String(releasedEp).padStart(2, "0");
+          }
+
+          if (trackerEp) { // Only push if we have a valid episode number
+            const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+
+            if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+              entry.history.push({
+                day: currentDay,
+                time: currentTime,
+                mins: toMinutes(currentTime),
+                episode: trackerEp
+              });
+
+              if (entry.history.length > 3) {
+                entry.history.shift();
+              }
+            }
+          }
+
+          if (entry.history.length > 0) {
+            const allMins = entry.history.map(h => h.mins);
+            const medMins = medianTime(allMins);
+
+            item.time = minutesToHHMM(medMins);
+            item.sampleCount = entry.history.length;
+          } else {
+            item.sampleCount = Math.min(item.sampleCount || 1, 3);
+          }
+
+          cache[key] = {
+            ...entry,
+            day: item.day,
+            time: item.time,
+            sampleCount: item.sampleCount,
+            matchedTitle: item.matchedTitle || "",
+            origin: "rss",
+            updatedAt: new Date().toISOString()
+          };
+
+          output.push({
+            ...item,
+            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
+          });
+          continue;
+        }
+
+        const remembered = cache[key];
+
+        if (item.source === "manual") {
+          cache[key] = {
+            day: item.day,
+            time: item.time,
+            sampleCount: 1,
+            origin: "manual",
+            updatedAt: new Date().toISOString()
+          };
+          output.push(item);
+        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
+          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
+          const rememberedTime = rememberedHistory.length
+            ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins)))
+            : remembered.time;
+
+          output.push({
+            ...item,
+            day: item.day, 
+            time: rememberedTime,
+            source: "cache",
+            sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
+            matchedTitle: remembered.matchedTitle || "",
+            cacheOrigin: remembered.origin || "saved",
+            historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
+          });
+        } else {
+          output.push(item);
+        }
+      }
+
+      saveSlotCache(state.userName, cache);
+      return output;
+    }
+
+    function sortByTime(a, b) {
+      return toMinutes(a.time) - toMinutes(b.time) || a.title.localeCompare(b.title);
+    }
+
+    function getTimeZoneParts(date, timeZone) {
+      const formatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone, weekday: "long", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+      });
+      const parts = {};
+      for (const part of formatter.formatToParts(date)) {
+        if (part.type !== "literal") parts[part.type] = part.value;
+      }
+      return {
+        weekday: parts.weekday,
+        year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
+        hour: Number(parts.hour), minute: Number(parts.minute), second: Number(parts.second)
+      };
+    }
+
+    function getNowContext(timeZone = DEFAULT_TIMEZONE) {
+      const parts = getTimeZoneParts(new Date(), timeZone);
+      const dayIndex = WEEKDAYS.indexOf(parts.weekday);
+      return {
+        ...parts,
+        dayIndex: dayIndex >= 0 ? dayIndex : 0,
+        totalMinutes: (parts.hour * 60) + parts.minute + (parts.second / 60)
+      };
+    }
+
+    function getSlotStatus(day, time, timeZone = DEFAULT_TIMEZONE) {
+      const dayIndex = WEEKDAYS.indexOf(day);
+      if (dayIndex < 0 || !isValidTime(time)) return null;
+      const now = getNowContext(timeZone);
+      const targetMinutes = toMinutes(time);
+      const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
+      const immediateMinutesUntil = (dayOffset * 1440) + targetMinutes - now.totalMinutes;
+      const isNow = dayOffset === 0 && now.totalMinutes >= targetMinutes && now.totalMinutes < (targetMinutes + AIRING_NOW_WINDOW_MINUTES);
+      const minutesUntil = isNow ? 0 : (immediateMinutesUntil >= 0 ? immediateMinutesUntil : immediateMinutesUntil + (7 * 24 * 60));
+      return { isNow, minutesUntil };
+    }
+
+    // HELPER: Detect if a specific slot has already happened
+    function hasAired(day, time, timeZone = DEFAULT_TIMEZONE) {
+      const now = getNowContext(timeZone);
+      const dayIndex = WEEKDAYS.indexOf(day);
+      const targetMinutes = toMinutes(time);
+      
+      const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
+      
+      if (dayOffset === 0) {
+        return now.totalMinutes >= targetMinutes;
+      }
+      return false; 
+    }
+
+    function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
+      let best = null;
+      for (const dayBlock of grouped) {
+        for (const slot of dayBlock.slots) {
+          const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
+          if (!status) continue;
+          if (status.isNow || status.minutesUntil <= 0) continue;
+          if (!best || status.minutesUntil < best.status.minutesUntil) {
+            best = { key: `${dayBlock.day}::${slot.time}`, status };
+          }
+        }
+      }
+      return best;
+    }
+
+    function formatSavedAt(timestamp, timeZone = DEFAULT_TIMEZONE) {
+      const safeTimestamp = Number(timestamp);
+      if (!Number.isFinite(safeTimestamp)) return "";
+      const safeDate = new Date(safeTimestamp);
+      if (!Number.isFinite(safeDate.getTime())) return "";
+      return new Intl.DateTimeFormat("en-GB", {
+        timeZone, weekday: "short", hour: "2-digit", minute: "2-digit"
+      }).format(safeDate);
+    }
+
+    function updateIndicatorTitle(timestamp) {
+      if (!els.updateIndicator) return;
+      const label = formatSavedAt(timestamp);
+      els.updateIndicator.title = label ? `Last updated ${label}` : "Waiting for first update";
+    }
+
+    function pulseUpdateIndicator() {
+      if (!els.updateIndicator) return;
+      els.updateIndicator.classList.remove("flash");
+      void els.updateIndicator.offsetWidth;
+      els.updateIndicator.classList.add("flash");
+      updateIndicatorTitle(Date.now());
+    }
+
+    function groupForBoard(items) {
+      const grouped = new Map();
+      for (const day of WEEKDAYS) grouped.set(day, new Map());
+      for (const item of items) {
+        if (!grouped.has(item.day)) grouped.set(item.day, new Map());
+        const dayMap = grouped.get(item.day);
+        if (!dayMap.has(item.time)) dayMap.set(item.time, []);
+        dayMap.get(item.time).push(item);
+      }
+      const output = [];
+      const todayIdx = getNowContext(DEFAULT_TIMEZONE).dayIndex;
+      for (let i = 0; i < 7; i++) {
+        const dayIdx = (todayIdx + i) % 7;
+        const day = WEEKDAYS[dayIdx];
+        const dayMap = grouped.get(day);
+        const slots = Array.from(dayMap.entries())
+          .map(([time, list]) => ({ time, items: list.sort(sortByTime) }))
+          .sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
+        if (slots.length) output.push({ day, slots });
+      }
+      return output;
+    }
+
+    function renderSummary(items, primaryCount) {
+      const manualCount = items.filter(item => item.source === "manual").length;
+      const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
+      const addedCount = items.filter(item => item.isAdded).length;
+      const fallbackCount = items.filter(item => item.source === "fallback").length;
+      const cards = [
+        { label: "Visible", value: String(items.length) },
+        { label: "Custom", value: String(manualCount) },
+        { label: "Added shows", value: String(addedCount) },
+        { label: "SubsPlease RSS", value: String(rssCount) },
+        { label: "Fallback", value: String(fallbackCount) },
+        { label: "Parsed RSS", value: String(primaryCount) }
+      ];
+      els.summary.innerHTML = cards.map(card => `
+        <article class="panel summary-card">
+          <div class="summary-label">${escapeHtml(card.label)}</div>
+          <div class="summary-value">${escapeHtml(card.value)}</div>
+        </article>
+      `).join("");
+    }
+
+    function renderBoard(items, isTick = false) {
+      const grouped = groupForBoard(items);
+      const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
+      const newNextSlotKey = nextSlot ? nextSlot.key : null;
+
+      // Update state even if next slot unchanged – we still need to re-render for aired counts
+      state.lastNextSlotKey = newNextSlotKey;
+      revokeActiveCoverUrls();
+
+      els.board.innerHTML = grouped.map(dayBlock => {
+        const isCollapsed = state.collapsedDays.has(dayBlock.day);
+        
+        let airedCount = 0;
+        let totalCount = 0;
+        
+        dayBlock.slots.forEach(slot => {
+          const aired = hasAired(dayBlock.day, slot.time, DEFAULT_TIMEZONE);
+          slot.items.forEach(() => {
+            totalCount++;
+            if (aired) airedCount++;
+          });
+        });
+        
+        const countDisplay = isCollapsed ? `${airedCount}/${totalCount}` : totalCount;
+
+        return `
+        <section class="panel day-column ${isCollapsed ? 'collapsed' : ''}">
+          <div class="day-head">
+            <div class="day-name">${escapeHtml(dayBlock.day)}</div>
+            <div class="day-head-right">
+              <div class="day-count" title="${airedCount} aired out of ${totalCount}">${countDisplay}</div>
+              <button class="day-collapse-btn" type="button" data-action="toggle-day" data-day="${escapeHtml(dayBlock.day)}" aria-label="Toggle ${escapeHtml(dayBlock.day)}">
+                <svg class="day-collapse-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+          ${dayBlock.slots.map(slot => {
+            const slotKey = `${dayBlock.day}::${slot.time}`;
+            const isNext = nextSlot?.key === slotKey;
+            const countdownText = isNext ? "Airing Next" : "";
+            return `
+              <div class="time-group ${isNext ? "highlight-next" : ""}">
+                <div class="time-pill">
+                  ${escapeHtml(slot.time)}
+                  ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
+                </div>
+                <div class="entry-list">
+                  ${slot.items.map(item => {
+                    const epStr = item.hasNextAiring
+                      ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
+                      : "";
+
+                    return `
+                    <article class="entry ${item.isScheduleMoved ? 'on-break' : ''}">
+                      <div class="thumb">
+                       ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
+                      </div>
+                      <div class="entry-body">
+                        <div class="entry-title">
+                          <a href="${escapeHtml(item.siteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
+                        </div>
+                        <div class="entry-meta">
+                          ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
+                          ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
+                          ${item.isScheduleMoved ? `<span class="chip moved">On Break</span>` : ""}
+                          ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
+                          ${item.source === "manual"
+                            ? `<span class="chip manual">CUSTOM</span>`
+                            : (item.source === "rss" || item.source === "cache")
+                              ? `<span class="chip rss" title="Calculated from past releases: ${escapeHtml(item.historyLog || item.time)}">RSS · ${item.sampleCount || 1}</span>`
+                              : `<span class="chip fallback">AniList</span>`}
+                        </div>
+                      </div>
+                      <button
+                        class="entry-settings-btn"
+                        type="button"
+                        data-action="open-show-settings"
+                        data-id="${escapeHtml(String(item.id))}"
+                        aria-label="Adjust ${escapeHtml(item.title)}"
+                        title="Adjust show"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                          <path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                          <circle cx="17" cy="7" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                          <circle cx="9" cy="17" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                        </svg>
+                      </button>
+                    </article>
+                  `;
+                  }).join("")}
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </section>
+      `;
+      }).join("");
+
+      if (!grouped.length) {
+        els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
+      }
+
+      loadImagesToDOM();
+    }
+
+    function itemMap() {
+      const map = new Map();
+      for (const item of state.items || []) map.set(String(item.id), item);
+      return map;
+    }
+
+    function refreshBoardFromState() {
+      const currentEntries = state.currentEntries || [];
+      const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
+      state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
+
+      pruneOrphanedStoredState(
+        state.userName,
+        state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
+      );
+
+      const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
+      state.items = applyCache(built).sort((a, b) =>
+        WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
+      );
+      renderSummary(state.items, state.primaryCandidates.length);
+      renderBoard(state.items);
+      renderSearchResults();
+      renderFooterStatus();
+    }
+
+    function persistState() {
+      saveOverrides(state.userName, state.overrides);
+      saveAddedShows(state.userName, state.addedShows);
+    }
+
+    function mediaById(id) {
+      const map = new Map();
+      for (const entry of state.currentEntries || []) {
+        if (entry?.media?.id) map.set(String(entry.media.id), entry.media);
+      }
+      for (const value of Object.values(state.addedShows || {})) {
+        if (value?.id) map.set(String(value.id), value);
+      }
+      for (const media of state.searchResults || []) {
+        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
+      }
+      return map.get(String(id)) || null;
+    }
+
+    function detectSlotForModal(media) {
+      return itemMap().get(String(media.id)) || detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+    }
+
+    function syncSettingsModalState() {
+      const enabled = Boolean(els.modalUseCustom.checked);
+      els.modalDay.disabled = !enabled;
+      els.modalTime.disabled = !enabled;
+      els.modalCustomHelper.textContent = enabled
+        ? "Custom slot is active and will override RSS / AniList for this show."
+        : "Custom slot is off. Turn it on to set your own day and time.";
+    }
+
+    function openModal(modal) {
+      if (!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeModal(modal) {
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      if (!document.querySelector(".modal.open")) {
+        document.body.classList.remove("modal-open");
+      }
+    }
+
+    function populateShowSettingsModal() {
+      const media = mediaById(state.activeSettingsId);
+      if (!media) return;
+
+      const id = String(media.id);
+      const override = overrideForMediaId(id);
+      const detected = detectSlotForModal(media);
+      const initialDay = override?.day || detected?.day || "Monday";
+      const initialTime = override?.time || detected?.time || "18:00";
+
+      els.showSettingsTitle.textContent = titleForMedia(media);
+      els.showSettingsSubtitle.textContent = [
+        media.format || "",
+        state.addedShows[id] ? "Added show" : "Current show"
+      ].filter(Boolean).join(" · ");
+
+      els.modalDetectedSlot.textContent = detected
+        ? `Detected: ${detected.day} · ${detected.time}`
+        : "Detected: No slot found yet";
+
+      const activeItem = itemMap().get(id);
+      if (activeItem && activeItem.historyLog) {
+        els.modalHistorySlot.textContent = `History: ${activeItem.historyLog}`;
+        els.modalHistorySlot.style.display = "block";
+      } else {
+        els.modalHistorySlot.style.display = "none";
+      }
+
+      els.modalUseCustom.checked = Boolean(override?.enabled);
+      els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
+      els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
+      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove show" : "Clear custom";
+
+      syncSettingsModalState();
+    }
+
+    function openSettingsModalForId(id) {
+      const media = mediaById(id);
+      if (!media) return;
+      state.activeSettingsId = String(id);
+      populateShowSettingsModal();
+      openModal(els.showSettingsModal);
+    }
+
+    function closeSettingsModal() {
+      state.activeSettingsId = null;
+      closeModal(els.showSettingsModal);
+    }
+
+    function openAddShowModal() {
+      openModal(els.addShowModal);
+      renderSearchResults();
+      requestAnimationFrame(() => els.addShowSearch.focus());
+    }
+
+    function closeAddShowModal() {
+      closeModal(els.addShowModal);
+    }
+
+    function saveSettingsFromModal() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      state.overrides[id] = {
+        enabled: Boolean(els.modalUseCustom.checked),
+        day: WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday",
+        time: isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00"
+      };
+
+      persistState();
+      refreshBoardFromState();
+      closeSettingsModal();
+    }
+
+    function useDetectedForActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      const media = mediaById(id);
+      if (!media) return;
+
+      const detected = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+
+      clearCachedSlotForShow(id);
+
+      if (detected) {
+        state.overrides[id] = {
+          enabled: false,
+          day: detected.day,
+          time: detected.time
+        };
+      } else {
+        delete state.overrides[id];
+      }
+
+      persistState();
+      refreshBoardFromState();
+      populateShowSettingsModal();
+    }
+
+    function clearOrRemoveActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id) return;
+
+      clearCachedSlotForShow(id);
+
+      if (state.addedShows[id]) {
+        delete state.addedShows[id];
+        delete state.overrides[id];
+        persistState();
+        refreshBoardFromState();
+        closeSettingsModal();
+        return;
+      }
+
+      delete state.overrides[id];
+      persistState();
+      refreshBoardFromState();
+      closeSettingsModal();
+    }
+
+    function addShowFromSearch(media) {
+      if (!media?.id) return;
+      const id = String(media.id);
+      state.addedShows[id] = media;
+
+      if (!state.overrides[id]) {
+        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        if (suggested) {
+          state.overrides[id] = {
+            enabled: false,
+            day: suggested.day,
+            time: suggested.time
+          };
+        }
+      }
+
+      persistState();
+      refreshBoardFromState();
+      closeAddShowModal();
+      openSettingsModalForId(media.id);
+    }
+
+    function renderSearchResults() {
+      if (!els.addShowResults) return;
+
+      const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
+      const addedIds = new Set(Object.keys(state.addedShows || {}).map(String));
+
+      if (!state.searchResults.length) {
+        const text = els.addShowSearch.value.trim().length >= SEARCH_MIN_LENGTH
+          ? "No currently airing AniList matches found."
+          : `Type at least ${SEARCH_MIN_LENGTH} characters to search currently airing AniList shows.`;
+        els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
+        return;
+      }
+
+      els.addShowResults.innerHTML = state.searchResults.map(media => {
+        const id = String(media.id);
+        const current = currentIds.has(id);
+        const added = addedIds.has(id);
+        const manageable = current || added;
+
+        return `
+          <div class="search-result">
+            <div>
+              <div class="row-head">
+                <div class="row-title">${escapeHtml(titleForMedia(media))}</div>
+                ${media.format ? `<span class="chip">${escapeHtml(media.format)}</span>` : ""}
+                ${current ? `<span class="chip rss">Current</span>` : ""}
+                ${added ? `<span class="chip added">Added</span>` : ""}
+              </div>
+              <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : (media.status || "Unknown status"))}</div>
+            </div>
+            <div class="row-actions">
+              ${manageable
+                ? `<button class="secondary" type="button" data-action="open-show-settings" data-id="${escapeHtml(id)}">Manage</button>`
+                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function handleSearchInput() {
+      const query = els.addShowSearch.value.trim();
+      const token = ++state.searchToken;
+      if (query.length < SEARCH_MIN_LENGTH) {
+        state.searchResults = [];
+        renderSearchResults();
+        return;
+      }
+      els.addShowResults.innerHTML = `<div class="empty">Searching AniList…</div>`;
+      try {
+        const results = await searchAniListShows(query);
+        if (token !== state.searchToken) return;
+        state.searchResults = (Array.isArray(results) ? results : []).filter(media => media?.status === "RELEASING");
+        renderSearchResults();
+      } catch (error) {
+        if (token !== state.searchToken) return;
+        state.searchResults = [];
+        els.addShowResults.innerHTML = `<div class="empty">Search failed: ${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function loadBoard(options = {}) {
+      const userName = String(options.userName ?? els.username.value).trim();
+      if (!userName) {
+        state.healthStatus = "unhealthy";
+        state.notes = ["Please enter a username."];
+        setUpdateIndicatorStatus("error");
+        renderFooterStatus();
+        showMessage("error", "Please enter a username.");
+        return false;
+      }
+      if (state.isLoading) return false;
+
+      state.isLoading = true;
+      savePageSettings();
+
+      const preserveBoard = state.items.length > 0;
+      const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
+      const nextOverrides = loadOverrides(userName);
+      const nextAddedShows = loadAddedShows(userName);
+      const rssUrls = getRssUrls();
+
+      els.loadBtn.disabled = true;
+      showMessage("info", loadingText);
+
+      try {
+        const [aniListResult, rssResult] = await Promise.allSettled([
+          fetchAniListWatching(userName),
+          fetchRssFeedsWithOptionalProxy(
+            rssUrls,
+            els.rssProxyTemplate.value.trim()
+          )
+        ]);
+
+        const nextNotes = [];
+        let nextCurrentEntries = state.currentEntries || [];
+
+        if (aniListResult.status === "fulfilled") {
+          nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+        } else {
+          const reason = aniListResult.reason;
+          const errMsg = reason instanceof Error ? reason.message : String(reason || "Request failed.");
+          nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
+        }
+
+        let nextPrimaryCandidates = [];
+
+        if (rssResult.status === "fulfilled") {
+          const allCandidates = [];
+
+          for (const feed of rssResult.value || []) {
+            if (!feed.ok) {
+              nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
+              continue;
+            }
+
+            const feedText = String(feed.text || "").trim();
+            if (!feedText) continue;
+
+            try {
+              allCandidates.push(...parseGenericFeed(feedText));
+            } catch (error) {
+              nextNotes.push(`SubsPlease ${feed.url}: ${error.message}`);
+            }
+          }
+
+          nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+          
+          let newest = 0;
+          for (const c of nextPrimaryCandidates) {
+            for (const item of c.items) {
+              if (item.date.getTime() > newest) newest = item.date.getTime();
+            }
+          }
+          state.lastRssReleaseAt = newest;
+          
+          const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+          if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
+            nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+          }
+
+        } else {
+          nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
+        }
+
+        const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
+        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
+          try {
+            const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
+            const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
+            const mediaList = statusData?.Page?.media || [];
+            for (const m of mediaList) {
+              if (m.status === "FINISHED" || m.status === "CANCELLED") {
+                delete nextAddedShows[String(m.id)];
+                delete nextOverrides[String(m.id)];
+              }
+            }
+          } catch(e) {
+          }
+        }
+
+        state.userName = userName;
+        state.overrides = nextOverrides;
+        state.addedShows = nextAddedShows;
+        state.currentEntries = nextCurrentEntries;
+        state.totalAniListEntries = nextCurrentEntries.length;
+        state.primaryCandidates = nextPrimaryCandidates;
+        state.notes = nextNotes;
+        state.healthStatus = nextNotes.length ? "unhealthy" : "healthy";
+        state.lastSuccessfulLoadAt = Date.now();
+        setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
+
+        refreshBoardFromState();
+        saveBoardSnapshot();
+        pulseUpdateIndicator();
+
+        showMessage(
+          "info",
+          `Found ${state.totalAniListEntries} AniList entries.` +
+          (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
+        );
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        const fallbackTime = state.lastSuccessfulLoadAt
+          ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
+          : "";
+
+        state.healthStatus = "unhealthy";
+        state.notes = [`Board update failed: ${message}`];
+        setUpdateIndicatorStatus("error");
+        updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        renderFooterStatus();
+
+        if (!preserveBoard) renderSearchResults();
+
+        showMessage("error", `Could not refresh the board: ${message}.${fallbackTime}`.trim());
+        return false;
+      } finally {
+        state.isLoading = false;
+        els.loadBtn.disabled = false;
+      }
+    }
+
+    function boardIsStale() {
+      return !state.lastSuccessfulLoadAt || (Date.now() - state.lastSuccessfulLoadAt) >= REFRESH_STALE_MS;
+    }
+
+    function maybeRefreshBoard(reason = "refresh") {
+      if (!navigator.onLine) return; 
+      if (document.visibilityState === "hidden") return;
+      if (state.isLoading) return;
+      if (!state.userName) return;
+      if (!boardIsStale()) return;
+      loadBoard({ reason, userName: state.userName });
+    }
+
+    function startAutoRefresh() {
+      setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
+      setInterval(() => { 
+        if (state.items.length) renderBoard(state.items, true); 
+        renderFooterStatus(); 
+      }, COUNTDOWN_TICK_MS);
+    }
+
+    let searchDebounceTimer = null;
+    els.addShowSearch.addEventListener("input", () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(handleSearchInput, SEARCH_DEBOUNCE_MS);
+    });
+
+    els.addShowSearch.addEventListener("keydown", event => {
+      if (event.key === "Enter") handleSearchInput();
+    });
+
+    els.board.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      
+      const action = button.dataset.action;
+      
+      if (action === "open-show-settings") {
+        openSettingsModalForId(button.dataset.id);
+      } else if (action === "toggle-day") {
+        const day = button.dataset.day;
+        if (state.collapsedDays.has(day)) {
+          state.collapsedDays.delete(day);
+        } else {
+          state.collapsedDays.add(day);
+        }
+        saveJSON(COLLAPSED_DAYS_KEY, Array.from(state.collapsedDays));
+        renderBoard(state.items); 
+      }
+    });
+
+    els.addShowResults.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      const media = mediaById(id);
+      if (!media) return;
+
+      if (button.dataset.action === "add-search-show") {
+        addShowFromSearch(media);
+      } else if (button.dataset.action === "open-show-settings") {
+        closeAddShowModal();
+        openSettingsModalForId(id);
+      }
+    });
+
+    els.openAddShowBtn.addEventListener("click", openAddShowModal);
+    els.closeAddShowBtn.addEventListener("click", closeAddShowModal);
+    els.closeShowSettingsBtn.addEventListener("click", closeSettingsModal);
+    els.modalUseCustom.addEventListener("change", syncSettingsModalState);
+    els.modalSaveBtn.addEventListener("click", saveSettingsFromModal);
+    els.modalUseDetectedBtn.addEventListener("click", useDetectedForActiveShow);
+    els.modalClearOrRemoveBtn.addEventListener("click", clearOrRemoveActiveShow);
+    els.loadBtn.addEventListener("click", () => loadBoard());
+
+    if (els.clearMemoryBtn) {
+      els.clearMemoryBtn.addEventListener("click", () => {
+        const scopedUser = state.userName || els.username.value.trim();
+        if (!scopedUser) return;
+        clearSlotCache(scopedUser);
+        showMessage("info", "MEMORY cleared.");
+        if (state.userName) refreshBoardFromState();
+      });
+    }
+
+    [els.addShowModal, els.showSettingsModal].forEach(modal => {
+      modal.addEventListener("click", event => {
+        if (event.target === modal) closeModal(modal);
+      });
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeSettingsModal();
+        closeAddShowModal();
+      }
+    });
+
+    els.username.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.rssUrl.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+    els.rssProxyTemplate.addEventListener("keydown", event => { if (event.key === "Enter") loadBoard(); });
+
+    [els.username, els.rssUrl, els.rssProxyTemplate].forEach(el => {
+      el.addEventListener("change", savePageSettings);
+      el.addEventListener("blur", savePageSettings);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+    });
+
+    let autoRefreshStarted = false;
+    let bootCompleted = false;
+
+    function bootPage() {
+      if (bootCompleted) return;
+      bootCompleted = true;
+      try {
+        applySavedSettings();
+        const hydrated = hydrateBoardSnapshot();
+        if (!els.username.value.trim()) els.username.value = "zrr";
+        if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
+        if (els.username.value.trim()) {
+          loadBoard({ reason: hydrated ? "refresh" : "load" });
+        } else {
+          state.healthStatus = "healthy";
+          setUpdateIndicatorStatus("ok");
+          updateIndicatorTitle(0);
+          renderFooterStatus();
+        }
+      } catch (error) {
+        console.error("Boot failed:", error);
+        clearBoardSnapshot();
+        state.lastSuccessfulLoadAt = 0;
+        state.healthStatus = "unhealthy";
+        state.notes = [`Startup: ${error.message}`];
+        setUpdateIndicatorStatus("error");
+        updateIndicatorTitle(0);
+        renderFooterStatus();
+        showMessage("error", `Startup failed: ${error.message}`);
+      }
+    }
+
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", bootPage, { once: true });
+    } else {
+      bootPage();
+    }
+  </script>
+</body>
+</html>
