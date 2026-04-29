@@ -86,16 +86,6 @@
       font-weight: 800;
     }
 
-    .day-count-chip {
-      padding: 6px 12px;
-      background: var(--panel-2);
-      border-radius: 999px;
-      font-weight: 700;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      border: 1px solid var(--line);
-    }
-
     /* ---------- Day Pill Selector ---------- */
     .day-pills-container {
       display: flex;
@@ -285,13 +275,26 @@
       transition: box-shadow 0.3s, border-color 0.3s;
     }
 
-      /* Flat, natural earthy green with a WIDER aura */
-    .anime-card-time-chip.fresh {
-      /* 0 X, 0 Y, 8px Blur, 3px SPREAD (this makes it bigger!) */
-      box-shadow: 0 0 8px 4px rgba(100, 160, 120, 0.25);
-      border-color: rgba(100, 160, 120, 0.5);
+    /* Premium Breathing White Outline Animation */
+    @keyframes breath-fresh {
+      0% {
+        box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 10px 1px rgba(255, 255, 255, 0.6);
+        border-color: rgba(255, 255, 255, 1);
+      }
+      100% {
+        box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
     }
 
+    /* Apply the animation to the fresh drops */
+    .anime-card-time-chip.fresh {
+      animation: breath-fresh 3s infinite ease-in-out;
+    }
 
     .badge-chip {
       background: rgba(0,0,0,0.65);
@@ -373,15 +376,34 @@
     .footer-status-healthy { color: var(--ok); font-weight: 700; }
     .footer-status-unhealthy { color: var(--danger); font-weight: 700; }
 
-    /* Indicator */
-    .update-indicator {
-      --indicator-color: var(--ok);
-      position: fixed; top: max(24px, env(safe-area-inset-top)); right: 24px; width: 10px; height: 10px;
-      border-radius: 50%; background: var(--indicator-color);
-      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.8), 0 0 12px var(--indicator-color);
-      z-index: 1000;
+    /* ---------- Breathing Update Indicator ---------- */
+    @keyframes breath-indicator-ok {
+      0% { box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.2); background-color: rgba(255, 255, 255, 0.4); }
+      50% { box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8); background-color: rgba(255, 255, 255, 1); }
+      100% { box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.2); background-color: rgba(255, 255, 255, 0.4); }
     }
-    .update-indicator.error { --indicator-color: var(--danger); }
+
+    @keyframes breath-indicator-error {
+      0% { box-shadow: 0 0 2px 0px rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.8); background-color: rgba(239, 68, 68, 1); }
+      100% { box-shadow: 0 0 2px 0px rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.4); }
+    }
+
+    .update-indicator {
+      position: fixed; 
+      top: max(24px, env(safe-area-inset-top)); 
+      right: 24px; 
+      width: 10px; 
+      height: 10px;
+      border-radius: 50%; 
+      z-index: 1000;
+      animation: breath-indicator-ok 3s infinite ease-in-out;
+    }
+    
+    /* Keeps it functional as a warning by breathing red if something actually breaks */
+    .update-indicator.error { 
+      animation: breath-indicator-error 3s infinite ease-in-out;
+    }
 
     /* ---------- Modals ---------- */
     .modal {
@@ -1317,7 +1339,6 @@
       const latestRelease = best.items[0];
       const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
 
-      // FIX: Safely handle both actual Date objects and strings loaded from local storage
       const releaseDateMs = latestRelease?.date 
         ? (latestRelease.date instanceof Date ? latestRelease.date.getTime() : new Date(latestRelease.date).getTime()) 
         : null;
@@ -1745,9 +1766,6 @@
 
     function pulseUpdateIndicator() {
       if (!els.updateIndicator) return;
-      els.updateIndicator.classList.remove("flash");
-      void els.updateIndicator.offsetWidth;
-      els.updateIndicator.classList.add("flash");
       updateIndicatorTitle(Date.now());
     }
 
@@ -1790,15 +1808,6 @@
         card.classList.toggle('highlight-next', isNext);
       }
 
-      const chip = document.querySelector('.day-count-chip');
-      if (chip) {
-        const todayName = WEEKDAYS[getNowContext(DEFAULT_TIMEZONE).dayIndex];
-        const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
-        const isFullWeek = effectiveDay === "Full Week";
-        const visibleCount = isFullWeek ? state.items.length : state.items.filter(i => i.day === effectiveDay).length;
-        chip.textContent = `${visibleCount} shows`;
-      }
-
       const daySections = document.querySelectorAll('.day-section');
       for (const section of daySections) {
         const dayName = section.dataset.day;
@@ -1834,7 +1843,6 @@
       const todayName = WEEKDAYS[todayIdx];
       const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
       const isFullWeek = effectiveDay === "Full Week";
-      const visibleCount = isFullWeek ? items.length : items.filter(i => i.day === effectiveDay).length;
 
       // Build chronologically ordered pill options
       const daysList = ["Today"];
@@ -1857,7 +1865,6 @@
         <div class="header-area">
           <div class="header-top-row">
             <h1 class="title">Currently Airing</h1>
-            <div class="day-count-chip">${visibleCount} shows</div>
           </div>
           <div class="day-pills-container" id="daySelectContainer">
              ${dayOptions}
