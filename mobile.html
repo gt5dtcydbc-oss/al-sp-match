@@ -285,11 +285,13 @@
       transition: box-shadow 0.3s, border-color 0.3s;
     }
 
-      /* Flat, natural earthy green */
+      /* Flat, natural earthy green with a WIDER aura */
     .anime-card-time-chip.fresh {
-      box-shadow: 0 0 12px rgba(100, 160, 120, 0.25);
+      /* 0 X, 0 Y, 8px Blur, 3px SPREAD (this makes it bigger!) */
+      box-shadow: 0 0 8px 3px rgba(100, 160, 120, 0.25);
       border-color: rgba(100, 160, 120, 0.5);
     }
+
 
     .badge-chip {
       background: rgba(0,0,0,0.65);
