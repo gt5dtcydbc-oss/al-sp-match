@@ -1203,6 +1203,22 @@
       els.boards.addEventListener("change", handleBoardChange);
       els.boards.addEventListener("input", handleBoardInput);
 
+      // Close notes panel on Enter inside franchise input or comment textarea
+      els.boards.addEventListener("keydown", (event) => {
+        const target = event.target;
+        if (
+          (target.matches(".franchise-input") || target.matches("textarea[data-comment-id]")) &&
+          event.key === "Enter" &&
+          !event.shiftKey
+        ) {
+          event.preventDefault();
+          const showId = target.dataset.franchiseId || target.dataset.commentId;
+          if (showId && state.ui.openNotes[showId]) {
+            toggleNotes(showId);
+          }
+        }
+      });
+
       els.exportBtn.addEventListener("click", exportJson);
       els.importBtn.addEventListener("click", () => els.importFile.click());
       els.importFile.addEventListener("change", importJson);
@@ -1313,6 +1329,7 @@
     }
 
     function formatTimeAgo(value) {
+      if (value == null) return "Never";   // fix for null
       const date = value instanceof Date ? value : new Date(value);
       if (!Number.isFinite(date.getTime())) return "Never";
 
@@ -1364,7 +1381,6 @@
     }
 
     async function safeAniListRequest(query, variables, retries = 2) {
-      // 1. If we are currently on a rate-limit cooldown, pause this request until it's over
       if (Date.now() < aniListCooldownUntil) {
         await sleep(aniListCooldownUntil - Date.now());
       }
@@ -1374,12 +1390,11 @@
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify({ query, variables }),
-          signal: timeoutSignal(15000) // 2. Stop hanging after 15 seconds
+          signal: timeoutSignal(15000)
         });
 
         const json = await response.json().catch(() => ({}));
 
-        // 3. Handle 429 Too Many Requests gracefully
         if (response.status === 429) {
           const retryAfter = Number(response.headers.get("Retry-After")) || 60;
           aniListCooldownUntil = Date.now() + (retryAfter * 1000);
@@ -1387,7 +1402,7 @@
           if (retries > 0) {
             console.warn(`AniList Rate Limited. Pausing for ${retryAfter}s...`);
             await sleep(retryAfter * 1000);
-            return safeAniListRequest(query, variables, retries - 1); // Try again automatically
+            return safeAniListRequest(query, variables, retries - 1);
           }
           throw new Error("AniList rate limit reached. Please try again later.");
         }
@@ -2079,6 +2094,9 @@
         : "";
 
       const checkedAgo = formatTimeAgo(show.releasesMoe?.checkedAt);
+      const checkedTitle = show.releasesMoe?.checkedAt
+        ? new Date(show.releasesMoe.checkedAt).toLocaleString()
+        : "Never checked";
 
       let releaseBadge = "";
       if (updateAvailable) {
@@ -2099,9 +2117,6 @@
       const thumbHtml = releaseUrl
         ? `<a class="thumb-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener noreferrer" title="Open on releases.moe"><img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" /></a>`
         : `<img class="thumb" src="${posterSrc}" alt="" loading="lazy" decoding="async" />`;
-      const checkedTitle = show.releasesMoe?.checkedAt && Number.isFinite(new Date(show.releasesMoe.checkedAt).getTime())
-        ? new Date(show.releasesMoe.checkedAt).toLocaleString()
-        : "Never checked";
 
       return `
         <article class="show-card ${isNotesOpen ? "notes-open" : ""}" data-show-id="${show.id}">
@@ -2127,8 +2142,8 @@
             </div>
           </div>
           <div class="notes-panel">
-            <input type="text" class="franchise-input" data-franchise-id="${show.id}" placeholder="Group name (e.g. Black Lagoon)" value="${escapeAttr(show.franchise || "")}" title="Group shows together by typing the same name here" />
-            <textarea data-comment-id="${show.id}" placeholder="Add small comments…">${escapeHtml(show.comments || "")}</textarea>
+            <input type="text" class="franchise-input" data-franchise-id="${show.id}" placeholder="Group name (e.g. Black Lagoon)" value="${escapeAttr(show.franchise || "")}" aria-label="Group name for ${titleAttr}" title="Group shows together by typing the same name here" />
+            <textarea data-comment-id="${show.id}" placeholder="Add small comments…" aria-label="Comments for ${titleAttr}">${escapeHtml(show.comments || "")}</textarea>
           </div>
         </article>
       `;
