@@ -2124,16 +2124,24 @@
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
 
-          let trackerEp = item.matchedEpisode; 
-          if (trackerEp) {
-            // 1. Prefer the actual episode number parsed directly from the RSS feed
-            trackerEp = String(trackerEp).padStart(2, "0");
-          } else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
-            // 2. Fallback to AniList estimation if RSS didn't provide a clean episode number
+          let trackerEp; 
+          
+          if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
+            // 1. PREFER AniList seasonal episode number
             const releasedEp = Math.max(1, item.displayEpisode - 1);
             trackerEp = String(releasedEp).padStart(2, "0");
+            
+          } else if (entry.history && entry.history.length > 0) {
+            // 2. FALLBACK to Memory (+1): Keeps numbering seasonal even if API drops!
+            const lastEp = parseInt(entry.history[entry.history.length - 1].episode, 10);
+            trackerEp = !isNaN(lastEp) ? String(lastEp + 1).padStart(2, "0") : "?";
+            
+          } else if (item.matchedEpisode) {
+            // 3. FALLBACK to RSS absolute episode (only for brand new shows if API is down)
+            trackerEp = String(item.matchedEpisode).padStart(2, "0");
+            
           } else {
-            // 3. Fallback to unknown placeholder to still record the time sample
+            // 4. Unknown placeholder
             trackerEp = "?";
           }
 
