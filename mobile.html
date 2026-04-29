@@ -1307,6 +1307,11 @@
       const latestRelease = best.items[0];
       const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
 
+      // FIX: Safely handle both actual Date objects and strings loaded from local storage
+      const releaseDateMs = latestRelease?.date 
+        ? (latestRelease.date instanceof Date ? latestRelease.date.getTime() : new Date(latestRelease.date).getTime()) 
+        : null;
+
       return {
         day: slot.day,
         time: slot.time,
@@ -1316,7 +1321,7 @@
         matchedEpisode: latestRelease?.episode || null,
         latestReleaseDay: latestSlot?.weekday || null,
         latestReleaseTime: latestSlot?.time || null,
-        latestReleaseDate: latestRelease ? latestRelease.date.getTime() : null
+        latestReleaseDate: releaseDateMs
       };
     }
 
