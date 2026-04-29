@@ -2,24 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Currently airing</title>
   
   <style>
-:root {
-  --bg: #0f1119;
-  --panel: #1a1d2b;
-  --panel-hover: #232837;
-  --panel-2: #252a38;
-  --line: #2f3546;
-  --text: #f2f5fc;
-  --muted: #99a2b8;
-  --accent: #a4b9ff;
-  --accent-2: #c6d4ff;
-  --shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-  --ok: #7de2a6;
-  --warn: #ffd38a;
-}
+    /* ---------- Premium App Theme Variables ---------- */
+    :root {
+      --bg: #09090b;
+      --panel: #141417;
+      --panel-hover: #1c1c21;
+      --panel-2: #1e1e24;
+      --line: #27272a;
+      --text: #ffffff;
+      --text-muted: #a1a1aa;
+      --text-subtle: #71717a;
+      --accent: #ffffff;
+      --accent-bg: #27272a;
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --danger: #ef4444;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
 
     * { box-sizing: border-box; }
 
@@ -30,6 +36,7 @@
       background: var(--bg);
       color: var(--text);
       -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
     }
 
     body.modal-open {
@@ -37,717 +44,472 @@
     }
 
     .wrap {
-      max-width: 1100px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 24px 16px 42px;
+      padding: 0 16px 60px;
+    }
+
+    /* ---------- Typography & Layout ---------- */
+    .header-area {
+      position: sticky;
+      top: 0;
+      background: rgba(9, 9, 11, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 100;
+      padding: 20px 0 12px;
+      margin: 0 -16px;
+      padding-left: 16px;
+      padding-right: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .header-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
     .title {
-      margin: 0 0 12px;
-      font-size: 1.8rem;
-      letter-spacing: -0.03em;
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: -0.04em;
       font-weight: 800;
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-
-    .top-stack {
-      display: grid;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .controls {
-      display: grid;
-      gap: 14px;
-      padding: 18px 20px;
-      margin: 0;
-    }
-
-    .toolbar-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: minmax(260px, 1fr) auto;
-      align-items: end;
-    }
-
-    .config-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(240px, 1fr));
-      align-items: end;
-    }
-
-    .field { display: grid; gap: 8px; }
-    .field label { color: var(--muted); font-size: 0.92rem; font-weight: 600; }
-
-    input, textarea, button, select { font: inherit; }
-
-    input[type="text"], input[type="time"], select, textarea {
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      border: 1px solid var(--line);
-      background: var(--bg);
-      color: var(--text);
-      padding: 12px 14px;
-      border-radius: 12px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    input[type="text"]:focus,
-    input[type="time"]:focus,
-    select:focus,
-    textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(164, 185, 255, 0.15);
-    }
-
-    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
-
-    button {
-      border: 0;
-      cursor: pointer;
-      padding: 12px 18px;
-      border-radius: 999px;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      transition: transform 0.16s ease, opacity 0.2s ease, background 0.2s ease;
-    }
-
-    button.primary {
-      color: #0a0a0a;
-      background: linear-gradient(135deg, var(--accent-2), var(--accent));
-      box-shadow: 0 4px 12px rgba(164, 185, 255, 0.2);
-    }
-
-    button.secondary {
-      color: var(--text);
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-    }
-
-    button.secondary:hover {
-      background: var(--panel-hover);
-    }
-
-    button.ghost {
-      color: var(--text);
-      background: transparent;
-      border: 1px solid var(--line);
-    }
-
-    button.ghost:hover {
-      background: rgba(255,255,255,0.05);
-    }
-
-    button.danger {
-      color: #ffdede;
-      background: rgba(255, 120, 120, 0.12);
-      border: 1px solid rgba(255, 120, 120, 0.25);
-    }
-
-    button:hover { transform: translateY(-1px); }
-    button:active { transform: translateY(0); }
-    button:disabled { opacity: 0.7; cursor: wait; transform: none; box-shadow: none; }
-
-    details {
-      margin: 0;
-    }
-
-    summary {
-      cursor: pointer;
-      color: var(--text);
-      font-weight: 700;
-      margin: 0;
-      user-select: none;
-    }
-
-    .message {
-      display: none;
-      margin-bottom: 16px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid transparent;
-      line-height: 1.45;
-      white-space: pre-wrap;
-    }
-
-    .message.info {
-      display: block;
-      background: rgba(255, 255, 255, 0.04);
-      border-color: var(--line);
-      color: var(--text);
-    }
-
-    .message.error {
-      display: block;
-      background: rgba(255, 120, 120, 0.12);
-      border-color: rgba(255, 120, 120, 0.28);
-      color: #ffd6d6;
-    }
-
-    .summary {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
-
-    .summary-card { 
-      padding: 14px 16px; 
-    }
-    
-    .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; font-weight: 600; }
-    .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
-
-    .section-title {
-      margin: 0;
-      font-size: 1.02rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .top-dropdown {
-      margin: 0;
-      overflow: hidden;
-      border-top: 0;
-      padding-top: 0;
-    }
-
-    .top-dropdown > summary {
-      list-style: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 18px 20px;
-      min-height: 82px;
-      background: linear-gradient(180deg, var(--panel), var(--bg));
-    }
-
-    .top-dropdown > summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .manager-toggle-copy {
-      color: var(--muted);
-      font-size: 0.9rem;
-      font-weight: 500;
-      line-height: 1.45;
-      margin-top: 4px;
-      max-width: 62ch;
-    }
-
-    .manager-toggle-icon {
-      flex: 0 0 auto;
-      width: 36px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--line);
-      color: #ededed;
-      font-size: 1rem;
-      transition: transform 0.16s ease, background 0.16s ease;
-    }
-
-    .top-dropdown[open] .manager-toggle-icon {
-      transform: rotate(180deg);
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .top-dropdown-body {
-      display: grid;
-      gap: 16px;
-      padding: 18px 20px 20px;
-      border-top: 1px solid var(--line);
-      background: var(--bg);
-    }
-
-    /* ---------- Card UI (portrait, two-column) ---------- */
-    .board-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .day-select {
-      appearance: none;
-      background: var(--panel);
-      color: var(--text);
-      border: 1px solid var(--line);
-      padding: 10px 36px 10px 16px;
-      border-radius: 999px;
-      font-weight: 700;
-      font-size: 1rem;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%2399a2b8' d='M4.2 5.8a.6.6 0 0 1 .85 0L8 8.56l2.95-2.76a.6.6 0 0 1 .85.85l-3.4 3.18a.6.6 0 0 1-.85 0L4.2 6.65a.6.6 0 0 1 0-.85z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      background-size: 16px;
-      cursor: pointer;
     }
 
     .day-count-chip {
-      padding: 8px 14px;
-      background: var(--panel);
+      padding: 6px 12px;
+      background: var(--panel-2);
       border-radius: 999px;
       font-weight: 700;
-      font-size: 0.85rem;
-      color: var(--muted);
+      font-size: 0.8rem;
+      color: var(--text-muted);
       border: 1px solid var(--line);
     }
 
-    /* Mobile-first: 2 columns, tablet: 3, desktop: 4 */
+    /* ---------- Day Pill Selector (Replacing native select) ---------- */
+    .day-pills-container {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none; /* Firefox */
+      margin: 0 -16px;
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    .day-pills-container::-webkit-scrollbar { display: none; }
+
+    .day-pill {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 18px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .day-pill:hover { background: var(--panel-hover); color: var(--text); }
+    .day-pill.active {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    .day-pill .sub { font-weight: 400; opacity: 0.7; margin-left: 4px; }
+
+    /* ---------- Input & Form Controls ---------- */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      margin-top: 24px;
+      overflow: hidden;
+    }
+
+    .controls { padding: 20px; }
+    .toolbar-grid, .config-grid { display: grid; gap: 16px; }
+    .toolbar-grid { grid-template-columns: minmax(260px, 1fr) auto; align-items: end; }
+    .config-grid { grid-template-columns: 1fr; }
+
+    @media (min-width: 768px) {
+      .config-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .field { display: grid; gap: 8px; }
+    .field label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    input[type="text"], input[type="time"], select, textarea {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      outline: none;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus, input[type="time"]:focus, select:focus {
+      border-color: rgba(255,255,255,0.4);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
+    }
+
+    /* ---------- Buttons ---------- */
+    .button-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    button {
+      border: 0; cursor: pointer;
+      padding: 14px 24px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.01em;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    button.primary {
+      color: var(--bg);
+      background: var(--text);
+      box-shadow: 0 4px 12px rgba(255,255,255,0.15);
+    }
+    button.primary:hover { transform: scale(1.02); box-shadow: 0 6px 16px rgba(255,255,255,0.25); }
+    
+    button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    button.secondary:hover { background: var(--panel-hover); border-color: rgba(255,255,255,0.2); }
+
+    button.ghost { background: transparent; color: var(--text-muted); padding: 14px 16px; }
+    button.ghost:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    button.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+    button.danger:hover { background: rgba(239, 68, 68, 0.15); }
+
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ---------- Card UI (App-Style Full Bleed) ---------- */
     .card-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
+      gap: 12px;
+      margin-top: 16px;
     }
 
-    @media (min-width: 600px) {
-      .card-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-      }
-    }
+    @media (min-width: 600px) { .card-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+    @media (min-width: 900px) { .card-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+    @media (min-width: 1100px) { .card-grid { grid-template-columns: repeat(5, 1fr); } }
 
-    @media (min-width: 900px) {
-      .card-grid {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 18px;
-      }
-    }
-
-    .day-section {
-      margin-bottom: 20px;
-      border-left: 3px solid var(--line);
-      padding-left: 12px;
-    }
-
+    .day-section { margin-top: 32px; }
     .day-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-      padding: 0 4px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
     }
-
-    .day-section-name {
-      font-weight: 800;
-      font-size: 1.1rem;
-      letter-spacing: -0.02em;
-    }
-
-    .day-section-toggle {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 4px 8px;
-      cursor: pointer;
-    }
+    .day-section-name { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; }
+    .day-section-toggle { background: none; color: var(--text-muted); padding: 0; font-size: 0.85rem; font-weight: 600; }
 
     .anime-card {
-      background: var(--panel);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .anime-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 20px 32px rgba(0, 0, 0, 0.5);
-    }
-
-    .anime-card.highlight-next {
-      border: 2px solid var(--accent);
-      box-shadow: 0 0 18px rgba(164, 185, 255, 0.35);
-    }
-
-    .anime-card.on-break {
-      border-bottom: 3px solid rgba(255, 210, 138, 0.7);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(255, 210, 138, 0.15);
-    }
-
-    .anime-card.on-break .anime-card-image-wrapper img {
-      opacity: 0.55;
-      filter: grayscale(50%);
-    }
-
-    .anime-card-image-wrapper {
-      aspect-ratio: 2 / 3;
-      overflow: hidden;
       position: relative;
-      background: var(--panel-2);
-    }
-
-    .anime-card-image-wrapper img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .anime-card-image-wrapper a {
-      display: block;
-      height: 100%;
-    }
-
-    .anime-card-time-chip {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(8px);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 999px;
-      padding: 4px 9px;
-      font-size: 0.7rem;
-      font-weight: 700;
-    }
-
-    .anime-card-badges {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      display: flex;
-      gap: 6px;
-    }
-
-    .badge-chip {
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(8px);
-      color: #fff;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      border: 1px solid rgba(255,255,255,0.18);
-    }
-
-    .badge-chip.added { color: #c6d4ff; border-color: rgba(166,185,255,0.4); }
-
-    .anime-card-info {
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      background: var(--panel);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 2 / 3;
       cursor: pointer;
-      transition: background 0.2s;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      -webkit-user-select: none;
       user-select: none;
     }
 
-    .anime-card-info:hover {
-      background: rgba(255,255,255,0.04);
+    .anime-card:hover {
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.5);
+      border-color: rgba(255,255,255,0.15);
     }
 
-    .anime-card-title {
-      font-weight: 700;
-      font-size: 0.85rem;
-      line-height: 1.3;
-      color: #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .anime-card.highlight-next { border: 2px solid var(--text); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
+    .anime-card.on-break .anime-card-bg img { opacity: 0.4; filter: grayscale(100%); }
+    .anime-card.on-break::after {
+      content: "ON BREAK"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: var(--warn); color: #000; font-weight: 800; font-size: 0.75rem; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.05em;
     }
 
-    .anime-card-episode {
-      font-size: 0.7rem;
-      color: var(--muted);
-      font-weight: 600;
-    }
+    .anime-card-bg { position: absolute; inset: 0; background: var(--panel-2); z-index: 1; }
+    .anime-card-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .anime-card-bg a { display: block; height: 100%; }
 
-    /* Modal styles (unchanged) */
-    .modal {
-      position: fixed;
+    .anime-card-overlay {
+      position: absolute;
       inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(8px);
-      z-index: 10000;
-    }
-
-    .modal.open {
+      z-index: 2;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.95) 100%);
       display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px;
+      pointer-events: none; /* Lets clicks pass through to the wrapper */
     }
 
-    .modal-dialog {
-      width: min(680px, 100%);
-      max-height: min(86vh, 900px);
-      display: grid;
-      gap: 0;
-      background: var(--bg);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .modal.open .modal-dialog {
-      animation: modalIn 0.18s ease-out;
-    }
-
-    .modal-sheet-handle {
-      display: none;
-    }
-
-    .modal-head {
+    .anime-card-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 14px;
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, var(--panel), var(--bg));
+      width: 100%;
     }
 
-    .modal-title {
-      font-size: 1.02rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .modal-subtitle {
-      color: var(--muted);
-      font-size: 0.85rem;
-      line-height: 1.45;
-      margin-top: 4px;
-    }
-
-    .modal-close {
-      width: 40px;
-      height: 40px;
-      min-width: 40px;
-      padding: 0;
+    .anime-card-time-chip {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      padding: 5px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-chip {
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: var(--text);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .badge-chip.added { color: #000; background: var(--text); border: none; }
+
+    .anime-card-bottom {
+      pointer-events: auto; /* Re-enable clicks for the settings modal trigger */
+      width: 100%;
     }
 
-    .modal-body {
-      display: grid;
-      gap: 14px;
-      padding: 18px 20px;
-      overflow: auto;
-      overflow-x: hidden;
-      overscroll-behavior: contain;
-      min-width: 0;
+    .anime-card-title {
+      font-weight: 800;
+      font-size: 0.95rem;
+      line-height: 1.25;
+      color: #fff;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      margin-bottom: 4px;
     }
 
+    .anime-card-episode {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ---------- Accordions & Settings ---------- */
+    .top-dropdown { border: none; margin-bottom: 16px; }
+    .top-dropdown > summary {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px; cursor: pointer; list-style: none; user-select: none;
+    }
+    .top-dropdown > summary::-webkit-details-marker { display: none; }
+    
+    .section-title { margin: 0; font-size: 1.1rem; font-weight: 800; }
+    .manager-toggle-copy { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+    
+    .manager-toggle-icon {
+      width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: var(--panel-2); color: var(--text); font-size: 0.9rem;
+      transition: transform 0.2s ease;
+    }
+    .top-dropdown[open] .manager-toggle-icon { transform: rotate(180deg); }
+    
+    .top-dropdown-body {
+      padding: 0 20px 20px; border-top: 1px solid var(--line); padding-top: 20px;
+    }
+
+    .summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .summary-card { padding: 16px; background: var(--bg); border-radius: var(--radius-md); border: 1px solid var(--line); }
+    .summary-label { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .summary-value { font-size: 1.5rem; font-weight: 800; }
+
+    /* ---------- Alerts & Status ---------- */
+    .message {
+      display: none; padding: 16px; border-radius: var(--radius-md);
+      margin-top: 24px; font-size: 0.9rem; line-height: 1.5; font-weight: 500;
+    }
+    .message.info { display: block; background: var(--panel-2); border: 1px solid var(--line); }
+    .message.error { display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+    .footer { margin-top: 32px; color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+    .footer a { color: var(--text); text-decoration: none; font-weight: 600; }
+    .footer a:hover { text-decoration: underline; }
+    .footer-status-healthy { color: var(--ok); font-weight: 700; }
+    .footer-status-unhealthy { color: var(--danger); font-weight: 700; }
+
+    /* Indicator */
+    .update-indicator {
+      --indicator-color: var(--ok);
+      position: fixed; top: 24px; right: 24px; width: 10px; height: 10px;
+      border-radius: 50%; background: var(--indicator-color);
+      box-shadow: 0 0 0 2px rgba(9, 9, 11, 0.8), 0 0 12px var(--indicator-color);
+      z-index: 1000;
+    }
+    .update-indicator.error { --indicator-color: var(--danger); }
+
+    /* ---------- Modals (Sleek Bottom Sheets on Mobile) ---------- */
+    .modal {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      padding: 20px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px); z-index: 10000;
+    }
+    .modal.open { display: flex; }
+    .modal-dialog {
+      width: min(500px, 100%); max-height: 85vh;
+      background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal.open .modal-dialog { animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    .modal-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 20px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    .modal-title { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
+    .modal-subtitle { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+    
+    .modal-close {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--panel-2);
+      border: 1px solid var(--line); color: var(--text); font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+
+    .modal-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
     .modal-footer {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      padding: 16px 20px 20px;
-      border-top: 1px solid var(--line);
-      background: var(--bg);
+      padding: 20px 24px; border-top: 1px solid var(--line); background: var(--panel);
+      display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
     }
 
     .modal-note {
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.45;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
+      padding: 12px 16px; border-radius: var(--radius-md); font-size: 0.85rem;
+      background: var(--panel-2); border: 1px solid var(--line); color: var(--text-muted);
     }
 
-    .modal-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: end;
-      min-width: 0;
-    }
+    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-    .modal-grid > * { min-width: 0; }
-    .modal-grid > .field { min-width: 0; }
-
-    @keyframes modalIn {
-      from { transform: translateY(8px); opacity: 0.85; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    @keyframes sheetIn {
-      from { transform: translateY(28px); opacity: 0.82; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    @media (max-width: 980px) {
-      .toolbar-grid, .config-grid { grid-template-columns: 1fr; }
-      .modal-grid { grid-template-columns: 1fr; }
+    @keyframes modalScaleIn {
+      from { transform: scale(0.95) translateY(10px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
     }
 
     @media (max-width: 720px) {
-      .wrap { padding: 12px 10px 36px; }
-      .controls { padding: 16px; }
-      .top-dropdown > summary, .top-dropdown-body { padding-left: 16px; padding-right: 16px; }
-      .modal {
-        align-items: flex-end;
-        justify-content: stretch;
-        padding: 0;
-      }
-      .modal-dialog {
-        width: 100%;
-        max-height: min(90vh, 900px);
-        border-radius: 22px 22px 0 0;
-        border-bottom: 0;
-      }
-      .modal.open .modal-dialog { animation: sheetIn 0.22s ease-out; }
-      .modal-sheet-handle { display: block; width: 42px; height: 5px; margin: 10px auto 2px; border-radius: 999px; background: rgba(255,255,255,0.22); }
-      .modal-head { position: sticky; top: 0; z-index: 2; }
-      .modal-footer { position: sticky; bottom: 0; z-index: 2; padding-bottom: calc(16px + env(safe-area-inset-bottom)); background: rgba(15,17,25,0.96); backdrop-filter: blur(12px); }
+      .wrap { padding-top: 0; }
+      .modal { align-items: flex-end; padding: 0; }
+      .modal-dialog { width: 100%; max-height: 90vh; border-radius: 24px 24px 0 0; border: none; }
+      .modal.open .modal-dialog { animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+      .modal-sheet-handle { width: 40px; height: 4px; border-radius: 999px; background: var(--line); margin: 12px auto 4px; }
+      @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     }
+    
+    /* Search List Styles for Add Modal */
+    .list-stack { display: grid; gap: 8px; margin-top: 16px; }
+    .search-result {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md);
+    }
+    .row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;}
+    .row-title { font-weight: 700; font-size: 0.95rem; }
+    .chip { padding: 3px 8px; border-radius: 999px; font-size: 0.65rem; font-weight: 800; background: var(--panel-2); border: 1px solid var(--line); text-transform: uppercase; }
+    .chip.rss { color: var(--ok); border-color: rgba(52, 211, 153, 0.3); }
+    .chip.added { color: #000; background: var(--text); }
+    .row-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+    .row-actions button { padding: 8px 16px; font-size: 0.85rem; }
 
-    /* Footer & indicator */
-    .footer {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.45;
+    /* Custom Checkbox Toggle */
+    .toggle { display: flex; align-items: center; gap: 12px; font-weight: 600; cursor: pointer; user-select: none; }
+    .toggle input[type="checkbox"] {
+      appearance: none; width: 44px; height: 24px; background: var(--panel-2); border-radius: 999px;
+      position: relative; cursor: pointer; outline: none; border: 1px solid var(--line); transition: background 0.3s;
     }
-
-    .footer-status-healthy {
-      color: var(--ok);
-      font-weight: 700;
+    .toggle input[type="checkbox"]::after {
+      content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+      background: var(--text-muted); border-radius: 50%; transition: transform 0.3s, background 0.3s;
     }
-
-    .footer-status-unhealthy {
-      color: #ff8a8a;
-      font-weight: 700;
-    }
-
-    .update-indicator {
-      --indicator-rgb: 255, 255, 255;
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      background: rgba(var(--indicator-rgb), 0.92);
-      box-shadow: 0 0 0 1px rgba(var(--indicator-rgb), 0.12), 0 0 10px rgba(var(--indicator-rgb), 0.12);
-      z-index: 9999;
-      opacity: 0.9;
-      pointer-events: auto;
-      animation: indicatorBreathe 2.2s ease-in-out infinite;
-    }
-
-    .update-indicator.error {
-      --indicator-rgb: 255, 90, 90;
-    }
-
-    .update-indicator.flash {
-      animation: indicatorBreathe 2.2s ease-in-out infinite, indicatorFlash 0.95s ease;
-    }
-
-    @keyframes indicatorBreathe {
-      0%, 100% { transform: scale(1); opacity: 0.72; box-shadow: 0 0 0 1px rgba(var(--indicator-rgb), 0.10), 0 0 8px rgba(var(--indicator-rgb), 0.08); }
-      50% { transform: scale(1.12); opacity: 0.98; box-shadow: 0 0 0 1px rgba(var(--indicator-rgb), 0.16), 0 0 14px rgba(var(--indicator-rgb), 0.18); }
-    }
-
-    @keyframes indicatorFlash {
-      0% { box-shadow: 0 0 0 0 rgba(var(--indicator-rgb), 0.55), 0 0 10px rgba(var(--indicator-rgb), 0.18); }
-      45% { box-shadow: 0 0 0 10px rgba(var(--indicator-rgb), 0), 0 0 20px rgba(var(--indicator-rgb), 0.28); }
-      100% { box-shadow: 0 0 0 0 rgba(var(--indicator-rgb), 0), 0 0 10px rgba(var(--indicator-rgb), 0.12); }
-    }
+    .toggle input[type="checkbox"]:checked { background: var(--text); border-color: var(--text); }
+    .toggle input[type="checkbox"]:checked::after { transform: translateX(20px); background: var(--bg); }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1 class="title">Currently airing</h1>
+    
+    <div id="board-container"></div>
 
-    <div id="board-container">
-      <!-- Day selector and card grid rendered by JS -->
-    </div>
-
-    <section class="panel controls" style="margin-top: 16px; margin-bottom: 16px;">
+    <section class="panel controls">
       <div class="toolbar-grid">
         <div class="field">
-          <label for="username">Username</label>
-          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
+          <label for="username">AniList Username</label>
+          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" placeholder="e.g. zrr" />
         </div>
         <div class="button-row">
-          <button id="loadBtn" class="primary" type="button">Load</button>
+          <button id="loadBtn" class="primary" type="button">Sync Now</button>
         </div>
       </div>
     </section>
 
     <div id="message" class="message" aria-live="polite"></div>
 
-    <div class="top-stack" style="margin-top: 32px;">
-      <details class="panel top-dropdown">
-        <summary>
-          <div>
-            <h2 class="section-title">Fetched Entries</h2>
-            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and RSS shows.</div>
-          </div>
-          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-        </summary>
-        <div class="top-dropdown-body">
-          <section id="summary" class="summary"></section>
+    <details class="panel top-dropdown">
+      <summary>
+        <div>
+          <h2 class="section-title">Statistics & Entries</h2>
+          <div class="manager-toggle-copy">Overview of parsed feeds and tracked shows.</div>
         </div>
-      </details>
+        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+      </summary>
+      <div class="top-dropdown-body">
+        <section id="summary" class="summary"></section>
+      </div>
+    </details>
 
-      <details class="panel top-dropdown config-dropdown">
-        <summary>
-          <div>
-            <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feeds, proxy settings, and Cache</div>
+    <details class="panel top-dropdown config-dropdown">
+      <summary>
+        <div>
+          <h2 class="section-title">App Configuration</h2>
+          <div class="manager-toggle-copy">Manage feeds, clear cache, or manually add shows.</div>
+        </div>
+        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+      </summary>
+      <div class="top-dropdown-body">
+        <div class="config-grid">
+          <div class="field">
+            <label for="rssUrl">SubsPlease RSS URLs</label>
+            <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
           </div>
-          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-        </summary>
-        <div class="top-dropdown-body">
-          <div class="config-grid">
-            <div class="field">
-              <label for="rssUrl">SubsPlease RSS URLs</label>
-              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
-            </div>
-            <div class="field">
-              <label for="rssProxyTemplate">SubsPlease proxy</label>
-              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
-            </div>
-          </div>
-          <div class="button-row" style="margin-top: 8px;">
-            <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
-            <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
+          <div class="field">
+            <label for="rssProxyTemplate">RSS Proxy (Optional)</label>
+            <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
         </div>
-      </details>
-    </div>
+        <div class="button-row" style="margin-top: 20px;">
+          <button id="openAddShowBtn" class="primary" type="button">+ Add Custom Show</button>
+          <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
+        </div>
+      </div>
+    </details>
 
     <div id="footer" class="footer"></div>
   </div>
 
   <div id="updateIndicator" class="update-indicator" title="Waiting for first update"></div>
 
-  <!-- Modals (unchanged) -->
   <div id="showSettingsModal" class="modal" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-sheet-handle" aria-hidden="true"></div>
@@ -761,10 +523,10 @@
       <div class="modal-body">
         <label class="toggle">
           <input id="modalUseCustom" type="checkbox" />
-          Use custom slot
+          Override Release Slot
         </label>
         <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
-        <div id="modalHistorySlot" class="modal-note" style="margin-top: -6px; display: none;"></div>
+        <div id="modalHistorySlot" class="modal-note" style="display: none;"></div>
         <div class="modal-grid">
           <div class="field">
             <label for="modalDay">Day</label>
@@ -774,15 +536,15 @@
           </div>
           <div class="field">
             <label for="modalTime">Time</label>
-            <input id="modalTime" type="text" value="18:00" inputmode="numeric" placeholder="HH:MM" />
+            <input id="modalTime" type="time" value="18:00" placeholder="HH:MM" />
           </div>
         </div>
-        <div id="modalCustomHelper" class="helper">Custom slot is off. Turn it on to set your own day and time.</div>
+        <div id="modalCustomHelper" class="modal-note" style="background: transparent; border: none; padding: 0;">Custom slot is off. Turn it on to set your own day and time.</div>
       </div>
       <div class="modal-footer">
-        <button id="modalUseDetectedBtn" class="ghost" type="button">Use detected</button>
-        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear custom</button>
-        <button id="modalSaveBtn" class="primary" type="button">Save</button>
+        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear</button>
+        <button id="modalUseDetectedBtn" class="secondary" type="button">Use Detected</button>
+        <button id="modalSaveBtn" class="primary" type="button">Save Changes</button>
       </div>
     </div>
   </div>
@@ -792,25 +554,24 @@
       <div class="modal-sheet-handle" aria-hidden="true"></div>
       <div class="modal-head">
         <div>
-          <div class="modal-title">Add currently airing show</div>
-          <div class="modal-subtitle">Search AniList and add an extra airing show to your board.</div>
+          <div class="modal-title">Add Extra Show</div>
+          <div class="modal-subtitle">Search AniList to track a show manually.</div>
         </div>
         <button id="closeAddShowBtn" class="modal-close" type="button" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
         <div class="field">
-          <label for="addShowSearch">Search currently airing AniList shows</label>
-          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type a show name..." autocomplete="off" />
         </div>
         <div id="addShowResults" class="list-stack">
-          <div class="empty">Type at least 3 characters to search currently airing AniList shows.</div>
+          <div class="modal-note">Type at least 3 characters to search currently airing AniList shows.</div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // ==================== FULL JS (with split tap, stable episode, and day-section fix) ====================
+    // ==================== FULL JS (LOGIC UNCHANGED, HTML RENDER STRINGS UPDATED FOR UI) ====================
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
@@ -1081,23 +842,22 @@
 
       let extra = "";
       if (state.lastSuccessfulLoadAt) {
-        extra += ` · Board updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
+        extra += ` · Updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
       } else {
         extra += " · Waiting for first update";
       }
 
       if (state.lastRssReleaseAt) {
         const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
-        extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
+        extra += `<br/>Newest RSS release at ${exactLocalTime}`;
       }
 
       if (isUnhealthy && state.notes.length) {
-        extra += ` · ${escapeHtml(state.notes.join(" "))}`;
+        extra += `<br/>${escapeHtml(state.notes.join(" "))}`;
       }
 
       els.footer.innerHTML = `
         <span class="${statusClass}">${statusLabel}</span>${extra}
-        · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
       `;
     }
 
@@ -2079,7 +1839,6 @@
       return output;
     }
 
-    // ==================== UPDATE HIGHLIGHTS (flicker-free, fixed day-section target) ====================
     function updateBoardHighlights() {
       const grouped = groupForBoard(state.items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
@@ -2121,7 +1880,7 @@
         if (!countEl) {
           countEl = document.createElement('span');
           countEl.className = 'day-count';
-          countEl.style.cssText = 'font-size:0.8rem;color:var(--muted);margin-left:8px;';
+          countEl.style.cssText = 'font-size:0.8rem;color:var(--text-muted);margin-left:12px;font-weight:600;';
           header.appendChild(countEl);
         }
         countEl.textContent = `${airedCount}/${totalCount}`;
@@ -2130,7 +1889,7 @@
       state.lastNextSlotKey = newNextSlotKey;
     }
 
-    // ==================== RENDER ====================
+    // ==================== REWORKED HTML RENDERING ====================
     function renderBoard(items, isTick = false) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
@@ -2140,25 +1899,36 @@
       const todayName = WEEKDAYS[getNowContext(DEFAULT_TIMEZONE).dayIndex];
       const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
       const isFullWeek = effectiveDay === "Full Week";
-
-      const dayOptions = WEEKDAYS.map(d => `<option value="${d}" ${effectiveDay === d ? "selected" : ""}>${d}</option>`).join("");
-      const fullWeekSel = effectiveDay === "Full Week" ? "selected" : "";
-      const todaySel = (state.selectedDay === "Today" && !isFullWeek) ? "selected" : "";
       const visibleCount = isFullWeek ? items.length : items.filter(i => i.day === effectiveDay).length;
 
+      // Build pill options
+      const daysList = ["Today", ...WEEKDAYS, "Full Week"];
+      const dayOptions = daysList.map(d => {
+          let val = d;
+          let display = d;
+          if (d === "Today") {
+              display = `Today <span class="sub">${todayName.slice(0,3)}</span>`;
+          } else if (d !== "Full Week") {
+              display = d.slice(0,3); 
+          }
+          const isSel = (state.selectedDay === val);
+          return `<button class="day-pill ${isSel ? 'active' : ''}" data-value="${escapeHtml(val)}">${display}</button>`;
+      }).join("");
+
       let html = `
-        <div class="board-header">
-          <select id="daySelect" class="day-select">
-            <option value="Today" ${todaySel}>Today (${todayName})</option>
-            ${dayOptions}
-            <option value="Full Week" ${fullWeekSel}>Full Week</option>
-          </select>
-          <div class="day-count-chip">${visibleCount} shows</div>
+        <div class="header-area">
+          <div class="header-top-row">
+            <h1 class="title">Currently Airing</h1>
+            <div class="day-count-chip">${visibleCount} shows</div>
+          </div>
+          <div class="day-pills-container" id="daySelectContainer">
+             ${dayOptions}
+          </div>
         </div>
       `;
 
       if (isFullWeek) {
-        html += `<div id="cardGrid" class="card-grid">`;
+        html += `<div>`;
         for (const dayBlock of grouped) {
           const collapsed = state.collapsedDays.has(dayBlock.day);
           const dayItems = items.filter(i => i.day === dayBlock.day);
@@ -2167,10 +1937,10 @@
           for (const item of dayItems) {
             if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
           }
-          // Include data-day attribute for reliable day identification
+          
           html += `<div class="day-section" data-day="${escapeHtml(dayBlock.day)}">
             <div class="day-section-header">
-              <span class="day-section-name">${escapeHtml(dayBlock.day)} <span class="day-count" style="font-size:0.8rem;color:var(--muted);margin-left:8px;">${airedCount}/${totalCount}</span></span>
+              <span class="day-section-name">${escapeHtml(dayBlock.day)} <span class="day-count" style="font-size:0.8rem;color:var(--text-muted);margin-left:12px;font-weight:600;">${airedCount}/${totalCount}</span></span>
               <button class="day-section-toggle" data-action="toggle-day" data-day="${escapeHtml(dayBlock.day)}">${collapsed ? 'Show' : 'Hide'}</button>
             </div>`;
           if (!collapsed) {
@@ -2189,7 +1959,7 @@
         const dayItems = items.filter(i => i.day === effectiveDay);
         html += `<div id="cardGrid" class="card-grid">`;
         if (!dayItems.length) {
-          html += `<div class="empty" style="grid-column:1/-1;padding:12px;">Nothing airing on ${escapeHtml(effectiveDay)}.</div>`;
+          html += `<div class="empty" style="grid-column:1/-1;padding:32px 16px;text-align:center;color:var(--text-muted);">Nothing airing on ${escapeHtml(effectiveDay)}.</div>`;
         } else {
           for (const item of dayItems) {
             const slotKey = `${item.day}::${item.time}`;
@@ -2202,10 +1972,12 @@
       els.boardContainer.innerHTML = html;
       loadImagesToDOM();
 
-      const daySel = document.getElementById("daySelect");
-      if (daySel) {
-        daySel.addEventListener("change", (e) => {
-          state.selectedDay = e.target.value;
+      const dayContainer = document.getElementById("daySelectContainer");
+      if (dayContainer) {
+        dayContainer.addEventListener("click", (e) => {
+          const btn = e.target.closest(".day-pill");
+          if (!btn) return;
+          state.selectedDay = btn.dataset.value;
           saveSelectedDay(state.selectedDay);
           renderBoard(state.items);
         });
@@ -2218,23 +1990,24 @@
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
 
-      // Top half: image links to AniList
       const imageHTML = coverUrl 
         ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
         : '';
 
       return `
         <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''}" data-id="${id}">
-          <div class="anime-card-image-wrapper">
+          <div class="anime-card-bg">
             ${imageHTML}
-            <div class="anime-card-time-chip">${escapeHtml(displayTime)}</div>
-            <div class="anime-card-badges">
-              ${item.isAdded ? `<span class="badge-chip added">Added</span>` : ''}
-            </div>
           </div>
-          <div class="anime-card-info" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
-            <div class="anime-card-title">${title}</div>
-            ${item.hasNextAiring ? `<div class="anime-card-episode">EP ${item.displayEpisode}/${item.totalEpisodes}</div>` : ''}
+          <div class="anime-card-overlay">
+            <div class="anime-card-top">
+              ${item.isAdded ? `<span class="badge-chip added">Added</span>` : '<div></div>'}
+              <div class="anime-card-time-chip">${escapeHtml(displayTime)}</div>
+            </div>
+            <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
+              <div class="anime-card-title">${title}</div>
+              ${item.hasNextAiring ? `<div class="anime-card-episode">EP ${item.displayEpisode}/${item.totalEpisodes}</div>` : ''}
+            </div>
           </div>
         </div>
       `;
@@ -2246,15 +2019,15 @@
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
       const cards = [
-        { label: "Visible", value: String(items.length) },
-        { label: "Custom", value: String(manualCount) },
-        { label: "Added shows", value: String(addedCount) },
-        { label: "SubsPlease RSS", value: String(rssCount) },
-        { label: "Fallback", value: String(fallbackCount) },
-        { label: "Parsed RSS", value: String(primaryCount) }
+        { label: "Visible Shows", value: String(items.length) },
+        { label: "Custom Slots", value: String(manualCount) },
+        { label: "Manually Added", value: String(addedCount) },
+        { label: "Matched via RSS", value: String(rssCount) },
+        { label: "Fallback Data", value: String(fallbackCount) },
+        { label: "Parsed RSS Feed", value: String(primaryCount) }
       ];
       els.summary.innerHTML = cards.map(card => `
-        <article class="panel summary-card">
+        <article class="summary-card">
           <div class="summary-label">${escapeHtml(card.label)}</div>
           <div class="summary-value">${escapeHtml(card.value)}</div>
         </article>
@@ -2315,8 +2088,8 @@
       els.modalDay.disabled = !enabled;
       els.modalTime.disabled = !enabled;
       els.modalCustomHelper.textContent = enabled
-        ? "Custom slot is active and will override RSS / AniList for this show."
-        : "Custom slot is off. Turn it on to set your own day and time.";
+        ? "Custom slot is active and will override automatically detected data."
+        : "Custom slot is off. Turn it on to manually set schedule.";
     }
 
     function openModal(modal) {
@@ -2352,8 +2125,8 @@
       ].filter(Boolean).join(" · ");
 
       els.modalDetectedSlot.textContent = detected
-        ? `Detected: ${detected.day} · ${detected.time}`
-        : "Detected: No slot found yet";
+        ? `Detected: ${detected.day} at ${detected.time}`
+        : "Detected: No slot found";
 
       const activeItem = itemMap().get(id);
       if (activeItem && activeItem.historyLog) {
@@ -2366,7 +2139,7 @@
       els.modalUseCustom.checked = Boolean(override?.enabled);
       els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
       els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
-      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove show" : "Clear custom";
+      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove tracked show" : "Clear override";
 
       syncSettingsModalState();
     }
@@ -2486,9 +2259,9 @@
 
       if (!state.searchResults.length) {
         const text = els.addShowSearch.value.trim().length >= SEARCH_MIN_LENGTH
-          ? "No currently airing AniList matches found."
-          : `Type at least ${SEARCH_MIN_LENGTH} characters to search currently airing AniList shows.`;
-        els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
+          ? "No currently airing matches found."
+          : `Type at least ${SEARCH_MIN_LENGTH} characters to search currently airing shows.`;
+        els.addShowResults.innerHTML = `<div class="modal-note">${escapeHtml(text)}</div>`;
         return;
       }
 
@@ -2512,7 +2285,7 @@
             <div class="row-actions">
               ${manageable
                 ? `<button class="secondary" type="button" data-action="open-show-settings" data-id="${escapeHtml(id)}">Manage</button>`
-                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
+                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add</button>`}
             </div>
           </div>
         `;
@@ -2527,7 +2300,7 @@
         renderSearchResults();
         return;
       }
-      els.addShowResults.innerHTML = `<div class="empty">Searching AniList…</div>`;
+      els.addShowResults.innerHTML = `<div class="modal-note">Searching...</div>`;
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
@@ -2536,7 +2309,7 @@
       } catch (error) {
         if (token !== state.searchToken) return;
         state.searchResults = [];
-        els.addShowResults.innerHTML = `<div class="empty">Search failed: ${escapeHtml(error.message)}</div>`;
+        els.addShowResults.innerHTML = `<div class="modal-note">Search failed: ${escapeHtml(error.message)}</div>`;
       }
     }
 
@@ -2556,7 +2329,7 @@
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
-      const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
+      const loadingText = options.reason === "refresh" ? "Syncing..." : "Loading...";
       const nextOverrides = loadOverrides(userName);
       const nextAddedShows = loadAddedShows(userName);
       const rssUrls = getRssUrls();
@@ -2715,7 +2488,6 @@
     });
 
     els.boardContainer.addEventListener("click", event => {
-      // Support any element with data-action, not just buttons
       const actionElement = event.target.closest("[data-action]");
       if (!actionElement) return;
 
