@@ -403,6 +403,11 @@
       display: block;
     }
 
+    .anime-card-image-wrapper a {
+      display: block;
+      height: 100%;
+    }
+
     .anime-card-time-chip {
       position: absolute;
       top: 10px;
@@ -443,6 +448,13 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+      user-select: none;
+    }
+
+    .anime-card-info:hover {
+      background: rgba(255,255,255,0.04);
     }
 
     .anime-card-title {
@@ -459,143 +471,6 @@
       font-size: 0.7rem;
       color: var(--muted);
       font-weight: 600;
-    }
-
-    .anime-card-break-text {
-      font-size: 0.7rem;
-      color: var(--warn);
-      font-weight: 700;
-    }
-
-    .anime-card-settings-btn {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      width: 28px;
-      height: 28px;
-      border-radius: 999px;
-      background: transparent;
-      border: none;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 5;
-      transition: opacity 0.2s;
-      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
-    }
-
-    .anime-card-settings-btn:hover {
-      opacity: 0.85;
-    }
-
-    .list-stack {
-      display: grid;
-      gap: 10px;
-      max-height: clamp(320px, 55vh, 720px);
-      overflow: auto;
-      padding-right: 4px;
-    }
-
-    .search-result {
-      display: grid;
-      gap: 10px;
-      padding: 12px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, var(--panel-2), var(--panel));
-      border: 1px solid var(--line);
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-    }
-
-    .row-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 10px;
-      align-items: center;
-    }
-
-    .row-title {
-      font-size: 0.94rem;
-      font-weight: 800;
-      line-height: 1.35;
-    }
-
-    .row-subtitle {
-      color: var(--muted);
-      font-size: 0.8rem;
-      line-height: 1.4;
-    }
-
-    .row-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      align-items: center;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 3px 7px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      font-size: 0.71rem;
-      font-weight: 700;
-    }
-
-    .chip.rss {
-      background: rgba(140, 226, 174, 0.11);
-      border-color: rgba(140, 226, 174, 0.18);
-      color: #d8ffe7;
-    }
-
-    .chip.fallback,
-    .chip.manual,
-    .chip.moved {
-      background: rgba(255, 212, 138, 0.11);
-      border-color: rgba(255, 212, 138, 0.18);
-      color: #fff0d6;
-    }
-
-    .chip.added {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.10);
-      color: var(--text);
-    }
-
-    .countdown-inline {
-      display: inline;
-      opacity: 0.92;
-      font-weight: 800;
-    }
-
-    .toggle {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      color: var(--text);
-      font-size: 0.85rem;
-      font-weight: 700;
-    }
-
-    .toggle input { width: auto; }
-
-    .empty {
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.45;
-      padding: 4px 0;
-    }
-
-    .helper {
-      color: var(--muted);
-      font-size: 0.82rem;
-      line-height: 1.45;
     }
 
     /* Modal styles (unchanged) */
@@ -935,7 +810,7 @@
   </div>
 
   <script>
-    // ==================== FULL ORIGINAL JS (with flicker fix, cogwheel, break glow updates) ====================
+    // ==================== FULL JS (with split tap and stable episode) ====================
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
@@ -2210,7 +2085,6 @@
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       const newNextSlotKey = nextSlot?.key || null;
 
-      // Update highlight-next classes on all cards
       const allCards = document.querySelectorAll('.anime-card');
       for (const card of allCards) {
         const id = card.dataset?.id;
@@ -2222,7 +2096,6 @@
         card.classList.toggle('highlight-next', isNext);
       }
 
-      // Update day count chip for single-day view
       const chip = document.querySelector('.day-count-chip');
       if (chip) {
         const todayName = WEEKDAYS[getNowContext(DEFAULT_TIMEZONE).dayIndex];
@@ -2232,7 +2105,6 @@
         chip.textContent = `${visibleCount} shows`;
       }
 
-      // Update aired/total counts in day section headers (Full Week view)
       const daySections = document.querySelectorAll('.day-section');
       for (const section of daySections) {
         const header = section.querySelector('.day-section-name');
@@ -2244,13 +2116,13 @@
         for (const item of dayItems) {
           if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
         }
-        const countEl = section.querySelector('.day-count') || (() => {
-          const el = document.createElement('span');
-          el.className = 'day-count';
-          el.style.cssText = 'font-size:0.8rem;color:var(--muted);margin-left:8px;';
-          header.appendChild(el);
-          return el;
-        })();
+        let countEl = header.querySelector('.day-count');
+        if (!countEl) {
+          countEl = document.createElement('span');
+          countEl.className = 'day-count';
+          countEl.style.cssText = 'font-size:0.8rem;color:var(--muted);margin-left:8px;';
+          header.appendChild(countEl);
+        }
         countEl.textContent = `${airedCount}/${totalCount}`;
       }
 
@@ -2342,25 +2214,25 @@
       const title = escapeHtml(item.title);
       const coverUrl = item.cover || "";
       const id = String(item.id);
+      const siteUrl = item.siteUrl || "#";
+
+      // Top half: image links to AniList
+      const imageHTML = coverUrl 
+        ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
+        : '';
 
       return `
         <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''}" data-id="${id}">
           <div class="anime-card-image-wrapper">
-            ${coverUrl ? `<img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy">` : ''}
+            ${imageHTML}
             <div class="anime-card-time-chip">${escapeHtml(displayTime)}</div>
             <div class="anime-card-badges">
               ${item.isAdded ? `<span class="badge-chip added">Added</span>` : ''}
             </div>
-            <button class="anime-card-settings-btn" data-action="open-show-settings" data-id="${id}" aria-label="Settings for ${title}" title="Settings">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-              </svg>
-            </button>
           </div>
-          <div class="anime-card-info">
+          <div class="anime-card-info" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
             <div class="anime-card-title">${title}</div>
-            ${item.isScheduleMoved ? `<div class="anime-card-break-text">On Break</div>` : (item.hasNextAiring ? `<div class="anime-card-episode">EP ${item.displayEpisode}/${item.totalEpisodes}</div>` : '')}
+            ${item.hasNextAiring ? `<div class="anime-card-episode">EP ${item.displayEpisode}/${item.totalEpisodes}</div>` : ''}
           </div>
         </div>
       `;
@@ -2841,22 +2713,24 @@
     });
 
     els.boardContainer.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-      
-      const action = button.dataset.action;
-      
+      // Support any element with data-action, not just buttons
+      const actionElement = event.target.closest("[data-action]");
+      if (!actionElement) return;
+
+      const action = actionElement.dataset.action;
+      const id = actionElement.dataset.id;
+
       if (action === "open-show-settings") {
-        openSettingsModalForId(button.dataset.id);
+        openSettingsModalForId(id);
       } else if (action === "toggle-day") {
-        const day = button.dataset.day;
+        const day = actionElement.dataset.day;
         if (state.collapsedDays.has(day)) {
           state.collapsedDays.delete(day);
         } else {
           state.collapsedDays.add(day);
         }
         saveJSON(COLLAPSED_DAYS_KEY, Array.from(state.collapsedDays));
-        renderBoard(state.items); 
+        renderBoard(state.items);
       }
     });
 
