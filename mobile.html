@@ -272,7 +272,7 @@
       background: var(--bg);
     }
 
-    /* ---------- New Card UI (portrait, two-column) ---------- */
+    /* ---------- Card UI (portrait, two-column) ---------- */
     .board-header {
       display: flex;
       align-items: center;
@@ -331,6 +331,8 @@
 
     .day-section {
       margin-bottom: 20px;
+      border-left: 3px solid var(--line);
+      padding-left: 12px;
     }
 
     .day-section-header {
@@ -929,6 +931,7 @@
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const SELECTED_DAY_KEY = "airing-board-selected-day-v1";
     
     const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin";
     
@@ -1092,6 +1095,14 @@
       try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
     }
 
+    function loadSelectedDay() {
+      try { return localStorage.getItem(SELECTED_DAY_KEY) || "Today"; } catch { return "Today"; }
+    }
+
+    function saveSelectedDay(day) {
+      try { localStorage.setItem(SELECTED_DAY_KEY, day); } catch {}
+    }
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
@@ -1151,7 +1162,7 @@
       healthStatus: "healthy",
       lastNextSlotKey: null,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
-      selectedDay: "Today"   // new state for day selector
+      selectedDay: loadSelectedDay()   // persisted day selection
     };
 
     showMessage("info", "Ready.");
@@ -2184,7 +2195,7 @@
       return output;
     }
 
-    // ==================== NEW RENDER (portrait two-column cards) ====================
+    // ==================== UPDATED RENDER (persistent day, cog icon, removed RSS badge, day dividers) ====================
     function renderBoard(items, isTick = false) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
@@ -2253,6 +2264,7 @@
       if (daySel) {
         daySel.addEventListener("change", (e) => {
           state.selectedDay = e.target.value;
+          saveSelectedDay(state.selectedDay);
           renderBoard(state.items);
         });
       }
@@ -2272,14 +2284,11 @@
             <div class="anime-card-badges">
               ${item.isScheduleMoved ? `<span class="badge-chip moved">Break</span>` : ''}
               ${item.isAdded ? `<span class="badge-chip added">Added</span>` : ''}
-              ${item.source === "manual" ? `<span class="badge-chip" style="color:#ffd38a">CUSTOM</span>` : (item.source === "rss" || item.source === "cache") ? `<span class="badge-chip" style="color:#8fe3b2">RSS</span>` : ''}
             </div>
-            <button class="anime-card-settings-btn" data-action="open-show-settings" data-id="${id}" aria-label="Adjust ${title}" title="Adjust show">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
-                <path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="17" cy="7" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="9" cy="17" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+            <button class="anime-card-settings-btn" data-action="open-show-settings" data-id="${id}" aria-label="Settings for ${title}" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
               </svg>
             </button>
           </div>
