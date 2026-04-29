@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Airing" />
+  <meta name="theme-color" content="#000000" />
+  
   <title>Currently airing</title>
   
   <style>
     /* ---------- Premium App Theme Variables ---------- */
     :root {
-      --bg: #09090b;
+      --bg: #000000; /* Pure OLED Black */
       --panel: #141417;
       --panel-hover: #1c1c21;
       --panel-2: #1e1e24;
@@ -46,18 +52,20 @@
     .wrap {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 0 16px 60px;
+      /* Added safe-area-inset to respect iOS home bar */
+      padding: 0 16px max(60px, env(safe-area-inset-bottom));
     }
 
     /* ---------- Typography & Layout ---------- */
     .header-area {
       position: sticky;
       top: 0;
-      background: rgba(9, 9, 11, 0.85);
+      background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       z-index: 100;
-      padding: 20px 0 12px;
+      /* Added safe-area-inset-top for the Dynamic Island */
+      padding: max(20px, env(safe-area-inset-top)) 0 12px;
       margin: 0 -16px;
       padding-left: 16px;
       padding-right: 16px;
@@ -279,8 +287,8 @@
 
     /* Subtle freshness glow */
     .anime-card-time-chip.fresh {
-      box-shadow: 0 0 200px rgba(52, 211, 153, 0.30);
-      border-color: rgba(52, 211, 153, 0.3);
+      box-shadow: 0 0 6px 1px rgba(52, 211, 153, 0.4);
+      border-color: rgba(52, 211, 153, 0.6);
     }
 
     .badge-chip {
@@ -345,7 +353,7 @@
     }
 
     .summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-    .summary-card { padding: 16px; background: var(--bg); border-radius: var(--radius-md); border: 1px solid var(--line); }
+    .summary-card { padding: 16px; background: var(--panel); border-radius: var(--radius-md); border: 1px solid var(--line); }
     .summary-label { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
     .summary-value { font-size: 1.5rem; font-weight: 800; }
 
@@ -366,9 +374,9 @@
     /* Indicator */
     .update-indicator {
       --indicator-color: var(--ok);
-      position: fixed; top: 24px; right: 24px; width: 10px; height: 10px;
+      position: fixed; top: max(24px, env(safe-area-inset-top)); right: 24px; width: 10px; height: 10px;
       border-radius: 50%; background: var(--indicator-color);
-      box-shadow: 0 0 0 2px rgba(9, 9, 11, 0.8), 0 0 12px var(--indicator-color);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.8), 0 0 12px var(--indicator-color);
       z-index: 1000;
     }
     .update-indicator.error { --indicator-color: var(--danger); }
@@ -402,7 +410,7 @@
 
     .modal-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
     .modal-footer {
-      padding: 20px 24px; border-top: 1px solid var(--line); background: var(--panel);
+      padding: 20px 24px max(20px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--panel);
       display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
     }
 
@@ -1571,7 +1579,6 @@
 
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
-          // Fresh if the parsed sample's actual release date is within 7 days
           const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
@@ -1940,7 +1947,6 @@
         ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
         : '';
 
-      // Applies the .fresh class if the episode is from a recent RSS hit
       return `
         <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''}" data-id="${id}">
           <div class="anime-card-bg">
