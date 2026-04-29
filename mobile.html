@@ -88,13 +88,13 @@
       border: 1px solid var(--line);
     }
 
-    /* ---------- Day Pill Selector (Replacing native select) ---------- */
+    /* ---------- Day Pill Selector ---------- */
     .day-pills-container {
       display: flex;
       gap: 10px;
       overflow-x: auto;
       padding-bottom: 4px;
-      scrollbar-width: none; /* Firefox */
+      scrollbar-width: none;
       margin: 0 -16px;
       padding-left: 16px;
       padding-right: 16px;
@@ -194,14 +194,15 @@
     /* ---------- Card UI (App-Style Full Bleed) ---------- */
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(3, 1fr); /* 3 cols for large mobiles */
+      gap: 10px;
       margin-top: 16px;
     }
 
-    @media (min-width: 600px) { .card-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
-    @media (min-width: 900px) { .card-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
-    @media (min-width: 1100px) { .card-grid { grid-template-columns: repeat(5, 1fr); } }
+    @media (max-width: 390px) { .card-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+    @media (min-width: 600px) { .card-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
+    @media (min-width: 900px) { .card-grid { grid-template-columns: repeat(5, 1fr); gap: 20px; } }
+    @media (min-width: 1100px) { .card-grid { grid-template-columns: repeat(6, 1fr); } }
 
     .day-section { margin-top: 32px; }
     .day-section-header {
@@ -251,8 +252,8 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 12px;
-      pointer-events: none; /* Lets clicks pass through to the wrapper */
+      padding: 10px;
+      pointer-events: none;
     }
 
     .anime-card-top {
@@ -269,8 +270,8 @@
       color: #fff;
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 0.75rem;
+      padding: 4px 8px;
+      font-size: 0.7rem;
       font-weight: 700;
       letter-spacing: 0.02em;
     }
@@ -280,22 +281,22 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       color: var(--text);
-      padding: 5px 10px;
+      padding: 4px 8px;
       border-radius: 999px;
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       font-weight: 700;
       border: 1px solid rgba(255,255,255,0.1);
     }
     .badge-chip.added { color: #000; background: var(--text); border: none; }
 
     .anime-card-bottom {
-      pointer-events: auto; /* Re-enable clicks for the settings modal trigger */
+      pointer-events: auto;
       width: 100%;
     }
 
     .anime-card-title {
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.8rem;
       line-height: 1.25;
       color: #fff;
       display: -webkit-box;
@@ -303,11 +304,11 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
       text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .anime-card-episode {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       font-weight: 700;
       text-transform: uppercase;
@@ -365,7 +366,7 @@
     }
     .update-indicator.error { --indicator-color: var(--danger); }
 
-    /* ---------- Modals (Sleek Bottom Sheets on Mobile) ---------- */
+    /* ---------- Modals ---------- */
     .modal {
       position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
       padding: 20px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
@@ -419,7 +420,7 @@
       @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     }
     
-    /* Search List Styles for Add Modal */
+    /* Search List Styles */
     .list-stack { display: grid; gap: 8px; margin-top: 16px; }
     .search-result {
       display: flex; justify-content: space-between; align-items: center; gap: 12px;
@@ -571,7 +572,6 @@
   </div>
 
   <script>
-    // ==================== FULL JS (LOGIC UNCHANGED, HTML RENDER STRINGS UPDATED FOR UI) ====================
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
@@ -652,7 +652,6 @@
       }
     `;
 
-    // --- INDEXEDDB IMAGE PANTRY ---
     const DB_NAME = 'AiringBoardImages';
     const STORE_NAME = 'covers';
     let dbPromise = null;
@@ -726,7 +725,6 @@
         }
       }
     }
-    // ------------------------------
 
     function loadJSON(key, fallback) {
       try {
@@ -808,6 +806,7 @@
       healthStatus: "healthy",
       lastNextSlotKey: null,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
+      expandedDays: new Set(),
       selectedDay: loadSelectedDay()
     };
 
@@ -1246,13 +1245,6 @@
       return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     }
 
-    function median(values) {
-      const sorted = [...values].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      if (!sorted.length) return null;
-      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
     function medianTime(minutesArray) {
       if (!minutesArray || !minutesArray.length) return null;
       const base = minutesArray[0]; 
@@ -1440,7 +1432,6 @@
 
     function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
-
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
@@ -1523,23 +1514,11 @@
                 latestReleaseTime: primary.latestReleaseTime || null
               };
             } else {
-              return {
-                day: aniDay,
-                time: minutesToHHMM(aniMinutes + 60),
-                source: "fallback",
-                sampleCount: 0,
-                matchedTitle: ""
-              };
+              return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
             }
           }
 
-          return {
-            day: aniDay,
-            time: minutesToHHMM(aniMinutes + 60),
-            source: "fallback",
-            sampleCount: 0,
-            matchedTitle: ""
-          };
+          return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
         }
       }
 
@@ -1563,29 +1542,15 @@
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
         
         const isScheduleMoved =
-          hasNextAiring &&
-          Number.isFinite(nextAiringAt) &&
-          nextAiringAt > nowSeconds &&
-          (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
+          hasNextAiring && Number.isFinite(nextAiringAt) &&
+          nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: override.day,
-            time: override.time,
-            format: media.format || "",
-            source: "manual",
-            sampleCount: 1,
-            matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring,
-            totalEpisodes,
-            displayEpisode,
-            isScheduleMoved
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
+            format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
           });
           continue;
         }
@@ -1593,24 +1558,11 @@
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: primary.day,
-            time: primary.time,
-            format: media.format || "",
-            source: primary.source,
-            sampleCount: Math.min(primary.sampleCount || 1, 3),
-            matchedTitle: primary.matchedTitle || "",
-            matchedEpisode: primary.matchedEpisode || null,
-            latestReleaseDay: primary.latestReleaseDay || null,
-            latestReleaseTime: primary.latestReleaseTime || null,
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring,
-            totalEpisodes,
-            displayEpisode,
-            isScheduleMoved
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
+            format: media.format || "", source: primary.source, sampleCount: Math.min(primary.sampleCount || 1, 3),
+            matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || null, latestReleaseTime: primary.latestReleaseTime || null,
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
           });
         }
       }
@@ -1626,93 +1578,47 @@
 
         if (item.source === "rss") {
           let entry = cache[key];
-          if (!entry || typeof entry !== "object") {
-            entry = {};
-          }
-
+          if (!entry || typeof entry !== "object") entry = {};
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
-
           let trackerEp = item.matchedEpisode; 
-          if (trackerEp) {
-            trackerEp = String(trackerEp).padStart(2, "0");
-          } else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
-            const releasedEp = Math.max(1, item.displayEpisode - 1);
-            trackerEp = String(releasedEp).padStart(2, "0");
-          } else {
-            trackerEp = "?";
-          }
+          if (trackerEp) trackerEp = String(trackerEp).padStart(2, "0");
+          else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) trackerEp = String(Math.max(1, item.displayEpisode - 1)).padStart(2, "0");
+          else trackerEp = "?";
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
 
           if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
-            entry.history.push({
-              day: currentDay,
-              time: currentTime,
-              mins: toMinutes(currentTime),
-              episode: trackerEp
-            });
-
-            if (entry.history.length > 3) {
-              entry.history.shift();
-            }
+            entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
+            if (entry.history.length > 3) entry.history.shift();
           }
 
           if (entry.history.length > 0) {
-            const allMins = entry.history.map(h => h.mins);
-            const medMins = medianTime(allMins);
-
+            const medMins = medianTime(entry.history.map(h => h.mins));
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
           } else {
             item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
-          cache[key] = {
-            ...entry,
-            day: item.day,
-            time: item.time,
-            sampleCount: item.sampleCount,
-            matchedTitle: item.matchedTitle || "",
-            origin: "rss",
-            updatedAt: new Date().toISOString()
-          };
-
-          output.push({
-            ...item,
-            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
-          });
+          cache[key] = { ...entry, day: item.day, time: item.time, sampleCount: item.sampleCount, matchedTitle: item.matchedTitle || "", origin: "rss", updatedAt: new Date().toISOString() };
+          output.push({ ...item, historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ") });
           continue;
         }
 
         const remembered = cache[key];
-
         if (item.source === "manual") {
-          cache[key] = {
-            day: item.day,
-            time: item.time,
-            sampleCount: 1,
-            origin: "manual",
-            updatedAt: new Date().toISOString()
-          };
+          cache[key] = { day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
           output.push(item);
         } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
           const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
-          const rememberedTime = rememberedHistory.length
-            ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins)))
-            : remembered.time;
-
+          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : remembered.time;
           output.push({
-            ...item,
-            day: item.day, 
-            time: rememberedTime,
-            source: "cache",
-            sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
-            matchedTitle: remembered.matchedTitle || "",
-            cacheOrigin: remembered.origin || "saved",
+            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
+            matchedTitle: remembered.matchedTitle || "", cacheOrigin: remembered.origin || "saved",
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
         } else {
@@ -1738,8 +1644,7 @@
         if (part.type !== "literal") parts[part.type] = part.value;
       }
       return {
-        weekday: parts.weekday,
-        year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
+        weekday: parts.weekday, year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
         hour: Number(parts.hour), minute: Number(parts.minute), second: Number(parts.second)
       };
     }
@@ -1748,8 +1653,7 @@
       const parts = getTimeZoneParts(new Date(), timeZone);
       const dayIndex = WEEKDAYS.indexOf(parts.weekday);
       return {
-        ...parts,
-        dayIndex: dayIndex >= 0 ? dayIndex : 0,
+        ...parts, dayIndex: dayIndex >= 0 ? dayIndex : 0,
         totalMinutes: (parts.hour * 60) + parts.minute + (parts.second / 60)
       };
     }
@@ -1771,9 +1675,7 @@
       const dayIndex = WEEKDAYS.indexOf(day);
       const targetMinutes = toMinutes(time);
       const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
-      if (dayOffset === 0) {
-        return now.totalMinutes >= targetMinutes;
-      }
+      if (dayOffset === 0) return now.totalMinutes >= targetMinutes;
       return false; 
     }
 
@@ -1797,9 +1699,7 @@
       if (!Number.isFinite(safeTimestamp)) return "";
       const safeDate = new Date(safeTimestamp);
       if (!Number.isFinite(safeDate.getTime())) return "";
-      return new Intl.DateTimeFormat("en-GB", {
-        timeZone, weekday: "short", hour: "2-digit", minute: "2-digit"
-      }).format(safeDate);
+      return new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short", hour: "2-digit", minute: "2-digit" }).format(safeDate);
     }
 
     function updateIndicatorTitle(timestamp) {
@@ -1885,31 +1785,34 @@
         }
         countEl.textContent = `${airedCount}/${totalCount}`;
       }
-
       state.lastNextSlotKey = newNextSlotKey;
     }
 
-    // ==================== REWORKED HTML RENDERING ====================
+    // ==================== TWEAKED HTML RENDERING ====================
     function renderBoard(items, isTick = false) {
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       state.lastNextSlotKey = nextSlot?.key || null;
       revokeActiveCoverUrls();
 
-      const todayName = WEEKDAYS[getNowContext(DEFAULT_TIMEZONE).dayIndex];
+      const todayIdx = getNowContext(DEFAULT_TIMEZONE).dayIndex;
+      const todayName = WEEKDAYS[todayIdx];
       const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
       const isFullWeek = effectiveDay === "Full Week";
       const visibleCount = isFullWeek ? items.length : items.filter(i => i.day === effectiveDay).length;
 
-      // Build pill options
-      const daysList = ["Today", ...WEEKDAYS, "Full Week"];
+      // Build chronologically ordered pill options
+      const daysList = ["Today"];
+      for (let i = 1; i < 7; i++) {
+        daysList.push(WEEKDAYS[(todayIdx + i) % 7]);
+      }
+      daysList.push("Full Week");
+
       const dayOptions = daysList.map(d => {
           let val = d;
           let display = d;
           if (d === "Today") {
               display = `Today <span class="sub">${todayName.slice(0,3)}</span>`;
-          } else if (d !== "Full Week") {
-              display = d.slice(0,3); 
           }
           const isSel = (state.selectedDay === val);
           return `<button class="day-pill ${isSel ? 'active' : ''}" data-value="${escapeHtml(val)}">${display}</button>`;
@@ -1930,7 +1833,24 @@
       if (isFullWeek) {
         html += `<div>`;
         for (const dayBlock of grouped) {
-          const collapsed = state.collapsedDays.has(dayBlock.day);
+          
+          let isAutoCollapsed = false;
+          // Auto-collapse if today's shows finished > 60 mins ago and not manually expanded
+          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
+            let allFinished = true;
+            const now = getNowContext(DEFAULT_TIMEZONE);
+            for (const slot of dayBlock.slots) {
+              const targetMins = toMinutes(slot.time);
+              if (now.totalMinutes < targetMins + 60) {
+                allFinished = false; break;
+              }
+            }
+            if (dayBlock.slots.length > 0 && allFinished) {
+              isAutoCollapsed = true;
+            }
+          }
+
+          const collapsed = state.collapsedDays.has(dayBlock.day) || isAutoCollapsed;
           const dayItems = items.filter(i => i.day === dayBlock.day);
           const totalCount = dayItems.length;
           let airedCount = 0;
@@ -2498,11 +2418,17 @@
         openSettingsModalForId(id);
       } else if (action === "toggle-day") {
         const day = actionElement.dataset.day;
-        if (state.collapsedDays.has(day)) {
+        const isCurrentlyCollapsed = actionElement.textContent === 'Show';
+        
+        if (isCurrentlyCollapsed) {
           state.collapsedDays.delete(day);
+          if (!state.expandedDays) state.expandedDays = new Set();
+          state.expandedDays.add(day);
         } else {
           state.collapsedDays.add(day);
+          if (state.expandedDays) state.expandedDays.delete(day);
         }
+        
         saveJSON(COLLAPSED_DAYS_KEY, Array.from(state.collapsedDays));
         renderBoard(state.items);
       }
