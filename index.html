@@ -776,7 +776,10 @@
     }
 
     function loadSelectedDay() {
-      try { return localStorage.getItem(SELECTED_DAY_KEY) || "Today"; } catch { return "Today"; }
+      try { 
+        const val = localStorage.getItem(SELECTED_DAY_KEY) || "Full Week"; 
+        return ["Full Week", "Today"].includes(val) ? val : "Full Week";
+      } catch { return "Full Week"; }
     }
 
     function saveSelectedDay(day) {
@@ -1736,6 +1739,10 @@
       let best = null;
       for (const dayBlock of grouped) {
         for (const slot of dayBlock.slots) {
+          // SKIP ON-BREAK SHOWS: Only consider slot if it has at least one active show
+          const hasActiveShow = slot.items.some(i => !i.isScheduleMoved);
+          if (!hasActiveShow) continue;
+
           const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
           if (!status) continue;
           if (status.isNow || status.minutesUntil <= 0) continue;
@@ -1801,7 +1808,7 @@
         const item = state.items.find(i => String(i.id) === id);
         if (!item) continue;
         const slotKey = `${item.day}::${item.time}`;
-        const isNext = newNextSlotKey === slotKey;
+        const isNext = (newNextSlotKey === slotKey) && !item.isScheduleMoved;
         card.classList.toggle('highlight-next', isNext);
       }
 
@@ -1810,11 +1817,15 @@
         const dayName = section.dataset.day;
         if (!dayName) continue;
         const dayItems = state.items.filter(i => i.day === dayName);
-        const totalCount = dayItems.length;
+        
+        // ACTIVE MATH: Exclude on-break shows from counts
+        const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+        const totalCount = activeItems.length;
         let airedCount = 0;
-        for (const item of dayItems) {
+        for (const item of activeItems) {
           if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
         }
+        
         const header = section.querySelector('.day-section-name');
         if (!header) continue;
         let countEl = header.querySelector('.day-count');
@@ -1841,12 +1852,8 @@
       const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
       const isFullWeek = effectiveDay === "Full Week";
 
-      // Build chronologically ordered pill options
-      const daysList = ["Today"];
-      for (let i = 1; i < 7; i++) {
-        daysList.push(WEEKDAYS[(todayIdx + i) % 7]);
-      }
-      daysList.push("Full Week");
+      // SIMPLIFIED NAVIGATION: Only "Full Week" and "Today"
+      const daysList = ["Full Week", "Today"];
 
       const dayOptions = daysList.map(d => {
           let val = d;
@@ -1874,7 +1881,6 @@
         for (const dayBlock of grouped) {
           
           let isAutoCollapsed = false;
-          // Auto-collapse if today's shows finished > 60 mins ago and not manually expanded
           if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
@@ -1891,9 +1897,12 @@
 
           const collapsed = state.collapsedDays.has(dayBlock.day) || isAutoCollapsed;
           const dayItems = items.filter(i => i.day === dayBlock.day);
-          const totalCount = dayItems.length;
+          
+          // ACTIVE MATH: Exclude on-break shows from counts
+          const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+          const totalCount = activeItems.length;
           let airedCount = 0;
-          for (const item of dayItems) {
+          for (const item of activeItems) {
             if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
           }
           
@@ -1906,7 +1915,10 @@
             html += `<div class="card-grid">`;
             for (const slot of dayBlock.slots) {
               for (const item of slot.items) {
-                html += cardHTML(item, slot.time, nextSlot?.key === `${dayBlock.day}::${slot.time}`);
+                // SMART HIGHLIGHTING
+                const isNextSlot = nextSlot?.key === `${dayBlock.day}::${slot.time}`;
+                const isNext = isNextSlot && !item.isScheduleMoved;
+                html += cardHTML(item, slot.time, isNext);
               }
             }
             html += `</div>`;
@@ -1922,7 +1934,8 @@
         } else {
           for (const item of dayItems) {
             const slotKey = `${item.day}::${item.time}`;
-            html += cardHTML(item, item.time, nextSlot?.key === slotKey);
+            const isNext = (nextSlot?.key === slotKey) && !item.isScheduleMoved;
+            html += cardHTML(item, item.time, isNext);
           }
         }
         html += `</div>`;
