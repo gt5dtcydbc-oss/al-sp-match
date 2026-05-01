@@ -340,7 +340,7 @@
 
     let lastJikanRequestAt = 0;
 
-    // UPDATED: Allow Extended Latin Characters (like é, ä, ô) through the ASCII check
+    // Allow Extended Latin Characters (like é, ä, ô) through the ASCII check
     const isEnglishFriendly = (value) => /^[\x00-\xFF]*$/.test(String(value || ''));
     
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -404,11 +404,10 @@
             .replace(/[‐‑‒–—―]/g, '-');
     }
 
-    // WILDCARD FOLDER: Used strictly for AutoBrr generation
+    // WILDCARD FOLDER: Used strictly for AutoBrr generation (The Gap Method)
     function foldForWildcard(value) {
         return String(value)
-            .normalize('NFKD')
-            .replace(/[\u0300-\u036f]+/g, '*') // Replaces accents with *
+            .normalize('NFC') // Forces diacritics to merge into a single character
             .replace(/[×✕✖]/g, ' x ')
             .replace(/&/g, ' and ')
             .replace(/\+/g, ' plus ')
@@ -423,11 +422,11 @@
             .match(/[a-z0-9]+/g) || [];
     }
 
-    // WILDCARD TOKENS: Preserves the * character for the filter
+    // WILDCARD TOKENS: Drops special chars to create natural * gaps
     function wildcardTokens(value) {
         return foldForWildcard(value)
             .toLowerCase()
-            .match(/[a-z0-9*]+/g) || [];
+            .match(/[a-z0-9]+/g) || [];
     }
 
     function toWildcardPattern(title) {
