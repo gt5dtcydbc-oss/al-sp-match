@@ -88,16 +88,14 @@
 
     /* ---------- Day Pill Selector ---------- */
     .day-pills-container {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
-      overflow-x: auto;
       padding-bottom: 4px;
-      scrollbar-width: none;
       margin: 0 -16px;
       padding-left: 16px;
       padding-right: 16px;
     }
-    .day-pills-container::-webkit-scrollbar { display: none; }
 
     .day-pill {
       background: var(--panel);
@@ -111,6 +109,8 @@
       cursor: pointer;
       transition: all 0.2s ease;
       outline: none;
+      width: 100%;
+      text-align: center;
     }
     .day-pill:hover { background: var(--panel-hover); color: var(--text); }
     .day-pill.active {
@@ -129,10 +129,7 @@
       overflow: hidden;
     }
 
-    .controls { padding: 20px; }
-    .toolbar-grid, .config-grid { display: grid; gap: 16px; }
-    .toolbar-grid { grid-template-columns: minmax(260px, 1fr) auto; align-items: end; }
-    .config-grid { grid-template-columns: 1fr; }
+    .config-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
 
     @media (min-width: 768px) {
       .config-grid { grid-template-columns: repeat(2, 1fr); }
@@ -489,21 +486,7 @@
     
     <div id="board-container"></div>
 
-    <section class="panel controls">
-      <div class="toolbar-grid">
-        <div class="field">
-          <label for="username">AniList Username</label>
-          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" placeholder="e.g. zrr" />
-        </div>
-        <div class="button-row">
-          <button id="loadBtn" class="primary" type="button">Sync Now</button>
-        </div>
-      </div>
-    </section>
-
-    <div id="message" class="message" aria-live="polite"></div>
-
-    <details class="panel top-dropdown">
+    <details class="panel top-dropdown" style="margin-top: 24px;">
       <summary>
         <div>
           <h2 class="section-title">Statistics & Entries</h2>
@@ -520,12 +503,19 @@
       <summary>
         <div>
           <h2 class="section-title">App Configuration</h2>
-          <div class="manager-toggle-copy">Manage feeds, clear cache, or manually add shows.</div>
+          <div class="manager-toggle-copy">Manage sync, feeds, and cache.</div>
         </div>
         <span class="manager-toggle-icon" aria-hidden="true">▾</span>
       </summary>
       <div class="top-dropdown-body">
         <div class="config-grid">
+          <div class="field" style="grid-column: 1 / -1;">
+            <label for="username">AniList Username</label>
+            <div style="display: flex; gap: 12px;">
+              <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" placeholder="e.g. zrr" />
+              <button id="loadBtn" class="primary" type="button" style="white-space: nowrap;">Sync Now</button>
+            </div>
+          </div>
           <div class="field">
             <label for="rssUrl">SubsPlease RSS URLs</label>
             <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
@@ -535,6 +525,9 @@
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
         </div>
+        
+        <div id="message" class="message" aria-live="polite"></div>
+
         <div class="button-row" style="margin-top: 20px;">
           <button id="openAddShowBtn" class="primary" type="button">+ Add Custom Show</button>
           <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
