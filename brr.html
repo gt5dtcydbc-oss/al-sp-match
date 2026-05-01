@@ -650,8 +650,8 @@
             media.title?.romaji,
             media.title?.english,
             media.title?.userPreferred,
-            ...(options.includeNonAscii ? [media.title?.native] : []),
-            ...(Array.isArray(media.synonyms) ? media.synonyms : [])
+            ...(options.includeNonAscii ? [media.title?.native] : [])
+            // Removed untagged media.synonyms to prevent foreign language bloat
         ];
 
         return filterTitleListForAscii(titles, options);
@@ -671,7 +671,7 @@
             item?.title,
             item?.title_english,
             ...(options.includeNonAscii ? [item?.title_japanese] : []),
-            ...(Array.isArray(item?.title_synonyms) ? item.title_synonyms : []),
+            // Removed the legacy item.title_synonyms array to prevent foreign language bloat
             ...filteredJikanTitles
         ];
 
@@ -883,7 +883,7 @@
                   entries {
                     media {
                       id idMal siteUrl format startDate { year month day }
-                      title { romaji english native userPreferred } synonyms
+                      title { romaji english native userPreferred }
                     }
                   }
                 }
