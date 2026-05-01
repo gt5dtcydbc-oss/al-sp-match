@@ -658,12 +658,21 @@
     }
 
     function collectJikanTitles(item, options) {
+        // Whitelist only the language tags we actually want from MAL
+        const allowedTypes = new Set(['Default', 'English', 'Synonym']);
+        if (options.includeNonAscii) allowedTypes.add('Japanese');
+
+        // Filter the massive MAL titles array before extracting the strings
+        const filteredJikanTitles = Array.isArray(item?.titles)
+            ? item.titles.filter(t => allowedTypes.has(t?.type)).map(t => t?.title)
+            : [];
+
         const titles = [
             item?.title,
             item?.title_english,
             ...(options.includeNonAscii ? [item?.title_japanese] : []),
             ...(Array.isArray(item?.title_synonyms) ? item.title_synonyms : []),
-            ...(Array.isArray(item?.titles) ? item.titles.map(t => t?.title) : [])
+            ...filteredJikanTitles
         ];
 
         return filterTitleListForAscii(titles, options);
