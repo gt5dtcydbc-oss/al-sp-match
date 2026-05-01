@@ -340,7 +340,9 @@
 
     let lastJikanRequestAt = 0;
 
-    const isEnglishFriendly = (value) => /^[\x00-\x7F]*$/.test(String(value || ''));
+    // UPDATED: Allow Extended Latin Characters (like é, ä, ô) through the ASCII check
+    const isEnglishFriendly = (value) => /^[\x00-\xFF]*$/.test(String(value || ''));
+    
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     function safeGetItem(key) {
@@ -390,10 +392,11 @@
         els.log.scrollTop = els.log.scrollHeight;
     }
 
+    // BASE FOLDER: Used strictly for matching/comparing Jikan to AniList
     function foldCommonCharacters(value) {
         return String(value)
             .normalize('NFKD')
-            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[\u0300-\u036f]/g, '') // Deletes accents entirely for matching
             .replace(/[×✕✖]/g, ' x ')
             .replace(/&/g, ' and ')
             .replace(/\+/g, ' plus ')
@@ -401,20 +404,42 @@
             .replace(/[‐‑‒–—―]/g, '-');
     }
 
+    // WILDCARD FOLDER: Used strictly for AutoBrr generation
+    function foldForWildcard(value) {
+        return String(value)
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]+/g, '*') // Replaces accents with *
+            .replace(/[×✕✖]/g, ' x ')
+            .replace(/&/g, ' and ')
+            .replace(/\+/g, ' plus ')
+            .replace(/½/g, ' 1 2 ')
+            .replace(/[‐‑‒–—―]/g, '-');
+    }
+
+    // BASE TOKENS: For scoring and comparison
     function titleTokens(value) {
         return foldCommonCharacters(value)
             .toLowerCase()
             .match(/[a-z0-9]+/g) || [];
     }
 
+    // WILDCARD TOKENS: Preserves the * character for the filter
+    function wildcardTokens(value) {
+        return foldForWildcard(value)
+            .toLowerCase()
+            .match(/[a-z0-9*]+/g) || [];
+    }
+
     function toWildcardPattern(title) {
-        const tokens = titleTokens(title);
+        const tokens = wildcardTokens(title);
         if (!tokens.length) return '';
-        return tokens.join('*');
+        // Safely join with * and remove any accidental double stars (**)
+        return tokens.join('*').replace(/\*+/g, '*');
     }
 
     function addPattern(patterns, rawPattern) {
-        const pattern = String(rawPattern || '').trim();
+        // Prevent accidental double stars (**) during trim/format
+        const pattern = String(rawPattern || '').trim().replace(/\*+/g, '*');
         if (!pattern) return;
 
         const compactLength = pattern.replace(/[?*]/g, '').length;
@@ -430,7 +455,9 @@
         }
 
         if (compactLength <= 2) return;
-        patterns.add(`*${pattern}*`);
+        
+        // Final cleanup just in case leading/trailing stars created duplicates
+        patterns.add(`*${pattern}*`.replace(/\*+/g, '*'));
     }
 
     function normalizeForCompare(value) {
@@ -727,7 +754,6 @@
       return controller.signal;
     }
 
-    // -- UPGRADED JIKAN FETCHER (Now with Timeout) --
     async function throttledJikanFetch(url) {
         const now = Date.now();
         const elapsed = now - lastJikanRequestAt;
@@ -737,7 +763,7 @@
         try {
             const response = await fetch(url, { 
                 headers: { 'Accept': 'application/json' },
-                signal: timeoutSignal(15000) // Stop infinite hanging
+                signal: timeoutSignal(15000) 
             });
 
             let result = await response.json().catch(() => null);
@@ -837,7 +863,6 @@
         };
     }
 
-    // -- UPGRADED ANILIST FETCHER (Auto-retries & Cooldowns) --
     async function fetchAniListCurrent(username, retries = 2) {
         if (Date.now() < aniListCooldownUntil) {
             await sleep(aniListCooldownUntil - Date.now());
@@ -863,12 +888,11 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({ query, variables: { name: username } }),
-                signal: timeoutSignal(15000) // Stop infinite hanging
+                signal: timeoutSignal(15000) 
             });
 
             const result = await response.json().catch(() => ({}));
 
-            // Handle 429 Auto-Retry
             if (response.status === 429) {
                 const retryAfter = Number(response.headers.get('Retry-After')) || 60;
                 aniListCooldownUntil = Date.now() + (retryAfter * 1000);
