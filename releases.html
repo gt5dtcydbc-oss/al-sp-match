@@ -358,15 +358,17 @@
       padding-bottom: 12px;
       margin-bottom: 12px;
       border-bottom: 1px solid var(--line);
+      transition: color 0.2s ease;
+    }
+    .franchise-header-row:hover .franchise-toggle-btn {
+      background: var(--line);
+      color: var(--text);
     }
     .franchise-header-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: flex; align-items: center; }
     .franchise-toggle-btn {
       width: 24px; height: 24px; border-radius: 6px; background: var(--surface-softer); color: var(--muted);
       display: grid; place-items: center; font-weight: 800; transition: background 0.2s;
     }
-    .franchise-toggle-btn:hover { background: var(--line); color: var(--text); }
-    .franchise-group.collapsed .franchise-toggle-btn { transform: rotate(-90deg); }
-    .franchise-group.collapsed .franchise-cards { display: none; }
     .franchise-cards { display: grid; gap: 8px; }
 
     /* Bottom Section: Search & Settings */
@@ -1063,15 +1065,25 @@
       return res;
     }
 
-    function render() {
+   function render() {
       let visible = state.shows;
       if (state.localSearch) {
         const q = state.localSearch.toLowerCase();
         visible = visible.filter(s => s.title.toLowerCase().includes(q) || (s.franchise||"").toLowerCase().includes(q));
       }
+      
       const found = visible.filter(s => s.board === "found" && !s.downloaded);
       const watching = visible.filter(s => s.board === "watching" && !s.downloaded);
-      const dl = visible.filter(s => (s.downloaded || s.board === "downloaded") && (!state.ui.filterComplete || s.allAvailableDownloaded));
+      
+      // We filter the downloaded list, and then sort it A-Z 
+      const dl = visible
+        .filter(s => (s.downloaded || s.board === "downloaded") && (!state.ui.filterComplete || s.allAvailableDownloaded))
+        .sort((a, b) => {
+          // Sort by Franchise name if grouped, otherwise by Title
+          const nameA = a.franchise || a.title;
+          const nameB = b.franchise || b.title;
+          return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+        });
 
       renderBoard("found", found, els.foundList, els.foundCount);
       renderBoard("watching", watching, els.watchingList, els.watchingCount);
@@ -1087,15 +1099,39 @@
         if(!g.isGroup && g.shows.length === 1) return renderCard(g.shows[0]);
         const isC = state.ui.collapsedFranchises[g.name];
         
-        // NEW: Check if all shows in this franchise have the completed toggle ticked
+        // Check if all shows in this franchise have the completed toggle ticked
         const allCompleted = type === "downloaded" && g.shows.length > 0 && g.shows.every(s => s.allAvailableDownloaded);
         const completeTick = allCompleted ? `<span style="color: var(--brand); margin-left: 8px; font-size: 1.1rem; line-height: 1;" title="All shows in franchise completed">✓</span>` : '';
+        
+        const safeName = g.name.replace(/"/g, '&quot;');
 
+        if (isC) {
+          // If Collapsed: Render a normal-looking show card holding the group details
+          const firstCover = g.shows[0]?.coverImage || '';
+          const showCount = g.shows.length;
+          return `
+            <article class="show-card" data-toggle-franchise="${safeName}" style="cursor: pointer;">
+              <div class="card-main">
+                <div class="franchise-toggle-btn" style="pointer-events: none;">›</div>
+                <img src="${firstCover}" class="thumb"/>
+                <div class="card-content">
+                  <div class="card-title" style="display: flex; align-items: center;">${safeName} ${completeTick}</div>
+                  <div class="card-meta">
+                    <span>${showCount} show${showCount > 1 ? 's' : ''}</span>
+                    <span class="badge" style="background: var(--surface-softer); color: var(--muted);">Collection</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          `;
+        }
+
+        // If Expanded: Render the open group folder
         return `
-          <div class="franchise-group ${isC?'collapsed':''}">
-            <div class="franchise-header-row">
-              <button class="franchise-toggle-btn" data-toggle-franchise="${g.name}">⌄</button>
-              <span class="franchise-header-title">${g.name}${completeTick}</span>
+          <div class="franchise-group">
+            <div class="franchise-header-row" data-toggle-franchise="${safeName}" style="cursor: pointer;">
+              <div class="franchise-toggle-btn" style="pointer-events: none;">⌄</div>
+              <span class="franchise-header-title">${safeName}${completeTick}</span>
             </div>
             <div class="franchise-cards">${g.shows.map(renderCard).join('')}</div>
           </div>
