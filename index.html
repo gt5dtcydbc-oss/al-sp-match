@@ -417,7 +417,7 @@
       display: flex; justify-content: space-between; align-items: flex-start;
       padding: 20px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
     }
-    .modal-title { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
+    .modal-title { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; display: inline-block; }
     .modal-subtitle { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
     
     .modal-close {
@@ -622,7 +622,7 @@
     const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-    const SCHEDULE_MOVED_THRESHOLD_SECONDS = (7 * 24 * 60 * 60) + (5 * 60 * 60);
+    // Removed old SCHEDULE_MOVED_THRESHOLD_SECONDS; now we use calendar‑day logic.
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -1563,9 +1563,19 @@
       return primary || null;
     }
 
+    // Updated buildItems using calendar-day delayed logic
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
+
+      // Helper: get the local calendar date start for a timestamp
+      const getLocalDate = (timestampSeconds) => {
+        const d = new Date(timestampSeconds * 1000);
+        const dateStr = d.toLocaleDateString("en-CA", { timeZone });
+        return dateStr; // "YYYY-MM-DD"
+      };
+
       const nowSeconds = Math.floor(Date.now() / 1000);
+      const todayStr = getLocalDate(nowSeconds);
 
       for (const entry of entries) {
         const media = entry.media;
@@ -1578,17 +1588,26 @@
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
-        
-        const isScheduleMoved =
-          hasNextAiring && Number.isFinite(nextAiringAt) &&
-          nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
+
+        // ----- Delayed? (on break) decision -----
+        let isScheduleMoved = false;
+        if (hasNextAiring && Number.isFinite(nextAiringAt) && nextAiringAt > nowSeconds) {
+          const airingStr = getLocalDate(nextAiringAt);
+          // Calculate the difference in calendar days
+          const t = new Date(todayStr + "T00:00:00");
+          const a = new Date(airingStr + "T00:00:00");
+          const diffDays = Math.round((a - t) / 86400000); // positive
+          // Delayed only if the episode is more than 7 days away
+          isScheduleMoved = diffDays > 7;
+        }
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
             format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes,
+            displayEpisode, isScheduleMoved
           });
           continue;
         }
@@ -1598,12 +1617,15 @@
           const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
-            format: media.format || "", source: primary.source, sampleCount: Math.min(primary.sampleCount || 1, 3),
+            format: media.format || "", source: primary.source,
+            sampleCount: Math.min(primary.sampleCount || 1, 3),
             matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
-            latestReleaseDay: primary.latestReleaseDay || null, latestReleaseTime: primary.latestReleaseTime || null,
+            latestReleaseDay: primary.latestReleaseDay || null,
+            latestReleaseTime: primary.latestReleaseTime || null,
             latestReleaseDate: primary.latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
-            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
           });
         }
       }
