@@ -1578,20 +1578,70 @@
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
-        
-        const isScheduleMoved =
-          hasNextAiring && Number.isFinite(nextAiringAt) &&
-          nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
 
         const override = overrides?.[String(media.id)];
+        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
+
+        let itemDay = null;
+        let itemTime = null;
+        let source = null;
+        let sampleCount = 1;
+        let matchedTitle = "";
+        let matchedEpisode = null;
+        let latestReleaseDay = null;
+        let latestReleaseTime = null;
+        let latestReleaseDate = null;
+        let isFreshRss = false;
+
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
-          items.push({
-            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
-            format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
-          });
-          continue;
+          itemDay = override.day;
+          itemTime = override.time;
+          source = "manual";
+        } else if (primary) {
+          itemDay = primary.day;
+          itemTime = primary.time;
+          source = primary.source;
+          sampleCount = Math.min(primary.sampleCount || 1, 3);
+          matchedTitle = primary.matchedTitle || "";
+          matchedEpisode = primary.matchedEpisode || null;
+          latestReleaseDay = primary.latestReleaseDay || null;
+          latestReleaseTime = primary.latestReleaseTime || null;
+          latestReleaseDate = primary.latestReleaseDate || null;
+          isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
         }
+
+        if (!itemDay || !itemTime) continue;
+
+        // SMART SCHEDULE MOVED CHECK
+        let isScheduleMoved = false;
+        if (hasNextAiring && Number.isFinite(nextAiringAt) && nextAiringAt > nowSeconds) {
+          const secondsUntilActual = nextAiringAt - nowSeconds;
+          
+          // Fallback absolute threshold (just in case)
+          if (secondsUntilActual > SCHEDULE_MOVED_THRESHOLD_SECONDS) {
+            isScheduleMoved = true;
+          } else {
+            // Check if AniList is pushing the show past this week's expected UI slot
+            const status = getSlotStatus(itemDay, itemTime, timeZone);
+            if (status) {
+              const expectedSlotSeconds = status.minutesUntil * 60;
+              // If actual airing is more than 3 days AFTER our UI slot, it definitely skipped a week
+              if (secondsUntilActual > expectedSlotSeconds + (3 * 24 * 60 * 60)) {
+                isScheduleMoved = true;
+              }
+            }
+          }
+        }
+
+        items.push({
+          id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: itemDay, time: itemTime,
+          format: media.format || "", source, sampleCount, matchedTitle, matchedEpisode,
+          latestReleaseDay, latestReleaseTime, latestReleaseDate, isFreshRss: isFreshRss || false,
+          isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
+        });
+      }
+      return items;
+    }
 
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
