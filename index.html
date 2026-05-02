@@ -1578,46 +1578,34 @@
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodes = media.episodes || "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        
+        const isScheduleMoved =
+          hasNextAiring && Number.isFinite(nextAiringAt) &&
+          nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
 
         const override = overrides?.[String(media.id)];
-        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
-
-        let itemDay = null;
-        let itemTime = null;
-        let source = null;
-        let sampleCount = 1;
-        let matchedTitle = "";
-        let matchedEpisode = null;
-        let latestReleaseDay = null;
-        let latestReleaseTime = null;
-        let latestReleaseDate = null;
-        let isFreshRss = false;
-
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
-          itemDay = override.day;
-          itemTime = override.time;
-          source = "manual";
-        } else if (primary) {
-          itemDay = primary.day;
-          itemTime = primary.time;
-          source = primary.source;
-          sampleCount = Math.min(primary.sampleCount || 1, 3);
-          matchedTitle = primary.matchedTitle || "";
-          matchedEpisode = primary.matchedEpisode || null;
-          latestReleaseDay = primary.latestReleaseDay || null;
-          latestReleaseTime = primary.latestReleaseTime || null;
-          latestReleaseDate = primary.latestReleaseDate || null;
-          isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          items.push({
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
+            format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
+          });
+          continue;
         }
 
-        if (!itemDay || !itemTime) continue;
-
-        items.push({
-          id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: itemDay, time: itemTime,
-          format: media.format || "", source, sampleCount, matchedTitle, matchedEpisode,
-          latestReleaseDay, latestReleaseTime, latestReleaseDate, isFreshRss: isFreshRss || false,
-          isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, nextAiringAt, totalEpisodes, displayEpisode
-        });
+        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
+        if (primary) {
+          const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          items.push({
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
+            format: media.format || "", source: primary.source, sampleCount: Math.min(primary.sampleCount || 1, 3),
+            matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || null, latestReleaseTime: primary.latestReleaseTime || null,
+            latestReleaseDate: primary.latestReleaseDate || null,
+            isFreshRss: isFreshRss || false,
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
+          });
+        }
       }
       return items;
     }
@@ -1625,23 +1613,18 @@
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
-      const nowMs = Date.now();
-      const nowSeconds = Math.floor(nowMs / 1000);
 
       for (const item of items) {
         const key = String(item.id);
-        let entry = cache[key];
-        if (!entry || typeof entry !== "object") entry = {};
-        entry.history = Array.isArray(entry.history) ? entry.history : [];
 
-        let finalItem = { ...item };
-
-        // --- 1. Process RSS / Cache Time Data ---
         if (item.source === "rss") {
+          let entry = cache[key];
+          if (!entry || typeof entry !== "object") entry = {};
+          entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
+
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
-          
           let trackerEp = item.matchedEpisode; 
           if (trackerEp) trackerEp = String(trackerEp).padStart(2, "0");
           else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) trackerEp = String(Math.max(1, item.displayEpisode - 1)).padStart(2, "0");
@@ -1656,96 +1639,40 @@
 
           if (entry.history.length > 0) {
             const medMins = medianTime(entry.history.map(h => h.mins));
-            finalItem.time = minutesToHHMM(medMins);
-            finalItem.sampleCount = entry.history.length;
+            item.time = minutesToHHMM(medMins);
+            item.sampleCount = entry.history.length;
           } else {
-            finalItem.sampleCount = Math.min(finalItem.sampleCount || 1, 3);
+            item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
-          entry.day = finalItem.day;
-          entry.time = finalItem.time;
-          entry.sampleCount = finalItem.sampleCount;
-          entry.matchedTitle = finalItem.matchedTitle || "";
-          entry.latestReleaseDate = finalItem.latestReleaseDate || null;
-          entry.updatedAt = new Date().toISOString();
-          
-          finalItem.historyLog = entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ");
-
-        } else if (item.source === "manual") {
-          entry.origin = "manual";
-          entry.day = item.day;
-          entry.time = item.time;
-          entry.sampleCount = 1;
-          entry.updatedAt = new Date().toISOString();
-        } else if (entry && (isValidTime(entry.time) || entry.history.length > 0)) {
-          const rememberedHistory = entry.history.slice(-3);
-          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
-          
-          const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= 36 * 60 * 60 * 1000;
-          
-          finalItem.time = rememberedTime;
-          finalItem.source = "cache";
-          finalItem.sampleCount = rememberedHistory.length || Math.min(entry.sampleCount || 1, 3);
-          finalItem.matchedTitle = entry.matchedTitle || "";
-          finalItem.cacheOrigin = entry.origin || "saved";
-          finalItem.isFreshRss = isFreshRss || false;
-          finalItem.historyLog = rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ");
+          cache[key] = { 
+            ...entry, day: item.day, time: item.time, sampleCount: item.sampleCount, 
+            matchedTitle: item.matchedTitle || "", latestReleaseDate: item.latestReleaseDate || null,
+            origin: "rss", updatedAt: new Date().toISOString() 
+          };
+          output.push({ ...item, historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ") });
+          continue;
         }
 
-        // --- 2. Calculate Schedule Moved Logic (With Episode Smart Check) ---
-        let maxSeenEp = 0;
-        if (entry.history.length > 0) {
-          maxSeenEp = Math.max(...entry.history.map(h => Number(h.episode) || 0));
-        }
-
-        let isScheduleMoved = false;
-        if (finalItem.hasNextAiring && Number.isFinite(finalItem.nextAiringAt) && finalItem.nextAiringAt > nowSeconds) {
-          const secondsUntilActual = finalItem.nextAiringAt - nowSeconds;
-          const status = getSlotStatus(finalItem.day, finalItem.time, DEFAULT_TIMEZONE);
+        const remembered = cache[key];
+        if (item.source === "manual") {
+          cache[key] = { day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
+          output.push(item);
+        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
+          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
+          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : remembered.time;
           
-          if (status) {
-            const expectedSlotSeconds = status.minutesUntil * 60;
-            if (secondsUntilActual > expectedSlotSeconds + (3 * 24 * 60 * 60)) {
-              if (maxSeenEp > 0) {
-                // Is AniList counting down to the EXACT next episode we need?
-                if (finalItem.displayEpisode === maxSeenEp + 1) {
-                  isScheduleMoved = true;
-                }
-              } else {
-                // Fallback for brand new tracking
-                if (secondsUntilActual > SCHEDULE_MOVED_THRESHOLD_SECONDS) {
-                  isScheduleMoved = true;
-                }
-              }
-            }
-          } else if (secondsUntilActual > SCHEDULE_MOVED_THRESHOLD_SECONDS) {
-            isScheduleMoved = true;
-          }
-        }
-
-        // --- The Ultimate Safety Net ---
-        // If SubsPlease literally dropped it today, shatter the cache lock.
-        if (finalItem.isFreshRss) {
-          isScheduleMoved = false;
-          entry.grayedOutUntil = null;
-        }
-
-        // --- Apply the Midnight Memory Lock ---
-        if (isScheduleMoved) {
-          const d = new Date();
-          d.setHours(23, 59, 59, 999);
-          entry.grayedOutUntil = d.getTime();
-        } else if (entry.grayedOutUntil && nowMs < entry.grayedOutUntil) {
-          isScheduleMoved = true;
+          const isFreshRss = remembered.latestReleaseDate && (Date.now() - remembered.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          
+          output.push({
+            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
+            matchedTitle: remembered.matchedTitle || "", cacheOrigin: remembered.origin || "saved",
+            isFreshRss: isFreshRss || false,
+            historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
+          });
         } else {
-          entry.grayedOutUntil = null;
+          output.push(item);
         }
-
-        finalItem.isScheduleMoved = isScheduleMoved;
-
-        // --- 3. Save Entry and Push ---
-        cache[key] = entry;
-        output.push(finalItem);
       }
 
       saveSlotCache(state.userName, cache);
