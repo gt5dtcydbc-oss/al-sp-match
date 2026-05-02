@@ -1598,7 +1598,7 @@
           const a = new Date(airingStr + "T00:00:00");
           const diffDays = Math.round((a - t) / 86400000); // positive
           // Delayed only if the episode is more than 7 days away
-          isScheduleMoved = diffDays > 7;
+          isScheduleMoved = diffDays >= 7;
         }
 
         const override = overrides?.[String(media.id)];
