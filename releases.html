@@ -238,7 +238,7 @@
     .show-link { color: inherit; text-decoration: none; }
     .show-link:hover { color: var(--brand); }
 
-    /* Updated Card Meta CSS */
+    /* The Overflow Fix for Long Text/Badges */
     .card-meta {
       display: flex;
       align-items: center;
@@ -359,7 +359,7 @@
       margin-bottom: 12px;
       border-bottom: 1px solid var(--line);
     }
-    .franchise-header-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .franchise-header-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: flex; align-items: center; }
     .franchise-toggle-btn {
       width: 24px; height: 24px; border-radius: 6px; background: var(--surface-softer); color: var(--muted);
       display: grid; place-items: center; font-weight: 800; transition: background 0.2s;
@@ -535,7 +535,6 @@
               <button class="btn primary" id="batchImportBtn" type="button">Process Batch</button>
               <button class="btn" id="batchClearBtn" type="button">Clear Text</button>
             </div>
-            <!-- Batch Review hidden to keep snippet clean, works identically via original logic -->
             <div id="batchReview" hidden style="margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px;">
               <div style="display:flex; justify-content:space-between; margin-bottom: 12px;">
                 <strong id="batchReviewSummary">Review Matches</strong>
@@ -558,7 +557,7 @@
   <script>
     const ANILIST_ENDPOINT = "https://graphql.anilist.co";
     const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
-    const STORAGE_KEY = "anilist-releases-board:v2"; // Bumped version for clean state
+    const STORAGE_KEY = "anilist-releases-board:v2";
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -626,7 +625,6 @@
           els.tabViews.forEach(v => v.classList.remove("active"));
           tab.classList.add("active");
           document.getElementById(tab.dataset.target).classList.add("active");
-          // Update placeholder based on context
           els.boardSearchInput.placeholder = tab.dataset.target === 'view-downloaded' ? "Search library..." : "Filter active shows...";
         });
       });
@@ -665,24 +663,85 @@
       els.batchClearBtn.addEventListener("click", () => { els.batchInput.value = ""; clearBatchReview(); });
     }
 
-    // --- Core Logic ---
+    // --- API & Search Logic ---
     
+    let aniListCooldownUntil = 0;
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
+
+    async function safeAniListRequest(query, variables, retries = 2) {
+      if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+      try {
+        const response = await fetch(ANILIST_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ query, variables }), signal: timeoutSignal(15000)
+        });
+        const json = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+          aniListCooldownUntil = Date.now() + (retryAfter * 1000);
+          if (retries > 0) { await sleep(retryAfter * 1000); return safeAniListRequest(query, variables, retries - 1); }
+          throw new Error("AniList rate limit reached.");
+        }
+        if (!response.ok || json.errors) throw new Error("AniList error");
+        return json;
+      } catch (error) { throw error; }
+    }
+
+    async function searchAniList(search) {
+      const query = `query($search: String){ Page(perPage: 8){ media(search: $search, type: ANIME, sort: SEARCH_MATCH){ id title{ romaji english native } coverImage{ medium large } format seasonYear episodes siteUrl } } }`;
+      const json = await safeAniListRequest(query, { search });
+      return json?.data?.Page?.media ?? [];
+    }
+
+    async function getAniListMediaById(id) {
+      const query = `query($id: Int){ Media(id: $id, type: ANIME){ id title{ romaji english native } coverImage{ medium large } format seasonYear episodes siteUrl } }`;
+      const json = await safeAniListRequest(query, { id: Number(id) });
+      return json?.data?.Media ?? null;
+    }
+
+    async function runSearch() {
+      const search = els.searchInput.value.trim();
+      if (!search) { closeResults(); return; }
+      setStatus("Searching...");
+      els.results.classList.add("open"); els.results.innerHTML = '<div class="empty">Searching...</div>';
+      try {
+        const res = await searchAniList(search);
+        els.results.innerHTML = res.length ? res.map(m => `
+          <button class="result-item" data-add-id="${m.id}">
+            <img class="result-poster" src="${m.coverImage?.medium || ''}" />
+            <div class="result-info">
+              <span class="result-title">${m.title.english || m.title.romaji}</span>
+              <span class="result-meta">${m.format || 'Anime'} · ${m.seasonYear || ''}</span>
+            </div>
+            <span class="badge ${isMediaOnBoard(m) ? 'downloaded' : 'found'}">${isMediaOnBoard(m) ? 'Added' : 'Add'}</span>
+          </button>
+        `).join("") : '<div class="empty">No results found.</div>';
+        
+        els.results.querySelectorAll("[data-add-id]").forEach(b => {
+          b.addEventListener("click", () => { const media = res.find(i => i.id == b.dataset.addId); if (media) addShow(media); });
+        });
+        setStatus("System Ready");
+      } catch(e) { els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error"); }
+    }
+
+    // --- Board Interactions ---
+
     async function handleBoardClick(e) {
       const toggleF = e.target.closest("[data-toggle-franchise]");
       if (toggleF) { state.ui.collapsedFranchises[toggleF.dataset.toggleFranchise] = !state.ui.collapsedFranchises[toggleF.dataset.toggleFranchise]; render(); saveState(); return; }
-
       const nBtn = e.target.closest("[data-notes-id]");
       if (nBtn) { state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId]; render(); saveState(); return; }
-
       const cBtn = e.target.closest("[data-complete-id]");
       if (cBtn) { toggleAllAvailableDownloaded(cBtn.dataset.completeId); return; }
-
       const rBtn = e.target.closest("[data-remove-id]");
       if (rBtn) { removeShow(rBtn.dataset.removeId); return; }
-
       const aBtn = e.target.closest("[data-ack-id]");
       if (aBtn) { acknowledgeUpdate(aBtn.dataset.ackId); return; }
-
       const refBtn = e.target.closest("[data-refresh-id]");
       if (refBtn) {
         const show = state.shows.find(s => s.id === refBtn.dataset.refreshId);
@@ -705,61 +764,28 @@
       if (text) queueCommentUpdate(text.dataset.commentId, text.value);
     }
 
-    function formatTimeAgo(value) {
-      if (!value) return "Never";
-      const diff = (Date.now() - new Date(value).getTime()) / 1000;
-      if (diff < 60) return "Just now";
-      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-      return `${Math.floor(diff / 86400)}d ago`;
-    }
-
-    async function runSearch() {
-      const search = els.searchInput.value.trim();
-      if (!search) { closeResults(); return; }
-      setStatus("Searching...");
-      els.results.classList.add("open"); els.results.innerHTML = '<div class="empty">Searching...</div>';
-      try {
-        const res = await searchAniList(search);
-        els.results.innerHTML = res.length ? res.map(m => `
-          <button class="result-item" data-add-id="${m.id}">
-            <img class="result-poster" src="${m.coverImage?.medium || ''}" />
-            <div class="result-info">
-              <span class="result-title">${m.title.english || m.title.romaji}</span>
-              <span class="result-meta">${m.format || 'Anime'} · ${m.seasonYear || ''}</span>
-            </div>
-            <span class="badge ${isMediaOnBoard(m) ? 'downloaded' : 'found'}">${isMediaOnBoard(m) ? 'Added' : 'Add'}</span>
-          </button>
-        `).join("") : '<div class="empty">No results found.</div>';
-        
-        els.results.querySelectorAll("[data-add-id]").forEach(b => {
-          b.addEventListener("click", () => {
-            const media = res.find(i => i.id == b.dataset.addId);
-            if (media) addShow(media);
-          });
-        });
-        setStatus("System Ready");
-      } catch(e) { els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error"); }
-    }
-
-    async function searchAniList(search) {
-      const q = `query($search: String){ Page(perPage: 8){ media(search: $search, type: ANIME){ id title{ romaji english } coverImage{ medium } format seasonYear } } }`;
-      const res = await fetch(ANILIST_ENDPOINT, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query: q, variables: {search}}) });
-      const json = await res.json();
-      return json.data.Page.media;
-    }
+    // --- Show Management ---
 
     function isMediaOnBoard(media) { return state.shows.some(s => s.anilistId == media.id); }
+
+    function makeShowFromMedia(media) {
+      return {
+        id: crypto.randomUUID(), anilistId: media.id, 
+        title: media.title?.english || media.title?.romaji || "Untitled",
+        titleEnglish: media.title?.english || "", titleRomaji: media.title?.romaji || "",
+        coverImage: media.coverImage?.medium || media.coverImage?.large || "",
+        format: media.format || "", seasonYear: media.seasonYear || null, episodes: media.episodes || null,
+        siteUrl: media.siteUrl || `https://anilist.co/anime/${media.id}`,
+        board: "watching", downloaded: false, allAvailableDownloaded: false, franchise: "", comments: "",
+        releasesMoe: { found: false, recordId: null, checkedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null },
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      };
+    }
 
     async function addShow(media) {
       if (isMediaOnBoard(media)) return toast("Already on board.");
       closeResults(); els.searchInput.value = ""; setStatus("Checking release...");
-      const show = {
-        id: crypto.randomUUID(), anilistId: media.id, title: media.title.english || media.title.romaji,
-        coverImage: media.coverImage.medium, format: media.format, seasonYear: media.seasonYear,
-        board: "watching", downloaded: false, franchise: "", comments: "",
-        releasesMoe: { found: false }
-      };
+      const show = makeShowFromMedia(media);
       state.shows.unshift(show);
       await refreshShowStatus(show, { forceMove: true });
       render(); saveState(); setStatus("System Ready"); toast("Added to active board.");
@@ -768,11 +794,29 @@
     async function refreshShowStatus(show, {forceMove=false}={}) {
       try {
         const res = await fetch(`${RELEASES_ENDPOINT}?perPage=1&filter=alID=${show.anilistId}`);
+        if(!res.ok) throw new Error("API Error");
         const json = await res.json();
         const match = json.items?.[0];
+        const apiUpdated = match?.updated || null;
+        
         show.releasesMoe.found = !!match;
+        show.releasesMoe.recordId = match?.id || null;
         show.releasesMoe.checkedAt = new Date().toISOString();
+
+        if (match) {
+          if (!show.releasesMoe.updated) show.releasesMoe.updated = apiUpdated;
+          else if (apiUpdated && apiUpdated !== show.releasesMoe.updated) {
+            if (show.downloaded && new Date(apiUpdated) > new Date(show.releasesMoe.updated)) {
+              show.releasesMoe.updateAvailable = true;
+              show.releasesMoe.latestUpdated = apiUpdated;
+            } else {
+              show.releasesMoe.updated = apiUpdated;
+            }
+          }
+        }
+
         if(!show.downloaded && forceMove) show.board = match ? "found" : "watching";
+        show.updatedAt = new Date().toISOString();
       } catch(e) { console.error(e); }
     }
 
@@ -786,26 +830,224 @@
       const show = state.shows.find(s => s.id === id);
       if(!show) return;
       show.downloaded = checked;
-      show.board = checked ? "downloaded" : (show.releasesMoe?.found ? "found" : "watching");
+      if(checked) {
+        show.board = "downloaded"; show.releasesMoe.updateAvailable = false;
+        show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
+      } else {
+        show.board = show.releasesMoe?.found ? "found" : "watching";
+        show.allAvailableDownloaded = false;
+      }
+      show.updatedAt = new Date().toISOString();
       render(); saveState();
       toast(checked ? "Moved to Library" : "Moved back to Active");
     }
 
-    function toggleAllAvailableDownloaded(id) {
-      const show = state.shows.find(s => s.id === id);
-      if(show) { show.allAvailableDownloaded = !show.allAvailableDownloaded; render(); saveState(); }
-    }
-
-    function removeShow(id) {
-      if(confirm("Remove this show entirely?")) {
-        state.shows = state.shows.filter(s => s.id !== id);
-        render(); saveState(); toast("Removed.");
-      }
-    }
-
+    function toggleAllAvailableDownloaded(id) { const show = state.shows.find(s => s.id === id); if(show) { show.allAvailableDownloaded = !show.allAvailableDownloaded; render(); saveState(); } }
+    function removeShow(id) { if(confirm("Remove this show entirely?")) { state.shows = state.shows.filter(s => s.id !== id); render(); saveState(); toast("Removed."); } }
+    function acknowledgeUpdate(id) { const s = state.shows.find(x=>x.id===id); if(s) { s.releasesMoe.updateAvailable = false; render(); saveState(); } }
     function toggleNotes(id) { state.ui.openNotes[id] = !state.ui.openNotes[id]; render(); saveState(); }
     function queueCommentUpdate(id, val) { const s = state.shows.find(x=>x.id===id); if(s) s.comments = val; clearTimeout(commentSaveTimers.get(id)); commentSaveTimers.set(id, setTimeout(saveState, 500)); }
     function updateFranchise(id, val) { const s = state.shows.find(x=>x.id===id); if(s) s.franchise = val; render(); saveState(); }
+
+    // --- BATCH IMPORT LOGIC ---
+
+    function parseBatchNames(value) {
+      const seen = new Set();
+      return String(value || "").split(/[\n,;]+/).map(n => n.trim()).filter(Boolean).filter(name => {
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+    }
+
+    function getAniListIdFromInput(input) {
+      const val = String(input || "").trim();
+      const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i);
+      if (urlMatch) return Number(urlMatch[1]);
+      const labelledMatch = val.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i);
+      if (labelledMatch) return Number(labelledMatch[1]);
+      return null;
+    }
+
+    async function lookupBatchAniList(input) {
+      const directId = getAniListIdFromInput(input);
+      if (directId) {
+        const media = await getAniListMediaById(directId);
+        return media ? [media] : [];
+      }
+      return searchAniList(input);
+    }
+
+    function normalizeTitle(val) { return String(val || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ").replace(/\s+/g, " ").trim(); }
+    function getMediaTitles(media) { return [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean); }
+    function getYearFromText(val) { const match = String(val || "").match(/\b((?:19|20)\d{2})\b/); return match ? Number(match[1]) : null; }
+    
+    function tokenSimilarity(a, b) {
+      const aTokens = new Set(String(a || "").split(" ").filter(Boolean));
+      const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
+      if (!aTokens.size || !bTokens.size) return 0;
+      let overlap = 0;
+      for (const token of aTokens) { if (bTokens.has(token)) overlap++; }
+      return overlap / Math.max(aTokens.size, bTokens.size);
+    }
+
+    function getMatchInfo(input, media) {
+      if (!media) return { level: "none", label: "No match", score: 0 };
+      const directId = getAniListIdFromInput(input);
+      if (directId && Number(directId) === Number(media.id)) return { level: "high", label: "Direct ID", score: 1 };
+
+      const query = normalizeTitle(input).replace(/\b(?:anilist|alid|al)\b\s*\d+\b/g, "").trim();
+      const queryWithoutYear = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, ""));
+      const titles = getMediaTitles(media).map(normalizeTitle);
+      const year = getYearFromText(input);
+
+      let bestScore = 0;
+      for (const title of titles) {
+        const titleWithoutYear = title.replace(/\b(19|20)\d{2}\b/g, "").trim();
+        const candidates = [query, queryWithoutYear].filter(Boolean);
+        for (const candidate of candidates) {
+          if (!candidate || !title) continue;
+          if (title === candidate) bestScore = Math.max(bestScore, 1);
+          if (titleWithoutYear === candidate) bestScore = Math.max(bestScore, 0.96);
+          if (title.includes(candidate) || candidate.includes(titleWithoutYear)) bestScore = Math.max(bestScore, 0.76);
+          bestScore = Math.max(bestScore, tokenSimilarity(candidate, title));
+        }
+      }
+      if (year && Number(media.seasonYear) === year) bestScore += 0.12;
+      bestScore = Math.min(bestScore, 1);
+
+      if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore };
+      if (bestScore >= 0.6) return { level: "medium", label: "Check match", score: bestScore };
+      return { level: "low", label: "Low match", score: bestScore };
+    }
+
+    function getSelectedBatchMedia(match) {
+      if (!match?.results?.length || !match.selectedId) return null;
+      return match.results.find((m) => m.id === Number(match.selectedId)) || null;
+    }
+
+    function getAddableBatchMatches() {
+      return pendingBatchMatches
+        .filter((m) => !m.skipped)
+        .map((match) => ({ match, media: getSelectedBatchMedia(match) }))
+        .filter(({ media }) => media && !isMediaOnBoard(media));
+    }
+
+    async function prepareBatchReview() {
+      const names = parseBatchNames(els.batchInput.value);
+      if (!names.length) { toast("Paste at least one series name."); els.batchInput.focus(); return; }
+
+      pendingBatchMatches = [];
+      renderBatchReview();
+      setStatus(`Matching 0/${names.length}...`);
+      els.batchImportBtn.disabled = true; els.batchConfirmBtn.disabled = true;
+
+      try {
+        for (let i = 0; i < names.length; i++) {
+          const input = names[i];
+          setStatus(`Matching ${i + 1}/${names.length}...`);
+          try {
+            const results = await lookupBatchAniList(input);
+            const firstAvail = results.find(m => !isMediaOnBoard(m));
+            const selected = firstAvail || results[0] || null;
+            pendingBatchMatches.push({ input, results, selectedId: selected?.id ?? null, skipped: !selected, error: null });
+          } catch (e) {
+            pendingBatchMatches.push({ input, results: [], selectedId: null, skipped: true, error: e.message || "failed" });
+          }
+          renderBatchReview();
+        }
+      } finally {
+        els.batchImportBtn.disabled = false; setStatus("System Ready");
+      }
+      renderBatchReview();
+      const addable = getAddableBatchMatches().length;
+      toast(addable ? `Review ${addable} matches.` : "No addable matches found.", addable ? "" : "error");
+    }
+
+    function renderBatchReview() {
+      if (!pendingBatchMatches.length) {
+        els.batchReview.hidden = true; els.batchReviewList.innerHTML = "";
+        els.batchReviewSummary.textContent = "No matches prepared.";
+        els.batchConfirmBtn.disabled = true; return;
+      }
+      els.batchReview.hidden = false;
+      const addable = getAddableBatchMatches();
+      els.batchReviewSummary.textContent = `${addable.length} Selected matches`;
+      els.batchConfirmBtn.disabled = addable.length === 0;
+
+      els.batchReviewList.innerHTML = pendingBatchMatches.map((match, i) => {
+        const selected = getSelectedBatchMedia(match);
+        const isDup = selected ? isMediaOnBoard(selected) : false;
+        const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
+        const title = selected ? (selected.title.english || selected.title.romaji) : "No result";
+        
+        const options = match.results.length ? match.results.map(m => 
+          `<option value="${m.id}" ${m.id === match.selectedId ? "selected" : ""}>${m.title.english || m.title.romaji} ${isMediaOnBoard(m) ? '(Already Added)' : ''}</option>`
+        ).join("") : '<option value="">No results</option>';
+
+        return `
+          <div style="display:grid; grid-template-columns: 1fr auto; gap:12px; padding:12px; background:var(--surface-softer); border-radius:8px; align-items:center; opacity: ${match.skipped ? '0.5' : '1'};">
+            <div>
+              <div style="font-size:0.8rem; color:var(--muted); margin-bottom:4px;">Input: <strong>${match.input}</strong></div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge ${isDup ? 'downloaded' : (info.level==='high' ? 'found' : 'watching')}">${isDup ? 'Duplicate' : info.label}</span>
+                <strong>${title}</strong>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select data-batch-select="${i}" style="width:150px; height:32px; font-size:0.8rem; padding:0 8px;" ${match.results.length ? "" : "disabled"}>${options}</select>
+              <button class="btn" data-batch-skip="${i}" style="height:32px; padding:0 12px; font-size:0.8rem;">${match.skipped ? 'Include' : 'Skip'}</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      els.batchReviewList.querySelectorAll("[data-batch-select]").forEach(sel => {
+        sel.addEventListener("change", () => {
+          const match = pendingBatchMatches[Number(sel.dataset.batchSelect)];
+          match.selectedId = sel.value ? Number(sel.value) : null;
+          match.skipped = !match.selectedId; renderBatchReview();
+        });
+      });
+      els.batchReviewList.querySelectorAll("[data-batch-skip]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const match = pendingBatchMatches[Number(btn.dataset.batchSkip)];
+          match.skipped = !match.skipped;
+          if (!match.selectedId && match.results[0]) match.selectedId = match.results[0].id;
+          renderBatchReview();
+        });
+      });
+    }
+
+    async function confirmBatchImport() {
+      const matches = getAddableBatchMatches();
+      if (!matches.length) return;
+      
+      els.batchConfirmBtn.disabled = true; els.batchConfirmBtn.textContent = "Adding...";
+      setStatus(`Adding 0/${matches.length}...`);
+      let added = 0;
+
+      for (let i = 0; i < matches.length; i++) {
+        const { media } = matches[i];
+        setStatus(`Adding ${i + 1}/${matches.length}...`);
+        if (!isMediaOnBoard(media)) {
+          const show = makeShowFromMedia(media);
+          state.shows.unshift(show);
+          await refreshShowStatus(show, { forceMove: true });
+          added++;
+          render(); saveState();
+          await sleep(1000); // Prevent spamming releases.moe API
+        }
+      }
+      
+      setStatus("System Ready"); els.batchConfirmBtn.disabled = false; els.batchConfirmBtn.textContent = "Add Selected";
+      toast(`Successfully added ${added} shows!`);
+      els.batchInput.value = ""; clearBatchReview();
+    }
+
+    function clearBatchReview() { pendingBatchMatches = []; renderBatchReview(); setStatus("System Ready"); }
+
+    // --- Rendering & Utilities ---
 
     function groupShows(shows) {
       const map = new Map(); const res = [];
@@ -827,7 +1069,6 @@
         const q = state.localSearch.toLowerCase();
         visible = visible.filter(s => s.title.toLowerCase().includes(q) || (s.franchise||"").toLowerCase().includes(q));
       }
-
       const found = visible.filter(s => s.board === "found" && !s.downloaded);
       const watching = visible.filter(s => s.board === "watching" && !s.downloaded);
       const dl = visible.filter(s => (s.downloaded || s.board === "downloaded") && (!state.ui.filterComplete || s.allAvailableDownloaded));
@@ -845,11 +1086,16 @@
       listEl.innerHTML = groups.map(g => {
         if(!g.isGroup && g.shows.length === 1) return renderCard(g.shows[0]);
         const isC = state.ui.collapsedFranchises[g.name];
+        
+        // NEW: Check if all shows in this franchise have the completed toggle ticked
+        const allCompleted = type === "downloaded" && g.shows.length > 0 && g.shows.every(s => s.allAvailableDownloaded);
+        const completeTick = allCompleted ? `<span style="color: var(--brand); margin-left: 8px; font-size: 1.1rem; line-height: 1;" title="All shows in franchise completed">✓</span>` : '';
+
         return `
           <div class="franchise-group ${isC?'collapsed':''}">
             <div class="franchise-header-row">
               <button class="franchise-toggle-btn" data-toggle-franchise="${g.name}">⌄</button>
-              <span class="franchise-header-title">${g.name}</span>
+              <span class="franchise-header-title">${g.name}${completeTick}</span>
             </div>
             <div class="franchise-cards">${g.shows.map(renderCard).join('')}</div>
           </div>
@@ -863,7 +1109,7 @@
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
       const titleHtml = link ? `<a href="${link}" target="_blank" class="show-link">${show.title}</a>` : show.title;
       
-      let badge = isDl ? '<span class="badge downloaded">Downloaded</span>' : (show.releasesMoe?.found ? '<span class="badge found">Found</span>' : '<span class="badge watching">Watching</span>');
+      let badge = isDl ? '<span class="badge downloaded">Downloaded</span>' : (show.releasesMoe?.updateAvailable ? '<span class="badge update">Update</span>' : (show.releasesMoe?.found ? '<span class="badge found">Found</span>' : '<span class="badge watching">Watching</span>'));
       
       return `
         <article class="show-card ${isNotes?'notes-open':''}">
@@ -880,6 +1126,7 @@
             </div>
             <div class="card-actions-wrapper">
               <div class="card-actions">
+                ${show.releasesMoe?.updateAvailable ? `<button class="action-btn active" data-ack-id="${show.id}" title="Acknowledge Update">✓</button>` : ''}
                 ${isDl ? `<button class="action-btn ${show.allAvailableDownloaded ? 'active' : ''}" data-complete-id="${show.id}" title="Toggle Complete Status">✓</button>` : ''}
                 <button class="action-btn" data-refresh-id="${show.id}" title="Refresh API">↻</button>
                 <button class="action-btn ${isNotes?'active':''}" data-notes-id="${show.id}" title="Edit Info">✎</button>
@@ -895,7 +1142,15 @@
       `;
     }
 
-    // Storage Utils
+    function formatTimeAgo(value) {
+      if (!value) return "Never";
+      const diff = (Date.now() - new Date(value).getTime()) / 1000;
+      if (diff < 60) return "Just now";
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
     function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     function loadState() {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -923,11 +1178,6 @@
     }
     function clearBoard() { if(confirm("Nuke everything?")) { state.shows = []; render(); saveState(); toast("Board cleared"); } }
     
-    // Batch UI placeholders (Reusing your logic structure conceptually)
-    function prepareBatchReview() { toast("Batch processing ready."); }
-    function confirmBatchImport() {}
-    function clearBatchReview() {}
-
     function setStatus(text) { els.statusText.textContent = text; }
     function toast(msg, type="") {
       const t = document.createElement("div"); t.className = `toast ${type}`; t.textContent = msg;
