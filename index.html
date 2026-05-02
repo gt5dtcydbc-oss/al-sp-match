@@ -1643,23 +1643,6 @@
       return items;
     }
 
-        const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
-        if (primary) {
-          const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
-          items.push({
-            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
-            format: media.format || "", source: primary.source, sampleCount: Math.min(primary.sampleCount || 1, 3),
-            matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
-            latestReleaseDay: primary.latestReleaseDay || null, latestReleaseTime: primary.latestReleaseTime || null,
-            latestReleaseDate: primary.latestReleaseDate || null,
-            isFreshRss: isFreshRss || false,
-            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
-          });
-        }
-      }
-      return items;
-    }
-
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
