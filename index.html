@@ -1646,13 +1646,29 @@
     function applyCache(items) {
       const cache = loadSlotCache(state.userName);
       const output = [];
+      const nowMs = Date.now();
 
       for (const item of items) {
         const key = String(item.id);
 
+        let entry = cache[key];
+        if (!entry || typeof entry !== "object") entry = {};
+
+        // SCHEDULING MEMORY (The "Keep Grayed Out Today" Lock)
+        if (item.isScheduleMoved) {
+          // If the engine detected it's moved right now, refresh the lock until end of today
+          const d = new Date();
+          d.setHours(23, 59, 59, 999);
+          entry.grayedOutUntil = d.getTime();
+        } else if (entry.grayedOutUntil && nowMs < entry.grayedOutUntil) {
+          // If engine forgot (due to slot rollover) but we are still within the same day, force it
+          item.isScheduleMoved = true;
+        } else {
+          // Expired or not set
+          entry.grayedOutUntil = null;
+        }
+
         if (item.source === "rss") {
-          let entry = cache[key];
-          if (!entry || typeof entry !== "object") entry = {};
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
@@ -1687,23 +1703,24 @@
           continue;
         }
 
-        const remembered = cache[key];
         if (item.source === "manual") {
-          cache[key] = { day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
+          cache[key] = { ...entry, day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
           output.push(item);
-        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
-          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
-          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : remembered.time;
+        } else if (entry && (isValidTime(entry.time) || Array.isArray(entry.history))) {
+          const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
+          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
           
-          const isFreshRss = remembered.latestReleaseDate && (Date.now() - remembered.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= 36 * 60 * 60 * 1000;
           
           output.push({
-            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
-            matchedTitle: remembered.matchedTitle || "", cacheOrigin: remembered.origin || "saved",
+            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
+            matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
             isFreshRss: isFreshRss || false,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
+          cache[key] = entry; // Save the grayedOutUntil update
         } else {
+          cache[key] = entry; // Save the grayedOutUntil update
           output.push(item);
         }
       }
