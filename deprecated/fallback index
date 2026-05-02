@@ -2,39 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Airing" />
+  <meta name="theme-color" content="#000000" />
+  
   <title>Currently airing</title>
   
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-
   <style>
-:root {
-  /* Softer, deep slate dark mode palette */
-  --bg: #14161f; 
-  --panel: #1e222d;
-  --panel-hover: #262b38;
-  --panel-2: #2b303f;
-  --line: #363d52;
-  --text: #f0f2f8;
-  --muted: #9aa4b8;
-  --accent: #b4c6ff;
-  --accent-2: #d6e0ff;
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
-  --ok: #8fe3b2;
-  --warn: #ffd38a;
-}
+    /* ---------- Premium App Theme Variables ---------- */
+    :root {
+      --bg: #000000; /* Pure OLED Black */
+      --panel: #141417;
+      --panel-hover: #1c1c21;
+      --panel-2: #1e1e24;
+      --line: #27272a;
+      --text: #ffffff;
+      --text-muted: #a1a1aa;
+      --text-subtle: #71717a;
+      --accent: #ffffff;
+      --accent-bg: #27272a;
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --danger: #ef4444;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
     }
 
     body.modal-open {
@@ -42,947 +50,490 @@
     }
 
     .wrap {
-      max-width: 1540px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 24px 18px 42px;
+      /* Added safe-area-inset to respect iOS home bar */
+      padding: 0 16px max(60px, env(safe-area-inset-bottom));
+    }
+
+    /* ---------- Typography & Layout ---------- */
+    .header-area {
+      position: sticky;
+      top: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 100;
+      /* Added safe-area-inset-top for the Dynamic Island */
+      padding: max(20px, env(safe-area-inset-top)) 0 12px;
+      margin: 0 -16px;
+      padding-left: 16px;
+      padding-right: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .header-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
     .title {
-      margin: 0 0 16px;
-      font-size: clamp(1.5rem, 2vw, 2.2rem);
-      letter-spacing: -0.03em;
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: -0.04em;
       font-weight: 800;
     }
 
+    /* ---------- Day Pill Selector ---------- */
+    .day-pills-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding-bottom: 4px;
+      margin: 0 -16px;
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .day-pill {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 18px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      width: 100%;
+      text-align: center;
+    }
+    .day-pill:hover { background: var(--panel-hover); color: var(--text); }
+    .day-pill.active {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    .day-pill .sub { font-weight: 400; opacity: 0.7; margin-left: 4px; }
+
+    /* ---------- Input & Form Controls ---------- */
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      border-radius: var(--radius-lg);
+      margin-top: 24px;
+      overflow: hidden;
     }
 
-    .top-stack {
-      display: grid;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
+    .config-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
 
-    .controls {
-      display: grid;
-      gap: 14px;
-      padding: 18px 20px;
-      margin: 0;
-    }
-
-    .toolbar-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: minmax(260px, 1fr) auto;
-      align-items: end;
-    }
-
-    .config-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(240px, 1fr));
-      align-items: end;
+    @media (min-width: 768px) {
+      .config-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     .field { display: grid; gap: 8px; }
-    .field label { color: var(--muted); font-size: 0.92rem; font-weight: 600; }
-
-    input, textarea, button, select { font: inherit; }
+    .field label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 
     input[type="text"], input[type="time"], select, textarea {
       width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      border: 1px solid var(--line);
       background: var(--bg);
       color: var(--text);
-      padding: 12px 14px;
-      border-radius: 12px;
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
       outline: none;
+      font-size: 1rem;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-
-    input[type="text"]:focus,
-    input[type="time"]:focus,
-    select:focus,
-    textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(180, 198, 255, 0.15);
+    input[type="text"]:focus, input[type="time"]:focus, select:focus {
+      border-color: rgba(255,255,255,0.4);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
     }
 
-    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    /* ---------- Buttons ---------- */
+    .button-row { display: flex; gap: 12px; flex-wrap: wrap; }
 
     button {
-      border: 0;
-      cursor: pointer;
-      padding: 12px 18px;
+      border: 0; cursor: pointer;
+      padding: 14px 24px;
       border-radius: 999px;
       font-weight: 700;
+      font-size: 0.95rem;
       letter-spacing: 0.01em;
-      transition: transform 0.16s ease, opacity 0.2s ease, background 0.2s ease;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     button.primary {
-      color: #0a0a0a;
-      background: linear-gradient(135deg, var(--accent-2), var(--accent));
-      box-shadow: 0 4px 12px rgba(180, 198, 255, 0.2);
+      color: var(--bg);
+      background: var(--text);
+      box-shadow: 0 4px 12px rgba(255,255,255,0.15);
+    }
+    button.primary:hover { transform: scale(1.02); box-shadow: 0 6px 16px rgba(255,255,255,0.25); }
+    
+    button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    button.secondary:hover { background: var(--panel-hover); border-color: rgba(255,255,255,0.2); }
+
+    button.ghost { background: transparent; color: var(--text-muted); padding: 14px 16px; }
+    button.ghost:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    button.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+    button.danger:hover { background: rgba(239, 68, 68, 0.15); }
+
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ---------- Card UI (App-Style Full Bleed) ---------- */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr); /* 3 cols for large mobiles */
+      gap: 10px;
+      margin-top: 16px;
     }
 
-    button.secondary {
-      color: var(--text);
-      background: var(--panel-2);
-      border: 1px solid var(--line);
+    @media (max-width: 390px) { .card-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+    @media (min-width: 600px) { .card-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
+    @media (min-width: 900px) { .card-grid { grid-template-columns: repeat(5, 1fr); gap: 20px; } }
+    @media (min-width: 1100px) { .card-grid { grid-template-columns: repeat(6, 1fr); } }
+
+    .day-section { margin-top: 32px; }
+    .day-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
     }
+    .day-section-name { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; }
+    .day-section-toggle { background: none; color: var(--text-muted); padding: 0; font-size: 0.85rem; font-weight: 600; }
 
-    button.secondary:hover {
-      background: var(--panel-hover);
-    }
-
-    button.ghost {
-      color: var(--text);
-      background: transparent;
-      border: 1px solid var(--line);
-    }
-
-    button.ghost:hover {
-      background: rgba(255,255,255,0.05);
-    }
-
-    button.danger {
-      color: #ffdede;
-      background: rgba(255, 120, 120, 0.12);
-      border: 1px solid rgba(255, 120, 120, 0.25);
-    }
-
-    button:hover { transform: translateY(-1px); }
-    button:active { transform: translateY(0); }
-    button:disabled { opacity: 0.7; cursor: wait; transform: none; box-shadow: none; }
-
-    details {
-      margin: 0;
-    }
-
-    summary {
+    .anime-card {
+      position: relative;
+      background: var(--panel);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 2 / 3;
       cursor: pointer;
-      color: var(--text);
-      font-weight: 700;
-      margin: 0;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      -webkit-user-select: none;
       user-select: none;
     }
 
-    .message {
-      display: none;
-      margin-bottom: 16px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid transparent;
-      line-height: 1.45;
-      white-space: pre-wrap;
+    .anime-card:hover {
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.5);
+      border-color: rgba(255,255,255,0.15);
     }
 
-    .message.info {
-      display: block;
-      background: rgba(255, 255, 255, 0.04);
-      border-color: var(--line);
-      color: var(--text);
-    }
-
-    .message.error {
-      display: block;
-      background: rgba(255, 120, 120, 0.12);
-      border-color: rgba(255, 120, 120, 0.28);
-      color: #ffd6d6;
-    }
-
-    .summary {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
-
-    .summary-card { 
-      padding: 14px 16px; 
-    }
+    .anime-card.highlight-next { border: 2px solid var(--text); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
+    .anime-card.on-break .anime-card-bg img { opacity: 0.4; filter: grayscale(100%); }
     
-    .summary-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 6px; font-weight: 600; }
-    .summary-value { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
 
-    .section-title {
-      margin: 0;
-      font-size: 1.02rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
+    .anime-card-bg { position: absolute; inset: 0; background: var(--panel-2); z-index: 1; }
+    .anime-card-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .anime-card-bg a { display: block; height: 100%; }
 
-    .top-dropdown {
-      margin: 0;
-      overflow: hidden;
-      border-top: 0;
-      padding-top: 0;
-    }
-
-    .top-dropdown > summary {
-      list-style: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 18px 20px;
-      min-height: 82px;
-      background: linear-gradient(180deg, var(--panel), var(--bg));
-    }
-
-    .top-dropdown > summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .manager-toggle-copy {
-      color: var(--muted);
-      font-size: 0.9rem;
-      font-weight: 500;
-      line-height: 1.45;
-      margin-top: 4px;
-      max-width: 62ch;
-    }
-
-    .manager-toggle-icon {
-      flex: 0 0 auto;
-      width: 36px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--line);
-      color: #ededed;
-      font-size: 1rem;
-      transition: transform 0.16s ease, background 0.16s ease;
-    }
-
-    .top-dropdown[open] .manager-toggle-icon {
-      transform: rotate(180deg);
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .top-dropdown-body {
-      display: grid;
-      gap: 16px;
-      padding: 18px 20px 20px;
-      border-top: 1px solid var(--line);
-      background: var(--bg);
-    }
-
-    .list-stack {
-      display: grid;
-      gap: 10px;
-      max-height: clamp(320px, 55vh, 720px);
-      overflow: auto;
-      padding-right: 4px;
-    }
-
-    .search-result {
-      display: grid;
-      gap: 10px;
-      padding: 12px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, var(--panel-2), var(--panel));
-      border: 1px solid var(--line);
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-    }
-
-    .row-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 10px;
-      align-items: center;
-    }
-
-    .row-title {
-      font-size: 0.94rem;
-      font-weight: 800;
-      line-height: 1.35;
-    }
-
-    .row-subtitle {
-      color: var(--muted);
-      font-size: 0.8rem;
-      line-height: 1.4;
-    }
-
-    .row-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      align-items: center;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 3px 7px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      font-size: 0.71rem;
-      font-weight: 700;
-    }
-
-    .chip.rss {
-      background: rgba(140, 226, 174, 0.11);
-      border-color: rgba(140, 226, 174, 0.18);
-      color: #d8ffe7;
-    }
-
-    .chip.fallback,
-    .chip.manual,
-    .chip.moved {
-      background: rgba(255, 212, 138, 0.11);
-      border-color: rgba(255, 212, 138, 0.18);
-      color: #fff0d6;
-    }
-
-    .chip.added {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.10);
-      color: var(--text);
-    }
-
-    .countdown-inline {
-      display: inline;
-      opacity: 0.92;
-      font-weight: 800;
-    }
-
-    .toggle {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      color: var(--text);
-      font-size: 0.85rem;
-      font-weight: 700;
-    }
-
-    .toggle input { width: auto; }
-
-    .empty {
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.45;
-      padding: 4px 0;
-    }
-
-    .helper {
-      color: var(--muted);
-      font-size: 0.82rem;
-      line-height: 1.45;
-    }
-
-    .board {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      align-items: start;
-    }
-
-    .day-column { padding: 14px; }
-
-    .day-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .day-name { font-size: 1.02rem; font-weight: 800; }
-    
-    .day-head-right {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .day-count { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
-
-    .day-collapse-btn {
-      width: 24px;
-      height: 24px;
-      min-width: 24px;
-      padding: 0;
-      border-radius: 6px;
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.16s, color 0.16s;
-    }
-
-    .day-collapse-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text);
-    }
-
-    .day-collapse-icon {
-      transition: transform 0.2s ease;
-    }
-
-    .day-column.collapsed .day-collapse-icon {
-      transform: rotate(-90deg);
-    }
-
-    .day-column.collapsed .time-group {
-      display: none;
-    }
-
-    .time-group {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
-      padding: 6px;
-      border-radius: 12px;
-      transition: background 0.2s;
-    }
-
-    .time-pill {
-      display: inline-flex;
-      width: fit-content;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 5px 10px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text);
-      font-size: 0.78rem;
-      font-weight: 800;
-    }
-
-    .highlight-next {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)) !important;
-      border: 1px solid var(--line) !important;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-    }
-
-    .highlight-next .time-pill {
-      background: var(--accent) !important;
-      color: #0a0a0a !important;
-      border-color: rgba(255,255,255,0.9);
-    }
-
-    .entry-list { display: grid; gap: 8px; }
-
-    .entry {
-      display: grid;
-      grid-template-columns: 38px minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: start;
-      padding: 9px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, var(--panel-2), var(--panel));
-      border: 1px solid var(--line);
-      transition: opacity 0.2s, filter 0.2s;
-    }
-
-    .entry.on-break .thumb {
-      opacity: 0.4;
-      filter: grayscale(80%);
-    }
-
-    .entry.on-break .entry-title a {
-      color: var(--muted);
-    }
-
-    .entry.on-break .entry-meta > .chip:not(.moved) {
-      opacity: 0.4;
-    }
-
-    .thumb {
-      width: 38px;
-      height: 54px;
-      border-radius: 8px;
-      overflow: hidden;
-      background: var(--bg);
-      border: 1px solid var(--line);
-    }
-
-    .thumb img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .entry-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
-
-    .entry-title {
-      font-size: 0.9rem;
-      line-height: 1.3;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .entry-title a { color: var(--text); text-decoration: none; }
-    .entry-title a:hover { color: var(--accent-2); }
-
-    .entry-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 0.75rem;
-      line-height: 1.35;
-    }
-
-    .entry-settings-btn {
-      width: 30px;
-      height: 30px;
-      min-width: 30px;
-      padding: 0;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--line);
-      color: var(--text);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-    }
-
-    .entry-settings-btn svg {
-      width: 14px;
-      height: 14px;
-      display: block;
-    }
-
-    .entry-settings-btn:hover {
-      background: rgba(255, 255, 255, 0.10);
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-    }
-
-    .footer {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.45;
-    }
-
-    .footer-status-healthy {
-      color: var(--ok);
-      font-weight: 700;
-    }
-
-    .footer-status-unhealthy {
-      color: #ff8a8a;
-      font-weight: 700;
-    }
-
-    .update-indicator {
-      --indicator-rgb: 255, 255, 255;
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      background: rgba(var(--indicator-rgb), 0.92);
-      box-shadow:
-        0 0 0 1px rgba(var(--indicator-rgb), 0.12),
-        0 0 10px rgba(var(--indicator-rgb), 0.12);
-      z-index: 9999;
-      opacity: 0.9;
-      pointer-events: auto;
-      animation: indicatorBreathe 2.2s ease-in-out infinite;
-    }
-
-    .update-indicator.error {
-      --indicator-rgb: 255, 90, 90;
-    }
-
-    .update-indicator.flash {
-      animation:
-        indicatorBreathe 2.2s ease-in-out infinite,
-        indicatorFlash 0.95s ease;
-    }
-
-    @keyframes indicatorBreathe {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 0.72;
-        box-shadow:
-          0 0 0 1px rgba(var(--indicator-rgb), 0.10),
-          0 0 8px rgba(var(--indicator-rgb), 0.08);
-      }
-      50% {
-        transform: scale(1.12);
-        opacity: 0.98;
-        box-shadow:
-          0 0 0 1px rgba(var(--indicator-rgb), 0.16),
-          0 0 14px rgba(var(--indicator-rgb), 0.18);
-      }
-    }
-
-    @keyframes indicatorFlash {
-      0% {
-        box-shadow:
-          0 0 0 0 rgba(var(--indicator-rgb), 0.55),
-          0 0 10px rgba(var(--indicator-rgb), 0.18);
-      }
-      45% {
-        box-shadow:
-          0 0 0 10px rgba(var(--indicator-rgb), 0),
-          0 0 20px rgba(var(--indicator-rgb), 0.28);
-      }
-      100% {
-        box-shadow:
-          0 0 0 0 rgba(var(--indicator-rgb), 0),
-          0 0 10px rgba(var(--indicator-rgb), 0.12);
-      }
-    }
-
-    .modal {
-      position: fixed;
+    .anime-card-overlay {
+      position: absolute;
       inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(8px);
-      z-index: 10000;
-    }
-
-    .modal.open {
+      z-index: 2;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.95) 100%);
       display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px;
+      pointer-events: none;
     }
 
-    .modal-dialog {
-      width: min(680px, 100%);
-      max-height: min(86vh, 900px);
-      display: grid;
-      gap: 0;
-      background: var(--bg);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .modal.open .modal-dialog {
-      animation: modalIn 0.18s ease-out;
-    }
-
-    .modal-sheet-handle {
-      display: none;
-    }
-
-    .modal-head {
+    .anime-card-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 14px;
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, var(--panel), var(--bg));
+      width: 100%;
     }
 
-    .modal-title {
-      font-size: 1.02rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .modal-subtitle {
-      color: var(--muted);
-      font-size: 0.85rem;
-      line-height: 1.45;
-      margin-top: 4px;
-    }
-
-    .modal-close {
-      width: 40px;
-      height: 40px;
-      min-width: 40px;
-      padding: 0;
+    .anime-card-time-chip {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      transition: box-shadow 0.3s, border-color 0.3s;
+    }
+
+    /* Premium Breathing White Outline Animation */
+    @keyframes breath-fresh {
+      0% {
+        box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 10px 1px rgba(255, 255, 255, 0.6);
+        border-color: rgba(255, 255, 255, 1);
+      }
+      100% {
+        box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+
+    /* Apply the animation to the fresh drops */
+    .anime-card-time-chip.fresh {
+      animation: breath-fresh 3s infinite ease-in-out;
+    }
+
+    .badge-chip {
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: var(--text);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .badge-chip.added { color: #000; background: var(--text); border: none; }
+
+    .anime-card-bottom {
+      pointer-events: auto;
+      width: 100%;
     }
 
-    .modal-body {
-      display: grid;
-      gap: 14px;
-      padding: 18px 20px;
-      overflow: auto;
-      overflow-x: hidden;
-      overscroll-behavior: contain;
-      min-width: 0;
+    .anime-card-title {
+      font-weight: 800;
+      font-size: 0.8rem;
+      line-height: 1.25;
+      color: #fff;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      margin-bottom: 2px;
     }
 
+    .anime-card-episode {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ---------- Accordions & Settings ---------- */
+    .top-dropdown { border: none; margin-bottom: 16px; }
+    .top-dropdown > summary {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px; cursor: pointer; list-style: none; user-select: none;
+    }
+    .top-dropdown > summary::-webkit-details-marker { display: none; }
+    
+    .section-title { margin: 0; font-size: 1.1rem; font-weight: 800; }
+    .manager-toggle-copy { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+    
+    .manager-toggle-icon {
+      width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: var(--panel-2); color: var(--text); font-size: 0.9rem;
+      transition: transform 0.2s ease;
+    }
+    .top-dropdown[open] .manager-toggle-icon { transform: rotate(180deg); }
+    
+    .top-dropdown-body {
+      padding: 0 20px 20px; border-top: 1px solid var(--line); padding-top: 20px;
+    }
+
+    .summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .summary-card { padding: 16px; background: var(--panel); border-radius: var(--radius-md); border: 1px solid var(--line); }
+    .summary-label { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .summary-value { font-size: 1.5rem; font-weight: 800; }
+
+    /* ---------- Alerts & Status ---------- */
+    .message {
+      display: none; padding: 16px; border-radius: var(--radius-md);
+      margin-top: 24px; font-size: 0.9rem; line-height: 1.5; font-weight: 500;
+    }
+    .message.info { display: block; background: var(--panel-2); border: 1px solid var(--line); }
+    .message.error { display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+    .footer { margin-top: 32px; color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+    .footer a { color: var(--text); text-decoration: none; font-weight: 600; }
+    .footer a:hover { text-decoration: underline; }
+    .footer-status-healthy { color: var(--ok); font-weight: 700; }
+    .footer-status-unhealthy { color: var(--danger); font-weight: 700; }
+
+    /* ---------- Breathing Update Indicator ---------- */
+    @keyframes breath-indicator-ok {
+      0% { box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.2); background-color: rgba(255, 255, 255, 0.4); }
+      50% { box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8); background-color: rgba(255, 255, 255, 1); }
+      100% { box-shadow: 0 0 2px 0px rgba(255, 255, 255, 0.2); background-color: rgba(255, 255, 255, 0.4); }
+    }
+
+    @keyframes breath-indicator-error {
+      0% { box-shadow: 0 0 2px 0px rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.8); background-color: rgba(239, 68, 68, 1); }
+      100% { box-shadow: 0 0 2px 0px rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.4); }
+    }
+
+    .update-indicator {
+      position: fixed; 
+      top: max(24px, env(safe-area-inset-top)); 
+      right: 24px; 
+      width: 10px; 
+      height: 10px;
+      border-radius: 50%; 
+      z-index: 1000;
+      animation: breath-indicator-ok 3s infinite ease-in-out;
+    }
+    
+    /* Keeps it functional as a warning by breathing red if something actually breaks */
+    .update-indicator.error { 
+      animation: breath-indicator-error 3s infinite ease-in-out;
+    }
+
+    /* ---------- Modals ---------- */
+    .modal {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      padding: 20px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px); z-index: 10000;
+    }
+    .modal.open { display: flex; }
+    .modal-dialog {
+      width: min(500px, 100%); max-height: 85vh;
+      background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal.open .modal-dialog { animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    .modal-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 20px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    .modal-title { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
+    .modal-subtitle { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+    
+    .modal-close {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--panel-2);
+      border: 1px solid var(--line); color: var(--text); font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+
+    .modal-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
     .modal-footer {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      padding: 16px 20px 20px;
-      border-top: 1px solid var(--line);
-      background: var(--bg);
+      padding: 20px 24px max(20px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--panel);
+      display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
     }
 
     .modal-note {
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.45;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
+      padding: 12px 16px; border-radius: var(--radius-md); font-size: 0.85rem;
+      background: var(--panel-2); border: 1px solid var(--line); color: var(--text-muted);
     }
 
-    .modal-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: end;
-      min-width: 0;
-    }
+    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-    .modal-grid > * {
-      min-width: 0;
-    }
-
-    .modal-grid > .field {
-      min-width: 0;
-    }
-
-    #modalTime {
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-    }
-
-    @keyframes modalIn {
-      from {
-        transform: translateY(8px);
-        opacity: 0.85;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes sheetIn {
-      from {
-        transform: translateY(28px);
-        opacity: 0.82;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    @media (max-width: 980px) {
-      .toolbar-grid,
-      .config-grid { grid-template-columns: 1fr; }
-
-      .modal-grid {
-        grid-template-columns: 1fr;
-      }
+    @keyframes modalScaleIn {
+      from { transform: scale(0.95) translateY(10px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
     }
 
     @media (max-width: 720px) {
-      .wrap {
-        padding: 18px 12px 36px;
-      }
-
-      .controls { padding: 16px; }
-
-      .top-dropdown > summary,
-      .top-dropdown-body {
-        padding-left: 16px;
-        padding-right: 16px;
-      }
-
-      .board { grid-template-columns: 1fr; }
-      .search-result { grid-template-columns: 1fr; }
-      .row-actions { justify-content: flex-start; }
-
-      .modal {
-        align-items: flex-end;
-        justify-content: stretch;
-        padding: 0;
-      }
-
-      .modal-dialog {
-        width: 100%;
-        max-height: min(90vh, 900px);
-        border-radius: 22px 22px 0 0;
-        border-bottom: 0;
-      }
-
-      .modal.open .modal-dialog {
-        animation: sheetIn 0.22s ease-out;
-      }
-
-      .modal-sheet-handle {
-        display: block;
-        width: 42px;
-        height: 5px;
-        margin: 10px auto 2px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.22);
-      }
-
-      .modal-head {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-      }
-
-      .modal-footer {
-        position: sticky;
-        bottom: 0;
-        z-index: 2;
-        padding-bottom: calc(16px + env(safe-area-inset-bottom));
-        background: rgba(20, 22, 31, 0.95);
-        backdrop-filter: blur(12px);
-      }
+      .wrap { padding-top: 0; }
+      .modal { align-items: flex-end; padding: 0; }
+      .modal-dialog { width: 100%; max-height: 90vh; border-radius: 24px 24px 0 0; border: none; }
+      .modal.open .modal-dialog { animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+      .modal-sheet-handle { width: 40px; height: 4px; border-radius: 999px; background: var(--line); margin: 12px auto 4px; }
+      @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     }
-
-    @media (max-width: 480px) {
-      .wrap { padding: 8px 7px 16px; }
-      .title { margin-bottom: 10px; font-size: 1.25rem; }
-      .panel.controls { margin-bottom: 10px !important; }
-      .controls, .day-column { padding: 8px; }
-      .top-stack { margin-top: 14px !important; gap: 8px; }
-
-      .top-dropdown > summary,
-      .top-dropdown-body {
-        padding: 12px;
-        min-height: auto;
-      }
-
-      .manager-toggle-copy { font-size: 0.8rem; margin-top: 2px; }
-      .day-head { padding-bottom: 5px; margin-bottom: 6px; }
-      .day-name { font-size: 0.92rem; }
-      .day-count { font-size: 0.72rem; color: var(--muted); }
-      .time-group { gap: 5px; margin-bottom: 6px; padding: 2px; }
-      .time-pill { padding: 3px 7px; font-size: 0.68rem; }
-      .entry-list { gap: 4px; }
-      .entry {
-        grid-template-columns: 40px minmax(0, 1fr) auto;
-        gap: 8px;
-        padding: 5px;
-        border-radius: 12px;
-      }
-      .thumb { width: 40px; height: 58px; border-radius: 7px; }
-      .entry-body { gap: 2px; }
-      .entry-title { font-size: 0.84rem; line-height: 1.22; }
-      .entry-meta { gap: 4px; font-size: 0.64rem; }
-      .chip { padding: 2px 4px; font-size: 0.6rem; }
-      .footer { margin-top: 8px; font-size: 0.72rem; }
-      .message { margin-bottom: 8px; padding: 9px 11px; border-radius: 12px; font-size: 0.8rem; }
-      .update-indicator { top: 9px; right: 9px; width: 8px; height: 8px; }
-
-      .entry-settings-btn {
-        width: 30px;
-        height: 30px;
-        min-width: 30px;
-      }
-
-      .modal-head,
-      .modal-body,
-      .modal-footer {
-        padding-left: 14px;
-        padding-right: 14px;
-      }
+    
+    /* Search List Styles */
+    .list-stack { display: grid; gap: 8px; margin-top: 16px; }
+    .search-result {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md);
     }
+    .row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;}
+    .row-title { font-weight: 700; font-size: 0.95rem; }
+    .chip { padding: 3px 8px; border-radius: 999px; font-size: 0.65rem; font-weight: 800; background: var(--panel-2); border: 1px solid var(--line); text-transform: uppercase; }
+    .chip.rss { color: var(--ok); border-color: rgba(52, 211, 153, 0.3); }
+    .chip.added { color: #000; background: var(--text); }
+    .row-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+    .row-actions button { padding: 8px 16px; font-size: 0.85rem; }
+
+    /* Custom Checkbox Toggle */
+    .toggle { display: flex; align-items: center; gap: 12px; font-weight: 600; cursor: pointer; user-select: none; }
+    .toggle input[type="checkbox"] {
+      appearance: none; width: 44px; height: 24px; background: var(--panel-2); border-radius: 999px;
+      position: relative; cursor: pointer; outline: none; border: 1px solid var(--line); transition: background 0.3s;
+    }
+    .toggle input[type="checkbox"]::after {
+      content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+      background: var(--text-muted); border-radius: 50%; transition: transform 0.3s, background 0.3s;
+    }
+    .toggle input[type="checkbox"]:checked { background: var(--text); border-color: var(--text); }
+    .toggle input[type="checkbox"]:checked::after { transform: translateX(20px); background: var(--bg); }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1 class="title">Currently airing</h1>
+    
+    <div id="board-container"></div>
 
-    <section id="board" class="board"></section>
-
-    <section class="panel controls" style="margin-top: 16px; margin-bottom: 16px;">
-      <div class="toolbar-grid">
-        <div class="field">
-          <label for="username">Username</label>
-          <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" />
+    <details class="panel top-dropdown" style="margin-top: 24px;">
+      <summary>
+        <div>
+          <h2 class="section-title">Statistics & Entries</h2>
+          <div class="manager-toggle-copy">Overview of parsed feeds and tracked shows.</div>
         </div>
-        <div class="button-row">
-          <button id="loadBtn" class="primary" type="button">Load</button>
+        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+      </summary>
+      <div class="top-dropdown-body">
+        <section id="summary" class="summary"></section>
+      </div>
+    </details>
+
+    <details class="panel top-dropdown config-dropdown">
+      <summary>
+        <div>
+          <h2 class="section-title">App Configuration</h2>
+          <div class="manager-toggle-copy">Manage sync, feeds, and cache.</div>
+        </div>
+        <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+      </summary>
+      <div class="top-dropdown-body">
+        <div class="config-grid">
+          <div class="field" style="grid-column: 1 / -1;">
+            <label for="username">AniList Username</label>
+            <div style="display: flex; gap: 12px;">
+              <input id="username" type="text" value="zrr" spellcheck="false" autocomplete="off" placeholder="e.g. zrr" />
+              <button id="loadBtn" class="primary" type="button" style="white-space: nowrap;">Sync Now</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="rssUrl">SubsPlease RSS URLs</label>
+            <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="rssProxyTemplate">RSS Proxy (Optional)</label>
+            <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
+          </div>
+        </div>
+        
+        <div id="message" class="message" aria-live="polite"></div>
+
+        <div class="button-row" style="margin-top: 20px;">
+          <button id="openAddShowBtn" class="primary" type="button">+ Add Custom Show</button>
+          <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
         </div>
       </div>
-    </section>
-
-    <div id="message" class="message" aria-live="polite"></div>
-
-    <div class="top-stack" style="margin-top: 32px;">
-      <details class="panel top-dropdown">
-        <summary>
-          <div>
-            <h2 class="section-title">Fetched Entries</h2>
-            <div class="manager-toggle-copy">Expand to see stats on loaded, custom, and RSS shows.</div>
-          </div>
-          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-        </summary>
-        <div class="top-dropdown-body">
-          <section id="summary" class="summary"></section>
-        </div>
-      </details>
-
-      <details class="panel top-dropdown config-dropdown">
-        <summary>
-          <div>
-            <h2 class="section-title">Config</h2>
-            <div class="manager-toggle-copy">Expand to edit the SubsPlease feeds, proxy settings, and Cache</div>
-          </div>
-          <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-        </summary>
-        <div class="top-dropdown-body">
-          <div class="config-grid">
-            <div class="field">
-              <label for="rssUrl">SubsPlease RSS URLs</label>
-              <input id="rssUrl" type="text" spellcheck="false" value="https://subsplease.org/rss/?r=1080, https://subsplease.org/rss/?r=720" autocomplete="off" />
-            </div>
-            <div class="field">
-              <label for="rssProxyTemplate">SubsPlease proxy</label>
-              <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
-            </div>
-          </div>
-          <div class="button-row" style="margin-top: 8px;">
-            <button id="clearMemoryBtn" class="secondary" type="button">Clear Cache</button>
-            <button id="openAddShowBtn" class="secondary" type="button">Add show</button>
-          </div>
-          <div class="helper" style="margin-top: 12px;">
-          </div>
-        </div>
-      </details>
-    </div>
+    </details>
 
     <div id="footer" class="footer"></div>
   </div>
@@ -999,45 +550,31 @@
         </div>
         <button id="closeShowSettingsBtn" class="modal-close" type="button" aria-label="Close">×</button>
       </div>
-
       <div class="modal-body">
         <label class="toggle">
           <input id="modalUseCustom" type="checkbox" />
-          Use custom slot
+          Override Release Slot
         </label>
-
         <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
-        <div id="modalHistorySlot" class="modal-note" style="margin-top: -6px; display: none;"></div>
-
+        <div id="modalHistorySlot" class="modal-note" style="display: none;"></div>
         <div class="modal-grid">
           <div class="field">
             <label for="modalDay">Day</label>
             <select id="modalDay">
-              <option>Monday</option>
-              <option>Tuesday</option>
-              <option>Wednesday</option>
-              <option>Thursday</option>
-              <option>Friday</option>
-              <option>Saturday</option>
-              <option>Sunday</option>
+              <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
             </select>
           </div>
-
           <div class="field">
             <label for="modalTime">Time</label>
-            <input id="modalTime" type="text" value="18:00" inputmode="numeric" placeholder="HH:MM" />
+            <input id="modalTime" type="time" value="18:00" placeholder="HH:MM" />
           </div>
         </div>
-
-        <div id="modalCustomHelper" class="helper">
-          Custom slot is off. Turn it on to set your own day and time.
-        </div>
+        <div id="modalCustomHelper" class="modal-note" style="background: transparent; border: none; padding: 0;">Custom slot is off. Turn it on to set your own day and time.</div>
       </div>
-
       <div class="modal-footer">
-        <button id="modalUseDetectedBtn" class="ghost" type="button">Use detected</button>
-        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear custom</button>
-        <button id="modalSaveBtn" class="primary" type="button">Save</button>
+        <button id="modalClearOrRemoveBtn" class="danger" type="button">Clear</button>
+        <button id="modalUseDetectedBtn" class="secondary" type="button">Use Detected</button>
+        <button id="modalSaveBtn" class="primary" type="button">Save Changes</button>
       </div>
     </div>
   </div>
@@ -1047,20 +584,17 @@
       <div class="modal-sheet-handle" aria-hidden="true"></div>
       <div class="modal-head">
         <div>
-          <div class="modal-title">Add currently airing show</div>
-          <div class="modal-subtitle">Search AniList and add an extra airing show to your board.</div>
+          <div class="modal-title">Add Extra Show</div>
+          <div class="modal-subtitle">Search AniList to track a show manually.</div>
         </div>
         <button id="closeAddShowBtn" class="modal-close" type="button" aria-label="Close">×</button>
       </div>
-
       <div class="modal-body">
         <div class="field">
-          <label for="addShowSearch">Search currently airing AniList shows</label>
-          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type an ongoing show name..." autocomplete="off" />
+          <input id="addShowSearch" type="text" spellcheck="false" placeholder="Type a show name..." autocomplete="off" />
         </div>
-
         <div id="addShowResults" class="list-stack">
-          <div class="empty">Type at least 2 characters to search currently airing AniList shows.</div>
+          <div class="modal-note">Type at least 3 characters to search currently airing AniList shows.</div>
         </div>
       </div>
     </div>
@@ -1072,19 +606,20 @@
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const SELECTED_DAY_KEY = "airing-board-selected-day-v1";
     
-    // Automatically detect the user's timezone, with Berlin as a fallback
     const DEFAULT_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin";
     
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
     const COLLAPSED_DAYS_KEY = "airing-board-collapsed-days-v1";
     
-    // UPDATED REFRESH TIMERS TO SYNC
     const REFRESH_STALE_MS = 5 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     
     const COUNTDOWN_TICK_MS = 30 * 1000;
+    const SEARCH_DEBOUNCE_MS = 650;
+    const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
     const SCHEDULE_MOVED_THRESHOLD_SECONDS = (7 * 24 * 60 * 60) + (5 * 60 * 60);
@@ -1146,10 +681,23 @@
       }
     `;
 
-    // --- INDEXEDDB IMAGE PANTRY ---
     const DB_NAME = 'AiringBoardImages';
     const STORE_NAME = 'covers';
     let dbPromise = null;
+    let activeCoverObjectUrls = [];
+
+    function makeCachedCoverObjectUrl(blob) {
+      const objectUrl = URL.createObjectURL(blob);
+      activeCoverObjectUrls.push(objectUrl);
+      return objectUrl;
+    }
+
+    function revokeActiveCoverUrls() {
+      for (const url of activeCoverObjectUrls) {
+        URL.revokeObjectURL(url);
+      }
+      activeCoverObjectUrls = [];
+    }
 
     function getDB() {
       if (!dbPromise) {
@@ -1173,14 +721,14 @@
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => resolve(null);
         });
-        if (blob) return URL.createObjectURL(blob);
+        if (blob) return makeCachedCoverObjectUrl(blob);
 
         const res = await fetch(url);
         if (!res.ok) throw new Error();
         const newBlob = await res.blob();
         const txW = db.transaction(STORE_NAME, 'readwrite');
         txW.objectStore(STORE_NAME).put(newBlob, id);
-        return URL.createObjectURL(newBlob);
+        return makeCachedCoverObjectUrl(newBlob);
       } catch (err) {
         return url;
       }
@@ -1197,16 +745,15 @@
     async function loadImagesToDOM() {
       const imgs = document.querySelectorAll('img.lazy-cover');
       for (const img of imgs) {
-        img.classList.remove('lazy-cover'); // Prevent double processing
         const id = img.getAttribute('data-media-id');
         const url = img.getAttribute('data-original-url');
         if (id && url) {
           const localUrl = await getCachedImage(id, url);
           img.src = localUrl;
+          img.classList.remove('lazy-cover');
         }
       }
     }
-    // ------------------------------
 
     function loadJSON(key, fallback) {
       try {
@@ -1221,6 +768,17 @@
       try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
     }
 
+    function loadSelectedDay() {
+      try { 
+        const val = localStorage.getItem(SELECTED_DAY_KEY) || "Full Week"; 
+        return ["Full Week", "Today"].includes(val) ? val : "Full Week";
+      } catch { return "Full Week"; }
+    }
+
+    function saveSelectedDay(day) {
+      try { localStorage.setItem(SELECTED_DAY_KEY, day); } catch {}
+    }
+
     const els = {
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
@@ -1231,7 +789,7 @@
       addShowResults: document.getElementById("addShowResults"),
       message: document.getElementById("message"),
       summary: document.getElementById("summary"),
-      board: document.getElementById("board"),
+      boardContainer: document.getElementById("board-container"),
       footer: document.getElementById("footer"),
       updateIndicator: document.getElementById("updateIndicator"),
       openAddShowBtn: document.getElementById("openAddShowBtn"),
@@ -1252,6 +810,15 @@
       modalSaveBtn: document.getElementById("modalSaveBtn")
     };
 
+    let aniListCooldownUntil = 0;
+
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
+
     const state = {
       userName: "",
       currentEntries: [],
@@ -1265,12 +832,14 @@
       searchResults: [],
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
-      lastRssReleaseAt: 0, // ADDED: Track RSS staleness
+      lastRssReleaseAt: 0,
       isLoading: false,
       activeSettingsId: null,
       healthStatus: "healthy",
       lastNextSlotKey: null,
-      collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])) // Store for collapsed days
+      collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
+      expandedDays: new Set(),
+      selectedDay: loadSelectedDay()
     };
 
     showMessage("info", "Ready.");
@@ -1304,38 +873,50 @@
 
       let extra = "";
       if (state.lastSuccessfulLoadAt) {
-        extra += ` · Board updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
+        extra += ` · Updated ${timeAgo(state.lastSuccessfulLoadAt)} ago`;
       } else {
         extra += " · Waiting for first update";
       }
 
       if (state.lastRssReleaseAt) {
         const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
-        extra += ` · Newest RSS release at ${exactLocalTime} (${timeAgo(state.lastRssReleaseAt)} ago)`;
+        extra += `<br/>Newest RSS release at ${exactLocalTime}`;
       }
 
       if (isUnhealthy && state.notes.length) {
-        extra += ` · ${escapeHtml(state.notes.join(" "))}`;
+        extra += `<br/>${escapeHtml(state.notes.join(" "))}`;
       }
 
       els.footer.innerHTML = `
         <span class="${statusClass}">${statusLabel}</span>${extra}
-        · <a href="https://gt5dtcydbc-oss.github.io/al-sp-match/releases.html" target="_blank" rel="noopener noreferrer">Release status</a>
       `;
     }
 
     async function graphQLRequest(query, variables) {
+      if (Date.now() < aniListCooldownUntil) {
+        await new Promise(resolve => setTimeout(resolve, aniListCooldownUntil - Date.now()));
+      }
+
       const response = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ query, variables }),
-        signal: AbortSignal.timeout(15000) // Added safety timeout
+        signal: timeoutSignal(15000)
       });
+
       const data = await response.json().catch(() => ({}));
+
+      if (response.status === 429) {
+        const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+        aniListCooldownUntil = Date.now() + retryAfter * 1000;
+        throw new Error("AniList rate limit reached. Retrying later.");
+      }
+
       if (!response.ok || data.errors) {
         const message = data.errors?.map(err => err.message).join(" | ") || `Request failed (${response.status})`;
         throw new Error(message);
       }
+
       return data.data || {};
     }
 
@@ -1366,7 +947,7 @@
           const response = await fetch(target, { 
             method: "GET", 
             cache: "no-store",
-            signal: AbortSignal.timeout(15000) // Added safety timeout
+            signal: timeoutSignal(15000)
           });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await response.text();
@@ -1416,7 +997,6 @@
 
       const results = await Promise.all(uniqueUrls.map(async url => {
         try {
-          // Append a cache-buster so proxies are forced to fetch fresh RSS data
           const cacheBustedUrl = url.includes("?") 
             ? `${url}&_cb=${Date.now()}` 
             : `${url}?_cb=${Date.now()}`;
@@ -1697,13 +1277,6 @@
       return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     }
 
-    function median(values) {
-      const sorted = [...values].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      if (!sorted.length) return null;
-      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
     function medianTime(minutesArray) {
       if (!minutesArray || !minutesArray.length) return null;
       const base = minutesArray[0]; 
@@ -1759,6 +1332,10 @@
       const latestRelease = best.items[0];
       const latestSlot = latestRelease ? dateToWeekdayTime(latestRelease.date, timeZone) : null;
 
+      const releaseDateMs = latestRelease?.date 
+        ? (latestRelease.date instanceof Date ? latestRelease.date.getTime() : new Date(latestRelease.date).getTime()) 
+        : null;
+
       return {
         day: slot.day,
         time: slot.time,
@@ -1767,7 +1344,8 @@
         matchedTitle: best.title,
         matchedEpisode: latestRelease?.episode || null,
         latestReleaseDay: latestSlot?.weekday || null,
-        latestReleaseTime: latestSlot?.time || null
+        latestReleaseTime: latestSlot?.time || null,
+        latestReleaseDate: releaseDateMs
       };
     }
 
@@ -1889,10 +1467,8 @@
       saveSlotCache(state.userName, cache);
     }
 
-    // --- HARD DELETE CLEANUP ENGINE ---
     function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
-
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
       const cache = loadSlotCache(userName);
       let cacheChanged = false;
@@ -1900,7 +1476,7 @@
       for (const id of Object.keys(cache)) {
         if (!validIds.has(id)) {
           delete cache[id];
-          deleteCachedImage(id); // Delete from IndexedDB Pantry
+          deleteCachedImage(id);
           cacheChanged = true;
         }
       }
@@ -1972,26 +1548,15 @@
                 matchedTitle: primary.matchedTitle || "",
                 matchedEpisode: primary.matchedEpisode || null,
                 latestReleaseDay: primary.latestReleaseDay || null,
-                latestReleaseTime: primary.latestReleaseTime || null
+                latestReleaseTime: primary.latestReleaseTime || null,
+                latestReleaseDate: primary.latestReleaseDate || null
               };
             } else {
-              return {
-                day: aniDay,
-                time: minutesToHHMM(aniMinutes + 60),
-                source: "fallback",
-                sampleCount: 0,
-                matchedTitle: ""
-              };
+              return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
             }
           }
 
-          return {
-            day: aniDay,
-            time: minutesToHHMM(aniMinutes + 60),
-            source: "fallback",
-            sampleCount: 0,
-            matchedTitle: ""
-          };
+          return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
         }
       }
 
@@ -2015,54 +1580,30 @@
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
         
         const isScheduleMoved =
-          hasNextAiring &&
-          Number.isFinite(nextAiringAt) &&
-          nextAiringAt > nowSeconds &&
-          (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
+          hasNextAiring && Number.isFinite(nextAiringAt) &&
+          nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > SCHEDULE_MOVED_THRESHOLD_SECONDS;
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: override.day,
-            time: override.time,
-            format: media.format || "",
-            source: "manual",
-            sampleCount: 1,
-            matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring,
-            totalEpisodes,
-            displayEpisode,
-            isScheduleMoved
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
+            format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
           });
           continue;
         }
 
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
+          const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
           items.push({
-            id: media.id,
-            title,
-            siteUrl: media.siteUrl || "#",
-            cover,
-            day: primary.day,
-            time: primary.time,
-            format: media.format || "",
-            source: primary.source,
-            sampleCount: Math.min(primary.sampleCount || 1, 3),
-            matchedTitle: primary.matchedTitle || "",
-            matchedEpisode: primary.matchedEpisode || null,
-            latestReleaseDay: primary.latestReleaseDay || null,
-            latestReleaseTime: primary.latestReleaseTime || null,
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring,
-            totalEpisodes,
-            displayEpisode,
-            isScheduleMoved
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
+            format: media.format || "", source: primary.source, sampleCount: Math.min(primary.sampleCount || 1, 3),
+            matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || null, latestReleaseTime: primary.latestReleaseTime || null,
+            latestReleaseDate: primary.latestReleaseDate || null,
+            isFreshRss: isFreshRss || false,
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
           });
         }
       }
@@ -2078,91 +1619,55 @@
 
         if (item.source === "rss") {
           let entry = cache[key];
-          if (!entry || typeof entry !== "object") {
-            entry = {};
-          }
-
+          if (!entry || typeof entry !== "object") entry = {};
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
           const currentDay = item.latestReleaseDay;
           const currentTime = item.latestReleaseTime;
-
           let trackerEp = item.matchedEpisode; 
-          if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) {
-            const releasedEp = Math.max(1, item.displayEpisode - 1);
-            trackerEp = String(releasedEp).padStart(2, "0");
-          } else if (trackerEp) {
-            trackerEp = String(trackerEp).padStart(2, "0");
-          }
+          if (trackerEp) trackerEp = String(trackerEp).padStart(2, "0");
+          else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) trackerEp = String(Math.max(1, item.displayEpisode - 1)).padStart(2, "0");
+          else trackerEp = "?";
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
 
-          if (trackerEp && currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
-            entry.history.push({
-              day: currentDay,
-              time: currentTime,
-              mins: toMinutes(currentTime),
-              episode: trackerEp
-            });
-
-            if (entry.history.length > 3) {
-              entry.history.shift();
-            }
+          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+            entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
+            if (entry.history.length > 3) entry.history.shift();
           }
 
           if (entry.history.length > 0) {
-            const allMins = entry.history.map(h => h.mins);
-            const medMins = medianTime(allMins);
-
+            const medMins = medianTime(entry.history.map(h => h.mins));
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
           } else {
             item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
-          cache[key] = {
-            ...entry,
-            day: item.day,
-            time: item.time,
-            sampleCount: item.sampleCount,
-            matchedTitle: item.matchedTitle || "",
-            origin: "rss",
-            updatedAt: new Date().toISOString()
+          cache[key] = { 
+            ...entry, day: item.day, time: item.time, sampleCount: item.sampleCount, 
+            matchedTitle: item.matchedTitle || "", latestReleaseDate: item.latestReleaseDate || null,
+            origin: "rss", updatedAt: new Date().toISOString() 
           };
-
-          output.push({
-            ...item,
-            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
-          });
+          output.push({ ...item, historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ") });
           continue;
         }
 
         const remembered = cache[key];
-
         if (item.source === "manual") {
-          cache[key] = {
-            day: item.day,
-            time: item.time,
-            sampleCount: 1,
-            origin: "manual",
-            updatedAt: new Date().toISOString()
-          };
+          cache[key] = { day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
           output.push(item);
         } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
           const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
-          const rememberedTime = rememberedHistory.length
-            ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins)))
-            : remembered.time;
-
+          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : remembered.time;
+          
+          const isFreshRss = remembered.latestReleaseDate && (Date.now() - remembered.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          
           output.push({
-            ...item,
-            day: item.day, 
-            time: rememberedTime,
-            source: "cache",
-            sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
-            matchedTitle: remembered.matchedTitle || "",
-            cacheOrigin: remembered.origin || "saved",
+            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
+            matchedTitle: remembered.matchedTitle || "", cacheOrigin: remembered.origin || "saved",
+            isFreshRss: isFreshRss || false,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
         } else {
@@ -2188,8 +1693,7 @@
         if (part.type !== "literal") parts[part.type] = part.value;
       }
       return {
-        weekday: parts.weekday,
-        year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
+        weekday: parts.weekday, year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
         hour: Number(parts.hour), minute: Number(parts.minute), second: Number(parts.second)
       };
     }
@@ -2198,8 +1702,7 @@
       const parts = getTimeZoneParts(new Date(), timeZone);
       const dayIndex = WEEKDAYS.indexOf(parts.weekday);
       return {
-        ...parts,
-        dayIndex: dayIndex >= 0 ? dayIndex : 0,
+        ...parts, dayIndex: dayIndex >= 0 ? dayIndex : 0,
         totalMinutes: (parts.hour * 60) + parts.minute + (parts.second / 60)
       };
     }
@@ -2216,17 +1719,12 @@
       return { isNow, minutesUntil };
     }
 
-    // HELPER: Detect if a specific slot has already happened
     function hasAired(day, time, timeZone = DEFAULT_TIMEZONE) {
       const now = getNowContext(timeZone);
       const dayIndex = WEEKDAYS.indexOf(day);
       const targetMinutes = toMinutes(time);
-      
       const dayOffset = (dayIndex - now.dayIndex + 7) % 7;
-      
-      if (dayOffset === 0) {
-        return now.totalMinutes >= targetMinutes;
-      }
+      if (dayOffset === 0) return now.totalMinutes >= targetMinutes;
       return false; 
     }
 
@@ -2234,6 +1732,10 @@
       let best = null;
       for (const dayBlock of grouped) {
         for (const slot of dayBlock.slots) {
+          // SKIP ON-BREAK SHOWS: Only consider slot if it has at least one active show
+          const hasActiveShow = slot.items.some(i => !i.isScheduleMoved);
+          if (!hasActiveShow) continue;
+
           const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
           if (!status) continue;
           if (status.isNow || status.minutesUntil <= 0) continue;
@@ -2250,9 +1752,7 @@
       if (!Number.isFinite(safeTimestamp)) return "";
       const safeDate = new Date(safeTimestamp);
       if (!Number.isFinite(safeDate.getTime())) return "";
-      return new Intl.DateTimeFormat("en-GB", {
-        timeZone, weekday: "short", hour: "2-digit", minute: "2-digit"
-      }).format(safeDate);
+      return new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short", hour: "2-digit", minute: "2-digit" }).format(safeDate);
     }
 
     function updateIndicatorTitle(timestamp) {
@@ -2263,9 +1763,6 @@
 
     function pulseUpdateIndicator() {
       if (!els.updateIndicator) return;
-      els.updateIndicator.classList.remove("flash");
-      void els.updateIndicator.offsetWidth;
-      els.updateIndicator.classList.add("flash");
       updateIndicatorTitle(Date.now());
     }
 
@@ -2292,135 +1789,214 @@
       return output;
     }
 
+    function updateBoardHighlights() {
+      const grouped = groupForBoard(state.items);
+      const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
+      const newNextSlotKey = nextSlot?.key || null;
+
+      const allCards = document.querySelectorAll('.anime-card');
+      for (const card of allCards) {
+        const id = card.dataset?.id;
+        if (!id) continue;
+        const item = state.items.find(i => String(i.id) === id);
+        if (!item) continue;
+        const slotKey = `${item.day}::${item.time}`;
+        const isNext = (newNextSlotKey === slotKey) && !item.isScheduleMoved;
+        card.classList.toggle('highlight-next', isNext);
+      }
+
+      const daySections = document.querySelectorAll('.day-section');
+      for (const section of daySections) {
+        const dayName = section.dataset.day;
+        if (!dayName) continue;
+        const dayItems = state.items.filter(i => i.day === dayName);
+        
+        // ACTIVE MATH: Exclude on-break shows from counts
+        const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+        const totalCount = activeItems.length;
+        let airedCount = 0;
+        for (const item of activeItems) {
+          if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
+        }
+        
+        const header = section.querySelector('.day-section-name');
+        if (!header) continue;
+        let countEl = header.querySelector('.day-count');
+        if (!countEl) {
+          countEl = document.createElement('span');
+          countEl.className = 'day-count';
+          countEl.style.cssText = 'font-size:0.8rem;color:var(--text-muted);margin-left:12px;font-weight:600;';
+          header.appendChild(countEl);
+        }
+        countEl.textContent = `${airedCount}/${totalCount}`;
+      }
+      state.lastNextSlotKey = newNextSlotKey;
+    }
+
+    // ==================== TWEAKED HTML RENDERING ====================
+    function renderBoard(items, isTick = false) {
+      const grouped = groupForBoard(items);
+      const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
+      state.lastNextSlotKey = nextSlot?.key || null;
+      revokeActiveCoverUrls();
+
+      const todayIdx = getNowContext(DEFAULT_TIMEZONE).dayIndex;
+      const todayName = WEEKDAYS[todayIdx];
+      const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
+      const isFullWeek = effectiveDay === "Full Week";
+
+      // SIMPLIFIED NAVIGATION: Only "Full Week" and "Today"
+      const daysList = ["Full Week", "Today"];
+
+      const dayOptions = daysList.map(d => {
+          let val = d;
+          let display = d;
+          if (d === "Today") {
+              display = `Today <span class="sub">${todayName.slice(0,3)}</span>`;
+          }
+          const isSel = (state.selectedDay === val);
+          return `<button class="day-pill ${isSel ? 'active' : ''}" data-value="${escapeHtml(val)}">${display}</button>`;
+      }).join("");
+
+      let html = `
+        <div class="header-area">
+          <div class="header-top-row">
+            <h1 class="title">Currently Airing</h1>
+          </div>
+          <div class="day-pills-container" id="daySelectContainer">
+             ${dayOptions}
+          </div>
+        </div>
+      `;
+
+      if (isFullWeek) {
+        html += `<div>`;
+        for (const dayBlock of grouped) {
+          
+          let isAutoCollapsed = false;
+          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
+            let allFinished = true;
+            const now = getNowContext(DEFAULT_TIMEZONE);
+            for (const slot of dayBlock.slots) {
+              const targetMins = toMinutes(slot.time);
+              if (now.totalMinutes < targetMins + 60) {
+                allFinished = false; break;
+              }
+            }
+            if (dayBlock.slots.length > 0 && allFinished) {
+              isAutoCollapsed = true;
+            }
+          }
+
+          const collapsed = state.collapsedDays.has(dayBlock.day) || isAutoCollapsed;
+          const dayItems = items.filter(i => i.day === dayBlock.day);
+          
+          // ACTIVE MATH: Exclude on-break shows from counts
+          const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+          const totalCount = activeItems.length;
+          let airedCount = 0;
+          for (const item of activeItems) {
+            if (hasAired(item.day, item.time, DEFAULT_TIMEZONE)) airedCount++;
+          }
+          
+          html += `<div class="day-section" data-day="${escapeHtml(dayBlock.day)}">
+            <div class="day-section-header">
+              <span class="day-section-name">${escapeHtml(dayBlock.day)} <span class="day-count" style="font-size:0.8rem;color:var(--text-muted);margin-left:12px;font-weight:600;">${airedCount}/${totalCount}</span></span>
+              <button class="day-section-toggle" data-action="toggle-day" data-day="${escapeHtml(dayBlock.day)}">${collapsed ? 'Show' : 'Hide'}</button>
+            </div>`;
+          if (!collapsed) {
+            html += `<div class="card-grid">`;
+            for (const slot of dayBlock.slots) {
+              for (const item of slot.items) {
+                // SMART HIGHLIGHTING
+                const isNextSlot = nextSlot?.key === `${dayBlock.day}::${slot.time}`;
+                const isNext = isNextSlot && !item.isScheduleMoved;
+                html += cardHTML(item, slot.time, isNext);
+              }
+            }
+            html += `</div>`;
+          }
+          html += `</div>`;
+        }
+        html += `</div>`;
+      } else {
+        const dayItems = items.filter(i => i.day === effectiveDay);
+        html += `<div id="cardGrid" class="card-grid">`;
+        if (!dayItems.length) {
+          html += `<div class="empty" style="grid-column:1/-1;padding:32px 16px;text-align:center;color:var(--text-muted);">Nothing airing on ${escapeHtml(effectiveDay)}.</div>`;
+        } else {
+          for (const item of dayItems) {
+            const slotKey = `${item.day}::${item.time}`;
+            const isNext = (nextSlot?.key === slotKey) && !item.isScheduleMoved;
+            html += cardHTML(item, item.time, isNext);
+          }
+        }
+        html += `</div>`;
+      }
+
+      els.boardContainer.innerHTML = html;
+      loadImagesToDOM();
+
+      const dayContainer = document.getElementById("daySelectContainer");
+      if (dayContainer) {
+        dayContainer.addEventListener("click", (e) => {
+          const btn = e.target.closest(".day-pill");
+          if (!btn) return;
+          state.selectedDay = btn.dataset.value;
+          saveSelectedDay(state.selectedDay);
+          renderBoard(state.items);
+        });
+      }
+    }
+
+    function cardHTML(item, displayTime, isNext) {
+      const title = escapeHtml(item.title);
+      const coverUrl = item.cover || "";
+      const id = String(item.id);
+      const siteUrl = item.siteUrl || "#";
+
+      const imageHTML = coverUrl 
+        ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
+        : '';
+
+      return `
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''}" data-id="${id}">
+          <div class="anime-card-bg">
+            ${imageHTML}
+          </div>
+          <div class="anime-card-overlay">
+            <div class="anime-card-top">
+              ${item.isAdded ? `<span class="badge-chip added">Added</span>` : '<div></div>'}
+              <div class="anime-card-time-chip ${item.isFreshRss ? 'fresh' : ''}">${escapeHtml(displayTime)}</div>
+            </div>
+            <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
+              <div class="anime-card-title">${title}</div>
+              ${item.hasNextAiring ? `<div class="anime-card-episode">EP ${item.displayEpisode}/${item.totalEpisodes}</div>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
       const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
       const cards = [
-        { label: "Visible", value: String(items.length) },
-        { label: "Custom", value: String(manualCount) },
-        { label: "Added shows", value: String(addedCount) },
-        { label: "SubsPlease RSS", value: String(rssCount) },
-        { label: "Fallback", value: String(fallbackCount) },
-        { label: "Parsed RSS", value: String(primaryCount) }
+        { label: "Visible Shows", value: String(items.length) },
+        { label: "Custom Slots", value: String(manualCount) },
+        { label: "Manually Added", value: String(addedCount) },
+        { label: "Matched via RSS", value: String(rssCount) },
+        { label: "Fallback Data", value: String(fallbackCount) },
+        { label: "Parsed RSS Feed", value: String(primaryCount) }
       ];
       els.summary.innerHTML = cards.map(card => `
-        <article class="panel summary-card">
+        <article class="summary-card">
           <div class="summary-label">${escapeHtml(card.label)}</div>
           <div class="summary-value">${escapeHtml(card.value)}</div>
         </article>
       `).join("");
-    }
-
-    function renderBoard(items, isTick = false) {
-      const grouped = groupForBoard(items);
-      const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
-      const newNextSlotKey = nextSlot ? nextSlot.key : null;
-
-      if (isTick && newNextSlotKey === state.lastNextSlotKey) {
-        return; 
-      }
-      
-      state.lastNextSlotKey = newNextSlotKey;
-
-      els.board.innerHTML = grouped.map(dayBlock => {
-        const isCollapsed = state.collapsedDays.has(dayBlock.day);
-        
-        let airedCount = 0;
-        let totalCount = 0;
-        
-        dayBlock.slots.forEach(slot => {
-          const aired = hasAired(dayBlock.day, slot.time, DEFAULT_TIMEZONE);
-          slot.items.forEach(() => {
-            totalCount++;
-            if (aired) airedCount++;
-          });
-        });
-        
-        const countDisplay = isCollapsed ? `${airedCount}/${totalCount}` : totalCount;
-
-        return `
-        <section class="panel day-column ${isCollapsed ? 'collapsed' : ''}">
-          <div class="day-head">
-            <div class="day-name">${escapeHtml(dayBlock.day)}</div>
-            <div class="day-head-right">
-              <div class="day-count" title="${airedCount} aired out of ${totalCount}">${countDisplay}</div>
-              <button class="day-collapse-btn" type="button" data-action="toggle-day" data-day="${escapeHtml(dayBlock.day)}" aria-label="Toggle ${escapeHtml(dayBlock.day)}">
-                <svg class="day-collapse-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-            </div>
-          </div>
-          ${dayBlock.slots.map(slot => {
-            const slotKey = `${dayBlock.day}::${slot.time}`;
-            const isNext = nextSlot?.key === slotKey;
-            const countdownText = isNext ? "Airing Next" : "";
-            return `
-              <div class="time-group ${isNext ? "highlight-next" : ""}">
-                <div class="time-pill">
-                  ${escapeHtml(slot.time)}
-                  ${countdownText ? `<span class="countdown-inline">· ${escapeHtml(countdownText)}</span>` : ""}
-                </div>
-                <div class="entry-list">
-                  ${slot.items.map(item => {
-                    const epStr = item.hasNextAiring
-                      ? `Next EP ${item.displayEpisode}/${item.totalEpisodes}`
-                      : "";
-
-                    return `
-                    <article class="entry ${item.isScheduleMoved ? 'on-break' : ''}">
-                      <div class="thumb">
-                       ${item.cover ? `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 54'%3E%3C/svg%3E" data-media-id="${item.id}" data-original-url="${escapeHtml(item.cover)}" class="lazy-cover" alt="" loading="lazy" decoding="async" width="38" height="54">` : ""}
-                      </div>
-                      <div class="entry-body">
-                        <div class="entry-title">
-                          <a href="${escapeHtml(item.siteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
-                        </div>
-                        <div class="entry-meta">
-                          ${item.format ? `<span class="chip">${escapeHtml(item.format)}</span>` : ""}
-                          ${epStr ? `<span class="chip">${escapeHtml(epStr)}</span>` : ""}
-                          ${item.isScheduleMoved ? `<span class="chip moved">On Break</span>` : ""}
-                          ${item.isAdded ? `<span class="chip added">Added</span>` : ""}
-                          ${item.source === "manual"
-                            ? `<span class="chip manual">CUSTOM</span>`
-                            : (item.source === "rss" || item.source === "cache")
-                              ? `<span class="chip rss" title="Calculated from past releases: ${escapeHtml(item.historyLog || item.time)}">RSS · ${item.sampleCount || 1}</span>`
-                              : `<span class="chip fallback">AniList</span>`}
-                        </div>
-                      </div>
-                      <button
-                        class="entry-settings-btn"
-                        type="button"
-                        data-action="open-show-settings"
-                        data-id="${escapeHtml(String(item.id))}"
-                        aria-label="Adjust ${escapeHtml(item.title)}"
-                        title="Adjust show"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                          <path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                          <circle cx="17" cy="7" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-                          <circle cx="9" cy="17" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-                        </svg>
-                      </button>
-                    </article>
-                  `;
-                  }).join("")}
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </section>
-      `;
-      }).join("");
-
-      if (!grouped.length) {
-        els.board.innerHTML = `<section class="panel day-column"><div class="day-name">No current airing slots found.</div></section>`;
-      }
-
-      loadImagesToDOM();
     }
 
     function itemMap() {
@@ -2477,8 +2053,8 @@
       els.modalDay.disabled = !enabled;
       els.modalTime.disabled = !enabled;
       els.modalCustomHelper.textContent = enabled
-        ? "Custom slot is active and will override RSS / AniList for this show."
-        : "Custom slot is off. Turn it on to set your own day and time.";
+        ? "Custom slot is active and will override automatically detected data."
+        : "Custom slot is off. Turn it on to manually set schedule.";
     }
 
     function openModal(modal) {
@@ -2514,8 +2090,8 @@
       ].filter(Boolean).join(" · ");
 
       els.modalDetectedSlot.textContent = detected
-        ? `Detected: ${detected.day} · ${detected.time}`
-        : "Detected: No slot found yet";
+        ? `Detected: ${detected.day} at ${detected.time}`
+        : "Detected: No slot found";
 
       const activeItem = itemMap().get(id);
       if (activeItem && activeItem.historyLog) {
@@ -2528,7 +2104,7 @@
       els.modalUseCustom.checked = Boolean(override?.enabled);
       els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
       els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
-      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove show" : "Clear custom";
+      els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove tracked show" : "Clear override";
 
       syncSettingsModalState();
     }
@@ -2647,10 +2223,10 @@
       const addedIds = new Set(Object.keys(state.addedShows || {}).map(String));
 
       if (!state.searchResults.length) {
-        const text = els.addShowSearch.value.trim().length >= 2
-          ? "No currently airing AniList matches found."
-          : "Type at least 2 characters to search currently airing AniList shows.";
-        els.addShowResults.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
+        const text = els.addShowSearch.value.trim().length >= SEARCH_MIN_LENGTH
+          ? "No currently airing matches found."
+          : `Type at least ${SEARCH_MIN_LENGTH} characters to search currently airing shows.`;
+        els.addShowResults.innerHTML = `<div class="modal-note">${escapeHtml(text)}</div>`;
         return;
       }
 
@@ -2674,7 +2250,7 @@
             <div class="row-actions">
               ${manageable
                 ? `<button class="secondary" type="button" data-action="open-show-settings" data-id="${escapeHtml(id)}">Manage</button>`
-                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add show</button>`}
+                : `<button class="primary" type="button" data-action="add-search-show" data-id="${escapeHtml(id)}">Add</button>`}
             </div>
           </div>
         `;
@@ -2684,12 +2260,12 @@
     async function handleSearchInput() {
       const query = els.addShowSearch.value.trim();
       const token = ++state.searchToken;
-      if (query.length < 2) {
+      if (query.length < SEARCH_MIN_LENGTH) {
         state.searchResults = [];
         renderSearchResults();
         return;
       }
-      els.addShowResults.innerHTML = `<div class="empty">Searching AniList…</div>`;
+      els.addShowResults.innerHTML = `<div class="modal-note">Searching...</div>`;
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
@@ -2698,7 +2274,7 @@
       } catch (error) {
         if (token !== state.searchToken) return;
         state.searchResults = [];
-        els.addShowResults.innerHTML = `<div class="empty">Search failed: ${escapeHtml(error.message)}</div>`;
+        els.addShowResults.innerHTML = `<div class="modal-note">Search failed: ${escapeHtml(error.message)}</div>`;
       }
     }
 
@@ -2718,7 +2294,7 @@
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
-      const loadingText = options.reason === "refresh" ? "Refreshing…" : "Loading…";
+      const loadingText = options.reason === "refresh" ? "Syncing..." : "Loading...";
       const nextOverrides = loadOverrides(userName);
       const nextAddedShows = loadAddedShows(userName);
       const rssUrls = getRssUrls();
@@ -2861,7 +2437,7 @@
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(() => { 
-        if (state.items.length) renderBoard(state.items, true); 
+        if (state.items.length) updateBoardHighlights(); 
         renderFooterStatus(); 
       }, COUNTDOWN_TICK_MS);
     }
@@ -2869,30 +2445,37 @@
     let searchDebounceTimer = null;
     els.addShowSearch.addEventListener("input", () => {
       clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(handleSearchInput, 250);
+      searchDebounceTimer = setTimeout(handleSearchInput, SEARCH_DEBOUNCE_MS);
     });
 
     els.addShowSearch.addEventListener("keydown", event => {
       if (event.key === "Enter") handleSearchInput();
     });
 
-    els.board.addEventListener("click", event => {
-      const button = event.target.closest("button[data-action]");
-      if (!button) return;
-      
-      const action = button.dataset.action;
-      
+    els.boardContainer.addEventListener("click", event => {
+      const actionElement = event.target.closest("[data-action]");
+      if (!actionElement) return;
+
+      const action = actionElement.dataset.action;
+      const id = actionElement.dataset.id;
+
       if (action === "open-show-settings") {
-        openSettingsModalForId(button.dataset.id);
+        openSettingsModalForId(id);
       } else if (action === "toggle-day") {
-        const day = button.dataset.day;
-        if (state.collapsedDays.has(day)) {
+        const day = actionElement.dataset.day;
+        const isCurrentlyCollapsed = actionElement.textContent === 'Show';
+        
+        if (isCurrentlyCollapsed) {
           state.collapsedDays.delete(day);
+          if (!state.expandedDays) state.expandedDays = new Set();
+          state.expandedDays.add(day);
         } else {
           state.collapsedDays.add(day);
+          if (state.expandedDays) state.expandedDays.delete(day);
         }
+        
         saveJSON(COLLAPSED_DAYS_KEY, Array.from(state.collapsedDays));
-        renderBoard(state.items); 
+        renderBoard(state.items);
       }
     });
 
