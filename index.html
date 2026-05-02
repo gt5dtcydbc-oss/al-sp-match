@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -622,7 +623,6 @@
     const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-    // Removed old SCHEDULE_MOVED_THRESHOLD_SECONDS; now we use calendar‑day logic.
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -1563,7 +1563,7 @@
       return primary || null;
     }
 
-    // Updated buildItems using calendar-day delayed logic
+    // Updated buildItems using calendar-day delayed logic and passing diffDays
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
 
@@ -1591,12 +1591,13 @@
 
         // ----- Delayed? (on break) decision -----
         let isScheduleMoved = false;
+        let diffDays = 0;
         if (hasNextAiring && Number.isFinite(nextAiringAt) && nextAiringAt > nowSeconds) {
           const airingStr = getLocalDate(nextAiringAt);
           // Calculate the difference in calendar days
           const t = new Date(todayStr + "T00:00:00");
           const a = new Date(airingStr + "T00:00:00");
-          const diffDays = Math.round((a - t) / 86400000); // positive
+          diffDays = Math.round((a - t) / 86400000); // positive
           // Delayed only if the episode is more than 7 days away
           isScheduleMoved = diffDays > 7;
         }
@@ -1607,7 +1608,7 @@
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
             format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
             isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes,
-            displayEpisode, isScheduleMoved
+            displayEpisode, isScheduleMoved, diffDays
           });
           continue;
         }
@@ -1625,7 +1626,7 @@
             latestReleaseDate: primary.latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved
+            hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved, diffDays
           });
         }
       }
@@ -1639,9 +1640,30 @@
       for (const item of items) {
         const key = String(item.id);
 
+        // 1. Get or initialize the cache entry
+        let entry = cache[key];
+        if (!entry || typeof entry !== "object") entry = {};
+
+        // --- DELAYED TAG STATE MACHINE --- //
+        // 1. If it's far away, tag it as delayed in the memory
+        if (item.diffDays > 7) {
+          entry.wasDelayed = true;
+        }
+        
+        // 2. THE GRACE PERIOD: If it's exactly 7 days away, AND it was previously delayed,
+        // force it to stay grey for today.
+        if (item.diffDays === 7 && entry.wasDelayed === true) {
+          item.isScheduleMoved = true; 
+        }
+        
+        // 3. THE RESET: Once midnight passes and it hits 6 days, 
+        // clear the tag so it turns colorful naturally.
+        if (item.diffDays < 7) {
+          entry.wasDelayed = false;
+        }
+        // ---------------------------------- //
+
         if (item.source === "rss") {
-          let entry = cache[key];
-          if (!entry || typeof entry !== "object") entry = {};
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
@@ -1676,23 +1698,26 @@
           continue;
         }
 
-        const remembered = cache[key];
         if (item.source === "manual") {
-          cache[key] = { day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
+          cache[key] = { ...entry, day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
           output.push(item);
-        } else if (remembered && (isValidTime(remembered.time) || Array.isArray(remembered.history))) {
-          const rememberedHistory = Array.isArray(remembered.history) ? remembered.history.slice(-3) : [];
-          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : remembered.time;
+        } else if (entry.origin && (isValidTime(entry.time) || Array.isArray(entry.history))) {
+          const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
+          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
           
-          const isFreshRss = remembered.latestReleaseDate && (Date.now() - remembered.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= 36 * 60 * 60 * 1000;
           
           output.push({
-            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(remembered.sampleCount || 1, 3),
-            matchedTitle: remembered.matchedTitle || "", cacheOrigin: remembered.origin || "saved",
+            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
+            matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
             isFreshRss: isFreshRss || false,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
+
+          // Ensure wasDelayed state is preserved when dealing with cache sourced item
+          cache[key] = { ...entry }; 
         } else {
+          cache[key] = { ...entry };
           output.push(item);
         }
       }
