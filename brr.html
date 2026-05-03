@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -446,14 +447,13 @@
 
         if (compactLength === 0) return;
 
-        // Avoid dangerously broad filters like *86* or *x*.
-        // For very short non-wildcard titles, emit an exact match instead.
-        if (compactLength <= 2 && !containsWildcard) {
+        // BUMPED TO 3: Prevents 3-letter acronyms like "NGO" from becoming overly broad wildcards
+        if (compactLength <= 3 && !containsWildcard) {
             patterns.add(pattern);
             return;
         }
 
-        if (compactLength <= 2) return;
+        if (compactLength <= 3) return;
         
         // Final cleanup just in case leading/trailing stars created duplicates
         patterns.add(`*${pattern}*`.replace(/\*+/g, '*'));
