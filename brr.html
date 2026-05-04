@@ -59,6 +59,15 @@
             margin-bottom: 14px;
         }
 
+        .divider {
+            text-align: center;
+            margin-bottom: 14px;
+            font-weight: 700;
+            color: var(--muted);
+            font-size: 13px;
+            letter-spacing: 0.05em;
+        }
+
         input[type="text"] {
             flex-grow: 1;
             padding: 12px;
@@ -242,12 +251,21 @@
 <div class="card">
     <h1>AniList + MAL → AutoBrr</h1>
     <p class="subtitle">
-        Enter an AniList username. The page pulls CURRENT anime from AniList, enriches titles through Jikan/MAL when possible, then creates comma-separated AutoBrr wildcard filters.
+        Enter an AniList username to pull CURRENT anime, or match a specific show. The page enriches titles through Jikan/MAL when possible, then creates comma-separated AutoBrr wildcard filters.
     </p>
 
+    <!-- User List Input -->
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
-        <button id="generateBtn" type="button">Generate</button>
+        <button id="generateBtn" type="button">Generate User List</button>
+    </div>
+
+    <div class="divider">— OR —</div>
+
+    <!-- Single Show Input -->
+    <div class="input-group">
+        <input type="text" id="singleShowInput" placeholder="Paste AniList Anime URL or ID (e.g., 16498)">
+        <button id="generateSingleBtn" type="button" class="secondary-btn">Match One Show</button>
     </div>
 
     <div class="options">
@@ -303,7 +321,7 @@
     </div>
 
     <p class="hint">
-        Only AniList entries with status CURRENT are included. Very short titles are emitted exactly instead of as broad wildcards. Jikan/MAL enrichment is cached locally for 7 days.
+        When using a username, only AniList entries with status CURRENT are included. Very short titles are emitted exactly instead of as broad wildcards. Jikan/MAL enrichment is cached locally for 7 days.
     </p>
 
     <div id="log" class="log"></div>
@@ -320,6 +338,8 @@
     const els = {
         username: document.getElementById('username'),
         generateBtn: document.getElementById('generateBtn'),
+        singleShowInput: document.getElementById('singleShowInput'),
+        generateSingleBtn: document.getElementById('generateSingleBtn'),
         useJikan: document.getElementById('useJikan'),
         includeNonAscii: document.getElementById('includeNonAscii'),
         shortDescriptorVariants: document.getElementById('shortDescriptorVariants'),
@@ -391,6 +411,12 @@
         div.textContent = message;
         els.log.appendChild(div);
         els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function toggleButtons(disabled) {
+        els.generateBtn.disabled = disabled;
+        els.generateSingleBtn.disabled = disabled;
+        els.clearCacheBtn.disabled = disabled;
     }
 
     // BASE FOLDER: Used strictly for matching/comparing Jikan to AniList
@@ -498,31 +524,15 @@
 
     function ordinalWord(n) {
         return {
-            1: 'first',
-            2: 'second',
-            3: 'third',
-            4: 'fourth',
-            5: 'fifth',
-            6: 'sixth',
-            7: 'seventh',
-            8: 'eighth',
-            9: 'ninth',
-            10: 'tenth'
+            1: 'first', 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth',
+            6: 'sixth', 7: 'seventh', 8: 'eighth', 9: 'ninth', 10: 'tenth'
         }[Number(n)] || null;
     }
 
     function romanNumeral(n) {
         return {
-            1: 'i',
-            2: 'ii',
-            3: 'iii',
-            4: 'iv',
-            5: 'v',
-            6: 'vi',
-            7: 'vii',
-            8: 'viii',
-            9: 'ix',
-            10: 'x'
+            1: 'i', 2: 'ii', 3: 'iii', 4: 'iv', 5: 'v',
+            6: 'vi', 7: 'vii', 8: 'viii', 9: 'ix', 10: 'x'
         }[Number(n)] || null;
     }
 
@@ -651,18 +661,14 @@
             media.title?.english,
             media.title?.userPreferred,
             ...(options.includeNonAscii ? [media.title?.native] : [])
-            // Removed untagged media.synonyms to prevent foreign language bloat
         ];
-
         return filterTitleListForAscii(titles, options);
     }
 
     function collectJikanTitles(item, options) {
-        // Whitelist only the language tags we actually want from MAL
         const allowedTypes = new Set(['Default', 'English', 'Synonym']);
         if (options.includeNonAscii) allowedTypes.add('Japanese');
 
-        // Filter the massive MAL titles array before extracting the strings
         const filteredJikanTitles = Array.isArray(item?.titles)
             ? item.titles.filter(t => allowedTypes.has(t?.type)).map(t => t?.title)
             : [];
@@ -671,7 +677,6 @@
             item?.title,
             item?.title_english,
             ...(options.includeNonAscii ? [item?.title_japanese] : []),
-            // Removed the legacy item.title_synonyms array to prevent foreign language bloat
             ...filteredJikanTitles
         ];
 
@@ -942,6 +947,55 @@
         }
     }
 
+    async function fetchSingleAniListAnime(id, retries = 2) {
+        if (Date.now() < aniListCooldownUntil) {
+            await sleep(aniListCooldownUntil - Date.now());
+        }
+
+        const query = `
+            query ($id: Int) {
+              Media(id: $id, type: ANIME) {
+                id idMal siteUrl format startDate { year month day }
+                title { romaji english native userPreferred }
+              }
+            }
+        `;
+
+        try {
+            const response = await fetch(ANILIST_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ query, variables: { id } }),
+                signal: timeoutSignal(15000)
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (response.status === 429) {
+                const retryAfter = Number(response.headers.get('Retry-After')) || 60;
+                aniListCooldownUntil = Date.now() + (retryAfter * 1000);
+                if (retries > 0) {
+                    setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning');
+                    await sleep(retryAfter * 1000);
+                    return fetchSingleAniListAnime(id, retries - 1);
+                }
+                throw new Error("AniList rate limit reached. Try again later.");
+            }
+
+            if (!response.ok || result.errors) {
+                const message = result.errors?.map(err => err.message).join('; ') || `AniList returned HTTP ${response.status}.`;
+                throw new Error(message);
+            }
+
+            return result.data?.Media;
+        } catch (error) {
+            if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                throw new Error("Request to AniList timed out.");
+            }
+            throw error;
+        }
+    }
+
     function buildFilterPatterns(mediaTitleMap, options) {
         const patterns = new Set();
 
@@ -960,7 +1014,95 @@
         });
     }
 
-    async function generateFilter() {
+    function getAniListIdFromInput(input) {
+        const str = String(input).trim();
+        if (/^\d+$/.test(str)) return parseInt(str, 10);
+        const match = str.match(/anilist\.co\/anime\/(\d+)/i);
+        if (match) return parseInt(match[1], 10);
+        return null;
+    }
+
+    async function processMediaList(mediaList, options) {
+        const mediaTitleMap = new Map();
+        mediaList.forEach(media => {
+            mediaTitleMap.set(media.id, collectAniListTitles(media, options));
+        });
+
+        let jikanAdded = 0;
+        let jikanErrors = 0;
+
+        setProgress(0, mediaList.length);
+
+        for (let i = 0; i < mediaList.length; i++) {
+            const media = mediaList[i];
+            const name = media.title?.userPreferred || media.title?.english || media.title?.romaji || `AniList ${media.id}`;
+            
+            if (mediaList.length > 1) {
+                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'}: ${i + 1}/${mediaList.length} — ${name}`);
+            } else {
+                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'} — ${name}`);
+            }
+
+            if (options.useJikan) {
+                try {
+                    const currentTitles = mediaTitleMap.get(media.id) || [];
+                    const enriched = await enrichWithJikan(media, currentTitles, options);
+                    const before = currentTitles.length;
+                    const merged = uniqueNonEmpty([...currentTitles, ...enriched.titles]);
+                    mediaTitleMap.set(media.id, merged);
+
+                    const added = Math.max(0, merged.length - before);
+                    jikanAdded += added;
+
+                    if (enriched.status === 'ok') logLine(`${enriched.message} Added ${added}.`, 'ok');
+                    else if (enriched.status === 'warn') logLine(enriched.message, 'warn');
+                    else logLine(`${name}: ${enriched.message}`, 'warn');
+                } catch (error) {
+                    jikanErrors++;
+                    logLine(`${name}: Jikan error: ${error?.message || 'Unknown error.'}`, 'err');
+                }
+            }
+
+            setProgress(i + 1, mediaList.length);
+        }
+
+        setStatus('Generating AutoBrr patterns...');
+        const uniqueEntries = buildFilterPatterns(mediaTitleMap, options);
+
+        if (uniqueEntries.length === 0) {
+            throw new Error('No usable title patterns were generated. Refusing to output an empty AutoBrr filter.');
+        }
+
+        const final = uniqueEntries.join(',');
+        els.output.value = final;
+        els.copyBtn.style.display = 'block';
+        els.summary.style.display = 'grid';
+        els.animeCount.textContent = mediaList.length.toLocaleString();
+        els.jikanAddedCount.textContent = jikanAdded.toLocaleString();
+        els.jikanErrorCount.textContent = jikanErrors.toLocaleString();
+        els.patternCount.textContent = uniqueEntries.length.toLocaleString();
+        els.charCount.textContent = final.length.toLocaleString();
+
+        let statusMessage = mediaList.length > 1 
+            ? `Generated ${uniqueEntries.length.toLocaleString()} clean patterns from ${mediaList.length.toLocaleString()} AniList anime`
+            : `Generated ${uniqueEntries.length.toLocaleString()} patterns for ${mediaList[0].title?.userPreferred || mediaList[0].title?.romaji}`;
+
+        if (options.useJikan) statusMessage += `, with ${jikanAdded.toLocaleString()} extra MAL/Jikan titles added`;
+        statusMessage += ` (${final.length.toLocaleString()} characters).`;
+
+        if (jikanErrors > 0) {
+            statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but AniList patterns were still generated.`;
+        }
+
+        const isLarge = final.length > LARGE_OUTPUT_WARNING_LENGTH;
+        if (isLarge) {
+            statusMessage += ' Warning: this output is very large and may be difficult to save or process in some AutoBrr/reverse-proxy setups.';
+        }
+
+        setStatus(statusMessage, isLarge ? 'warning' : 'success');
+    }
+
+    async function generateUserFilter() {
         const username = els.username.value.trim();
         if (!username) {
             setStatus('Please enter an AniList username.', 'error');
@@ -975,88 +1117,52 @@
 
         resetUi();
         safeSetItem('anilist_username', username);
-        els.generateBtn.disabled = true;
-        els.clearCacheBtn.disabled = true;
-        setStatus('Querying AniList...');
+        toggleButtons(true);
+        setStatus('Querying AniList for user list...');
 
         try {
             const mediaList = await fetchAniListCurrent(username);
             if (!mediaList.length) throw new Error('No CURRENT anime found on this AniList account.');
-
-            const mediaTitleMap = new Map();
-            mediaList.forEach(media => {
-                mediaTitleMap.set(media.id, collectAniListTitles(media, options));
-            });
-
-            let jikanAdded = 0;
-            let jikanErrors = 0;
-
-            setProgress(0, mediaList.length);
-
-            for (let i = 0; i < mediaList.length; i++) {
-                const media = mediaList[i];
-                const name = media.title?.userPreferred || media.title?.english || media.title?.romaji || `AniList ${media.id}`;
-                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'}: ${i + 1}/${mediaList.length} — ${name}`);
-
-                if (options.useJikan) {
-                    try {
-                        const currentTitles = mediaTitleMap.get(media.id) || [];
-                        const enriched = await enrichWithJikan(media, currentTitles, options);
-                        const before = currentTitles.length;
-                        const merged = uniqueNonEmpty([...currentTitles, ...enriched.titles]);
-                        mediaTitleMap.set(media.id, merged);
-
-                        const added = Math.max(0, merged.length - before);
-                        jikanAdded += added;
-
-                        if (enriched.status === 'ok') logLine(`${enriched.message} Added ${added}.`, 'ok');
-                        else if (enriched.status === 'warn') logLine(enriched.message, 'warn');
-                        else logLine(`${name}: ${enriched.message}`, 'warn');
-                    } catch (error) {
-                        jikanErrors++;
-                        logLine(`${name}: Jikan error: ${error?.message || 'Unknown error.'}`, 'err');
-                    }
-                }
-
-                setProgress(i + 1, mediaList.length);
-            }
-
-            setStatus('Generating AutoBrr patterns...');
-            const uniqueEntries = buildFilterPatterns(mediaTitleMap, options);
-
-            if (uniqueEntries.length === 0) {
-                throw new Error('No usable title patterns were generated. Refusing to output an empty AutoBrr filter.');
-            }
-
-            const final = uniqueEntries.join(',');
-            els.output.value = final;
-            els.copyBtn.style.display = 'block';
-            els.summary.style.display = 'grid';
-            els.animeCount.textContent = mediaList.length.toLocaleString();
-            els.jikanAddedCount.textContent = jikanAdded.toLocaleString();
-            els.jikanErrorCount.textContent = jikanErrors.toLocaleString();
-            els.patternCount.textContent = uniqueEntries.length.toLocaleString();
-            els.charCount.textContent = final.length.toLocaleString();
-
-            let statusMessage = `Generated ${uniqueEntries.length.toLocaleString()} clean patterns from ${mediaList.length.toLocaleString()} AniList anime`;
-            if (options.useJikan) statusMessage += `, with ${jikanAdded.toLocaleString()} extra MAL/Jikan titles added`;
-            statusMessage += ` (${final.length.toLocaleString()} characters).`;
-
-            if (jikanErrors > 0) {
-                statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but AniList patterns were still generated.`;
-            }
-
-            const isLarge = final.length > LARGE_OUTPUT_WARNING_LENGTH;
-            if (isLarge) {
-                statusMessage += ' Warning: this output is very large and may be difficult to save or process in some AutoBrr/reverse-proxy setups.';
-            }
-
-            setStatus(statusMessage, isLarge ? 'warning' : 'success');
+            await processMediaList(mediaList, options);
         } catch (error) {
             setStatus(`Error: ${error?.message || 'Unknown error.'}`, 'error');
         } finally {
-            els.generateBtn.disabled = false;
-            els.clearCacheBtn.disabled = false;
+            toggleButtons(false);
+            setProgress(0, 0);
+        }
+    }
+
+    async function generateSingleFilter() {
+        const input = els.singleShowInput.value.trim();
+        if (!input) {
+            setStatus('Please enter an AniList URL or ID.', 'error');
+            return;
+        }
+
+        const mediaId = getAniListIdFromInput(input);
+        if (!mediaId) {
+            setStatus('Could not find a valid AniList Anime ID in that input. Check your URL.', 'error');
+            return;
+        }
+
+        const options = {
+            useJikan: els.useJikan.checked,
+            includeNonAscii: els.includeNonAscii.checked,
+            shortDescriptorVariants: els.shortDescriptorVariants.checked
+        };
+
+        resetUi();
+        toggleButtons(true);
+        setStatus('Querying AniList for single show...');
+
+        try {
+            const media = await fetchSingleAniListAnime(mediaId);
+            if (!media) throw new Error('Could not find that anime on AniList.');
+            await processMediaList([media], options);
+        } catch (error) {
+            setStatus(`Error: ${error?.message || 'Unknown error.'}`, 'error');
+        } finally {
+            toggleButtons(false);
             setProgress(0, 0);
         }
     }
@@ -1099,11 +1205,16 @@
         const savedName = safeGetItem('anilist_username');
         if (savedName) els.username.value = savedName;
 
-        els.generateBtn.addEventListener('click', generateFilter);
+        els.generateBtn.addEventListener('click', generateUserFilter);
+        els.generateSingleBtn.addEventListener('click', generateSingleFilter);
         els.copyBtn.addEventListener('click', copyToClipboard);
         els.clearCacheBtn.addEventListener('click', clearJikanCache);
+        
         els.username.addEventListener('keydown', event => {
-            if (event.key === 'Enter') generateFilter();
+            if (event.key === 'Enter') generateUserFilter();
+        });
+        els.singleShowInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') generateSingleFilter();
         });
     });
 </script>
