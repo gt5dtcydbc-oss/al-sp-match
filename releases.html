@@ -364,7 +364,7 @@
     .result-meta { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
 
     .settings-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .toolbar-actions { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
     /* Pushes destructive action away */
     .toolbar-actions .danger { margin-left: auto; }
@@ -511,6 +511,16 @@
             </div>
           </div>
 
+          <!-- NEW CLOUD SYNC CONFIGURATION -->
+          <div class="sync-tools" style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line);">
+            <label class="batch-label">Cloud Sync (GitHub Gist)</label>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;">
+              <input class="search-input" id="githubPat" type="password" placeholder="GitHub PAT (ghp_...)" style="flex: 1; min-width: 200px;" autocomplete="off" spellcheck="false" />
+              <input class="search-input" id="gistId" type="text" placeholder="Gist ID" style="flex: 1; min-width: 200px;" autocomplete="off" spellcheck="false" />
+              <button class="btn primary" id="syncNowBtn" type="button">Pull & Sync</button>
+            </div>
+          </div>
+
           <div class="batch-tools">
             <label class="batch-label" for="batchInput">Batch Import (Paste Series Names)</label>
             <textarea id="batchInput" placeholder="Cowboy Bebop&#10;Frieren"></textarea>
@@ -541,6 +551,7 @@
     const ANILIST_ENDPOINT = "https://graphql.anilist.co";
     const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
     const STORAGE_KEY = "anilist-releases-board:v2";
+    const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1"; // Protects keys from the synced payload
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -567,6 +578,9 @@
       importBtn: document.querySelector("#importBtn"),
       importFile: document.querySelector("#importFile"),
       clearBtn: document.querySelector("#clearBtn"),
+      githubPat: document.querySelector("#githubPat"),
+      gistId: document.querySelector("#gistId"),
+      syncNowBtn: document.querySelector("#syncNowBtn"),
       batchInput: document.querySelector("#batchInput"),
       batchImportBtn: document.querySelector("#batchImportBtn"),
       batchClearBtn: document.querySelector("#batchClearBtn"),
@@ -591,12 +605,91 @@
       downloaded: "Library is empty."
     };
 
-    init();
+    // --- Cloud Sync Logic --- //
+    
+    function loadSyncSettings() {
+      try {
+        const raw = localStorage.getItem(SYNC_SETTINGS_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          els.githubPat.value = d.githubPat || "";
+          els.gistId.value = d.gistId || "";
+        }
+      } catch(e) {}
+    }
 
-    function init() {
+    function saveSyncSettings() {
+      localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify({
+        githubPat: els.githubPat.value.trim(),
+        gistId: els.gistId.value.trim()
+      }));
+    }
+
+    async function pullFromCloud() {
+      const pat = els.githubPat.value.trim();
+      const gistId = els.gistId.value.trim();
+      if (!pat || !gistId) return null;
+      try {
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+          method: "GET",
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const content = data.files["state.json"]?.content;
+        return content ? JSON.parse(content) : null;
+      } catch (e) {
+        console.error("Cloud Pull Failed:", e);
+        return null;
+      }
+    }
+
+    async function pushToCloud(stateObject) {
+      const pat = els.githubPat.value.trim();
+      const gistId = els.gistId.value.trim();
+      if (!pat || !gistId) return;
+      try {
+        await fetch(`https://api.github.com/gists/${gistId}`, {
+          method: "PATCH",
+          headers: {
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": `Bearer ${pat}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } }
+          })
+        });
+      } catch (e) {
+        console.error("Cloud Push Failed:", e);
+      }
+    }
+
+    let cloudSyncTimer;
+    function queueCloudSync(stateObject) {
+      clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500);
+    }
+
+    // --- End Cloud Sync Logic --- //
+
+    // Boot updated to handle async cloud pull
+    async function init() {
+      loadSyncSettings();
+
+      if (els.githubPat.value.trim() && els.gistId.value.trim()) {
+        setStatus("Syncing from cloud...");
+        const cloudState = await pullFromCloud();
+        if (cloudState) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
+          toast("Cloud sync complete.");
+        }
+      }
+
       loadState();
       bindEvents();
       render();
+      setStatus("System Ready");
       checkWatchingStatuses();
     }
 
@@ -637,6 +730,29 @@
         els.filterCompleteBtn.style.color = state.ui.filterComplete ? '#000' : 'var(--text)';
         render();
         saveState();
+      });
+
+      // Sync settings events
+      els.githubPat.addEventListener("change", saveSyncSettings);
+      els.githubPat.addEventListener("blur", saveSyncSettings);
+      els.gistId.addEventListener("change", saveSyncSettings);
+      els.gistId.addEventListener("blur", saveSyncSettings);
+      
+      els.syncNowBtn.addEventListener("click", async () => {
+        els.syncNowBtn.disabled = true;
+        els.syncNowBtn.textContent = "Syncing...";
+        const cloudState = await pullFromCloud();
+        if (cloudState) {
+            state.shows = cloudState.shows || [];
+            state.ui = cloudState.ui || state.ui;
+            saveState();
+            render();
+            toast("Force sync complete.");
+        } else {
+            toast("Sync failed. Check keys.", "error");
+        }
+        els.syncNowBtn.disabled = false;
+        els.syncNowBtn.textContent = "Pull & Sync";
       });
 
       els.batchImportBtn.addEventListener("click", prepareBatchReview);
@@ -1159,7 +1275,12 @@
       return `${Math.floor(diff / 86400)}d ago`;
     }
 
-    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    // saveState now automatically pushes to the cloud
+    function saveState() { 
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
+      queueCloudSync(state);
+    }
+    
     function loadState() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw) {
@@ -1193,6 +1314,10 @@
     }
     function closeResults() { els.results.classList.remove("open"); }
     function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+
+    // Start the app
+    init();
+
   </script>
 </body>
 </html>
