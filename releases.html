@@ -343,7 +343,6 @@
     .bottom-section { margin-top: 64px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 48px; }
     .bottom-header { font-size: 1.2rem; font-weight: 800; color: var(--muted); margin: 0; }
 
-    /* Polished Input & Buttons to 99px pill shapes */
     .search-row { display: flex; gap: 12px; }
     .search-input { flex: 1; height: 48px; border-radius: 99px; font-size: 1rem; padding: 0 24px; }
     
@@ -366,19 +365,27 @@
     .settings-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
     .toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .toolbar-actions { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
-    /* Pushes destructive action away */
     .toolbar-actions .danger { margin-left: auto; }
     
     .file-input { display: none; }
     
-    .status-indicator { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--muted); font-size: 0.9rem; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,0.15); }
+    /* UPDATED: Dynamic Status Indicator CSS */
+    .status-indicator { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--muted); font-size: 0.9rem; transition: color 0.3s; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,0.15); transition: all 0.3s ease; }
+    
+    .dot.syncing { background: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.3); animation: pulseSync 1.5s infinite ease-in-out; }
+    .dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(255, 123, 115, 0.3); }
+    
+    @keyframes pulseSync { 
+      0% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0.4); } 
+      70% { box-shadow: 0 0 0 6px rgba(139, 150, 255, 0); } 
+      100% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0); } 
+    }
 
     .batch-tools { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
     .batch-label { display: block; font-weight: 700; color: var(--text); margin-bottom: 12px; }
     .batch-actions { display: flex; gap: 12px; margin-top: 12px; }
 
-    /* Batch Review Mobile Fixes */
     .batch-review-item {
       display: grid; 
       grid-template-columns: 1fr auto; 
@@ -426,12 +433,8 @@
         box-shadow: none; 
       }
       .notes-panel { padding-left: 16px; }
-
-      /* Makes the toolbar buttons stack neatly and full-width */
       .toolbar-actions { flex-direction: column; width: 100%; align-items: stretch; }
       .toolbar-actions .danger { margin-left: 0; }
-
-      /* Mobile safe wrapping for the batch importer */
       .batch-review-item { grid-template-columns: 1fr; }
       .batch-review-actions { width: 100%; }
       .batch-review-actions select { flex: 1; }
@@ -511,7 +514,6 @@
             </div>
           </div>
 
-          <!-- NEW CLOUD SYNC CONFIGURATION -->
           <div class="sync-tools" style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line);">
             <label class="batch-label">Cloud Sync (GitHub Gist)</label>
             <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;">
@@ -551,7 +553,7 @@
     const ANILIST_ENDPOINT = "https://graphql.anilist.co";
     const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
     const STORAGE_KEY = "anilist-releases-board:v2";
-    const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1"; // Protects keys from the synced payload
+    const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1";
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -570,6 +572,7 @@
       tabs: document.querySelectorAll(".tab"),
       tabViews: document.querySelectorAll(".tab-view"),
       statusText: document.querySelector("#statusText"),
+      dot: document.querySelector(".dot"),
       searchInput: document.querySelector("#searchInput"),
       boardSearchInput: document.querySelector("#boardSearchInput"),
       searchBtn: document.querySelector("#searchBtn"),
@@ -605,7 +608,23 @@
       downloaded: "Library is empty."
     };
 
-    // --- Cloud Sync Logic --- //
+    // --- Dynamic Status Indicator --- //
+    
+    function setStatus(text, mode = "ready") {
+      els.statusText.textContent = text;
+      if (mode === "sync") {
+        els.dot.className = "dot syncing";
+        els.statusText.style.color = "var(--brand)";
+      } else if (mode === "error") {
+        els.dot.className = "dot error";
+        els.statusText.style.color = "var(--danger)";
+      } else {
+        els.dot.className = "dot";
+        els.statusText.style.color = "var(--muted)";
+      }
+    }
+
+    // --- Cloud Sync Logic with Safeguards --- //
     
     function loadSyncSettings() {
       try {
@@ -629,6 +648,8 @@
       const pat = els.githubPat.value.trim();
       const gistId = els.gistId.value.trim();
       if (!pat || !gistId) return null;
+      
+      setStatus("Pulling from cloud...", "sync");
       try {
         const res = await fetch(`https://api.github.com/gists/${gistId}`, {
           method: "GET",
@@ -648,6 +669,8 @@
       const pat = els.githubPat.value.trim();
       const gistId = els.gistId.value.trim();
       if (!pat || !gistId) return;
+      
+      setStatus("Pushing to cloud...", "sync");
       try {
         await fetch(`https://api.github.com/gists/${gistId}`, {
           method: "PATCH",
@@ -660,8 +683,10 @@
             files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } }
           })
         });
+        setStatus("System Ready", "ready");
       } catch (e) {
         console.error("Cloud Push Failed:", e);
+        setStatus("Sync Failed", "error");
       }
     }
 
@@ -671,25 +696,32 @@
       cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500);
     }
 
-    // --- End Cloud Sync Logic --- //
-
-    // Boot updated to handle async cloud pull
+    // Boot updated with Smart Safeguards
     async function init() {
       loadSyncSettings();
 
       if (els.githubPat.value.trim() && els.gistId.value.trim()) {
-        setStatus("Syncing from cloud...");
         const cloudState = await pullFromCloud();
-        if (cloudState) {
+        
+        const localRaw = localStorage.getItem(STORAGE_KEY);
+        const localState = localRaw ? JSON.parse(localRaw) : null;
+        
+        // Safeguard: Only pull if the cloud actually has data
+        if (cloudState && cloudState.shows && cloudState.shows.length > 0) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
           toast("Cloud sync complete.");
+        } 
+        // If the cloud is empty but we have local data, PUSH our data up!
+        else if (localState && localState.shows && localState.shows.length > 0) {
+          pushToCloud(localState);
+          toast("Pushed local board to empty cloud.");
         }
       }
 
       loadState();
       bindEvents();
       render();
-      setStatus("System Ready");
+      setStatus("System Ready", "ready");
       checkWatchingStatuses();
     }
 
@@ -732,25 +764,35 @@
         saveState();
       });
 
-      // Sync settings events
       els.githubPat.addEventListener("change", saveSyncSettings);
       els.githubPat.addEventListener("blur", saveSyncSettings);
       els.gistId.addEventListener("change", saveSyncSettings);
       els.gistId.addEventListener("blur", saveSyncSettings);
       
+      // Smart Sync Button with Safeguards
       els.syncNowBtn.addEventListener("click", async () => {
         els.syncNowBtn.disabled = true;
         els.syncNowBtn.textContent = "Syncing...";
+        
         const cloudState = await pullFromCloud();
-        if (cloudState) {
+        
+        // If the cloud has data, pull it down
+        if (cloudState && cloudState.shows && cloudState.shows.length > 0) {
             state.shows = cloudState.shows || [];
             state.ui = cloudState.ui || state.ui;
-            saveState();
+            saveState(); // This will trigger a re-push, ensuring both ends match
             render();
-            toast("Force sync complete.");
+            toast("Force pull complete.");
+        } 
+        // If the cloud is empty but we have local data, push it up
+        else if (state.shows && state.shows.length > 0) {
+            pushToCloud(state);
+            toast("Force push complete.");
         } else {
-            toast("Sync failed. Check keys.", "error");
+            toast("Both cloud and local are empty.", "error");
+            setStatus("System Ready", "ready");
         }
+        
         els.syncNowBtn.disabled = false;
         els.syncNowBtn.textContent = "Pull & Sync";
       });
@@ -822,7 +864,7 @@
           b.addEventListener("click", () => { const media = res.find(i => i.id == b.dataset.addId); if (media) addShow(media); });
         });
         setStatus("System Ready");
-      } catch(e) { els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error"); }
+      } catch(e) { els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error", "error"); }
     }
 
     async function handleBoardClick(e) {
@@ -1275,7 +1317,7 @@
       return `${Math.floor(diff / 86400)}d ago`;
     }
 
-    // saveState now automatically pushes to the cloud
+    // Now safely triggers cloud sync natively with every save
     function saveState() { 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
       queueCloudSync(state);
@@ -1307,7 +1349,6 @@
     }
     function clearBoard() { if(confirm("Nuke everything?")) { state.shows = []; render(); saveState(); toast("Board cleared"); } }
     
-    function setStatus(text) { els.statusText.textContent = text; }
     function toast(msg, type="") {
       const t = document.createElement("div"); t.className = `toast ${type}`; t.textContent = msg;
       els.toastArea.append(t); setTimeout(() => t.remove(), 3000);
