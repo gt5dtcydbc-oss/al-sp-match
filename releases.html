@@ -370,27 +370,51 @@
     textarea:focus, select:focus, .search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
     textarea { min-height: 80px; resize: vertical; margin-top: 8px; }
 
+    /* --- Divider Styles --- */
     .board-divider {
       display: flex;
       align-items: center;
       gap: 8px;
-      min-height: 28px;
-      margin: 8px 0;
+      min-height: 36px;
+      margin: 16px 0 8px;
       padding: 4px 0;
     }
 
-    .board-divider::before {
-      content: "";
-      flex: 1;
-      border-top: 1px solid var(--line);
+    .divider-name-input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-weight: 800;
+      font-size: 1.1rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      outline: none;
+      width: auto;
+      min-width: 120px;
+      max-width: 40%;
+      transition: background 0.2s;
+      box-shadow: none !important; 
     }
 
-    .board-divider-remove {
-      width: 32px;
-      height: 32px;
-      font-size: 0.8rem;
-      touch-action: manipulation;
+    .divider-name-input:focus, .divider-name-input:not([readonly]):hover {
+      background: var(--surface-soft);
     }
+
+    .divider-name-input:focus {
+      border-color: transparent !important;
+    }
+
+    .divider-name-input[readonly] {
+      pointer-events: none; /* Let clicks pass through to drag */
+      padding-left: 0;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+    /* ---------------------- */
 
     .board-sort-actions {
       display: flex;
@@ -729,6 +753,7 @@
     let dragOverTarget = null;
     let dragOverList = null;
     const commentSaveTimers = new Map();
+    const dividerSaveTimers = new Map();
 
     const els = {
       boards: document.querySelector("#boards"),
@@ -928,7 +953,7 @@
           }
 
           if (isDividerItem(item) && !seenDividers.has(item.id)) {
-            next.push({ type: "divider", id: item.id });
+            next.push({ type: "divider", id: item.id, name: item.name || "" });
             seenDividers.add(item.id);
           }
         }
@@ -1090,7 +1115,7 @@
       if (!BOARDS.includes(board)) return;
 
       ensureOrderState();
-      state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}` });
+      state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}`, name: "New Group" });
       markBoardManual(board, true);
 
       render();
@@ -1596,6 +1621,28 @@
       const text = e.target.closest("[data-comment-id]");
       if (text) {
         queueCommentUpdate(text.dataset.commentId, text.value);
+        return;
+      }
+
+      const divName = e.target.closest("[data-divider-name-id]");
+      if (divName) {
+        queueDividerNameUpdate(divName.dataset.dividerNameId, divName.value);
+      }
+    }
+
+    function queueDividerNameUpdate(id, val) {
+      let found = false;
+      BOARDS.forEach(board => {
+        const item = state.order[board].find(i => isDividerItem(i) && i.id === id);
+        if (item) {
+          item.name = val;
+          found = true;
+        }
+      });
+
+      if (found) {
+        clearTimeout(dividerSaveTimers.get(id));
+        dividerSaveTimers.set(id, setTimeout(saveState, 500));
       }
     }
 
@@ -2379,14 +2426,19 @@
     function renderDivider(divider, board) {
       const canEdit = state.ui.sortMode && !state.localSearch;
       const canDrag = canDragOrderItems();
+      const name = divider.name || "";
 
       const moveControls = canEdit ? `
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(!canMoveItem(divider.id, board, "up")) ? "disabled" : ""}>▲</button>
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(!canMoveItem(divider.id, board, "down")) ? "disabled" : ""}>▼</button>
       ` : "";
 
+      const inputEl = `<input type="text" class="divider-name-input" data-divider-name-id="${escapeAttr(divider.id)}" value="${escapeAttr(name)}" placeholder="New Group" ${!canEdit ? "readonly tabindex='-1'" : ""} />`;
+
       return `
         <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-order-item-id="${escapeAttr(divider.id)}" data-order-item-type="divider" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
+          ${inputEl}
+          <div class="divider-line"></div>
           ${moveControls}
           ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="Remove divider">×</button>` : ""}
         </div>
