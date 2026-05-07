@@ -1053,29 +1053,24 @@
       return items;
     }
 
-    function getOrderIndex(showId, board) {
-      ensureOrderState();
-      return state.order[board].findIndex(item => item === showId);
-    }
-
-    function canMoveShow(showId, board, direction) {
-      const index = getOrderIndex(showId, board);
-
+    function canMoveItem(itemId, board, direction) {
+      const index = findOrderItemIndexById(board, itemId);
+      
       if (index < 0) return false;
       if (direction === "up") return index > 0;
       if (direction === "down") return index < state.order[board].length - 1;
-
+      
       return false;
     }
 
-    function moveShow(showId, board, direction) {
+    function moveItem(itemId, board, direction) {
       if (state.localSearch) return;
       if (!state.ui.sortMode) return;
       if (!BOARDS.includes(board)) return;
 
       reconcileOrders();
 
-      const index = getOrderIndex(showId, board);
+      const index = findOrderItemIndexById(board, itemId);
       if (index < 0) return;
 
       const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -1544,7 +1539,7 @@
 
       const moveBtn = e.target.closest("[data-move-id]");
       if (moveBtn) {
-        moveShow(moveBtn.dataset.moveId, moveBtn.dataset.board, moveBtn.dataset.direction);
+        moveItem(moveBtn.dataset.moveId, moveBtn.dataset.board, moveBtn.dataset.direction);
         return;
       }
 
@@ -1682,7 +1677,7 @@
     function handleBoardDragOver(e) {
       if (!dragState || !canDragOrderItems()) return;
 
-      const listEl = e.target.closest(".board-list");
+      const listEl = e.target.closest("[data-board-list]");
       if (!listEl) return;
 
       e.preventDefault();
@@ -1710,7 +1705,7 @@
     function handleBoardDrop(e) {
       if (!dragState || !canDragOrderItems()) return;
 
-      const listEl = e.target.closest(".board-list");
+      const listEl = e.target.closest("[data-board-list]");
       if (!listEl) return;
 
       e.preventDefault();
@@ -2385,8 +2380,14 @@
       const canEdit = state.ui.sortMode && !state.localSearch;
       const canDrag = canDragOrderItems();
 
+      const moveControls = canEdit ? `
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(!canMoveItem(divider.id, board, "up")) ? "disabled" : ""}>▲</button>
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(!canMoveItem(divider.id, board, "down")) ? "disabled" : ""}>▼</button>
+      ` : "";
+
       return `
         <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-order-item-id="${escapeAttr(divider.id)}" data-order-item-type="divider" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
+          ${moveControls}
           ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="Remove divider">×</button>` : ""}
         </div>
       `;
@@ -2423,8 +2424,8 @@
       }
 
       const moveControls = sortModeActive ? `
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveShow(show.id, board, "up")) ? "disabled" : ""}>▲</button>
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveShow(show.id, board, "down")) ? "disabled" : ""}>▼</button>
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveItem(show.id, board, "up")) ? "disabled" : ""}>▲</button>
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveItem(show.id, board, "down")) ? "disabled" : ""}>▼</button>
       ` : "";
 
       return `
