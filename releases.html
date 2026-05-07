@@ -168,6 +168,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      flex-wrap: wrap;
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--line);
@@ -370,15 +371,35 @@
       border-top: 1px solid var(--line);
     }
 
-    .board-divider-remove,
-    .board-divider-add-btn {
-      width: 28px;
-      height: 28px;
+    .board-divider-remove {
+      width: 32px;
+      height: 32px;
       font-size: 0.8rem;
+      touch-action: manipulation;
     }
 
-    .board-divider-add-btn {
-      margin-left: 8px;
+    .board-sort-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .board-sort-actions[hidden] {
+      display: none !important;
+    }
+
+    .board-sort-btn {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+
+    .sort-move-btn {
+      touch-action: manipulation;
     }
 
     #downloadedList .board-divider {
@@ -491,6 +512,22 @@
       }
       .show-card.sort-mode .card-actions-wrapper {
         transform: none;
+      }
+
+      .board-sort-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-end;
+      }
+
+      .board-sort-btn {
+        height: 40px;
+        padding: 0 14px;
+      }
+
+      .sort-move-btn {
+        width: 40px;
+        height: 40px;
       }
       .notes-panel { padding-left: 16px; }
       .toolbar-actions { flex-direction: column; width: 100%; align-items: stretch; }
@@ -622,7 +659,7 @@
     const state = {
       shows: [],
       order: { found: [], watching: [], downloaded: [] },
-      ui: { filterComplete: false, openNotes: {}, sortMode: false },
+      ui: { filterComplete: false, openNotes: {}, sortMode: false, manualOrderBoards: { found: false, watching: false, downloaded: false } },
       localSearch: ""
     };
 
@@ -690,7 +727,12 @@
     }
 
     function makeDefaultUi() {
-      return { filterComplete: false, openNotes: {}, sortMode: false };
+      return {
+        filterComplete: false,
+        openNotes: {},
+        sortMode: false,
+        manualOrderBoards: { found: false, watching: false, downloaded: false }
+      };
     }
 
     function isDividerItem(item) {
@@ -705,6 +747,40 @@
 
     function getShowById(id) {
       return state.shows.find(show => show.id === id) || null;
+    }
+
+    function getShowSortTitle(show) {
+      return String(show?.titleEnglish || show?.titleRomaji || show?.title || "").trim();
+    }
+
+    function compareShowsAZ(a, b) {
+      return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, {
+        sensitivity: "base",
+        numeric: true
+      });
+    }
+
+    function sortShowsAZ(shows) {
+      return [...shows].sort(compareShowsAZ);
+    }
+
+    function boardHasDividers(board) {
+      ensureOrderState();
+      return state.order[board].some(isDividerItem);
+    }
+
+    function markBoardManual(board, value = true) {
+      if (!state.ui.manualOrderBoards) {
+        state.ui.manualOrderBoards = { found: false, watching: false, downloaded: false };
+      }
+
+      if (BOARDS.includes(board)) {
+        state.ui.manualOrderBoards[board] = !!value;
+      }
+    }
+
+    function isBoardManual(board) {
+      return !!state.ui.manualOrderBoards?.[board] || boardHasDividers(board);
     }
 
     function ensureOrderState() {
@@ -767,28 +843,75 @@
       });
     }
 
+    function insertShowIntoOrderAZ(showId, board) {
+      ensureOrderState();
+
+      if (!BOARDS.includes(board)) return;
+
+      const show = getShowById(showId);
+      if (!show) return;
+
+      removeShowFromOrder(showId);
+
+      const arr = state.order[board];
+      const insertAt = arr.findIndex(item => {
+        if (typeof item !== "string") return false;
+
+        const other = getShowById(item);
+        return other && compareShowsAZ(show, other) < 0;
+      });
+
+      if (insertAt === -1) {
+        arr.push(showId);
+      } else {
+        arr.splice(insertAt, 0, showId);
+      }
+    }
+
     function prependShowToOrder(showId, board) {
       ensureOrderState();
       removeShowFromOrder(showId);
       state.order[board].unshift(showId);
     }
 
-    function moveShowToBoardOrder(showId, fromBoard, toBoard, placement = "top") {
+    function moveShowToBoardOrder(showId, fromBoard, toBoard, placement = "az") {
       ensureOrderState();
 
       if (!BOARDS.includes(toBoard)) return;
 
       removeShowFromOrder(showId);
 
-      if (placement === "end") {
+      if (placement === "top") {
+        state.order[toBoard].unshift(showId);
+      } else if (placement === "end") {
         state.order[toBoard].push(showId);
       } else {
-        state.order[toBoard].unshift(showId);
+        insertShowIntoOrderAZ(showId, toBoard);
       }
+    }
+
+    function sortBoardAZ(board) {
+      if (!BOARDS.includes(board)) return;
+
+      const ids = state.shows
+        .filter(show => getShowBoard(show) === board)
+        .sort(compareShowsAZ)
+        .map(show => show.id);
+
+      state.order[board] = ids;
+      markBoardManual(board, false);
+
+      render();
+      saveState();
+      toast("Sorted A→Z.");
     }
 
     function getOrderedBoardItems(board, shows) {
       ensureOrderState();
+
+      if (!state.ui.sortMode && !isBoardManual(board)) {
+        return sortShowsAZ(shows);
+      }
 
       const showMap = new Map(shows.map(show => [show.id, show]));
       const seen = new Set();
@@ -849,6 +972,7 @@
 
       const arr = state.order[board];
       [arr[index], arr[targetIndex]] = [arr[targetIndex], arr[index]];
+      markBoardManual(board, true);
 
       render();
       saveState();
@@ -861,6 +985,7 @@
 
       ensureOrderState();
       state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}` });
+      markBoardManual(board, true);
 
       render();
       saveState();
@@ -873,6 +998,7 @@
 
       ensureOrderState();
       state.order[board] = state.order[board].filter(item => !(isDividerItem(item) && item.id === dividerId));
+      markBoardManual(board, true);
 
       render();
       saveState();
@@ -892,7 +1018,12 @@
       state.ui = {
         filterComplete: !!loadedUi.filterComplete,
         openNotes: loadedUi.openNotes || {},
-        sortMode: !!loadedUi.sortMode
+        sortMode: !!loadedUi.sortMode,
+        manualOrderBoards: {
+          found: !!loadedUi.manualOrderBoards?.found,
+          watching: !!loadedUi.manualOrderBoards?.watching,
+          downloaded: !!loadedUi.manualOrderBoards?.downloaded
+        }
       };
       state.order = {
         found: Array.isArray(loadedOrder.found) ? loadedOrder.found : [],
@@ -906,6 +1037,9 @@
       });
 
       reconcileOrders();
+      BOARDS.forEach(board => {
+        if (boardHasDividers(board)) markBoardManual(board, true);
+      });
       updateFilterCompleteButton();
       updateSortModeButton();
     }
@@ -1060,6 +1194,18 @@
 
       els.editOrderBtn.addEventListener("click", () => {
         state.ui.sortMode = !state.ui.sortMode;
+
+        if (state.ui.sortMode) {
+          BOARDS.forEach(board => {
+            if (!isBoardManual(board)) {
+              state.order[board] = state.shows
+                .filter(show => getShowBoard(show) === board)
+                .sort(compareShowsAZ)
+                .map(show => show.id);
+            }
+          });
+        }
+
         updateSortModeButton();
         render();
         saveState();
@@ -1241,6 +1387,12 @@
     }
 
     async function handleBoardClick(e) {
+      const sortAzBtn = e.target.closest("[data-sort-az-board]");
+      if (sortAzBtn) {
+        sortBoardAZ(sortAzBtn.dataset.sortAzBoard);
+        return;
+      }
+
       const addDividerBtn = e.target.closest("[data-add-divider-board]");
       if (addDividerBtn) {
         addDivider(addDividerBtn.dataset.addDividerBoard);
@@ -1366,7 +1518,7 @@
       state.shows.unshift(show);
 
       await refreshShowStatus(show, { forceMove: true });
-      prependShowToOrder(show.id, getShowBoard(show));
+      insertShowIntoOrderAZ(show.id, getShowBoard(show));
 
       render();
       saveState();
@@ -1428,7 +1580,7 @@
 
         const nextBoard = getShowBoard(show);
         if (forceMove && previousBoard !== nextBoard) {
-          moveShowToBoardOrder(show.id, previousBoard, nextBoard, "top");
+          moveShowToBoardOrder(show.id, previousBoard, nextBoard, "az");
         }
 
         show.updatedAt = new Date().toISOString();
@@ -1515,7 +1667,7 @@
       }
 
       const nextBoard = getShowBoard(show);
-      moveShowToBoardOrder(show.id, previousBoard, nextBoard, "top");
+      moveShowToBoardOrder(show.id, previousBoard, nextBoard, "az");
 
       show.updatedAt = new Date().toISOString();
 
@@ -1840,7 +1992,7 @@
           state.shows.unshift(show);
 
           await refreshShowStatus(show, { forceMove: true });
-          prependShowToOrder(show.id, getShowBoard(show));
+          insertShowIntoOrderAZ(show.id, getShowBoard(show));
 
           added++;
 
@@ -1897,29 +2049,32 @@
       renderBoard("downloaded", dl, els.downloadedList, els.downloadedCount);
     }
 
-    function syncBoardDividerButton(board, countEl) {
+    function syncBoardSortControls(board, countEl) {
       const header = countEl.closest(".board-header");
       if (!header) return;
 
-      let btn = header.querySelector(`[data-add-divider-board="${board}"]`);
+      let controls = header.querySelector(`[data-board-sort-actions="${board}"]`);
 
-      if (!btn) {
-        btn = document.createElement("button");
-        btn.className = "action-btn board-divider-add-btn";
-        btn.type = "button";
-        btn.textContent = "+";
-        btn.title = "Add divider";
-        btn.setAttribute("data-add-divider-board", board);
-        header.appendChild(btn);
+      if (!controls) {
+        controls = document.createElement("div");
+        controls.className = "board-sort-actions";
+        controls.setAttribute("data-board-sort-actions", board);
+        controls.innerHTML = `
+          <button class="btn board-sort-btn" type="button" data-sort-az-board="${board}" title="Sort this board alphabetically">A→Z</button>
+          <button class="btn board-sort-btn" type="button" data-add-divider-board="${board}" title="Add divider at the top of this board">+ Divider</button>
+        `;
+        header.appendChild(controls);
       }
 
-      btn.hidden = !(state.ui.sortMode && !state.localSearch);
-      btn.disabled = !!state.localSearch;
+      controls.hidden = !(state.ui.sortMode && !state.localSearch);
+      controls.querySelectorAll("button").forEach(button => {
+        button.disabled = !!state.localSearch;
+      });
     }
 
     function renderBoard(type, shows, listEl, countEl) {
       countEl.textContent = shows.length;
-      syncBoardDividerButton(type, countEl);
+      syncBoardSortControls(type, countEl);
 
       if (!shows.length) {
         listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
@@ -1950,7 +2105,8 @@
       const board = getShowBoard(show);
       const isDl = board === "downloaded";
       const isNotes = state.ui.openNotes[show.id];
-      const sortControlsActive = state.ui.sortMode && !state.localSearch;
+      const sortModeActive = !!state.ui.sortMode;
+      const sortControlsDisabled = !!state.localSearch;
 
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
       const titleHtml = link
@@ -1972,13 +2128,13 @@
           : '<span class="badge watching">Watching</span>';
       }
 
-      const moveControls = sortControlsActive ? `
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${canMoveShow(show.id, board, "up") ? "" : "disabled"}>▲</button>
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${canMoveShow(show.id, board, "down") ? "" : "disabled"}>▼</button>
+      const moveControls = sortModeActive ? `
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveShow(show.id, board, "up")) ? "disabled" : ""}>▲</button>
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveShow(show.id, board, "down")) ? "disabled" : ""}>▼</button>
       ` : "";
 
       return `
-        <article class="show-card ${sortControlsActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}">
+        <article class="show-card ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}">
           <div class="card-main">
 
             <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDl ? "checked" : ""} title="Mark Downloaded" />
@@ -2082,6 +2238,7 @@
         state.shows = [];
         state.order = makeDefaultOrder();
         state.ui.openNotes = {};
+        state.ui.manualOrderBoards = { found: false, watching: false, downloaded: false };
 
         render();
         saveState();
