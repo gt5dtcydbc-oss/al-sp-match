@@ -190,7 +190,10 @@
       flex-direction: column;
     }
 
-    .show-card.is-downloaded { opacity: 0.6; filter: grayscale(40%); }
+    .show-card.is-downloaded {
+      opacity: 1;
+      filter: none;
+    }
 
     .show-card:hover, .show-card:focus-within, .show-card.notes-open, .show-card.is-downloaded:hover {
       transform: translateY(-2px);
@@ -748,7 +751,12 @@
       bindEvents();
       render();
       setStatus("System Ready", "ready");
-      checkWatchingStatuses();
+
+      // Main refresher: every page load checks all non-downloaded Watching entries.
+      await checkWatchingStatuses();
+
+      // Library refresher: every page load checks only the 10 least recently checked Library entries.
+      await checkLibraryUpdates(10);
     }
 
     function bindEvents() {
@@ -928,6 +936,20 @@
 
     function isMediaOnBoard(media) { return state.shows.some(s => s.anilistId == media.id); }
 
+    function getDefaultReleasesMoeState(existing = {}) {
+      return {
+        found: false,
+        recordId: null,
+        checkedAt: null,
+        libraryCheckedAt: null,
+        error: null,
+        updated: null,
+        updateAvailable: false,
+        latestUpdated: null,
+        ...(existing || {})
+      };
+    }
+
     function makeShowFromMedia(media) {
       return {
         id: crypto.randomUUID(), anilistId: media.id, 
@@ -937,7 +959,7 @@
         format: media.format || "", seasonYear: media.seasonYear || null, episodes: media.episodes || null,
         siteUrl: media.siteUrl || `https://anilist.co/anime/${media.id}`,
         board: "watching", downloaded: false, allAvailableDownloaded: false, franchise: "", comments: "",
-        releasesMoe: { found: false, recordId: null, checkedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null },
+        releasesMoe: getDefaultReleasesMoeState(),
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
       };
     }
@@ -951,60 +973,179 @@
       render(); saveState(); setStatus("System Ready"); toast("Added to active board.");
     }
 
-    async function refreshShowStatus(show, {forceMove=false}={}) {
+    async function refreshShowStatus(show, { forceMove = false } = {}) {
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+
       try {
         const res = await fetch(`${RELEASES_ENDPOINT}?perPage=1&filter=alID=${show.anilistId}`);
-        if(!res.ok) throw new Error("API Error");
+        if (!res.ok) throw new Error("API Error");
+
         const json = await res.json();
         const match = json.items?.[0];
         const apiUpdated = match?.updated || null;
-        
+        const isLibrary = show.downloaded || show.board === "downloaded";
+
         show.releasesMoe.found = !!match;
         show.releasesMoe.recordId = match?.id || null;
         show.releasesMoe.checkedAt = new Date().toISOString();
+        show.releasesMoe.error = null;
 
-        if (match) {
-          if (!show.releasesMoe.updated) show.releasesMoe.updated = apiUpdated;
-          else if (apiUpdated && apiUpdated !== show.releasesMoe.updated) {
-            if (show.downloaded && new Date(apiUpdated) > new Date(show.releasesMoe.updated)) {
+        if (match && apiUpdated) {
+          const previousUpdatedRaw = show.releasesMoe.updated
+            ? Date.parse(show.releasesMoe.updated)
+            : 0;
+
+          const previousUpdated = Number.isFinite(previousUpdatedRaw) ? previousUpdatedRaw : 0;
+          const nextUpdated = Date.parse(apiUpdated);
+
+          if (!show.releasesMoe.updated) {
+            show.releasesMoe.updated = apiUpdated;
+            show.releasesMoe.latestUpdated = null;
+            show.releasesMoe.updateAvailable = false;
+          } else if (
+            apiUpdated !== show.releasesMoe.updated &&
+            Number.isFinite(nextUpdated) &&
+            nextUpdated > previousUpdated
+          ) {
+            if (isLibrary) {
               show.releasesMoe.updateAvailable = true;
               show.releasesMoe.latestUpdated = apiUpdated;
             } else {
               show.releasesMoe.updated = apiUpdated;
+              show.releasesMoe.latestUpdated = null;
+              show.releasesMoe.updateAvailable = false;
             }
           }
         }
 
-        if(!show.downloaded && forceMove) show.board = match ? "found" : "watching";
+        if (!isLibrary && forceMove) {
+          show.board = match ? "found" : "watching";
+        }
+
         show.updatedAt = new Date().toISOString();
-      } catch(e) { console.error(e); }
+      } catch(e) {
+        console.error(e);
+        show.releasesMoe.error = e.message || "Refresh failed";
+        show.releasesMoe.checkedAt = new Date().toISOString();
+      }
     }
 
     async function checkWatchingStatuses() {
       const watching = state.shows.filter(s => s.board === "watching" && !s.downloaded);
-      for (const s of watching) await refreshShowStatus(s, { forceMove: true });
-      render(); saveState();
+      if (!watching.length) return;
+
+      setStatus(`Checking ${watching.length} watching entries...`, "sync");
+
+      for (const s of watching) {
+        await refreshShowStatus(s, { forceMove: true });
+        await sleep(400);
+      }
+
+      render();
+      saveState();
+      setStatus("System Ready", "ready");
+    }
+
+    async function checkLibraryUpdates(limit = 10) {
+      const libraryShows = state.shows
+        .filter(s => s.downloaded || s.board === "downloaded")
+        .sort((a, b) => {
+          const aRaw = a.releasesMoe?.libraryCheckedAt || a.releasesMoe?.checkedAt || a.createdAt || null;
+          const bRaw = b.releasesMoe?.libraryCheckedAt || b.releasesMoe?.checkedAt || b.createdAt || null;
+
+          const aTimeRaw = aRaw ? Date.parse(aRaw) : 0;
+          const bTimeRaw = bRaw ? Date.parse(bRaw) : 0;
+
+          const aTime = Number.isFinite(aTimeRaw) ? aTimeRaw : 0;
+          const bTime = Number.isFinite(bTimeRaw) ? bTimeRaw : 0;
+
+          return aTime - bTime;
+        })
+        .slice(0, limit);
+
+      if (!libraryShows.length) return;
+
+      setStatus(`Checking ${libraryShows.length} library entries...`, "sync");
+
+      for (const show of libraryShows) {
+        await refreshShowStatus(show, { forceMove: false });
+        show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+        show.releasesMoe.libraryCheckedAt = new Date().toISOString();
+        await sleep(400);
+      }
+
+      render();
+      saveState();
+      setStatus("System Ready", "ready");
     }
 
     function toggleDownloadedStatus(id, checked) {
       const show = state.shows.find(s => s.id === id);
-      if(!show) return;
+      if (!show) return;
+
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
       show.downloaded = checked;
-      if(checked) {
-        show.board = "downloaded"; show.releasesMoe.updateAvailable = false;
-        show.releasesMoe.updated = show.releasesMoe.latestUpdated || show.releasesMoe.updated;
+
+      if (checked) {
+        show.board = "downloaded";
+        show.releasesMoe.updateAvailable = false;
+
+        if (show.releasesMoe.latestUpdated) {
+          show.releasesMoe.updated = show.releasesMoe.latestUpdated;
+          show.releasesMoe.latestUpdated = null;
+        }
+
+        show.releasesMoe.libraryCheckedAt = show.releasesMoe.libraryCheckedAt || new Date().toISOString();
       } else {
         show.board = show.releasesMoe?.found ? "found" : "watching";
         show.allAvailableDownloaded = false;
+        show.releasesMoe.updateAvailable = false;
+        show.releasesMoe.latestUpdated = null;
       }
+
       show.updatedAt = new Date().toISOString();
-      render(); saveState();
+      render();
+      saveState();
       toast(checked ? "Moved to Library" : "Moved back to Active");
     }
 
-    function toggleAllAvailableDownloaded(id) { const show = state.shows.find(s => s.id === id); if(show) { show.allAvailableDownloaded = !show.allAvailableDownloaded; render(); saveState(); } }
-    function removeShow(id) { if(confirm("Remove this show entirely?")) { state.shows = state.shows.filter(s => s.id !== id); render(); saveState(); toast("Removed."); } }
-    function acknowledgeUpdate(id) { const s = state.shows.find(x=>x.id===id); if(s) { s.releasesMoe.updateAvailable = false; render(); saveState(); } }
+    function toggleAllAvailableDownloaded(id) {
+      const show = state.shows.find(s => s.id === id);
+      if(show) {
+        show.allAvailableDownloaded = !show.allAvailableDownloaded;
+        render();
+        saveState();
+      }
+    }
+
+    function removeShow(id) {
+      if(confirm("Remove this show entirely?")) {
+        state.shows = state.shows.filter(s => s.id !== id);
+        render();
+        saveState();
+        toast("Removed.");
+      }
+    }
+
+    function acknowledgeUpdate(id) {
+      const s = state.shows.find(x => x.id === id);
+      if (!s) return;
+
+      s.releasesMoe = getDefaultReleasesMoeState(s.releasesMoe);
+
+      if (s.releasesMoe.latestUpdated) {
+        s.releasesMoe.updated = s.releasesMoe.latestUpdated;
+        s.releasesMoe.latestUpdated = null;
+      }
+
+      s.releasesMoe.updateAvailable = false;
+      s.updatedAt = new Date().toISOString();
+
+      render();
+      saveState();
+      toast("Update acknowledged.");
+    }
+
     function toggleNotes(id) { state.ui.openNotes[id] = !state.ui.openNotes[id]; render(); saveState(); }
     function queueCommentUpdate(id, val) { const s = state.shows.find(x=>x.id===id); if(s) s.comments = val; clearTimeout(commentSaveTimers.get(id)); commentSaveTimers.set(id, setTimeout(saveState, 500)); }
     function updateFranchise(id, val) { const s = state.shows.find(x=>x.id===id); if(s) s.franchise = val; render(); saveState(); }
@@ -1291,13 +1432,25 @@
     }
 
     function renderCard(show) {
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+
       const isDl = show.downloaded || show.board === "downloaded";
       const isNotes = state.ui.openNotes[show.id];
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
       const titleHtml = link ? `<a href="${link}" target="_blank" class="show-link">${show.title}</a>` : show.title;
       const safeTitle = show.title.replace(/"/g, '&quot;');
       
-      let badge = isDl ? '<span class="badge downloaded">Downloaded</span>' : (show.releasesMoe?.updateAvailable ? '<span class="badge update">Update</span>' : (show.releasesMoe?.found ? '<span class="badge found">Found</span>' : '<span class="badge watching">Watching</span>'));
+      let badge = "";
+
+      if (isDl) {
+        badge = show.releasesMoe?.updateAvailable
+          ? '<span class="badge update">Updated</span>'
+          : '';
+      } else {
+        badge = show.releasesMoe?.found
+          ? '<span class="badge found">Found</span>'
+          : '<span class="badge watching">Watching</span>';
+      }
       
       return `
         <article class="show-card ${isNotes?'notes-open':''} ${isDl?'is-downloaded':''}">
@@ -1355,10 +1508,14 @@
         const d = JSON.parse(raw);
         state.shows = d.shows || [];
         state.ui = d.ui || { filterComplete: false, openNotes: {}, collapsedFranchises: {} };
+        state.shows.forEach(show => {
+          show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+        });
         els.filterCompleteBtn.style.background = state.ui.filterComplete ? 'var(--brand)' : 'var(--surface-softer)';
         els.filterCompleteBtn.style.color = state.ui.filterComplete ? '#000' : 'var(--text)';
       }
     }
+
     function exportJson() {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], {type: "application/json"}));
@@ -1370,6 +1527,9 @@
       try {
         const text = await f.text(); const d = JSON.parse(text);
         state.shows = Array.isArray(d) ? d : (d.shows || []);
+        state.shows.forEach(show => {
+          show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+        });
         render(); saveState(); toast("Imported successfully");
       } catch(err) { toast("Import failed", "error"); }
     }
