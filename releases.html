@@ -177,6 +177,20 @@
     .board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 700; }
     .count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: 0.75rem; font-weight: 800; padding: 0 8px; }
 
+    .library-filter-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      margin-left: auto;
+    }
+
+    .library-filter-actions .btn.active {
+      background: var(--brand);
+      color: #000;
+      border-color: transparent;
+    }
+
     .board-list { display: grid; gap: 12px; }
 
     .show-card {
@@ -564,6 +578,15 @@
       .notes-panel { padding-left: 16px; }
       .toolbar-actions { flex-direction: column; width: 100%; align-items: stretch; }
       .toolbar-actions .danger { margin-left: 0; }
+      .library-filter-actions {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .library-filter-actions .btn {
+        flex: 1;
+      }
+
       .batch-review-item { grid-template-columns: 1fr; }
       .batch-review-actions { width: 100%; }
       .batch-review-actions select { flex: 1; }
@@ -611,9 +634,14 @@
         <div class="tab-view" id="view-downloaded">
           <header class="board-header" style="margin-bottom: 24px;">
             <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
-            <button class="btn" id="filterCompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">
-              Toggle Completed
-            </button>
+            <div class="library-filter-actions">
+              <button class="btn" id="filterCompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">
+                Toggle Completed
+              </button>
+              <button class="btn" id="filterIncompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">
+                Toggle Incomplete
+              </button>
+            </div>
           </header>
           <div class="active-boards" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));" id="downloadedList"></div>
         </div>
@@ -735,6 +763,7 @@
       watchingCount: document.querySelector("#watchingCount"),
       downloadedCount: document.querySelector("#downloadedCount"),
       filterCompleteBtn: document.querySelector("#filterCompleteBtn"),
+      filterIncompleteBtn: document.querySelector("#filterIncompleteBtn"),
       toastArea: document.querySelector("#toastArea")
     };
 
@@ -1122,7 +1151,7 @@
       BOARDS.forEach(board => {
         if (boardHasDividers(board)) markBoardManual(board, true);
       });
-      updateFilterCompleteButton();
+      updateLibraryFilterButtons();
       updateSortModeButton();
     }
 
@@ -1257,10 +1286,20 @@
       els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode);
     }
 
-    function updateFilterCompleteButton() {
-      if (!els.filterCompleteBtn) return;
-      els.filterCompleteBtn.style.background = state.ui.filterComplete ? "var(--brand)" : "var(--surface-softer)";
-      els.filterCompleteBtn.style.color = state.ui.filterComplete ? "#000" : "var(--text)";
+    function updateLibraryFilterButtons() {
+      if (els.filterCompleteBtn) {
+        els.filterCompleteBtn.classList.toggle("active", !!state.ui.filterComplete);
+      }
+
+      if (els.filterIncompleteBtn) {
+        els.filterIncompleteBtn.classList.toggle("active", !!state.ui.filterIncomplete);
+      }
+    }
+
+    function libraryFilterAllows(show) {
+      if (state.ui.filterComplete) return !!show.allAvailableDownloaded;
+      if (state.ui.filterIncomplete) return !show.allAvailableDownloaded;
+      return true;
     }
 
     function bindEvents() {
@@ -1326,7 +1365,18 @@
 
       els.filterCompleteBtn.addEventListener("click", () => {
         state.ui.filterComplete = !state.ui.filterComplete;
-        updateFilterCompleteButton();
+        if (state.ui.filterComplete) state.ui.filterIncomplete = false;
+
+        updateLibraryFilterButtons();
+        render();
+        saveState();
+      });
+
+      els.filterIncompleteBtn.addEventListener("click", () => {
+        state.ui.filterIncomplete = !state.ui.filterIncomplete;
+        if (state.ui.filterIncomplete) state.ui.filterComplete = false;
+
+        updateLibraryFilterButtons();
         render();
         saveState();
       });
@@ -2280,7 +2330,7 @@
 
       const found = visible.filter(s => getShowBoard(s) === "found");
       const watching = visible.filter(s => getShowBoard(s) === "watching");
-      const dl = visible.filter(s => getShowBoard(s) === "downloaded" && (!state.ui.filterComplete || s.allAvailableDownloaded));
+      const dl = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
 
       updateSortModeButton();
 
@@ -2441,7 +2491,7 @@
         applyLoadedState(d);
       } else {
         reconcileOrders();
-        updateFilterCompleteButton();
+        updateLibraryFilterButtons();
         updateSortModeButton();
       }
     }
