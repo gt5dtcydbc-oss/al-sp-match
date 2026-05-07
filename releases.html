@@ -402,6 +402,38 @@
       touch-action: manipulation;
     }
 
+    .show-card.sort-mode[draggable="true"],
+    .board-divider[draggable="true"] {
+      cursor: grab;
+    }
+
+    .show-card.sort-mode[draggable="true"]:active,
+    .board-divider[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    .show-card.is-dragging,
+    .board-divider.is-dragging {
+      opacity: 0.45;
+      transform: scale(0.99);
+    }
+
+    .show-card.drag-over-before,
+    .board-divider.drag-over-before {
+      box-shadow: 0 -3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .show-card.drag-over-after,
+    .board-divider.drag-over-after {
+      box-shadow: 0 3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .board-list.drag-over-empty {
+      outline: 1px dashed rgba(139, 150, 255, 0.45);
+      outline-offset: 6px;
+      border-radius: var(--radius);
+    }
+
     #downloadedList .board-divider {
       grid-column: 1 / -1;
     }
@@ -665,6 +697,9 @@
 
     let pendingBatchMatches = [];
     let searchRequestId = 0;
+    let dragState = null;
+    let dragOverTarget = null;
+    let dragOverList = null;
     const commentSaveTimers = new Map();
 
     const els = {
@@ -781,6 +816,53 @@
 
     function isBoardManual(board) {
       return !!state.ui.manualOrderBoards?.[board] || boardHasDividers(board);
+    }
+
+    function canUseDesktopDrag() {
+      return window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ?? false;
+    }
+
+    function canDragOrderItems() {
+      return !!state.ui.sortMode && !state.localSearch && canUseDesktopDrag();
+    }
+
+    function getOrderItemId(item) {
+      if (typeof item === "string") return item;
+      if (isDividerItem(item)) return item.id;
+      return null;
+    }
+
+    function findOrderItemIndexById(board, itemId) {
+      ensureOrderState();
+      return state.order[board].findIndex(item => getOrderItemId(item) === itemId);
+    }
+
+    function reorderBoardItem(board, draggedItemId, targetItemId = null, position = "end") {
+      if (!BOARDS.includes(board)) return false;
+
+      reconcileOrders();
+
+      const arr = state.order[board];
+      const fromIndex = findOrderItemIndexById(board, draggedItemId);
+
+      if (fromIndex < 0) return false;
+
+      const [draggedItem] = arr.splice(fromIndex, 1);
+
+      let toIndex = arr.length;
+
+      if (targetItemId) {
+        const targetIndex = findOrderItemIndexById(board, targetItemId);
+
+        if (targetIndex >= 0) {
+          toIndex = position === "after" ? targetIndex + 1 : targetIndex;
+        }
+      }
+
+      arr.splice(toIndex, 0, draggedItem);
+      markBoardManual(board, true);
+
+      return true;
     }
 
     function ensureOrderState() {
@@ -1231,6 +1313,11 @@
       els.boards.addEventListener("click", handleBoardClick);
       els.boards.addEventListener("change", handleBoardChange);
       els.boards.addEventListener("input", handleBoardInput);
+      els.boards.addEventListener("dragstart", handleBoardDragStart);
+      els.boards.addEventListener("dragover", handleBoardDragOver);
+      els.boards.addEventListener("drop", handleBoardDrop);
+      els.boards.addEventListener("dragend", handleBoardDragEnd);
+      els.boards.addEventListener("dragleave", handleBoardDragLeave);
 
       els.exportBtn.addEventListener("click", exportJson);
       els.importBtn.addEventListener("click", () => els.importFile.click());
@@ -1465,6 +1552,159 @@
       if (text) {
         queueCommentUpdate(text.dataset.commentId, text.value);
       }
+    }
+
+    function clearDragIndicators() {
+      if (dragOverTarget) {
+        dragOverTarget.classList.remove("drag-over-before", "drag-over-after");
+        dragOverTarget = null;
+      }
+
+      if (dragOverList) {
+        dragOverList.classList.remove("drag-over-empty");
+        dragOverList = null;
+      }
+    }
+
+    function setDragIndicator(target, position, listEl = null) {
+      if (dragOverTarget && dragOverTarget !== target) {
+        dragOverTarget.classList.remove("drag-over-before", "drag-over-after");
+      }
+
+      if (dragOverList && dragOverList !== listEl) {
+        dragOverList.classList.remove("drag-over-empty");
+      }
+
+      dragOverTarget = target || null;
+      dragOverList = listEl || null;
+
+      if (dragOverTarget) {
+        dragOverTarget.classList.toggle("drag-over-before", position === "before");
+        dragOverTarget.classList.toggle("drag-over-after", position === "after");
+      }
+
+      if (dragOverList) {
+        dragOverList.classList.add("drag-over-empty");
+      }
+    }
+
+    function getDropPlacement(e, target) {
+      const rect = target.getBoundingClientRect();
+
+      if (Math.abs(e.clientX - (rect.left + rect.width / 2)) > Math.abs(e.clientY - (rect.top + rect.height / 2))) {
+        return e.clientX < rect.left + rect.width / 2 ? "before" : "after";
+      }
+
+      return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    }
+
+    function handleBoardDragStart(e) {
+      const item = e.target.closest("[data-order-item-id]");
+      if (!item || !canDragOrderItems()) {
+        e.preventDefault();
+        return;
+      }
+
+      if (e.target.closest("button, input, textarea, select, a")) {
+        e.preventDefault();
+        return;
+      }
+
+      const board = item.dataset.board;
+      const itemId = item.dataset.orderItemId;
+
+      if (!BOARDS.includes(board) || !itemId) {
+        e.preventDefault();
+        return;
+      }
+
+      dragState = {
+        board,
+        itemId
+      };
+
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", itemId);
+
+      window.setTimeout(() => item.classList.add("is-dragging"), 0);
+    }
+
+    function handleBoardDragOver(e) {
+      if (!dragState || !canDragOrderItems()) return;
+
+      const listEl = e.target.closest(".board-list");
+      if (!listEl) return;
+
+      e.preventDefault();
+
+      const board = listEl.dataset.board;
+      if (board !== dragState.board) {
+        e.dataTransfer.dropEffect = "none";
+        clearDragIndicators();
+        return;
+      }
+
+      e.dataTransfer.dropEffect = "move";
+
+      const target = e.target.closest("[data-order-item-id]");
+
+      if (!target || target.dataset.board !== dragState.board || target.dataset.orderItemId === dragState.itemId) {
+        setDragIndicator(null, null, listEl);
+        return;
+      }
+
+      const placement = getDropPlacement(e, target);
+      setDragIndicator(target, placement);
+    }
+
+    function handleBoardDrop(e) {
+      if (!dragState || !canDragOrderItems()) return;
+
+      const listEl = e.target.closest(".board-list");
+      if (!listEl) return;
+
+      e.preventDefault();
+
+      const board = listEl.dataset.board;
+
+      if (board !== dragState.board) {
+        toast("Drag within the same board.");
+        handleBoardDragEnd();
+        return;
+      }
+
+      const target = e.target.closest("[data-order-item-id]");
+      const targetItemId = target?.dataset?.board === board ? target.dataset.orderItemId : null;
+
+      if (targetItemId === dragState.itemId) {
+        handleBoardDragEnd();
+        return;
+      }
+
+      const placement = target ? getDropPlacement(e, target) : "end";
+      const moved = reorderBoardItem(board, dragState.itemId, targetItemId, placement);
+
+      handleBoardDragEnd();
+
+      if (moved) {
+        render();
+        saveState();
+      }
+    }
+
+    function handleBoardDragEnd() {
+      document.querySelectorAll(".is-dragging").forEach(el => el.classList.remove("is-dragging"));
+      clearDragIndicators();
+      dragState = null;
+    }
+
+    function handleBoardDragLeave(e) {
+      if (!dragState) return;
+
+      const related = e.relatedTarget;
+      if (related && els.boards.contains(related)) return;
+
+      clearDragIndicators();
     }
 
     function isMediaOnBoard(media) {
@@ -2074,6 +2314,8 @@
 
     function renderBoard(type, shows, listEl, countEl) {
       countEl.textContent = shows.length;
+      listEl.dataset.board = type;
+      listEl.dataset.boardList = type;
       syncBoardSortControls(type, countEl);
 
       if (!shows.length) {
@@ -2091,9 +2333,10 @@
 
     function renderDivider(divider, board) {
       const canEdit = state.ui.sortMode && !state.localSearch;
+      const canDrag = canDragOrderItems();
 
       return `
-        <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}">
+        <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-order-item-id="${escapeAttr(divider.id)}" data-order-item-type="divider" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
           ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="Remove divider">×</button>` : ""}
         </div>
       `;
@@ -2107,6 +2350,7 @@
       const isNotes = state.ui.openNotes[show.id];
       const sortModeActive = !!state.ui.sortMode;
       const sortControlsDisabled = !!state.localSearch;
+      const canDrag = canDragOrderItems();
 
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
       const titleHtml = link
@@ -2134,7 +2378,7 @@
       ` : "";
 
       return `
-        <article class="show-card ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}">
+        <article class="show-card ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
           <div class="card-main">
 
             <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDl ? "checked" : ""} title="Mark Downloaded" />
