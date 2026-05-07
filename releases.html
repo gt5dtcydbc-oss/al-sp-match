@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  
+
   <!-- iOS App-Like Behavior Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -34,7 +34,7 @@
 
     * { 
       box-sizing: border-box; 
-      -webkit-tap-highlight-color: transparent; /* Removes iOS gray tap highlight */
+      -webkit-tap-highlight-color: transparent;
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -51,13 +51,11 @@
         radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw),
         linear-gradient(180deg, var(--bg) 0%, #08090d 100%);
       background-attachment: fixed;
-      /* Respect iOS safe areas for the notch and home bar */
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* Prevent text selection on UI elements for a native app feel */
-    button, .tab, .action-btn, .franchise-header-row {
+    button, .tab, .action-btn {
       -webkit-user-select: none;
       user-select: none;
     }
@@ -65,7 +63,7 @@
     button, input, textarea, select { font: inherit; }
     button { border: 0; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-    
+
     button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .action-btn:focus-visible {
       outline: none;
       box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.4);
@@ -75,7 +73,7 @@
     .app {
       width: min(1200px, calc(100% - 48px));
       margin: 0 auto;
-      padding: 24px 0 64px; /* Reduced top padding slightly to balance with safe-area */
+      padding: 24px 0 64px;
     }
 
     .shell { display: grid; gap: 32px; }
@@ -169,6 +167,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--line);
@@ -292,7 +291,7 @@
       letter-spacing: 0.05em;
       flex-shrink: 0; 
     }
-    
+
     .badge.found { color: var(--ok); background: rgba(69, 212, 155, 0.1); }
     .badge.watching { color: var(--warn); background: rgba(242, 195, 107, 0.1); }
     .badge.downloaded { color: var(--muted); background: var(--surface-softer); }
@@ -318,7 +317,8 @@
 
     .show-card:hover .card-actions-wrapper, 
     .show-card:focus-within .card-actions-wrapper,
-    .show-card.notes-open .card-actions-wrapper {
+    .show-card.notes-open .card-actions-wrapper,
+    .show-card.sort-mode .card-actions-wrapper {
       opacity: 1;
       transform: translateY(-50%) translateX(0);
       pointer-events: auto;
@@ -351,23 +351,52 @@
     .show-card.notes-open .notes-panel { display: block; padding-top: 16px; animation: slideDownPanel 0.2s ease-out; }
     @keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-    input.franchise-input, textarea, select, .search-input { width: 100%; background: rgba(20, 24, 34, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 10px 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
-    input.franchise-input:focus, textarea:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
+    textarea, select, .search-input { width: 100%; background: rgba(20, 24, 34, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 10px 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    textarea:focus, select:focus, .search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
     textarea { min-height: 80px; resize: vertical; margin-top: 8px; }
 
-    .franchise-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; }
-    .franchise-header-row { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line); transition: color 0.2s ease; }
-    .franchise-header-row:hover .franchise-toggle-btn { background: var(--line); color: var(--text); }
-    .franchise-header-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: flex; align-items: center; }
-    .franchise-toggle-btn { width: 24px; height: 24px; border-radius: 6px; background: var(--surface-softer); color: var(--muted); display: grid; place-items: center; font-weight: 800; transition: background 0.2s; }
-    .franchise-cards { display: grid; gap: 8px; }
+    .board-divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+      margin: 8px 0;
+      padding: 4px 0;
+    }
+
+    .board-divider::before {
+      content: "";
+      flex: 1;
+      border-top: 1px solid var(--line);
+    }
+
+    .board-divider-remove,
+    .board-divider-add-btn {
+      width: 28px;
+      height: 28px;
+      font-size: 0.8rem;
+    }
+
+    .board-divider-add-btn {
+      margin-left: 8px;
+    }
+
+    #downloadedList .board-divider {
+      grid-column: 1 / -1;
+    }
+
+    #editOrderBtn.active {
+      background: var(--brand);
+      color: #000;
+      border-color: transparent;
+    }
 
     .bottom-section { margin-top: 64px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 48px; }
     .bottom-header { font-size: 1.2rem; font-weight: 800; color: var(--muted); margin: 0; }
 
     .search-row { display: flex; gap: 12px; }
     .search-input { flex: 1; height: 48px; border-radius: 99px; font-size: 1rem; padding: 0 24px; }
-    
+
     .btn { height: 48px; padding: 0 24px; border-radius: 99px; background: var(--surface-softer); color: var(--text); font-weight: 700; border: 1px solid var(--line); transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
     .btn:hover { background: var(--line); }
     .btn.primary { background: var(--brand); color: #000; border: none; }
@@ -388,15 +417,15 @@
     .toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .toolbar-actions { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
     .toolbar-actions .danger { margin-left: auto; }
-    
+
     .file-input { display: none; }
-    
+
     .status-indicator { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--muted); font-size: 0.9rem; transition: color 0.3s; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,0.15); transition: all 0.3s ease; }
-    
+
     .dot.syncing { background: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.3); animation: pulseSync 1.5s infinite ease-in-out; }
     .dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(255, 123, 115, 0.3); }
-    
+
     @keyframes pulseSync { 
       0% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0.4); } 
       70% { box-shadow: 0 0 0 6px rgba(139, 150, 255, 0); } 
@@ -425,7 +454,6 @@
     .toast-area { 
       position: fixed; 
       right: 24px; 
-      /* Respect iOS home bar safe area for toasts too */
       bottom: calc(24px + env(safe-area-inset-bottom)); 
       z-index: 100; 
       display: grid; 
@@ -443,7 +471,7 @@
       .board-controls { width: 100%; }
       .board-filter-input { width: 100%; }
       .search-row { flex-direction: column; }
-      
+
       .card-main {
         grid-template-columns: auto 56px minmax(0, 1fr);
         gap: 12px;
@@ -461,6 +489,9 @@
         background: transparent;
         box-shadow: none; 
       }
+      .show-card.sort-mode .card-actions-wrapper {
+        transform: none;
+      }
       .notes-panel { padding-left: 16px; }
       .toolbar-actions { flex-direction: column; width: 100%; align-items: stretch; }
       .toolbar-actions .danger { margin-left: 0; }
@@ -474,7 +505,7 @@
 <body>
   <main class="app">
     <section class="shell">
-      
+
       <header class="hero">
         <div class="hero-text">
           <p class="eyebrow">AniList × releases.moe</p>
@@ -521,7 +552,7 @@
 
       <section class="bottom-section">
         <h3 class="bottom-header">Add & Manage</h3>
-        
+
         <div class="search-card">
           <div class="search-row">
             <input class="search-input" id="searchInput" type="search" autocomplete="off" placeholder="Search AniList to add a show..." />
@@ -539,6 +570,7 @@
               <button class="btn" id="exportBtn" type="button">Export JSON</button>
               <input class="file-input" id="importFile" type="file" accept=".json" />
               <button class="btn" id="importBtn" type="button">Import</button>
+              <button class="btn" id="editOrderBtn" type="button">Edit Order</button>
               <button class="btn danger" id="clearBtn" type="button">Clear Board</button>
             </div>
           </div>
@@ -583,12 +615,14 @@
     const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
     const STORAGE_KEY = "anilist-releases-board:v2";
     const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1";
+    const BOARDS = ["found", "watching", "downloaded"];
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     const state = {
       shows: [],
-      ui: { filterComplete: false, openNotes: {}, collapsedFranchises: {} },
+      order: { found: [], watching: [], downloaded: [] },
+      ui: { filterComplete: false, openNotes: {}, sortMode: false },
       localSearch: ""
     };
 
@@ -610,6 +644,7 @@
       importBtn: document.querySelector("#importBtn"),
       importFile: document.querySelector("#importFile"),
       clearBtn: document.querySelector("#clearBtn"),
+      editOrderBtn: document.querySelector("#editOrderBtn"),
       githubPat: document.querySelector("#githubPat"),
       gistId: document.querySelector("#gistId"),
       syncNowBtn: document.querySelector("#syncNowBtn"),
@@ -637,10 +672,247 @@
       downloaded: "Library is empty."
     };
 
-    // --- Dynamic Status Indicator --- //
-    
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value);
+    }
+
+    function makeDefaultOrder() {
+      return { found: [], watching: [], downloaded: [] };
+    }
+
+    function makeDefaultUi() {
+      return { filterComplete: false, openNotes: {}, sortMode: false };
+    }
+
+    function isDividerItem(item) {
+      return !!item && typeof item === "object" && item.type === "divider" && typeof item.id === "string";
+    }
+
+    function getShowBoard(show) {
+      if (!show) return "watching";
+      if (show.downloaded || show.board === "downloaded") return "downloaded";
+      return show.board === "found" ? "found" : "watching";
+    }
+
+    function getShowById(id) {
+      return state.shows.find(show => show.id === id) || null;
+    }
+
+    function ensureOrderState() {
+      if (!state.order || typeof state.order !== "object") state.order = makeDefaultOrder();
+
+      BOARDS.forEach(board => {
+        if (!Array.isArray(state.order[board])) state.order[board] = [];
+      });
+    }
+
+    function reconcileOrders() {
+      ensureOrderState();
+
+      const seenGlobally = new Set();
+
+      BOARDS.forEach(board => {
+        const next = [];
+        const seenShows = new Set();
+        const seenDividers = new Set();
+
+        for (const item of state.order[board]) {
+          if (typeof item === "string") {
+            const show = getShowById(item);
+            if (!show) continue;
+
+            const currentBoard = getShowBoard(show);
+            if (currentBoard !== board) continue;
+            if (seenShows.has(item) || seenGlobally.has(item)) continue;
+
+            next.push(item);
+            seenShows.add(item);
+            seenGlobally.add(item);
+            continue;
+          }
+
+          if (isDividerItem(item) && !seenDividers.has(item.id)) {
+            next.push({ type: "divider", id: item.id });
+            seenDividers.add(item.id);
+          }
+        }
+
+        for (const show of state.shows) {
+          if (getShowBoard(show) !== board) continue;
+          if (seenShows.has(show.id) || seenGlobally.has(show.id)) continue;
+
+          next.push(show.id);
+          seenShows.add(show.id);
+          seenGlobally.add(show.id);
+        }
+
+        state.order[board] = next;
+      });
+    }
+
+    function removeShowFromOrder(showId) {
+      ensureOrderState();
+
+      BOARDS.forEach(board => {
+        state.order[board] = state.order[board].filter(item => item !== showId);
+      });
+    }
+
+    function prependShowToOrder(showId, board) {
+      ensureOrderState();
+      removeShowFromOrder(showId);
+      state.order[board].unshift(showId);
+    }
+
+    function moveShowToBoardOrder(showId, fromBoard, toBoard, placement = "top") {
+      ensureOrderState();
+
+      if (!BOARDS.includes(toBoard)) return;
+
+      removeShowFromOrder(showId);
+
+      if (placement === "end") {
+        state.order[toBoard].push(showId);
+      } else {
+        state.order[toBoard].unshift(showId);
+      }
+    }
+
+    function getOrderedBoardItems(board, shows) {
+      ensureOrderState();
+
+      const showMap = new Map(shows.map(show => [show.id, show]));
+      const seen = new Set();
+      const items = [];
+      const isSearching = !!state.localSearch;
+
+      for (const item of state.order[board]) {
+        if (typeof item === "string") {
+          const show = showMap.get(item);
+          if (!show || seen.has(item)) continue;
+
+          items.push(show);
+          seen.add(item);
+          continue;
+        }
+
+        if (isDividerItem(item) && !isSearching) {
+          items.push(item);
+        }
+      }
+
+      for (const show of shows) {
+        if (seen.has(show.id)) continue;
+        items.push(show);
+        seen.add(show.id);
+      }
+
+      return items;
+    }
+
+    function getOrderIndex(showId, board) {
+      ensureOrderState();
+      return state.order[board].findIndex(item => item === showId);
+    }
+
+    function canMoveShow(showId, board, direction) {
+      const index = getOrderIndex(showId, board);
+
+      if (index < 0) return false;
+      if (direction === "up") return index > 0;
+      if (direction === "down") return index < state.order[board].length - 1;
+
+      return false;
+    }
+
+    function moveShow(showId, board, direction) {
+      if (state.localSearch) return;
+      if (!state.ui.sortMode) return;
+      if (!BOARDS.includes(board)) return;
+
+      reconcileOrders();
+
+      const index = getOrderIndex(showId, board);
+      if (index < 0) return;
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= state.order[board].length) return;
+
+      const arr = state.order[board];
+      [arr[index], arr[targetIndex]] = [arr[targetIndex], arr[index]];
+
+      render();
+      saveState();
+    }
+
+    function addDivider(board) {
+      if (state.localSearch) return;
+      if (!state.ui.sortMode) return;
+      if (!BOARDS.includes(board)) return;
+
+      ensureOrderState();
+      state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}` });
+
+      render();
+      saveState();
+    }
+
+    function removeDivider(board, dividerId) {
+      if (state.localSearch) return;
+      if (!state.ui.sortMode) return;
+      if (!BOARDS.includes(board)) return;
+
+      ensureOrderState();
+      state.order[board] = state.order[board].filter(item => !(isDividerItem(item) && item.id === dividerId));
+
+      render();
+      saveState();
+    }
+
+    function getSavedShows(data) {
+      if (Array.isArray(data)) return data;
+      return Array.isArray(data?.shows) ? data.shows : [];
+    }
+
+    function applyLoadedState(data) {
+      const loadedShows = getSavedShows(data);
+      const loadedUi = !Array.isArray(data) && data?.ui && typeof data.ui === "object" ? data.ui : {};
+      const loadedOrder = !Array.isArray(data) && data?.order && typeof data.order === "object" ? data.order : makeDefaultOrder();
+
+      state.shows = loadedShows;
+      state.ui = {
+        filterComplete: !!loadedUi.filterComplete,
+        openNotes: loadedUi.openNotes || {},
+        sortMode: !!loadedUi.sortMode
+      };
+      state.order = {
+        found: Array.isArray(loadedOrder.found) ? loadedOrder.found : [],
+        watching: Array.isArray(loadedOrder.watching) ? loadedOrder.watching : [],
+        downloaded: Array.isArray(loadedOrder.downloaded) ? loadedOrder.downloaded : []
+      };
+
+      state.shows.forEach(show => {
+        show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+        if (!show.board) show.board = show.downloaded ? "downloaded" : "watching";
+      });
+
+      reconcileOrders();
+      updateFilterCompleteButton();
+      updateSortModeButton();
+    }
+
     function setStatus(text, mode = "ready") {
       els.statusText.textContent = text;
+
       if (mode === "sync") {
         els.dot.className = "dot syncing";
         els.statusText.style.color = "var(--brand)";
@@ -653,8 +925,6 @@
       }
     }
 
-    // --- Cloud Sync Logic with Safeguards --- //
-    
     function loadSyncSettings() {
       try {
         const raw = localStorage.getItem(SYNC_SETTINGS_KEY);
@@ -677,16 +947,23 @@
       const pat = els.githubPat.value.trim();
       const gistId = els.gistId.value.trim();
       if (!pat || !gistId) return null;
-      
+
       setStatus("Pulling from cloud...", "sync");
+
       try {
         const res = await fetch(`https://api.github.com/gists/${gistId}`, {
           method: "GET",
-          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` }
+          headers: {
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": `Bearer ${pat}`
+          }
         });
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data = await res.json();
         const content = data.files["state.json"]?.content;
+
         return content ? JSON.parse(content) : null;
       } catch (e) {
         console.error("Cloud Pull Failed:", e);
@@ -698,8 +975,9 @@
       const pat = els.githubPat.value.trim();
       const gistId = els.gistId.value.trim();
       if (!pat || !gistId) return;
-      
+
       setStatus("Pushing to cloud...", "sync");
+
       try {
         await fetch(`https://api.github.com/gists/${gistId}`, {
           method: "PATCH",
@@ -709,9 +987,14 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } }
+            files: {
+              "state.json": {
+                content: JSON.stringify(stateObject, null, 2)
+              }
+            }
           })
         });
+
         setStatus("System Ready", "ready");
       } catch (e) {
         console.error("Cloud Push Failed:", e);
@@ -720,28 +1003,25 @@
     }
 
     let cloudSyncTimer;
+
     function queueCloudSync(stateObject) {
       clearTimeout(cloudSyncTimer);
       cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500);
     }
 
-    // Boot updated with Smart Safeguards
     async function init() {
       loadSyncSettings();
 
       if (els.githubPat.value.trim() && els.gistId.value.trim()) {
         const cloudState = await pullFromCloud();
-        
+
         const localRaw = localStorage.getItem(STORAGE_KEY);
         const localState = localRaw ? JSON.parse(localRaw) : null;
-        
-        // Safeguard: Only pull if the cloud actually has data
-        if (cloudState && cloudState.shows && cloudState.shows.length > 0) {
+
+        if (cloudState && getSavedShows(cloudState).length > 0) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
           toast("Cloud sync complete.");
-        } 
-        // If the cloud is empty but we have local data, PUSH our data up!
-        else if (localState && localState.shows && localState.shows.length > 0) {
+        } else if (localState && getSavedShows(localState).length > 0) {
           pushToCloud(localState);
           toast("Pushed local board to empty cloud.");
         }
@@ -752,11 +1032,19 @@
       render();
       setStatus("System Ready", "ready");
 
-      // Main refresher: every page load checks all non-downloaded Watching entries.
       await checkWatchingStatuses();
-
-      // Library refresher: every page load checks only the 10 least recently checked Library entries.
       await checkLibraryUpdates(10);
+    }
+
+    function updateSortModeButton() {
+      if (!els.editOrderBtn) return;
+      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode);
+    }
+
+    function updateFilterCompleteButton() {
+      if (!els.filterCompleteBtn) return;
+      els.filterCompleteBtn.style.background = state.ui.filterComplete ? "var(--brand)" : "var(--surface-softer)";
+      els.filterCompleteBtn.style.color = state.ui.filterComplete ? "#000" : "var(--text)";
     }
 
     function bindEvents() {
@@ -766,20 +1054,33 @@
           els.tabViews.forEach(v => v.classList.remove("active"));
           tab.classList.add("active");
           document.getElementById(tab.dataset.target).classList.add("active");
-          els.boardSearchInput.placeholder = tab.dataset.target === 'view-downloaded' ? "Search library..." : "Filter active shows...";
+          els.boardSearchInput.placeholder = tab.dataset.target === "view-downloaded" ? "Search library..." : "Filter active shows...";
         });
+      });
+
+      els.editOrderBtn.addEventListener("click", () => {
+        state.ui.sortMode = !state.ui.sortMode;
+        updateSortModeButton();
+        render();
+        saveState();
       });
 
       els.searchBtn.addEventListener("click", () => runSearch());
       els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
-      els.searchInput.addEventListener("keydown", (e) => { if (e.key === "Escape") closeResults(); if (e.key === "Enter") runSearch(); });
+
+      els.searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeResults();
+        if (e.key === "Enter") runSearch();
+      });
 
       els.boardSearchInput.addEventListener("input", (e) => {
         state.localSearch = e.target.value.toLowerCase();
         render();
       });
 
-      document.addEventListener("click", (e) => { if (!e.target.closest(".search-card")) closeResults(); });
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".search-card")) closeResults();
+      });
 
       els.boards.addEventListener("click", handleBoardClick);
       els.boards.addEventListener("change", handleBoardChange);
@@ -792,8 +1093,7 @@
 
       els.filterCompleteBtn.addEventListener("click", () => {
         state.ui.filterComplete = !state.ui.filterComplete;
-        els.filterCompleteBtn.style.background = state.ui.filterComplete ? 'var(--brand)' : 'var(--surface-softer)';
-        els.filterCompleteBtn.style.color = state.ui.filterComplete ? '#000' : 'var(--text)';
+        updateFilterCompleteButton();
         render();
         saveState();
       });
@@ -802,31 +1102,26 @@
       els.githubPat.addEventListener("blur", saveSyncSettings);
       els.gistId.addEventListener("change", saveSyncSettings);
       els.gistId.addEventListener("blur", saveSyncSettings);
-      
-      // Smart Sync Button with Safeguards
+
       els.syncNowBtn.addEventListener("click", async () => {
         els.syncNowBtn.disabled = true;
         els.syncNowBtn.textContent = "Syncing...";
-        
+
         const cloudState = await pullFromCloud();
-        
-        // If the cloud has data, pull it down
-        if (cloudState && cloudState.shows && cloudState.shows.length > 0) {
-            state.shows = cloudState.shows || [];
-            state.ui = cloudState.ui || state.ui;
-            saveState(); // This will trigger a re-push, ensuring both ends match
-            render();
-            toast("Force pull complete.");
-        } 
-        // If the cloud is empty but we have local data, push it up
-        else if (state.shows && state.shows.length > 0) {
-            pushToCloud(state);
-            toast("Force push complete.");
+
+        if (cloudState && getSavedShows(cloudState).length > 0) {
+          applyLoadedState(cloudState);
+          saveState();
+          render();
+          toast("Force pull complete.");
+        } else if (state.shows && state.shows.length > 0) {
+          pushToCloud(state);
+          toast("Force push complete.");
         } else {
-            toast("Both cloud and local are empty.", "error");
-            setStatus("System Ready", "ready");
+          toast("Both cloud and local are empty.", "error");
+          setStatus("System Ready", "ready");
         }
-        
+
         els.syncNowBtn.disabled = false;
         els.syncNowBtn.textContent = "Pull & Sync";
       });
@@ -834,34 +1129,59 @@
       els.batchImportBtn.addEventListener("click", prepareBatchReview);
       els.batchConfirmBtn.addEventListener("click", confirmBatchImport);
       els.batchCancelBtn.addEventListener("click", clearBatchReview);
-      els.batchClearBtn.addEventListener("click", () => { els.batchInput.value = ""; clearBatchReview(); });
+
+      els.batchClearBtn.addEventListener("click", () => {
+        els.batchInput.value = "";
+        clearBatchReview();
+      });
     }
 
     let aniListCooldownUntil = 0;
+
     function timeoutSignal(ms) {
       if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+
       const controller = new AbortController();
       setTimeout(() => controller.abort(), ms);
       return controller.signal;
     }
 
     async function safeAniListRequest(query, variables, retries = 2) {
-      if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+      if (Date.now() < aniListCooldownUntil) {
+        await sleep(aniListCooldownUntil - Date.now());
+      }
+
       try {
         const response = await fetch(ANILIST_ENDPOINT, {
-          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({ query, variables }), signal: timeoutSignal(15000)
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ query, variables }),
+          signal: timeoutSignal(15000)
         });
+
         const json = await response.json().catch(() => ({}));
+
         if (response.status === 429) {
           const retryAfter = Number(response.headers.get("Retry-After")) || 60;
-          aniListCooldownUntil = Date.now() + (retryAfter * 1000);
-          if (retries > 0) { await sleep(retryAfter * 1000); return safeAniListRequest(query, variables, retries - 1); }
+          aniListCooldownUntil = Date.now() + retryAfter * 1000;
+
+          if (retries > 0) {
+            await sleep(retryAfter * 1000);
+            return safeAniListRequest(query, variables, retries - 1);
+          }
+
           throw new Error("AniList rate limit reached.");
         }
+
         if (!response.ok || json.errors) throw new Error("AniList error");
+
         return json;
-      } catch (error) { throw error; }
+      } catch (error) {
+        throw error;
+      }
     }
 
     async function searchAniList(search) {
@@ -878,63 +1198,126 @@
 
     async function runSearch() {
       const search = els.searchInput.value.trim();
-      if (!search) { closeResults(); return; }
+
+      if (!search) {
+        closeResults();
+        return;
+      }
+
+      const requestId = ++searchRequestId;
+
       setStatus("Searching...");
-      els.results.classList.add("open"); els.results.innerHTML = '<div class="empty">Searching...</div>';
+      els.results.classList.add("open");
+      els.results.innerHTML = '<div class="empty">Searching...</div>';
+
       try {
         const res = await searchAniList(search);
+        if (requestId !== searchRequestId) return;
+
         els.results.innerHTML = res.length ? res.map(m => `
           <button class="result-item" data-add-id="${m.id}">
-            <img class="result-poster" src="${m.coverImage?.medium || ''}" alt="${(m.title.english || m.title.romaji).replace(/"/g, '&quot;')}" loading="lazy" />
+            <img class="result-poster" src="${escapeAttr(m.coverImage?.medium || "")}" alt="${escapeAttr(m.title.english || m.title.romaji)}" loading="lazy" />
             <div class="result-info">
-              <span class="result-title">${m.title.english || m.title.romaji}</span>
-              <span class="result-meta">${m.format || 'Anime'} · ${m.seasonYear || ''}</span>
+              <span class="result-title">${escapeHtml(m.title.english || m.title.romaji)}</span>
+              <span class="result-meta">${escapeHtml(m.format || "Anime")} · ${escapeHtml(m.seasonYear || "")}</span>
             </div>
-            <span class="badge ${isMediaOnBoard(m) ? 'downloaded' : 'found'}">${isMediaOnBoard(m) ? 'Added' : 'Add'}</span>
+            <span class="badge ${isMediaOnBoard(m) ? "downloaded" : "found"}">${isMediaOnBoard(m) ? "Added" : "Add"}</span>
           </button>
         `).join("") : '<div class="empty">No results found.</div>';
-        
+
         els.results.querySelectorAll("[data-add-id]").forEach(b => {
-          b.addEventListener("click", () => { const media = res.find(i => i.id == b.dataset.addId); if (media) addShow(media); });
+          b.addEventListener("click", () => {
+            const media = res.find(i => i.id == b.dataset.addId);
+            if (media) addShow(media);
+          });
         });
+
         setStatus("System Ready");
-      } catch(e) { els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error", "error"); }
+      } catch(e) {
+        if (requestId !== searchRequestId) return;
+        els.results.innerHTML = '<div class="empty">Search failed.</div>';
+        setStatus("Error", "error");
+      }
     }
 
     async function handleBoardClick(e) {
-      const toggleF = e.target.closest("[data-toggle-franchise]");
-      if (toggleF) { state.ui.collapsedFranchises[toggleF.dataset.toggleFranchise] = !state.ui.collapsedFranchises[toggleF.dataset.toggleFranchise]; render(); saveState(); return; }
+      const addDividerBtn = e.target.closest("[data-add-divider-board]");
+      if (addDividerBtn) {
+        addDivider(addDividerBtn.dataset.addDividerBoard);
+        return;
+      }
+
+      const removeDividerBtn = e.target.closest("[data-remove-divider]");
+      if (removeDividerBtn) {
+        removeDivider(removeDividerBtn.dataset.board, removeDividerBtn.dataset.removeDivider);
+        return;
+      }
+
+      const moveBtn = e.target.closest("[data-move-id]");
+      if (moveBtn) {
+        moveShow(moveBtn.dataset.moveId, moveBtn.dataset.board, moveBtn.dataset.direction);
+        return;
+      }
+
       const nBtn = e.target.closest("[data-notes-id]");
-      if (nBtn) { state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId]; render(); saveState(); return; }
+      if (nBtn) {
+        state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId];
+        render();
+        saveState();
+        return;
+      }
+
       const cBtn = e.target.closest("[data-complete-id]");
-      if (cBtn) { toggleAllAvailableDownloaded(cBtn.dataset.completeId); return; }
+      if (cBtn) {
+        toggleAllAvailableDownloaded(cBtn.dataset.completeId);
+        return;
+      }
+
       const rBtn = e.target.closest("[data-remove-id]");
-      if (rBtn) { removeShow(rBtn.dataset.removeId); return; }
+      if (rBtn) {
+        removeShow(rBtn.dataset.removeId);
+        return;
+      }
+
       const aBtn = e.target.closest("[data-ack-id]");
-      if (aBtn) { acknowledgeUpdate(aBtn.dataset.ackId); return; }
+      if (aBtn) {
+        acknowledgeUpdate(aBtn.dataset.ackId);
+        return;
+      }
+
       const refBtn = e.target.closest("[data-refresh-id]");
       if (refBtn) {
         const show = state.shows.find(s => s.id === refBtn.dataset.refreshId);
         if (!show) return;
-        refBtn.disabled = true; refBtn.classList.add("spinning");
+
+        refBtn.disabled = true;
+        refBtn.classList.add("spinning");
+
         await refreshShowStatus(show, { forceMove: true });
-        render(); saveState(); toast(`Refreshed ${show.title}`);
+
+        render();
+        saveState();
+        toast(`Refreshed ${show.title}`);
       }
     }
 
     function handleBoardChange(e) {
       const dCheck = e.target.closest("[data-download-id]");
-      if (dCheck) { toggleDownloadedStatus(dCheck.dataset.downloadId, dCheck.checked); return; }
-      const fInput = e.target.closest(".franchise-input");
-      if (fInput) { updateFranchise(fInput.dataset.franchiseId, fInput.value); }
+      if (dCheck) {
+        toggleDownloadedStatus(dCheck.dataset.downloadId, dCheck.checked);
+      }
     }
 
     function handleBoardInput(e) {
       const text = e.target.closest("[data-comment-id]");
-      if (text) queueCommentUpdate(text.dataset.commentId, text.value);
+      if (text) {
+        queueCommentUpdate(text.dataset.commentId, text.value);
+      }
     }
 
-    function isMediaOnBoard(media) { return state.shows.some(s => s.anilistId == media.id); }
+    function isMediaOnBoard(media) {
+      return state.shows.some(s => s.anilistId == media.id);
+    }
 
     function getDefaultReleasesMoeState(existing = {}) {
       return {
@@ -952,28 +1335,49 @@
 
     function makeShowFromMedia(media) {
       return {
-        id: crypto.randomUUID(), anilistId: media.id, 
+        id: crypto.randomUUID(),
+        anilistId: media.id,
         title: media.title?.english || media.title?.romaji || "Untitled",
-        titleEnglish: media.title?.english || "", titleRomaji: media.title?.romaji || "",
+        titleEnglish: media.title?.english || "",
+        titleRomaji: media.title?.romaji || "",
         coverImage: media.coverImage?.medium || media.coverImage?.large || "",
-        format: media.format || "", seasonYear: media.seasonYear || null, episodes: media.episodes || null,
+        format: media.format || "",
+        seasonYear: media.seasonYear || null,
+        episodes: media.episodes || null,
         siteUrl: media.siteUrl || `https://anilist.co/anime/${media.id}`,
-        board: "watching", downloaded: false, allAvailableDownloaded: false, franchise: "", comments: "",
+        board: "watching",
+        downloaded: false,
+        allAvailableDownloaded: false,
+        comments: "",
         releasesMoe: getDefaultReleasesMoeState(),
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
     }
 
     async function addShow(media) {
       if (isMediaOnBoard(media)) return toast("Already on board.");
-      closeResults(); els.searchInput.value = ""; setStatus("Checking release...");
+
+      closeResults();
+      els.searchInput.value = "";
+      setStatus("Checking release...");
+
       const show = makeShowFromMedia(media);
       state.shows.unshift(show);
+
       await refreshShowStatus(show, { forceMove: true });
-      render(); saveState(); setStatus("System Ready"); toast("Added to active board.");
+      prependShowToOrder(show.id, getShowBoard(show));
+
+      render();
+      saveState();
+
+      setStatus("System Ready");
+      toast("Added to active board.");
     }
 
     async function refreshShowStatus(show, { forceMove = false } = {}) {
+      const previousBoard = getShowBoard(show);
+
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
 
       try {
@@ -1022,6 +1426,11 @@
           show.board = match ? "found" : "watching";
         }
 
+        const nextBoard = getShowBoard(show);
+        if (forceMove && previousBoard !== nextBoard) {
+          moveShowToBoardOrder(show.id, previousBoard, nextBoard, "top");
+        }
+
         show.updatedAt = new Date().toISOString();
       } catch(e) {
         console.error(e);
@@ -1031,7 +1440,7 @@
     }
 
     async function checkWatchingStatuses() {
-      const watching = state.shows.filter(s => s.board === "watching" && !s.downloaded);
+      const watching = state.shows.filter(s => getShowBoard(s) === "watching" && !s.downloaded);
       if (!watching.length) return;
 
       setStatus(`Checking ${watching.length} watching entries...`, "sync");
@@ -1083,6 +1492,8 @@
       const show = state.shows.find(s => s.id === id);
       if (!show) return;
 
+      const previousBoard = getShowBoard(show);
+
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
       show.downloaded = checked;
 
@@ -1103,7 +1514,11 @@
         show.releasesMoe.latestUpdated = null;
       }
 
+      const nextBoard = getShowBoard(show);
+      moveShowToBoardOrder(show.id, previousBoard, nextBoard, "top");
+
       show.updatedAt = new Date().toISOString();
+
       render();
       saveState();
       toast(checked ? "Moved to Library" : "Moved back to Active");
@@ -1111,7 +1526,8 @@
 
     function toggleAllAvailableDownloaded(id) {
       const show = state.shows.find(s => s.id === id);
-      if(show) {
+
+      if (show) {
         show.allAvailableDownloaded = !show.allAvailableDownloaded;
         render();
         saveState();
@@ -1119,8 +1535,10 @@
     }
 
     function removeShow(id) {
-      if(confirm("Remove this show entirely?")) {
+      if (confirm("Remove this show entirely?")) {
         state.shows = state.shows.filter(s => s.id !== id);
+        removeShowFromOrder(id);
+
         render();
         saveState();
         toast("Removed.");
@@ -1146,54 +1564,100 @@
       toast("Update acknowledged.");
     }
 
-    function toggleNotes(id) { state.ui.openNotes[id] = !state.ui.openNotes[id]; render(); saveState(); }
-    function queueCommentUpdate(id, val) { const s = state.shows.find(x=>x.id===id); if(s) s.comments = val; clearTimeout(commentSaveTimers.get(id)); commentSaveTimers.set(id, setTimeout(saveState, 500)); }
-    function updateFranchise(id, val) { const s = state.shows.find(x=>x.id===id); if(s) s.franchise = val; render(); saveState(); }
+    function toggleNotes(id) {
+      state.ui.openNotes[id] = !state.ui.openNotes[id];
+      render();
+      saveState();
+    }
+
+    function queueCommentUpdate(id, val) {
+      const s = state.shows.find(x => x.id === id);
+      if (s) s.comments = val;
+
+      clearTimeout(commentSaveTimers.get(id));
+      commentSaveTimers.set(id, setTimeout(saveState, 500));
+    }
 
     function parseBatchNames(value) {
       const seen = new Set();
-      return String(value || "").split(/[\n,;]+/).map(n => n.trim()).filter(Boolean).filter(name => {
-        const key = name.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
-      });
+
+      return String(value || "")
+        .split(/[\n,;]+/)
+        .map(n => n.trim())
+        .filter(Boolean)
+        .filter(name => {
+          const key = name.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
     }
 
     function getAniListIdFromInput(input) {
       const val = String(input || "").trim();
       const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i);
       if (urlMatch) return Number(urlMatch[1]);
+
       const labelledMatch = val.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i);
       if (labelledMatch) return Number(labelledMatch[1]);
+
       return null;
     }
 
     async function lookupBatchAniList(input) {
       const directId = getAniListIdFromInput(input);
+
       if (directId) {
         const media = await getAniListMediaById(directId);
         return media ? [media] : [];
       }
+
       return searchAniList(input);
     }
 
-    function normalizeTitle(val) { return String(val || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ").replace(/\s+/g, " ").trim(); }
-    function getMediaTitles(media) { return [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean); }
-    function getYearFromText(val) { const match = String(val || "").match(/\b((?:19|20)\d{2})\b/); return match ? Number(match[1]) : null; }
-    
+    function normalizeTitle(val) {
+      return String(val || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function getMediaTitles(media) {
+      return [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean);
+    }
+
+    function getYearFromText(val) {
+      const match = String(val || "").match(/\b((?:19|20)\d{2})\b/);
+      return match ? Number(match[1]) : null;
+    }
+
     function tokenSimilarity(a, b) {
       const aTokens = new Set(String(a || "").split(" ").filter(Boolean));
       const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
+
       if (!aTokens.size || !bTokens.size) return 0;
+
       let overlap = 0;
-      for (const token of aTokens) { if (bTokens.has(token)) overlap++; }
+
+      for (const token of aTokens) {
+        if (bTokens.has(token)) overlap++;
+      }
+
       return overlap / Math.max(aTokens.size, bTokens.size);
     }
 
     function getMatchInfo(input, media) {
       if (!media) return { level: "none", label: "No match", score: 0 };
+
       const directId = getAniListIdFromInput(input);
-      if (directId && Number(directId) === Number(media.id)) return { level: "high", label: "Direct ID", score: 1 };
+      if (directId && Number(directId) === Number(media.id)) {
+        return { level: "high", label: "Direct ID", score: 1 };
+      }
 
       const query = normalizeTitle(input).replace(/\b(?:anilist|alid|al)\b\s*\d+\b/g, "").trim();
       const queryWithoutYear = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, ""));
@@ -1201,75 +1665,111 @@
       const year = getYearFromText(input);
 
       let bestScore = 0;
+
       for (const title of titles) {
         const titleWithoutYear = title.replace(/\b(19|20)\d{2}\b/g, "").trim();
         const candidates = [query, queryWithoutYear].filter(Boolean);
+
         for (const candidate of candidates) {
           if (!candidate || !title) continue;
+
           if (title === candidate) bestScore = Math.max(bestScore, 1);
           if (titleWithoutYear === candidate) bestScore = Math.max(bestScore, 0.96);
           if (title.includes(candidate) || candidate.includes(titleWithoutYear)) bestScore = Math.max(bestScore, 0.76);
+
           bestScore = Math.max(bestScore, tokenSimilarity(candidate, title));
         }
       }
+
       if (year && Number(media.seasonYear) === year) bestScore += 0.12;
+
       bestScore = Math.min(bestScore, 1);
 
       if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore };
       if (bestScore >= 0.6) return { level: "medium", label: "Check match", score: bestScore };
+
       return { level: "low", label: "Low match", score: bestScore };
     }
 
     function getSelectedBatchMedia(match) {
       if (!match?.results?.length || !match.selectedId) return null;
-      return match.results.find((m) => m.id === Number(match.selectedId)) || null;
+      return match.results.find(m => m.id === Number(match.selectedId)) || null;
     }
 
     function getAddableBatchMatches() {
       return pendingBatchMatches
-        .filter((m) => !m.skipped)
-        .map((match) => ({ match, media: getSelectedBatchMedia(match) }))
+        .filter(m => !m.skipped)
+        .map(match => ({ match, media: getSelectedBatchMedia(match) }))
         .filter(({ media }) => media && !isMediaOnBoard(media));
     }
 
     async function prepareBatchReview() {
       const names = parseBatchNames(els.batchInput.value);
-      if (!names.length) { toast("Paste at least one series name."); els.batchInput.focus(); return; }
+
+      if (!names.length) {
+        toast("Paste at least one series name.");
+        els.batchInput.focus();
+        return;
+      }
 
       pendingBatchMatches = [];
       renderBatchReview();
+
       setStatus(`Matching 0/${names.length}...`);
-      els.batchImportBtn.disabled = true; els.batchConfirmBtn.disabled = true;
+      els.batchImportBtn.disabled = true;
+      els.batchConfirmBtn.disabled = true;
 
       try {
         for (let i = 0; i < names.length; i++) {
           const input = names[i];
           setStatus(`Matching ${i + 1}/${names.length}...`);
+
           try {
             const results = await lookupBatchAniList(input);
             const firstAvail = results.find(m => !isMediaOnBoard(m));
             const selected = firstAvail || results[0] || null;
-            pendingBatchMatches.push({ input, results, selectedId: selected?.id ?? null, skipped: !selected, error: null });
+
+            pendingBatchMatches.push({
+              input,
+              results,
+              selectedId: selected?.id ?? null,
+              skipped: !selected,
+              error: null
+            });
           } catch (e) {
-            pendingBatchMatches.push({ input, results: [], selectedId: null, skipped: true, error: e.message || "failed" });
+            pendingBatchMatches.push({
+              input,
+              results: [],
+              selectedId: null,
+              skipped: true,
+              error: e.message || "failed"
+            });
           }
+
           renderBatchReview();
         }
       } finally {
-        els.batchImportBtn.disabled = false; setStatus("System Ready");
+        els.batchImportBtn.disabled = false;
+        setStatus("System Ready");
       }
+
       renderBatchReview();
+
       const addable = getAddableBatchMatches().length;
       toast(addable ? `Review ${addable} matches.` : "No addable matches found.", addable ? "" : "error");
     }
 
     function renderBatchReview() {
       if (!pendingBatchMatches.length) {
-        els.batchReview.hidden = true; els.batchReviewList.innerHTML = "";
+        els.batchReview.hidden = true;
+        els.batchReviewList.innerHTML = "";
         els.batchReviewSummary.textContent = "No matches prepared.";
-        els.batchConfirmBtn.disabled = true; return;
+        els.batchConfirmBtn.disabled = true;
+        return;
       }
+
       els.batchReview.hidden = false;
+
       const addable = getAddableBatchMatches();
       els.batchReviewSummary.textContent = `${addable.length} Selected matches`;
       els.batchConfirmBtn.disabled = addable.length === 0;
@@ -1278,24 +1778,24 @@
         const selected = getSelectedBatchMedia(match);
         const isDup = selected ? isMediaOnBoard(selected) : false;
         const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
-        const title = selected ? (selected.title.english || selected.title.romaji) : "No result";
-        
+        const title = selected ? selected.title.english || selected.title.romaji : "No result";
+
         const options = match.results.length ? match.results.map(m => 
-          `<option value="${m.id}" ${m.id === match.selectedId ? "selected" : ""}>${m.title.english || m.title.romaji} ${isMediaOnBoard(m) ? '(Already Added)' : ''}</option>`
+          `<option value="${m.id}" ${m.id === match.selectedId ? "selected" : ""}>${escapeHtml(m.title.english || m.title.romaji)} ${isMediaOnBoard(m) ? "(Already Added)" : ""}</option>`
         ).join("") : '<option value="">No results</option>';
 
         return `
-          <div class="batch-review-item" style="opacity: ${match.skipped ? '0.5' : '1'};">
+          <div class="batch-review-item" style="opacity: ${match.skipped ? "0.5" : "1"};">
             <div>
-              <div style="font-size:0.8rem; color:var(--muted); margin-bottom:4px;">Input: <strong>${match.input}</strong></div>
+              <div style="font-size:0.8rem; color:var(--muted); margin-bottom:4px;">Input: <strong>${escapeHtml(match.input)}</strong></div>
               <div style="display:flex; align-items:center; gap:8px;">
-                <span class="badge ${isDup ? 'downloaded' : (info.level==='high' ? 'found' : 'watching')}">${isDup ? 'Duplicate' : info.label}</span>
-                <strong>${title}</strong>
+                <span class="badge ${isDup ? "downloaded" : info.level === "high" ? "found" : "watching"}">${isDup ? "Duplicate" : escapeHtml(info.label)}</span>
+                <strong>${escapeHtml(title)}</strong>
               </div>
             </div>
             <div class="batch-review-actions">
               <select data-batch-select="${i}" style="width:150px; height:32px; font-size:0.8rem; padding:0 8px;" ${match.results.length ? "" : "disabled"}>${options}</select>
-              <button class="btn" data-batch-skip="${i}" style="height:32px; padding:0 12px; font-size:0.8rem;">${match.skipped ? 'Include' : 'Skip'}</button>
+              <button class="btn" data-batch-skip="${i}" style="height:32px; padding:0 12px; font-size:0.8rem;">${match.skipped ? "Include" : "Skip"}</button>
             </div>
           </div>
         `;
@@ -1305,9 +1805,11 @@
         sel.addEventListener("change", () => {
           const match = pendingBatchMatches[Number(sel.dataset.batchSelect)];
           match.selectedId = sel.value ? Number(sel.value) : null;
-          match.skipped = !match.selectedId; renderBatchReview();
+          match.skipped = !match.selectedId;
+          renderBatchReview();
         });
       });
+
       els.batchReviewList.querySelectorAll("[data-batch-skip]").forEach(btn => {
         btn.addEventListener("click", () => {
           const match = pendingBatchMatches[Number(btn.dataset.batchSkip)];
@@ -1321,167 +1823,193 @@
     async function confirmBatchImport() {
       const matches = getAddableBatchMatches();
       if (!matches.length) return;
-      
-      els.batchConfirmBtn.disabled = true; els.batchConfirmBtn.textContent = "Adding...";
+
+      els.batchConfirmBtn.disabled = true;
+      els.batchConfirmBtn.textContent = "Adding...";
       setStatus(`Adding 0/${matches.length}...`);
+
       let added = 0;
 
       for (let i = 0; i < matches.length; i++) {
         const { media } = matches[i];
+
         setStatus(`Adding ${i + 1}/${matches.length}...`);
+
         if (!isMediaOnBoard(media)) {
           const show = makeShowFromMedia(media);
           state.shows.unshift(show);
+
           await refreshShowStatus(show, { forceMove: true });
+          prependShowToOrder(show.id, getShowBoard(show));
+
           added++;
-          render(); saveState();
+
+          render();
+          saveState();
+
           await sleep(1000); 
         }
       }
-      
-      setStatus("System Ready"); els.batchConfirmBtn.disabled = false; els.batchConfirmBtn.textContent = "Add Selected";
+
+      setStatus("System Ready");
+      els.batchConfirmBtn.disabled = false;
+      els.batchConfirmBtn.textContent = "Add Selected";
+
       toast(`Successfully added ${added} shows!`);
-      els.batchInput.value = ""; clearBatchReview();
+      els.batchInput.value = "";
+      clearBatchReview();
     }
 
-    function clearBatchReview() { pendingBatchMatches = []; renderBatchReview(); setStatus("System Ready"); }
-
-    function groupShows(shows) {
-      const map = new Map(); const res = [];
-      shows.forEach(s => {
-        const f = (s.franchise||"").trim();
-        if(!f) res.push({isGroup:false, name:null, shows:[s]});
-        else {
-          const k = f.toLowerCase();
-          if(!map.has(k)) { const g = {isGroup:true, name:f, shows:[]}; map.set(k,g); res.push(g); }
-          map.get(k).shows.push(s);
-        }
-      });
-      return res;
+    function clearBatchReview() {
+      pendingBatchMatches = [];
+      renderBatchReview();
+      setStatus("System Ready");
     }
 
     function render() {
+      reconcileOrders();
+
       let visible = state.shows;
+
       if (state.localSearch) {
         const q = state.localSearch.toLowerCase();
-        visible = visible.filter(s => s.title.toLowerCase().includes(q) || (s.franchise||"").toLowerCase().includes(q));
-      }
-      const found = visible.filter(s => s.board === "found" && !s.downloaded);
-      const watching = visible.filter(s => s.board === "watching" && !s.downloaded);
-      
-      const dl = visible
-        .filter(s => (s.downloaded || s.board === "downloaded") && (!state.ui.filterComplete || s.allAvailableDownloaded))
-        .sort((a, b) => {
-          const nameA = a.franchise || a.title;
-          const nameB = b.franchise || b.title;
-          return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+
+        visible = visible.filter(s => {
+          return [
+            s.title,
+            s.titleEnglish,
+            s.titleRomaji,
+            s.format,
+            s.seasonYear,
+            s.comments
+          ].some(value => String(value || "").toLowerCase().includes(q));
         });
+      }
+
+      const found = visible.filter(s => getShowBoard(s) === "found");
+      const watching = visible.filter(s => getShowBoard(s) === "watching");
+      const dl = visible.filter(s => getShowBoard(s) === "downloaded" && (!state.ui.filterComplete || s.allAvailableDownloaded));
+
+      updateSortModeButton();
 
       renderBoard("found", found, els.foundList, els.foundCount);
       renderBoard("watching", watching, els.watchingList, els.watchingCount);
       renderBoard("downloaded", dl, els.downloadedList, els.downloadedCount);
     }
 
+    function syncBoardDividerButton(board, countEl) {
+      const header = countEl.closest(".board-header");
+      if (!header) return;
+
+      let btn = header.querySelector(`[data-add-divider-board="${board}"]`);
+
+      if (!btn) {
+        btn = document.createElement("button");
+        btn.className = "action-btn board-divider-add-btn";
+        btn.type = "button";
+        btn.textContent = "+";
+        btn.title = "Add divider";
+        btn.setAttribute("data-add-divider-board", board);
+        header.appendChild(btn);
+      }
+
+      btn.hidden = !(state.ui.sortMode && !state.localSearch);
+      btn.disabled = !!state.localSearch;
+    }
+
     function renderBoard(type, shows, listEl, countEl) {
       countEl.textContent = shows.length;
-      if (!shows.length) { listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`; return; }
+      syncBoardDividerButton(type, countEl);
 
-      const groups = groupShows(shows);
-      listEl.innerHTML = groups.map(g => {
-        if(!g.isGroup && g.shows.length === 1) return renderCard(g.shows[0]);
-        const isC = state.ui.collapsedFranchises[g.name];
-        
-        const allCompleted = type === "downloaded" && g.shows.length > 0 && g.shows.every(s => s.allAvailableDownloaded);
-        const completeTick = allCompleted ? `<span style="color: var(--brand); margin-left: 8px; font-size: 1.1rem; line-height: 1;" title="All shows in franchise completed">✓</span>` : '';
-        
-        const safeName = g.name.replace(/"/g, '&quot;');
+      if (!shows.length) {
+        listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
+        return;
+      }
 
-        if (isC) {
-          const firstCover = g.shows[0]?.coverImage || '';
-          const showCount = g.shows.length;
-          const isDlSection = type === "downloaded";
-          
-          return `
-            <article class="show-card ${isDlSection ? 'is-downloaded' : ''}" data-toggle-franchise="${safeName}" style="cursor: pointer;">
-              <div class="card-main">
-                <div class="franchise-toggle-btn" style="pointer-events: none; margin: 0;">›</div>
-                <img src="${firstCover}" class="thumb" alt="${safeName} collection" loading="lazy"/>
-                <div class="card-content">
-                  <div class="card-title" style="display: flex; align-items: center;">${safeName} ${completeTick}</div>
-                  <div class="card-meta">
-                    <span>${showCount} show${showCount > 1 ? 's' : ''}</span>
-                    <span class="badge" style="background: var(--surface-softer); color: var(--muted);">Collection</span>
-                  </div>
-                  <div class="card-checked-time">Click to expand</div>
-                </div>
-              </div>
-            </article>
-          `;
-        }
+      const items = getOrderedBoardItems(type, shows);
 
-        return `
-          <div class="franchise-group">
-            <div class="franchise-header-row" data-toggle-franchise="${safeName}" style="cursor: pointer;">
-              <div class="franchise-toggle-btn" style="pointer-events: none;">⌄</div>
-              <span class="franchise-header-title">${safeName}${completeTick}</span>
-            </div>
-            <div class="franchise-cards">${g.shows.map(renderCard).join('')}</div>
-          </div>
-        `;
+      listEl.innerHTML = items.map(item => {
+        if (isDividerItem(item)) return renderDivider(item, type);
+        return renderCard(item);
       }).join("");
+    }
+
+    function renderDivider(divider, board) {
+      const canEdit = state.ui.sortMode && !state.localSearch;
+
+      return `
+        <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}">
+          ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="Remove divider">×</button>` : ""}
+        </div>
+      `;
     }
 
     function renderCard(show) {
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
 
-      const isDl = show.downloaded || show.board === "downloaded";
+      const board = getShowBoard(show);
+      const isDl = board === "downloaded";
       const isNotes = state.ui.openNotes[show.id];
+      const sortControlsActive = state.ui.sortMode && !state.localSearch;
+
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
-      const titleHtml = link ? `<a href="${link}" target="_blank" class="show-link">${show.title}</a>` : show.title;
-      const safeTitle = show.title.replace(/"/g, '&quot;');
-      
+      const titleHtml = link
+        ? `<a href="${escapeAttr(link)}" target="_blank" class="show-link">${escapeHtml(show.title)}</a>`
+        : escapeHtml(show.title);
+
+      const safeTitle = escapeAttr(show.title);
+      const cover = escapeAttr(show.coverImage);
+
       let badge = "";
 
       if (isDl) {
         badge = show.releasesMoe?.updateAvailable
           ? '<span class="badge update">Updated</span>'
-          : '';
+          : "";
       } else {
         badge = show.releasesMoe?.found
           ? '<span class="badge found">Found</span>'
           : '<span class="badge watching">Watching</span>';
       }
-      
+
+      const moveControls = sortControlsActive ? `
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${canMoveShow(show.id, board, "up") ? "" : "disabled"}>▲</button>
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${canMoveShow(show.id, board, "down") ? "" : "disabled"}>▼</button>
+      ` : "";
+
       return `
-        <article class="show-card ${isNotes?'notes-open':''} ${isDl?'is-downloaded':''}">
+        <article class="show-card ${sortControlsActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}">
           <div class="card-main">
-            
-            <input type="checkbox" class="download-check" data-download-id="${show.id}" ${isDl?'checked':''} title="Mark Downloaded" />
-            
-            ${link ? `<a href="${link}" target="_blank" class="thumb-link"><img src="${show.coverImage}" class="thumb" alt="${safeTitle}" loading="lazy"/></a>` : `<img src="${show.coverImage}" class="thumb" alt="${safeTitle}" loading="lazy"/>`}
-            
+
+            <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDl ? "checked" : ""} title="Mark Downloaded" />
+
+            ${link
+              ? `<a href="${escapeAttr(link)}" target="_blank" class="thumb-link"><img src="${cover}" class="thumb" alt="${safeTitle}" loading="lazy"/></a>`
+              : `<img src="${cover}" class="thumb" alt="${safeTitle}" loading="lazy"/>`
+            }
+
             <div class="card-content">
               <div class="card-title">${titleHtml}</div>
               <div class="card-meta">
-                <span>${[show.format, show.seasonYear].filter(Boolean).join(" · ") || 'Anime'}</span>
+                <span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>
                 ${badge}
               </div>
               <div class="card-checked-time">Checked: ${formatTimeAgo(show.releasesMoe?.checkedAt)}</div>
             </div>
-            
+
             <div class="card-actions-wrapper">
-              ${show.releasesMoe?.updateAvailable ? `<button class="action-btn active" data-ack-id="${show.id}" title="Acknowledge Update">✓</button>` : ''}
-              ${isDl ? `<button class="action-btn ${show.allAvailableDownloaded ? 'active' : ''}" data-complete-id="${show.id}" title="Toggle Complete Status">✓</button>` : ''}
-              <button class="action-btn" data-refresh-id="${show.id}" title="Refresh API">↻</button>
-              <button class="action-btn ${isNotes?'active':''}" data-notes-id="${show.id}" title="Edit Info">✎</button>
-              <button class="action-btn danger" data-remove-id="${show.id}" title="Remove">×</button>
+              ${moveControls}
+              ${show.releasesMoe?.updateAvailable ? `<button class="action-btn active" data-ack-id="${escapeAttr(show.id)}" title="Acknowledge Update">✓</button>` : ""}
+              ${isDl ? `<button class="action-btn ${show.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(show.id)}" title="Toggle Complete Status">✓</button>` : ""}
+              <button class="action-btn" data-refresh-id="${escapeAttr(show.id)}" title="Refresh API">↻</button>
+              <button class="action-btn ${isNotes ? "active" : ""}" data-notes-id="${escapeAttr(show.id)}" title="Edit Notes">✎</button>
+              <button class="action-btn danger" data-remove-id="${escapeAttr(show.id)}" title="Remove">×</button>
             </div>
 
           </div>
-          
+
           <div class="notes-panel">
-            <input type="text" class="franchise-input" data-franchise-id="${show.id}" placeholder="Franchise / Group Name" value="${show.franchise||''}" />
-            <textarea data-comment-id="${show.id}" placeholder="Notes...">${show.comments||''}</textarea>
+            <textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea>
           </div>
         </article>
       `;
@@ -1489,62 +2017,101 @@
 
     function formatTimeAgo(value) {
       if (!value) return "Never";
+
       const diff = (Date.now() - new Date(value).getTime()) / 1000;
+
       if (diff < 60) return "Just now";
       if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
       if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+
       return `${Math.floor(diff / 86400)}d ago`;
     }
 
-    // Now safely triggers cloud sync natively with every save
     function saveState() { 
+      reconcileOrders();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
       queueCloudSync(state);
     }
-    
+
     function loadState() {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw) {
+
+      if (raw) {
         const d = JSON.parse(raw);
-        state.shows = d.shows || [];
-        state.ui = d.ui || { filterComplete: false, openNotes: {}, collapsedFranchises: {} };
-        state.shows.forEach(show => {
-          show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-        });
-        els.filterCompleteBtn.style.background = state.ui.filterComplete ? 'var(--brand)' : 'var(--surface-softer)';
-        els.filterCompleteBtn.style.color = state.ui.filterComplete ? '#000' : 'var(--text)';
+        applyLoadedState(d);
+      } else {
+        reconcileOrders();
+        updateFilterCompleteButton();
+        updateSortModeButton();
       }
     }
 
     function exportJson() {
+      reconcileOrders();
+
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], {type: "application/json"}));
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
       a.download = "anilist-releases-board.json";
-      a.click(); toast("Exported");
+      a.click();
+
+      toast("Exported");
     }
+
     async function importJson(e) {
-      const f = e.target.files?.[0]; if(!f) return;
+      const f = e.target.files?.[0];
+      if (!f) return;
+
       try {
-        const text = await f.text(); const d = JSON.parse(text);
-        state.shows = Array.isArray(d) ? d : (d.shows || []);
-        state.shows.forEach(show => {
-          show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-        });
-        render(); saveState(); toast("Imported successfully");
-      } catch(err) { toast("Import failed", "error"); }
-    }
-    function clearBoard() { if(confirm("Nuke everything?")) { state.shows = []; render(); saveState(); toast("Board cleared"); } }
-    
-    function toast(msg, type="") {
-      const t = document.createElement("div"); t.className = `toast ${type}`; t.textContent = msg;
-      els.toastArea.append(t); setTimeout(() => t.remove(), 3000);
-    }
-    function closeResults() { els.results.classList.remove("open"); }
-    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+        const text = await f.text();
+        const d = JSON.parse(text);
 
-    // Start the app
+        applyLoadedState(d);
+
+        render();
+        saveState();
+        toast("Imported successfully");
+      } catch(err) {
+        toast("Import failed", "error");
+      } finally {
+        e.target.value = "";
+      }
+    }
+
+    function clearBoard() {
+      if (confirm("Nuke everything?")) {
+        state.shows = [];
+        state.order = makeDefaultOrder();
+        state.ui.openNotes = {};
+
+        render();
+        saveState();
+        toast("Board cleared");
+      }
+    }
+
+    function toast(msg, type = "") {
+      const t = document.createElement("div");
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+
+      els.toastArea.append(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    function closeResults() {
+      els.results.classList.remove("open");
+    }
+
+    function debounce(fn, ms) {
+      let t;
+
+      return (...a) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...a), ms);
+      };
+    }
+
     init();
-
   </script>
 </body>
 </html>
