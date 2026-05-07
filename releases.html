@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -204,6 +205,10 @@
       flex-direction: column;
     }
 
+    .show-card.collapsed-item {
+      display: none !important;
+    }
+
     .show-card.is-downloaded {
       opacity: 1;
       filter: none;
@@ -378,6 +383,31 @@
       min-height: 36px;
       margin: 16px 0 8px;
       padding: 4px 0;
+    }
+
+    .divider-collapse-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s ease;
+      margin-right: 2px;
+    }
+
+    .divider-collapse-btn:hover {
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    .divider-collapse-btn.is-collapsed {
+      transform: rotate(-90deg);
     }
 
     .divider-name-input {
@@ -953,7 +983,7 @@
           }
 
           if (isDividerItem(item) && !seenDividers.has(item.id)) {
-            next.push({ type: "divider", id: item.id, name: item.name || "" });
+            next.push({ type: "divider", id: item.id, name: item.name || "", collapsed: !!item.collapsed });
             seenDividers.add(item.id);
           }
         }
@@ -1115,7 +1145,7 @@
       if (!BOARDS.includes(board)) return;
 
       ensureOrderState();
-      state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}`, name: "New Group" });
+      state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}`, name: "New Group", collapsed: false });
       markBoardManual(board, true);
 
       render();
@@ -1133,6 +1163,18 @@
 
       render();
       saveState();
+    }
+    
+    function toggleCollapseDivider(board, dividerId) {
+      if (!BOARDS.includes(board)) return;
+      ensureOrderState();
+      
+      const item = state.order[board].find(i => isDividerItem(i) && i.id === dividerId);
+      if (item) {
+        item.collapsed = !item.collapsed;
+        render();
+        saveState();
+      }
     }
 
     function getSavedShows(data) {
@@ -1494,7 +1536,7 @@
     }
 
     async function getAniListMediaById(id) {
-      const query = `query($id: Int){ Media(id: $id, type: ANIME){ id title{ romaji english native } coverImage{ medium large } format seasonYear episodes siteUrl } }`;
+      const query = `query($id: Int){ Media(id: $id, type: ANIME){ id title{ romaji english native } coverImage{ medium large } format seasonYear episodes siteUrl } } }`;
       const json = await safeAniListRequest(query, { id: Number(id) });
       return json?.data?.Media ?? null;
     }
@@ -1559,6 +1601,12 @@
       const removeDividerBtn = e.target.closest("[data-remove-divider]");
       if (removeDividerBtn) {
         removeDivider(removeDividerBtn.dataset.board, removeDividerBtn.dataset.removeDivider);
+        return;
+      }
+
+      const collapseDivBtn = e.target.closest("[data-collapse-divider]");
+      if (collapseDivBtn) {
+        toggleCollapseDivider(collapseDivBtn.dataset.board, collapseDivBtn.dataset.collapseDivider);
         return;
       }
 
@@ -2416,10 +2464,15 @@
       }
 
       const items = getOrderedBoardItems(type, shows);
+      const isSearching = !!state.localSearch;
+      let isCurrentlyCollapsed = false;
 
       listEl.innerHTML = items.map(item => {
-        if (isDividerItem(item)) return renderDivider(item, type);
-        return renderCard(item);
+        if (isDividerItem(item)) {
+          isCurrentlyCollapsed = !isSearching && !!item.collapsed;
+          return renderDivider(item, type);
+        }
+        return renderCard(item, isCurrentlyCollapsed);
       }).join("");
     }
 
@@ -2427,16 +2480,20 @@
       const canEdit = state.ui.sortMode && !state.localSearch;
       const canDrag = canDragOrderItems();
       const name = divider.name || "";
+      const isCollapsed = !!divider.collapsed;
 
       const moveControls = canEdit ? `
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(!canMoveItem(divider.id, board, "up")) ? "disabled" : ""}>▲</button>
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(!canMoveItem(divider.id, board, "down")) ? "disabled" : ""}>▼</button>
       ` : "";
 
+      const collapseBtn = `<button class="divider-collapse-btn ${isCollapsed ? "is-collapsed" : ""}" data-collapse-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="${isCollapsed ? "Expand" : "Collapse"}">▼</button>`;
+      
       const inputEl = `<input type="text" class="divider-name-input" data-divider-name-id="${escapeAttr(divider.id)}" value="${escapeAttr(name)}" placeholder="New Group" ${!canEdit ? "readonly tabindex='-1'" : ""} />`;
 
       return `
         <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-order-item-id="${escapeAttr(divider.id)}" data-order-item-type="divider" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
+          ${collapseBtn}
           ${inputEl}
           <div class="divider-line"></div>
           ${moveControls}
@@ -2445,7 +2502,7 @@
       `;
     }
 
-    function renderCard(show) {
+    function renderCard(show, isHidden = false) {
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
 
       const board = getShowBoard(show);
@@ -2481,7 +2538,7 @@
       ` : "";
 
       return `
-        <article class="show-card ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
+        <article class="show-card ${isHidden ? "collapsed-item" : ""} ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
           <div class="card-main">
 
             <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDl ? "checked" : ""} title="Mark Downloaded" />
