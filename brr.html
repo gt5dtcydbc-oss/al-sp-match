@@ -360,7 +360,6 @@
 
     let lastJikanRequestAt = 0;
 
-    // Allow Extended Latin Characters (like é, ä, ô) through the ASCII check
     const isEnglishFriendly = (value) => /^[\x00-\xFF]*$/.test(String(value || ''));
     
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -418,11 +417,10 @@
         els.clearCacheBtn.disabled = disabled;
     }
 
-    // BASE FOLDER: Used strictly for matching/comparing Jikan to AniList
     function foldCommonCharacters(value) {
         return String(value)
             .normalize('NFKD')
-            .replace(/[\u0300-\u036f]/g, '') // Deletes accents entirely for matching
+            .replace(/[\u0300-\u036f]/g, '')
             .replace(/[×✕✖]/g, ' x ')
             .replace(/&/g, ' and ')
             .replace(/\+/g, ' plus ')
@@ -430,10 +428,9 @@
             .replace(/[‐‑‒–—―]/g, '-');
     }
 
-    // WILDCARD FOLDER: Used strictly for AutoBrr generation (The Gap Method)
     function foldForWildcard(value) {
         return String(value)
-            .normalize('NFC') // Forces diacritics to merge into a single character
+            .normalize('NFC')
             .replace(/[×✕✖]/g, ' x ')
             .replace(/&/g, ' and ')
             .replace(/\+/g, ' plus ')
@@ -441,14 +438,12 @@
             .replace(/[‐‑‒–—―]/g, '-');
     }
 
-    // BASE TOKENS: For scoring and comparison
     function titleTokens(value) {
         return foldCommonCharacters(value)
             .toLowerCase()
             .match(/[a-z0-9]+/g) || [];
     }
 
-    // WILDCARD TOKENS: Drops special chars to create natural * gaps
     function wildcardTokens(value) {
         return foldForWildcard(value)
             .toLowerCase()
@@ -458,12 +453,10 @@
     function toWildcardPattern(title) {
         const tokens = wildcardTokens(title);
         if (!tokens.length) return '';
-        // Safely join with * and remove any accidental double stars (**)
         return tokens.join('*').replace(/\*+/g, '*');
     }
 
     function addPattern(patterns, rawPattern) {
-        // Prevent accidental double stars (**) during trim/format
         const pattern = String(rawPattern || '').trim().replace(/\*+/g, '*');
         if (!pattern) return;
 
@@ -472,7 +465,6 @@
 
         if (compactLength === 0) return;
 
-        // BUMPED TO 3: Prevents 3-letter acronyms like "NGO" from becoming overly broad wildcards
         if (compactLength <= 3 && !containsWildcard) {
             patterns.add(pattern);
             return;
@@ -480,7 +472,6 @@
 
         if (compactLength <= 3) return;
         
-        // Final cleanup just in case leading/trailing stars created duplicates
         patterns.add(`*${pattern}*`.replace(/\*+/g, '*'));
     }
 
@@ -562,11 +553,13 @@
         const match =
             folded.match(/\b(?:season|part|cour)\s*0*(\d+)\b/i) ||
             folded.match(/\b0*(\d+)(?:st|nd|rd|th)\s+(?:season|part|cour)\b/i) ||
-            folded.match(/\bs0*(\d+)\b/i);
+            folded.match(/\bs0*(\d+)\b/i) ||
+            folded.match(/\s+0*(\d+)$/); // NEW: Catches trailing numbers like "Title 4"
 
         if (!match) return null;
 
         const n = Number(match[1]);
+        // Avoid destroying names like Mob Psycho 100 or 86
         if (!Number.isInteger(n) || n < 1 || n > 99) return null;
 
         const rootTitle = stripTrailingSeparators(
@@ -574,6 +567,7 @@
                 .replace(/\b(?:season|part|cour)\s*0*\d+\b/ig, '')
                 .replace(/\b0*\d+(?:st|nd|rd|th)\s+(?:season|part|cour)\b/ig, '')
                 .replace(/\bs0*\d+\b/ig, '')
+                .replace(/\s+0*\d+$/g, '') // Strips the trailing number
         );
 
         if (!rootTitle) return null;
@@ -591,6 +585,7 @@
         const roman = romanNumeral(n);
 
         const variants = new Set([
+            rootTitle, // This is the Base Fallback we were missing!
             `${rootTitle} ${n}`,
             `${rootTitle} ${ordinal} season`,
             `${rootTitle} season ${n}`,
@@ -638,18 +633,16 @@
         const subtitleVariants = new Set();
         subtitleVariants.add(original);
 
-        // 1. Colon/Dash Chop: Drop extremely long subtitles after a colon or dash
+        // 1. Colon/Dash Chop
         const parts = original.split(/[:\-~]/);
         if (parts.length > 1) {
             const prefix = parts[0].trim();
-            // Prevents dropping the second half of short titles like "Re:Zero" or "86 - Eighty Six"
             if (prefix.length >= 5) {
                 subtitleVariants.add(prefix);
             }
         }
 
-        // 2. Post-Season Chop: Drop fluff that appears AFTER the season number
-        // e.g. "Classroom of the Elite 4th Season Second Year First Semester" -> "Classroom of the Elite 4th Season"
+        // 2. Post-Season Chop
         const seasonMatch = original.match(/^(.*?(?:season|part|cour)\s*\d+)\b/i) || 
                             original.match(/^(.*?\d+(?:st|nd|rd|th)\s+(?:season|part|cour))\b/i);
         if (seasonMatch) {
