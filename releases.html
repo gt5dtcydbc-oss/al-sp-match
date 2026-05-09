@@ -2481,6 +2481,12 @@
 
       let controls = header.querySelector(`[data-board-sort-actions="${board}"]`);
 
+      // ONLY show sorting/dividers on the downloaded (Library) board
+      if (board !== "downloaded") {
+        if (controls) controls.remove();
+        return;
+      }
+
       if (!controls) {
         controls = document.createElement("div");
         controls.className = "board-sort-actions";
@@ -2554,9 +2560,10 @@
       const board = getShowBoard(show);
       const isDl = board === "downloaded";
       const isNotes = state.ui.openNotes[show.id];
-      const sortModeActive = !!state.ui.sortMode;
+      // Only allow sort mode UI if Edit Order is clicked AND this is the Library board
+      const sortModeActive = !!state.ui.sortMode && isDl;
       const sortControlsDisabled = !!state.localSearch;
-      const canDrag = canDragOrderItems();
+      const canDrag = canDragOrderItems() && isDl;
 
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
       const titleHtml = link
@@ -2578,11 +2585,25 @@
           : '<span class="badge watching">Watching</span>';
       }
 
-      const moveControls = sortModeActive ? `
-        <button class="action-btn sort-move-btn" data-send-top-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" title="Send to Ungrouped (Top)" ${sortControlsDisabled ? "disabled" : ""}>⤒</button>
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveItem(show.id, board, "up")) ? "disabled" : ""}>▲</button>
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveItem(show.id, board, "down")) ? "disabled" : ""}>▼</button>
-      ` : "";
+      let actionsHtml = "";
+
+      // If in edit order mode, hide normal buttons and strictly show Top/Up/Down.
+      if (sortModeActive) {
+        actionsHtml = `
+          <button class="action-btn sort-move-btn" data-send-top-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" title="Send to Ungrouped (Top)" ${sortControlsDisabled ? "disabled" : ""}>⤒</button>
+          <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveItem(show.id, board, "up")) ? "disabled" : ""}>▲</button>
+          <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveItem(show.id, board, "down")) ? "disabled" : ""}>▼</button>
+        `;
+      } else {
+        // Normal mode: Standard card buttons
+        actionsHtml = `
+          ${show.releasesMoe?.updateAvailable ? `<button class="action-btn active" data-ack-id="${escapeAttr(show.id)}" title="Acknowledge Update">✓</button>` : ""}
+          ${isDl ? `<button class="action-btn ${show.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(show.id)}" title="Toggle Complete Status">✓</button>` : ""}
+          <button class="action-btn" data-refresh-id="${escapeAttr(show.id)}" title="Refresh API">↻</button>
+          <button class="action-btn ${isNotes ? "active" : ""}" data-notes-id="${escapeAttr(show.id)}" title="Edit Notes">✎</button>
+          <button class="action-btn danger" data-remove-id="${escapeAttr(show.id)}" title="Remove">×</button>
+        `;
+      }
 
       return `
         <article class="show-card ${isHidden ? "collapsed-item" : ""} ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
@@ -2605,12 +2626,7 @@
             </div>
 
             <div class="card-actions-wrapper">
-              ${moveControls}
-              ${show.releasesMoe?.updateAvailable ? `<button class="action-btn active" data-ack-id="${escapeAttr(show.id)}" title="Acknowledge Update">✓</button>` : ""}
-              ${isDl ? `<button class="action-btn ${show.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(show.id)}" title="Toggle Complete Status">✓</button>` : ""}
-              <button class="action-btn" data-refresh-id="${escapeAttr(show.id)}" title="Refresh API">↻</button>
-              <button class="action-btn ${isNotes ? "active" : ""}" data-notes-id="${escapeAttr(show.id)}" title="Edit Notes">✎</button>
-              <button class="action-btn danger" data-remove-id="${escapeAttr(show.id)}" title="Remove">×</button>
+              ${actionsHtml}
             </div>
 
           </div>
