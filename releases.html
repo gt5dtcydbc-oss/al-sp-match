@@ -633,21 +633,37 @@
       if (!state.groups) state.groups = [];
       if (!state.groupOrder) state.groupOrder = {};
       const seenShows = new Set();
-      
+
+      // 1. DATA RESCUE: Free shows from invalid or mismatched groups
+      state.shows.forEach(show => {
+        if (show.groupId) {
+          const group = getGroupById(show.groupId);
+          if (!group || group.board !== getShowBoard(show)) {
+            show.groupId = null;
+          }
+        }
+      });
+
+      // 2. Clean Group Orders
       Object.keys(state.groupOrder).forEach(gId => {
-        if (!Array.isArray(state.groupOrder[gId])) state.groupOrder[gId] = []; // Crash safety
-        state.groupOrder[gId] = state.groupOrder[gId].filter(sId => !!getShowById(sId));
+        if (!Array.isArray(state.groupOrder[gId])) state.groupOrder[gId] = [];
+        state.groupOrder[gId] = state.groupOrder[gId].filter(sId => {
+           const s = getShowById(sId);
+           return s && s.groupId === gId; // Only keep strictly assigned shows
+        });
         state.groupOrder[gId].forEach(sId => seenShows.add(sId));
       });
       
+      // 3. Clean Board Orders
       BOARDS.forEach(board => {
         if (!state.order[board]) state.order[board] = [];
         const nextOrder = [];
         
+        // Keep existing valid board items
         state.order[board].forEach(id => {
           const show = getShowById(id);
           if (show) {
-            if (getShowBoard(show) === board && !seenShows.has(id)) { 
+            if (getShowBoard(show) === board && !show.groupId && !seenShows.has(id)) { 
               nextOrder.push(id); 
               seenShows.add(id); 
             }
@@ -659,9 +675,9 @@
           }
         });
         
+        // Scoop up any rescued or missing items safely
         state.shows.forEach(show => {
-          if (getShowBoard(show) === board && !seenShows.has(show.id)) {
-             show.groupId = null; 
+          if (getShowBoard(show) === board && !show.groupId && !seenShows.has(show.id)) {
              nextOrder.unshift(show.id); 
              seenShows.add(show.id);
           }
@@ -815,24 +831,13 @@
 
     function removeGroup(groupId) {
       if (state.localSearch || !state.ui.sortMode) return;
-      
       const group = getGroupById(groupId); 
       if (!group) return;
       
-      const board = group.board; 
-      const items = state.groupOrder[groupId] || [];
-      
-      items.forEach(itemId => { 
-        const show = getShowById(itemId); 
-        if (show) show.groupId = null; 
+      // Just free the shows. The reconcile engine will catch them and put them on the board cleanly.
+      state.shows.forEach(s => {
+        if (s.groupId === groupId) s.groupId = null;
       });
-      
-      const idx = state.order[board].indexOf(groupId);
-      if (idx !== -1) {
-        state.order[board].splice(idx, 1, ...items);
-      } else {
-        state.order[board].push(...items);
-      }
       
       state.groups = state.groups.filter(g => g.id !== groupId); 
       delete state.groupOrder[groupId];
@@ -1232,18 +1237,16 @@
       }
     }
 
-       // --- MAGIC WAND LOGIC ---
+    // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
-      // 1. CLEAR all library groups first to destroy the broken/ghost IDs
       state.groups = state.groups.filter(g => g.board !== "downloaded");
       state.shows.forEach(s => {
         if (getShowBoard(s) === "downloaded") s.groupId = null;
       });
       reconcileOrders();
 
-      // 2. Query relation data ONLY for shows we haven't checked before
       const idsToSync = state.shows
-        .filter(s => !s.relationsFetched) // <-- THE API SAVER
+        .filter(s => !s.relationsFetched)
         .map(s => Number(s.anilistId));
       
       if (idsToSync.length > 0) {
@@ -1263,11 +1266,10 @@
                 show.relations = m.relations.edges
                   .filter(e => strongTypes.includes(e.relationType))
                   .map(e => Number(e.node.id));
-                show.relationsFetched = true; // Cache it!
+                show.relationsFetched = true; 
               }
             });
 
-            // Mark all requested IDs as fetched so we don't retry failed/empty ones endlessly
             state.shows.forEach(s => {
                if (chunk.includes(Number(s.anilistId))) {
                  s.relationsFetched = true; 
@@ -1288,7 +1290,6 @@
       setStatus("Organizing folders...");
       let families = [];
 
-      // Step 1: Map out the global family trees using ALL shows (so missing seasons don't break the chain)
       state.shows.forEach(show => {
         const myFamilyIds = new Set([Number(show.anilistId), ...(show.relations || []).map(Number)]);
         
@@ -1315,7 +1316,6 @@
         }
       });
 
-      // Step 2: ONLY put shows into folders if they are in the Library ("downloaded")
       families.forEach(familyIds => {
         const showsInFamilyInLibrary = state.shows.filter(s => 
           familyIds.has(Number(s.anilistId)) && getShowBoard(s) === "downloaded"
@@ -1731,11 +1731,17 @@
     }
 
     async function checkWatchingStatuses() {
-      const watching = state.shows.filter(s => getShowBoard(s) === "watching" && !s.downloaded); 
-      if (!watching.length) return;
+      const now = Date.now();
+      const watchingToCheck = state.shows.filter(s => {
+        if (getShowBoard(s) !== "watching" || s.downloaded) return false;
+        const lastChecked = Date.parse(s.releasesMoe?.checkedAt || null) || 0;
+        return (now - lastChecked) > 12 * 60 * 60 * 1000;
+      }); 
+
+      if (!watchingToCheck.length) return;
       
-      setStatus(`Checking ${watching.length} watching entries...`, "sync");
-      for (const s of watching) { 
+      setStatus(`Checking ${watchingToCheck.length} watching entries...`, "sync");
+      for (const s of watchingToCheck) { 
         await refreshShowStatus(s, { forceMove: true }); 
         await sleep(400); 
       }
@@ -2186,7 +2192,6 @@
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" title="Move down" ${!canMoveItem(group.id, 'group', 'down') ? 'disabled' : ''}>▼</button>
       ` : "";
 
-      // We forcibly style the wrapper when canEdit is true to guarantee the delete button shows up.
       const wrapperStyle = canEdit ? 'opacity: 1; pointer-events: auto; transform: translateY(-50%) translateX(0);' : '';
       
       return `
