@@ -421,6 +421,7 @@
               <span class="dot"></span> <span id="statusText">System Ready</span>
             </div>
             <div class="toolbar-actions">
+              <button class="btn" id="smartGroupBtn" type="button" title="Auto-group series by franchise">🪄 Smart Group</button>
               <button class="btn" id="exportBtn" type="button">Export JSON</button>
               <input class="file-input" id="importFile" type="file" accept=".json" />
               <button class="btn" id="importBtn" type="button">Import</button>
@@ -505,6 +506,7 @@
       importFile: document.querySelector("#importFile"),
       clearBtn: document.querySelector("#clearBtn"), 
       editOrderBtn: document.querySelector("#editOrderBtn"),
+      smartGroupBtn: document.querySelector("#smartGroupBtn"),
       githubPat: document.querySelector("#githubPat"), 
       gistId: document.querySelector("#gistId"), 
       syncNowBtn: document.querySelector("#syncNowBtn"),
@@ -1018,6 +1020,8 @@
         render(); 
         saveState(); 
       });
+
+      els.smartGroupBtn.addEventListener("click", runSmartGrouping);
       
       els.searchBtn.addEventListener("click", () => runSearch()); 
       els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
@@ -1196,6 +1200,130 @@
         setStatus("Error", "error"); 
       }
     }
+
+    // --- MAGIC WAND LOGIC ---
+    async function runSmartGrouping() {
+      const idsToSync = state.shows.filter(s => !s.relations || s.relations.length === 0).map(s => s.anilistId);
+      
+      if (idsToSync.length > 0) {
+        setStatus(`Filtering Family Trees for ${idsToSync.length} shows...`, "sync");
+        
+        for (let i = 0; i < idsToSync.length; i += 50) {
+          const chunk = idsToSync.slice(i, i + 50);
+          
+          try {
+            const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{node{id}relationType}}}}}`;
+            const json = await safeAniListRequest(query, { ids: chunk });
+            
+            json.data.Page.media.forEach(m => {
+              const show = state.shows.find(s => s.anilistId == m.id);
+              if (show) {
+                // WHITELIST: Only bridge shows that are narratively connected
+                const strongTypes = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ADAPTATION', 'ALTERNATIVE'];
+                
+                show.relations = m.relations.edges
+                  .filter(e => strongTypes.includes(e.relationType))
+                  .map(e => e.node.id);
+              }
+            });
+            await sleep(500);
+          } catch(e) {
+            toast("Sync interrupted, but continuing.", "error");
+            break;
+          }
+        }
+      }
+      performLocalClustering();
+    }
+
+    function performLocalClustering() {
+      setStatus("Organizing folders...");
+      
+      // 1. Create a list of "Families" (Sets of related IDs)
+      let families = [];
+
+      state.shows.forEach(show => {
+        const myFamilyIds = new Set([show.anilistId, ...(show.relations || [])]);
+        
+        // Check if this show belongs to any existing family
+        let foundFamilyIndexes = [];
+        families.forEach((family, index) => {
+          if ([...myFamilyIds].some(id => family.has(id))) {
+            foundFamilyIndexes.push(index);
+          }
+        });
+
+        if (foundFamilyIndexes.length > 0) {
+          // Merge this show and all matching families into the first one found
+          const firstIndex = foundFamilyIndexes[0];
+          myFamilyIds.forEach(id => families[firstIndex].add(id));
+          
+          // If the show bridged two previously separate families, merge them all
+          if (foundFamilyIndexes.length > 1) {
+            for (let i = 1; i < foundFamilyIndexes.length; i++) {
+              const otherIdx = foundFamilyIndexes[i];
+              families[otherIdx].forEach(id => families[firstIndex].add(id));
+            }
+            // Remove the merged families (from back to front)
+            foundFamilyIndexes.slice(1).reverse().forEach(idx => families.splice(idx, 1));
+          }
+        } else {
+          families.push(myFamilyIds);
+        }
+      });
+
+      // 2. Process families that have 2+ shows on your board
+      families.forEach(familyIds => {
+        const showsInFamily = state.shows.filter(s => familyIds.has(s.anilistId));
+        
+        if (showsInFamily.length > 1) {
+          // Identify if a group already exists for this family
+          let groupId = showsInFamily.find(s => s.groupId)?.groupId;
+
+          if (!groupId) {
+            // Find the chronologically oldest show to name the folder
+            const oldest = [...showsInFamily].sort((a,b) => (a.seasonYear||0) - (b.seasonYear||0))[0];
+            const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); // Smart trim
+
+            const newGroupId = `grp_${crypto.randomUUID()}`;
+            state.groups.push({ id: newGroupId, name: baseTitle, collapsed: false, board: "downloaded" });
+            state.groupOrder[newGroupId] = [];
+            state.order.downloaded.unshift(newGroupId);
+            groupId = newGroupId;
+          }
+
+          // Move all family members into the folder
+          showsInFamily.forEach(s => {
+            if (s.groupId !== groupId) {
+              s.groupId = groupId;
+              // Remove from root boards
+              BOARDS.forEach(b => {
+                const idx = state.order[b].indexOf(s.id);
+                if (idx > -1) state.order[b].splice(idx, 1);
+              });
+              // Add to folder if not already there
+              if (!state.groupOrder[groupId].includes(s.id)) {
+                state.groupOrder[groupId].push(s.id);
+              }
+            }
+          });
+
+          // 3. Chronological Auto-Sort inside the folder
+          state.groupOrder[groupId].sort((aId, bId) => {
+            const a = getShowById(aId);
+            const b = getShowById(bId);
+            // Sort by Year, then by ID (as a proxy for release order)
+            return (a.seasonYear || 0) - (b.seasonYear || 0) || (a.anilistId - b.anilistId);
+          });
+        }
+      });
+
+      render();
+      saveState();
+      setStatus("System Ready");
+      toast("Dashboard perfectly organized!");
+    }
+    // ----------------------
 
     async function handleBoardClick(e) {
       const sortAzBtn = e.target.closest("[data-sort-az-board]"); 
@@ -1495,6 +1623,7 @@
         allAvailableDownloaded: false, 
         comments: "", 
         groupId: null,
+        relations: [], // ADDED for Magic Wand
         releasesMoe: getDefaultReleasesMoeState(), 
         createdAt: new Date().toISOString(), 
         updatedAt: new Date().toISOString()
@@ -2018,7 +2147,6 @@
       const canDrag = canDragOrderItems(); 
       const isCollapsed = !!group.collapsed;
       
-      // FIX: Look at the exact order the user set, and grab the first ID
       const orderedIds = state.groupOrder[group.id] || [];
       const firstShow = orderedIds.length > 0 ? getShowById(orderedIds[0]) : null;
       
