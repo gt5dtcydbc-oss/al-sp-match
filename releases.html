@@ -231,6 +231,7 @@
       transform: rotate(-90deg); 
     }
 
+    /* Fixed jumping bug - margin and padding stay consistent regardless of readonly state */
     .divider-name-input {
       background: transparent; 
       border: none; 
@@ -257,21 +258,12 @@
     
     .divider-name-input[readonly] { 
       pointer-events: none; 
-      padding-left: 0; 
-      margin-left: 0; 
     }
 
     .board-sort-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .board-sort-actions[hidden] { display: none !important; }
     .board-sort-btn { height: 32px; padding: 0 12px; border-radius: 99px; font-size: 0.78rem; touch-action: manipulation; white-space: nowrap; }
     .sort-move-btn { touch-action: manipulation; }
-
-    .show-card.sort-mode[draggable="true"], .group-container[draggable="true"] .group-header { cursor: grab; }
-    .show-card.sort-mode[draggable="true"]:active, .group-container[draggable="true"] .group-header:active { cursor: grabbing; }
-
-    .show-card.is-dragging, .group-container.is-dragging { opacity: 0.45; transform: scale(0.99); }
-    .show-card.drag-over-before, .group-container.drag-over-before { box-shadow: 0 -3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4); }
-    .show-card.drag-over-after, .group-container.drag-over-after { box-shadow: 0 3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4); }
 
     #editOrderBtn.active { background: var(--brand); color: #000; border-color: transparent; }
 
@@ -325,6 +317,11 @@
     .toast.error { border-color: rgba(255, 123, 115, 0.4); color: var(--danger); }
 
     .empty { padding: 48px 24px; text-align: center; color: var(--muted-2); background: rgba(255, 255, 255, 0.02); border-radius: 24px; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.05); }
+
+    /* Smooth toggle for settings */
+    #toggleSettingsBtn { width: 100%; border-style: dashed; background: transparent; color: var(--muted); margin-top: 16px; transition: all 0.2s; }
+    #toggleSettingsBtn:hover { border-color: var(--brand); color: var(--text); background: rgba(139, 150, 255, 0.05); }
+    #toggleSettingsBtn.open { border-color: var(--brand); color: var(--brand); border-style: solid; background: rgba(139, 150, 255, 0.1); margin-bottom: 16px; }
 
     @media (max-width: 800px) {
       .active-boards { grid-template-columns: 1fr; }
@@ -396,6 +393,8 @@
           <header class="board-header" style="margin-bottom: 24px;">
             <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
             <div class="library-filter-actions">
+              <!-- Edit Order is now cleanly positioned here! -->
+              <button class="btn" id="editOrderBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem; font-weight: 800;" type="button">✎ Edit Order</button>
               <button class="btn" id="filterCompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">Toggle Completed</button>
               <button class="btn" id="filterIncompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">Toggle Incomplete</button>
             </div>
@@ -415,7 +414,10 @@
           <div class="results" id="results"></div>
         </div>
 
-        <div class="settings-card">
+        <!-- The new clean Settings Toggle -->
+        <button id="toggleSettingsBtn" class="btn" type="button">⚙️ Advanced Settings</button>
+
+        <div class="settings-card" id="settingsPanel" style="display: none;">
           <div class="toolbar">
             <div class="status-indicator">
               <span class="dot"></span> <span id="statusText">System Ready</span>
@@ -425,7 +427,6 @@
               <button class="btn" id="exportBtn" type="button">Export JSON</button>
               <input class="file-input" id="importFile" type="file" accept=".json" />
               <button class="btn" id="importBtn" type="button">Import</button>
-              <button class="btn" id="editOrderBtn" type="button">Edit Order</button>
               <button class="btn danger" id="clearBtn" type="button">Clear Board</button>
             </div>
           </div>
@@ -501,6 +502,8 @@
       boardSearchInput: document.querySelector("#boardSearchInput"),
       searchBtn: document.querySelector("#searchBtn"), 
       results: document.querySelector("#results"),
+      toggleSettingsBtn: document.querySelector("#toggleSettingsBtn"),
+      settingsPanel: document.querySelector("#settingsPanel"),
       exportBtn: document.querySelector("#exportBtn"), 
       importBtn: document.querySelector("#importBtn"), 
       importFile: document.querySelector("#importFile"),
@@ -634,7 +637,6 @@
       if (!state.groupOrder) state.groupOrder = {};
       const seenShows = new Set();
 
-      // 1. DATA RESCUE: Free shows from invalid or mismatched groups
       state.shows.forEach(show => {
         if (show.groupId) {
           const group = getGroupById(show.groupId);
@@ -644,22 +646,19 @@
         }
       });
 
-      // 2. Clean Group Orders
       Object.keys(state.groupOrder).forEach(gId => {
         if (!Array.isArray(state.groupOrder[gId])) state.groupOrder[gId] = [];
         state.groupOrder[gId] = state.groupOrder[gId].filter(sId => {
            const s = getShowById(sId);
-           return s && s.groupId === gId; // Only keep strictly assigned shows
+           return s && s.groupId === gId; 
         });
         state.groupOrder[gId].forEach(sId => seenShows.add(sId));
       });
       
-      // 3. Clean Board Orders
       BOARDS.forEach(board => {
         if (!state.order[board]) state.order[board] = [];
         const nextOrder = [];
         
-        // Keep existing valid board items
         state.order[board].forEach(id => {
           const show = getShowById(id);
           if (show) {
@@ -675,7 +674,6 @@
           }
         });
         
-        // Scoop up any rescued or missing items safely
         state.shows.forEach(show => {
           if (getShowBoard(show) === board && !show.groupId && !seenShows.has(show.id)) {
              nextOrder.unshift(show.id); 
@@ -834,7 +832,6 @@
       const group = getGroupById(groupId); 
       if (!group) return;
       
-      // Just free the shows. The reconcile engine will catch them and put them on the board cleanly.
       state.shows.forEach(s => {
         if (s.groupId === groupId) s.groupId = null;
       });
@@ -1044,6 +1041,13 @@
           document.getElementById(tab.dataset.target).classList.add("active");
           els.boardSearchInput.placeholder = tab.dataset.target === "view-downloaded" ? "Search library..." : "Filter active shows...";
         });
+      });
+
+      // Settings Toggle
+      els.toggleSettingsBtn.addEventListener("click", () => {
+        const isHidden = els.settingsPanel.style.display === "none";
+        els.settingsPanel.style.display = isHidden ? "block" : "none";
+        els.toggleSettingsBtn.classList.toggle("open", isHidden);
       });
 
       els.editOrderBtn.addEventListener("click", () => { 
