@@ -2017,10 +2017,14 @@
       const canEdit = state.ui.sortMode && !state.localSearch; 
       const canDrag = canDragOrderItems(); 
       const isCollapsed = !!group.collapsed;
-      const firstShow = groupShows[0];
+      
+      // FIX: Look at the exact order the user set, and grab the first ID
+      const orderedIds = state.groupOrder[group.id] || [];
+      const firstShow = orderedIds.length > 0 ? getShowById(orderedIds[0]) : null;
+      
       const cover = firstShow ? escapeAttr(firstShow.coverImage) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
 
-      const itemsHtml = (state.groupOrder[group.id] || []).map(id => groupShows.find(s => s.id === id)).filter(Boolean).map(show => renderCard(show)).join("");
+      const itemsHtml = orderedIds.map(id => groupShows.find(s => s.id === id)).filter(Boolean).map(show => renderCard(show)).join("");
         
       const moveControls = canEdit ? `
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" title="Move up" ${!canMoveItem(group.id, 'group', 'up') ? 'disabled' : ''}>▲</button>
