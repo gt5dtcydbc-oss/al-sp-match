@@ -635,6 +635,7 @@
       const seenShows = new Set();
       
       Object.keys(state.groupOrder).forEach(gId => {
+        if (!Array.isArray(state.groupOrder[gId])) state.groupOrder[gId] = []; // Crash safety
         state.groupOrder[gId] = state.groupOrder[gId].filter(sId => !!getShowById(sId));
         state.groupOrder[gId].forEach(sId => seenShows.add(sId));
       });
@@ -920,7 +921,8 @@
       try {
         const res = await fetch(`https://api.github.com/gists/${gistId}`, { 
           method: "GET", 
-          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` } 
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` },
+          signal: timeoutSignal(10000) // 10-second crash-prevention timeout
         });
         
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -958,28 +960,51 @@
     }
 
     async function init() {
-      loadSyncSettings();
-      if (els.githubPat.value.trim() && els.gistId.value.trim()) {
-        const cloudState = await pullFromCloud(); 
-        const localRaw = localStorage.getItem(STORAGE_KEY); 
-        const localState = localRaw ? JSON.parse(localRaw) : null;
-        
-        if (cloudState && getSavedShows(cloudState).length > 0) { 
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState)); 
-          toast("Cloud sync complete."); 
-        } else if (localState && getSavedShows(localState).length > 0) { 
-          pushToCloud(localState); 
-          toast("Pushed local board to empty cloud."); 
+      try {
+        loadSyncSettings();
+        if (els.githubPat.value.trim() && els.gistId.value.trim()) {
+          const cloudState = await pullFromCloud(); 
+          const localRaw = localStorage.getItem(STORAGE_KEY); 
+          let localState = null;
+          try { localState = localRaw ? JSON.parse(localRaw) : null; } catch(e) { console.warn("Local cache corrupt, ignoring."); }
+          
+          if (cloudState && getSavedShows(cloudState).length > 0) { 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState)); 
+            toast("Cloud sync complete."); 
+          } else if (localState && getSavedShows(localState).length > 0) { 
+            pushToCloud(localState); 
+            toast("Pushed local board to empty cloud."); 
+          }
         }
+        
+        loadState(); 
+        bindEvents(); 
+        render(); 
+        setStatus("System Ready", "ready");
+        
+        await checkWatchingStatuses(); 
+        await checkLibraryUpdates(10);
+      } catch(error) {
+        console.error("Dashboard Boot Crash:", error);
+        setStatus("System Ready", "ready");
+        toast("Recovered from background error.", "error");
+      }
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      let parsed = null;
+      if (raw) {
+        try { parsed = JSON.parse(raw); } catch (e) { console.error("Corrupted local storage."); }
       }
       
-      loadState(); 
-      bindEvents(); 
-      render(); 
-      setStatus("System Ready", "ready");
-      
-      await checkWatchingStatuses(); 
-      await checkLibraryUpdates(10);
+      if (parsed) {
+        applyLoadedState(parsed);
+      } else {
+        reconcileOrders();
+        updateLibraryFilterButtons();
+        updateSortModeButton();
+      }
     }
 
     function updateSortModeButton() { 
@@ -1075,26 +1100,30 @@
       els.gistId.addEventListener("blur", saveSyncSettings);
 
       els.syncNowBtn.addEventListener("click", async () => {
-        els.syncNowBtn.disabled = true; 
-        els.syncNowBtn.textContent = "Syncing...";
-        
-        const cloudState = await pullFromCloud();
-        
-        if (cloudState && getSavedShows(cloudState).length > 0) { 
-          applyLoadedState(cloudState); 
-          saveState(); 
-          render(); 
-          toast("Force pull complete."); 
-        } else if (state.shows && state.shows.length > 0) { 
-          pushToCloud(state); 
-          toast("Force push complete."); 
-        } else { 
-          toast("Both cloud and local are empty.", "error"); 
-          setStatus("System Ready", "ready"); 
+        try {
+          els.syncNowBtn.disabled = true; 
+          els.syncNowBtn.textContent = "Syncing...";
+          
+          const cloudState = await pullFromCloud();
+          
+          if (cloudState && getSavedShows(cloudState).length > 0) { 
+            applyLoadedState(cloudState); 
+            saveState(); 
+            render(); 
+            toast("Force pull complete."); 
+          } else if (state.shows && state.shows.length > 0) { 
+            pushToCloud(state); 
+            toast("Force push complete."); 
+          } else { 
+            toast("Both cloud and local are empty.", "error"); 
+            setStatus("System Ready", "ready"); 
+          }
+        } catch(e) {
+          setStatus("System Ready", "ready");
+        } finally {
+          els.syncNowBtn.disabled = false; 
+          els.syncNowBtn.textContent = "Pull & Sync";
         }
-        
-        els.syncNowBtn.disabled = false; 
-        els.syncNowBtn.textContent = "Pull & Sync";
       });
 
       els.batchImportBtn.addEventListener("click", prepareBatchReview); 
@@ -1203,7 +1232,6 @@
 
     // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
-      // We grab all ungrouped shows to guarantee a fresh, bug-free sync
       const ungroupedShows = state.shows.filter(s => !s.groupId);
       const idsToSync = ungroupedShows.map(s => Number(s.anilistId));
       
@@ -1220,9 +1248,7 @@
             json.data.Page.media.forEach(m => {
               const show = state.shows.find(s => Number(s.anilistId) === m.id);
               if (show) {
-                // FIX 1: Removed 'ALTERNATIVE' and 'SPIN_OFF' to stop Gundam/Fate massive webs
                 const strongTypes = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'ADAPTATION'];
-                
                 show.relations = m.relations.edges
                   .filter(e => strongTypes.includes(e.relationType))
                   .map(e => Number(e.node.id));
@@ -1243,7 +1269,6 @@
       let families = [];
 
       state.shows.forEach(show => {
-        // FIX 2: Forced Number() conversion fixes the "String vs Number" bug for older shows
         const myFamilyIds = new Set([Number(show.anilistId), ...(show.relations || []).map(Number)]);
         
         let foundFamilyIndexes = [];
@@ -1293,17 +1318,21 @@
                 const idx = state.order[b].indexOf(s.id);
                 if (idx > -1) state.order[b].splice(idx, 1);
               });
+              
+              if (!Array.isArray(state.groupOrder[groupId])) state.groupOrder[groupId] = [];
               if (!state.groupOrder[groupId].includes(s.id)) {
                 state.groupOrder[groupId].push(s.id);
               }
             }
           });
 
-          state.groupOrder[groupId].sort((aId, bId) => {
-            const a = getShowById(aId);
-            const b = getShowById(bId);
-            return (a.seasonYear || 0) - (b.seasonYear || 0) || (Number(a.anilistId) - Number(b.anilistId));
-          });
+          if (Array.isArray(state.groupOrder[groupId])) {
+            state.groupOrder[groupId].sort((aId, bId) => {
+              const a = getShowById(aId);
+              const b = getShowById(bId);
+              return (a.seasonYear || 0) - (b.seasonYear || 0) || (Number(a.anilistId) - Number(b.anilistId));
+            });
+          }
         }
       });
 
@@ -2233,8 +2262,13 @@
     
     function loadState() { 
       const raw = localStorage.getItem(STORAGE_KEY); 
+      let parsed = null;
       if (raw) {
-        applyLoadedState(JSON.parse(raw)); 
+        try { parsed = JSON.parse(raw); } catch (e) { console.error("Corrupted local storage."); }
+      }
+      
+      if (parsed) {
+        applyLoadedState(parsed);
       } else { 
         reconcileOrders(); 
         updateLibraryFilterButtons(); 
