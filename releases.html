@@ -191,7 +191,14 @@
       border-color: transparent;
     }
 
-    .board-list { display: grid; gap: 12px; }
+    .board-list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
+    
+    .board-list.drag-over-empty, .group-list.drag-over-empty {
+      outline: 2px dashed rgba(139, 150, 255, 0.45);
+      outline-offset: -2px;
+      border-radius: var(--radius);
+      background: rgba(139, 150, 255, 0.05);
+    }
 
     .show-card {
       position: relative;
@@ -202,10 +209,6 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-    }
-
-    .show-card.collapsed-item {
-      display: none !important;
     }
 
     .show-card.is-downloaded {
@@ -374,14 +377,38 @@
     textarea:focus, select:focus, .search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
     textarea { min-height: 80px; resize: vertical; margin-top: 8px; }
 
-    /* --- Divider Styles --- */
-    .board-divider {
+    /* --- Nested Group Styles --- */
+    .group-container {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .group-header {
       display: flex;
       align-items: center;
       gap: 8px;
       min-height: 36px;
-      margin: 16px 0 8px;
-      padding: 4px 0;
+    }
+
+    .group-list {
+      display: grid;
+      gap: 12px;
+      min-height: 32px;
+      padding: 12px 0 12px 16px;
+      border-left: 2px solid var(--line);
+      margin-left: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .group-list.is-collapsed {
+      display: none;
     }
 
     .divider-collapse-btn {
@@ -400,14 +427,8 @@
       margin-right: 2px;
     }
 
-    .divider-collapse-btn:hover {
-      background: var(--surface-soft);
-      color: var(--text);
-    }
-
-    .divider-collapse-btn.is-collapsed {
-      transform: rotate(-90deg);
-    }
+    .divider-collapse-btn:hover { background: var(--surface-soft); color: var(--text); }
+    .divider-collapse-btn.is-collapsed { transform: rotate(-90deg); }
 
     .divider-name-input {
       background: transparent;
@@ -425,18 +446,9 @@
       box-shadow: none !important; 
     }
 
-    .divider-name-input:focus, .divider-name-input:not([readonly]):hover {
-      background: var(--surface-soft);
-    }
-
-    .divider-name-input:focus {
-      border-color: transparent !important;
-    }
-
-    .divider-name-input[readonly] {
-      pointer-events: none; /* Let clicks pass through to drag */
-      padding-left: 0;
-    }
+    .divider-name-input:focus, .divider-name-input:not([readonly]):hover { background: var(--surface-soft); }
+    .divider-name-input:focus { border-color: transparent !important; }
+    .divider-name-input[readonly] { pointer-events: none; padding-left: 0; }
 
     .divider-line {
       flex: 1;
@@ -465,45 +477,26 @@
       white-space: nowrap;
     }
 
-    .sort-move-btn {
-      touch-action: manipulation;
-    }
+    .sort-move-btn { touch-action: manipulation; }
 
     .show-card.sort-mode[draggable="true"],
-    .board-divider[draggable="true"] {
+    .group-container[draggable="true"] .group-header {
       cursor: grab;
     }
 
     .show-card.sort-mode[draggable="true"]:active,
-    .board-divider[draggable="true"]:active {
+    .group-container[draggable="true"] .group-header:active {
       cursor: grabbing;
     }
 
     .show-card.is-dragging,
-    .board-divider.is-dragging {
+    .group-container.is-dragging {
       opacity: 0.45;
       transform: scale(0.99);
     }
 
-    .show-card.drag-over-before,
-    .board-divider.drag-over-before {
-      box-shadow: 0 -3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .show-card.drag-over-after,
-    .board-divider.drag-over-after {
-      box-shadow: 0 3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .board-list.drag-over-empty {
-      outline: 1px dashed rgba(139, 150, 255, 0.45);
-      outline-offset: 6px;
-      border-radius: var(--radius);
-    }
-
-    #downloadedList .board-divider {
-      grid-column: 1 / -1;
-    }
+    .show-card.drag-over-before, .group-container.drag-over-before { box-shadow: 0 -3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4); }
+    .show-card.drag-over-after, .group-container.drag-over-after { box-shadow: 0 3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4); }
 
     #editOrderBtn.active {
       background: var(--brand);
@@ -609,37 +602,16 @@
         background: transparent;
         box-shadow: none; 
       }
-      .show-card.sort-mode .card-actions-wrapper {
-        transform: none;
-      }
+      .show-card.sort-mode .card-actions-wrapper { transform: none; }
 
-      .board-sort-actions {
-        width: 100%;
-        margin-left: 0;
-        justify-content: flex-end;
-      }
-
-      .board-sort-btn {
-        height: 40px;
-        padding: 0 14px;
-      }
-
-      .sort-move-btn {
-        width: 40px;
-        height: 40px;
-      }
+      .board-sort-actions { width: 100%; margin-left: 0; justify-content: flex-end; }
+      .board-sort-btn { height: 40px; padding: 0 14px; }
+      .sort-move-btn { width: 40px; height: 40px; }
       .notes-panel { padding-left: 16px; }
       .toolbar-actions { flex-direction: column; width: 100%; align-items: stretch; }
       .toolbar-actions .danger { margin-left: 0; }
-      .library-filter-actions {
-        width: 100%;
-        justify-content: stretch;
-      }
-
-      .library-filter-actions .btn {
-        flex: 1;
-      }
-
+      .library-filter-actions { width: 100%; justify-content: stretch; }
+      .library-filter-actions .btn { flex: 1; }
       .batch-review-item { grid-template-columns: 1fr; }
       .batch-review-actions { width: 100%; }
       .batch-review-actions select { flex: 1; }
@@ -688,12 +660,8 @@
           <header class="board-header" style="margin-bottom: 24px;">
             <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
             <div class="library-filter-actions">
-              <button class="btn" id="filterCompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">
-                Toggle Completed
-              </button>
-              <button class="btn" id="filterIncompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">
-                Toggle Incomplete
-              </button>
+              <button class="btn" id="filterCompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">Toggle Completed</button>
+              <button class="btn" id="filterIncompleteBtn" style="height: 36px; padding: 0 16px; font-size: 0.85rem;">Toggle Incomplete</button>
             </div>
           </header>
           <div class="active-boards" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));" id="downloadedList"></div>
@@ -771,8 +739,10 @@
 
     const state = {
       shows: [],
+      groups: [],
+      groupOrder: {},
       order: { found: [], watching: [], downloaded: [] },
-      ui: { filterComplete: false, openNotes: {}, sortMode: false, manualOrderBoards: { found: false, watching: false, downloaded: false } },
+      ui: { filterComplete: false, openNotes: {}, sortMode: false },
       localSearch: ""
     };
 
@@ -828,34 +798,12 @@
     };
 
     function escapeHtml(value) {
-      return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+      return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+    function escapeAttr(value) { return escapeHtml(value); }
 
-    function escapeAttr(value) {
-      return escapeHtml(value);
-    }
-
-    function makeDefaultOrder() {
-      return { found: [], watching: [], downloaded: [] };
-    }
-
-    function makeDefaultUi() {
-      return {
-        filterComplete: false,
-        openNotes: {},
-        sortMode: false,
-        manualOrderBoards: { found: false, watching: false, downloaded: false }
-      };
-    }
-
-    function isDividerItem(item) {
-      return !!item && typeof item === "object" && item.type === "divider" && typeof item.id === "string";
-    }
+    function makeDefaultOrder() { return { found: [], watching: [], downloaded: [] }; }
+    function makeDefaultUi() { return { filterComplete: false, openNotes: {}, sortMode: false }; }
 
     function getShowBoard(show) {
       if (!show) return "watching";
@@ -863,96 +811,104 @@
       return show.board === "found" ? "found" : "watching";
     }
 
-    function getShowById(id) {
-      return state.shows.find(show => show.id === id) || null;
-    }
+    function getShowById(id) { return state.shows.find(show => show.id === id) || null; }
+    function getGroupById(id) { return state.groups.find(g => g.id === id) || null; }
 
-    function getShowSortTitle(show) {
-      return String(show?.titleEnglish || show?.titleRomaji || show?.title || "").trim();
+    function getShowSortTitle(show) { return String(show?.titleEnglish || show?.titleRomaji || show?.title || "").trim(); }
+
+    function getSortName(id) {
+       const show = getShowById(id);
+       if (show) return getShowSortTitle(show);
+       const group = getGroupById(id);
+       if (group) return group.name || "";
+       return "";
     }
 
     function compareShowsAZ(a, b) {
-      return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, {
-        sensitivity: "base",
-        numeric: true
+      return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, { sensitivity: "base", numeric: true });
+    }
+
+    function canUseDesktopDrag() { return window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ?? false; }
+    function canDragOrderItems() { return !!state.ui.sortMode && !state.localSearch && canUseDesktopDrag(); }
+
+    function migrateStateIfNeeded() {
+      if (!state.groups) state.groups = [];
+      if (!state.groupOrder) state.groupOrder = {};
+
+      BOARDS.forEach(board => {
+        if (!state.order[board]) state.order[board] = [];
+        const oldOrder = state.order[board];
+        
+        const hasLegacyDividers = oldOrder.some(item => typeof item === 'object' && item.type === 'divider');
+        
+        if (hasLegacyDividers) {
+          const newBoardOrder = [];
+          let currentGroupId = null;
+
+          oldOrder.forEach(item => {
+            if (typeof item === 'object' && item.type === 'divider') {
+              const newGroupId = item.id;
+              state.groups.push({ id: newGroupId, name: item.name, collapsed: !!item.collapsed, board: board });
+              state.groupOrder[newGroupId] = [];
+              newBoardOrder.push(newGroupId);
+              currentGroupId = newGroupId;
+            } else if (typeof item === 'string') {
+              const show = getShowById(item);
+              if (show) {
+                if (currentGroupId) {
+                  show.groupId = currentGroupId;
+                  state.groupOrder[currentGroupId].push(item);
+                } else {
+                  show.groupId = null;
+                  newBoardOrder.push(item);
+                }
+              }
+            }
+          });
+          state.order[board] = newBoardOrder;
+        }
       });
     }
 
-    function sortShowsAZ(shows) {
-      return [...shows].sort(compareShowsAZ);
-    }
-
-    function boardHasDividers(board) {
-      ensureOrderState();
-      return state.order[board].some(isDividerItem);
-    }
-
-    function markBoardManual(board, value = true) {
-      if (!state.ui.manualOrderBoards) {
-        state.ui.manualOrderBoards = { found: false, watching: false, downloaded: false };
-      }
-
-      if (BOARDS.includes(board)) {
-        state.ui.manualOrderBoards[board] = !!value;
-      }
-    }
-
-    function isBoardManual(board) {
-      return !!state.ui.manualOrderBoards?.[board] || boardHasDividers(board);
-    }
-
-    function canUseDesktopDrag() {
-      return window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ?? false;
-    }
-
-    function canDragOrderItems() {
-      return !!state.ui.sortMode && !state.localSearch && canUseDesktopDrag();
-    }
-
-    function getOrderItemId(item) {
-      if (typeof item === "string") return item;
-      if (isDividerItem(item)) return item.id;
-      return null;
-    }
-
-    function findOrderItemIndexById(board, itemId) {
-      ensureOrderState();
-      return state.order[board].findIndex(item => getOrderItemId(item) === itemId);
-    }
-
-    function reorderBoardItem(board, draggedItemId, targetItemId = null, position = "end") {
-      if (!BOARDS.includes(board)) return false;
-
-      reconcileOrders();
-
-      const arr = state.order[board];
-      const fromIndex = findOrderItemIndexById(board, draggedItemId);
-
-      if (fromIndex < 0) return false;
-
-      const [draggedItem] = arr.splice(fromIndex, 1);
-
-      let toIndex = arr.length;
-
-      if (targetItemId) {
-        const targetIndex = findOrderItemIndexById(board, targetItemId);
-
-        if (targetIndex >= 0) {
-          toIndex = position === "after" ? targetIndex + 1 : targetIndex;
-        }
-      }
-
-      arr.splice(toIndex, 0, draggedItem);
-      markBoardManual(board, true);
-
-      return true;
-    }
-
-    function ensureOrderState() {
-      if (!state.order || typeof state.order !== "object") state.order = makeDefaultOrder();
-
+    function reconcileOrders() {
+      if (!state.groups) state.groups = [];
+      if (!state.groupOrder) state.groupOrder = {};
+      
+      const seenShows = new Set();
+      
+      Object.keys(state.groupOrder).forEach(gId => {
+        state.groupOrder[gId] = state.groupOrder[gId].filter(sId => !!getShowById(sId));
+        state.groupOrder[gId].forEach(sId => seenShows.add(sId));
+      });
+      
       BOARDS.forEach(board => {
-        if (!Array.isArray(state.order[board])) state.order[board] = [];
+        if (!state.order[board]) state.order[board] = [];
+        const nextOrder = [];
+        
+        state.order[board].forEach(id => {
+          const show = getShowById(id);
+          if (show) {
+            if (getShowBoard(show) === board && !seenShows.has(id)) {
+              nextOrder.push(id);
+              seenShows.add(id);
+            }
+          } else {
+            const group = getGroupById(id);
+            if (group && group.board === board) {
+              nextOrder.push(id);
+            }
+          }
+        });
+        
+        state.shows.forEach(show => {
+          if (getShowBoard(show) === board && !seenShows.has(show.id)) {
+             show.groupId = null; 
+             nextOrder.unshift(show.id);
+             seenShows.add(show.id);
+          }
+        });
+        
+        state.order[board] = nextOrder;
       });
     }
 
@@ -960,18 +916,16 @@
       const show = getShowById(showId);
       if (!show) return;
 
-      const firstDividerIndex = arr.findIndex(item => isDividerItem(item));
-      const ungroupedEnd = firstDividerIndex !== -1 ? firstDividerIndex : arr.length;
+      const firstGroupIndex = arr.findIndex(id => !!getGroupById(id));
+      const ungroupedEnd = firstGroupIndex !== -1 ? firstGroupIndex : arr.length;
 
       let insertAt = -1;
       for (let i = 0; i < ungroupedEnd; i++) {
-        const item = arr[i];
-        if (typeof item === "string") {
-          const other = getShowById(item);
-          if (other && compareShowsAZ(show, other) < 0) {
-            insertAt = i;
-            break;
-          }
+        const otherId = arr[i];
+        const other = getShowById(otherId);
+        if (other && compareShowsAZ(show, other) < 0) {
+          insertAt = i;
+          break;
         }
       }
 
@@ -982,247 +936,143 @@
       }
     }
 
-    function reconcileOrders() {
+    function moveShowToBoardOrder(showId, previousBoard, nextBoard) {
       ensureOrderState();
+      if (!BOARDS.includes(nextBoard)) return;
 
-      const seenGlobally = new Set();
+      const show = getShowById(showId);
+      if (!show) return;
 
-      BOARDS.forEach(board => {
-        const next = [];
-        const seenShows = new Set();
-        const seenDividers = new Set();
-
-        for (const item of state.order[board]) {
-          if (typeof item === "string") {
-            const show = getShowById(item);
-            if (!show) continue;
-
-            const currentBoard = getShowBoard(show);
-            if (currentBoard !== board) continue;
-            if (seenShows.has(item) || seenGlobally.has(item)) continue;
-
-            next.push(item);
-            seenShows.add(item);
-            seenGlobally.add(item);
-            continue;
-          }
-
-          if (isDividerItem(item) && !seenDividers.has(item.id)) {
-            next.push({ type: "divider", id: item.id, name: item.name || "", collapsed: !!item.collapsed });
-            seenDividers.add(item.id);
-          }
-        }
-
-        const missingShows = [];
-        for (const show of state.shows) {
-          if (getShowBoard(show) !== board) continue;
-          if (seenShows.has(show.id) || seenGlobally.has(show.id)) continue;
-
-          missingShows.push(show.id);
-          seenShows.add(show.id);
-          seenGlobally.add(show.id);
-        }
-
-        for (const showId of missingShows) {
-          insertIntoUngroupedAZ(next, showId);
-        }
-
-        state.order[board] = next;
-      });
-    }
-
-    function removeShowFromOrder(showId) {
-      ensureOrderState();
-
-      BOARDS.forEach(board => {
-        state.order[board] = state.order[board].filter(item => item !== showId);
-      });
-    }
-
-    function insertShowIntoOrderAZ(showId, board) {
-      ensureOrderState();
-      if (!BOARDS.includes(board)) return;
-
-      removeShowFromOrder(showId);
-      insertIntoUngroupedAZ(state.order[board], showId);
-    }
-
-    function prependShowToOrder(showId, board) {
-      ensureOrderState();
-      removeShowFromOrder(showId);
-      state.order[board].unshift(showId);
-    }
-
-    function moveShowToBoardOrder(showId, fromBoard, toBoard, placement = "az") {
-      ensureOrderState();
-
-      if (!BOARDS.includes(toBoard)) return;
-
-      removeShowFromOrder(showId);
-
-      if (placement === "top") {
-        state.order[toBoard].unshift(showId);
-      } else if (placement === "end") {
-        state.order[toBoard].push(showId);
-      } else {
-        insertShowIntoOrderAZ(showId, toBoard);
+      if (previousBoard !== nextBoard) {
+         const srcArr = show.groupId ? state.groupOrder[show.groupId] : state.order[previousBoard];
+         const idx = srcArr.indexOf(showId);
+         if (idx > -1) srcArr.splice(idx, 1);
+         
+         show.groupId = null; 
+         insertIntoUngroupedAZ(state.order[nextBoard], showId);
       }
+    }
+
+    function ensureOrderState() {
+      if (!state.order || typeof state.order !== "object") state.order = makeDefaultOrder();
+      BOARDS.forEach(board => { if (!Array.isArray(state.order[board])) state.order[board] = []; });
     }
 
     function sortBoardAZ(board) {
       if (!BOARDS.includes(board)) return;
       ensureOrderState();
 
-      const arr = state.order[board];
-      const groups = [[]]; 
-      const dividers = [];
-
-      // 1. Separate into Ungrouped and Divider Groups
-      for (const item of arr) {
-        if (isDividerItem(item)) {
-          dividers.push(item);
-          groups.push([]);
-        } else if (typeof item === "string") {
-          groups[groups.length - 1].push(item);
-        }
-      }
-
-      // 2. Sort Ungrouped shows A-Z
-      groups[0].sort((a, b) => {
-        const showA = getShowById(a);
-        const showB = getShowById(b);
-        if (!showA || !showB) return 0;
-        return compareShowsAZ(showA, showB);
-      });
-
-      // 3. Package dividers with their shows (do NOT sort the shows inside)
-      const dividerGroups = [];
-      for (let i = 0; i < dividers.length; i++) {
-        const dShows = groups[i + 1];
-        dividerGroups.push({ divider: dividers[i], shows: dShows });
-      }
-
-      // 4. Sort the groups themselves A-Z based on the Divider name
-      dividerGroups.sort((a, b) => {
-        const nameA = String(a.divider.name || "").trim();
-        const nameB = String(b.divider.name || "").trim();
+      state.order[board].sort((aId, bId) => {
+        const nameA = getSortName(aId);
+        const nameB = getSortName(bId);
         return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
       });
 
-      // 5. Stitch everything back together
-      const newOrder = [...groups[0]];
-      for (const dg of dividerGroups) {
-        newOrder.push(dg.divider);
-        newOrder.push(...dg.shows);
-      }
-
-      state.order[board] = newOrder;
-
       render();
       saveState();
-      toast("Sorted ungrouped and sections A→Z (kept internal group order).");
+      toast("Sorted top-level shows and groups A→Z.");
     }
 
-    function getOrderedBoardItems(board, shows) {
-      ensureOrderState();
-
-      if (!state.ui.sortMode && !isBoardManual(board)) {
-        return sortShowsAZ(shows);
-      }
-
-      const showMap = new Map(shows.map(show => [show.id, show]));
-      const seen = new Set();
-      const items = [];
-      const isSearching = !!state.localSearch;
-
-      for (const item of state.order[board]) {
-        if (typeof item === "string") {
-          const show = showMap.get(item);
-          if (!show || seen.has(item)) continue;
-
-          items.push(show);
-          seen.add(item);
-          continue;
-        }
-
-        if (isDividerItem(item) && !isSearching) {
-          items.push(item);
-        }
-      }
-
-      for (const show of shows) {
-        if (seen.has(show.id)) continue;
-        items.push(show);
-        seen.add(show.id);
-      }
-
-      return items;
+    function swap(arr, id, dir) {
+       const idx = arr.indexOf(id);
+       if (idx < 0) return;
+       const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+       if (targetIdx < 0 || targetIdx >= arr.length) return;
+       [arr[idx], arr[targetIdx]] = [arr[targetIdx], arr[idx]];
     }
 
-    function canMoveItem(itemId, board, direction) {
-      const index = findOrderItemIndexById(board, itemId);
-      
-      if (index < 0) return false;
-      if (direction === "up") return index > 0;
-      if (direction === "down") return index < state.order[board].length - 1;
-      
-      return false;
+    function canMoveItem(id, type, dir) {
+       if (type === 'group') {
+          const group = getGroupById(id);
+          if (!group) return false;
+          const arr = state.order[group.board];
+          const idx = arr.indexOf(id);
+          return dir === 'up' ? idx > 0 : idx < arr.length - 1;
+       } else {
+          const show = getShowById(id);
+          if (!show) return false;
+          const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
+          const idx = arr.indexOf(id);
+          return dir === 'up' ? idx > 0 : idx < arr.length - 1;
+       }
     }
 
-    function moveItem(itemId, board, direction) {
-      if (state.localSearch) return;
-      if (!state.ui.sortMode) return;
-      if (!BOARDS.includes(board)) return;
+    function moveItemUI(itemId, itemType, direction) {
+       if (state.localSearch) return;
+       if (!state.ui.sortMode) return;
 
-      reconcileOrders();
-
-      const index = findOrderItemIndexById(board, itemId);
-      if (index < 0) return;
-
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= state.order[board].length) return;
-
-      const arr = state.order[board];
-      [arr[index], arr[targetIndex]] = [arr[targetIndex], arr[index]];
-      markBoardManual(board, true);
-
-      render();
-      saveState();
+       if (itemType === 'group') {
+          const group = getGroupById(itemId);
+          if(group) swap(state.order[group.board], itemId, direction);
+       } else {
+          const show = getShowById(itemId);
+          if(show) {
+            const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
+            swap(arr, itemId, direction);
+          }
+       }
+       render(); saveState();
     }
 
-    function addDivider(board) {
-      if (state.localSearch) return;
-      if (!state.ui.sortMode) return;
-      if (!BOARDS.includes(board)) return;
-
-      ensureOrderState();
-      state.order[board].unshift({ type: "divider", id: `div_${crypto.randomUUID()}`, name: "New Group", collapsed: false });
-      markBoardManual(board, true);
-
-      render();
-      saveState();
+    function sendShowToTop(showId) {
+       const show = getShowById(showId);
+       if (!show) return;
+       const board = getShowBoard(show);
+       
+       const srcArr = show.groupId ? state.groupOrder[show.groupId] : state.order[board];
+       const idx = srcArr.indexOf(showId);
+       if (idx > -1) srcArr.splice(idx, 1);
+       
+       show.groupId = null;
+       state.order[board].unshift(showId);
+       
+       render(); saveState();
+       toast("Sent to Top");
     }
 
-    function removeDivider(board, dividerId) {
-      if (state.localSearch) return;
-      if (!state.ui.sortMode) return;
-      if (!BOARDS.includes(board)) return;
-
-      ensureOrderState();
-      state.order[board] = state.order[board].filter(item => !(isDividerItem(item) && item.id === dividerId));
-      markBoardManual(board, true);
-
-      render();
-      saveState();
-    }
-    
-    function toggleCollapseDivider(board, dividerId) {
-      if (!BOARDS.includes(board)) return;
+    function addGroup(board) {
+      if (state.localSearch || !state.ui.sortMode || !BOARDS.includes(board)) return;
       ensureOrderState();
       
-      const item = state.order[board].find(i => isDividerItem(i) && i.id === dividerId);
-      if (item) {
-        item.collapsed = !item.collapsed;
+      const newGroupId = `grp_${crypto.randomUUID()}`;
+      state.groups.push({ id: newGroupId, name: "New Group", collapsed: false, board });
+      state.groupOrder[newGroupId] = [];
+      state.order[board].unshift(newGroupId);
+
+      render();
+      saveState();
+    }
+
+    function removeGroup(groupId) {
+      if (state.localSearch || !state.ui.sortMode) return;
+      const group = getGroupById(groupId);
+      if (!group) return;
+      
+      const board = group.board;
+      const items = state.groupOrder[groupId] || [];
+      
+      items.forEach(itemId => {
+        const show = getShowById(itemId);
+        if (show) show.groupId = null;
+      });
+      
+      const idx = state.order[board].indexOf(groupId);
+      if (idx !== -1) {
+        state.order[board].splice(idx, 1, ...items);
+      }
+      
+      state.groups = state.groups.filter(g => g.id !== groupId);
+      delete state.groupOrder[groupId];
+      
+      render();
+      saveState();
+      toast("Group deleted. Shows moved to main board.");
+    }
+
+    function toggleCollapseGroup(groupId) {
+      const group = getGroupById(groupId);
+      if (group) {
+        group.collapsed = !group.collapsed;
         render();
         saveState();
       }
@@ -1234,21 +1084,12 @@
     }
 
     function applyLoadedState(data) {
-      const loadedShows = getSavedShows(data);
-      const loadedUi = !Array.isArray(data) && data?.ui && typeof data.ui === "object" ? data.ui : {};
-      const loadedOrder = !Array.isArray(data) && data?.order && typeof data.order === "object" ? data.order : makeDefaultOrder();
-
-      state.shows = loadedShows;
-      state.ui = {
-        filterComplete: !!loadedUi.filterComplete,
-        openNotes: loadedUi.openNotes || {},
-        sortMode: !!loadedUi.sortMode,
-        manualOrderBoards: {
-          found: !!loadedUi.manualOrderBoards?.found,
-          watching: !!loadedUi.manualOrderBoards?.watching,
-          downloaded: !!loadedUi.manualOrderBoards?.downloaded
-        }
-      };
+      state.shows = getSavedShows(data);
+      state.ui = (!Array.isArray(data) && data?.ui && typeof data.ui === "object") ? data.ui : makeDefaultUi();
+      state.groups = (!Array.isArray(data) && Array.isArray(data.groups)) ? data.groups : [];
+      state.groupOrder = (!Array.isArray(data) && data.groupOrder) ? data.groupOrder : {};
+      
+      const loadedOrder = (!Array.isArray(data) && data?.order && typeof data.order === "object") ? data.order : makeDefaultOrder();
       state.order = {
         found: Array.isArray(loadedOrder.found) ? loadedOrder.found : [],
         watching: Array.isArray(loadedOrder.watching) ? loadedOrder.watching : [],
@@ -1260,27 +1101,17 @@
         if (!show.board) show.board = show.downloaded ? "downloaded" : "watching";
       });
 
+      migrateStateIfNeeded();
       reconcileOrders();
-      BOARDS.forEach(board => {
-        if (boardHasDividers(board)) markBoardManual(board, true);
-      });
       updateLibraryFilterButtons();
       updateSortModeButton();
     }
 
     function setStatus(text, mode = "ready") {
       els.statusText.textContent = text;
-
-      if (mode === "sync") {
-        els.dot.className = "dot syncing";
-        els.statusText.style.color = "var(--brand)";
-      } else if (mode === "error") {
-        els.dot.className = "dot error";
-        els.statusText.style.color = "var(--danger)";
-      } else {
-        els.dot.className = "dot";
-        els.statusText.style.color = "var(--muted)";
-      }
+      if (mode === "sync") { els.dot.className = "dot syncing"; els.statusText.style.color = "var(--brand)"; }
+      else if (mode === "error") { els.dot.className = "dot error"; els.statusText.style.color = "var(--danger)"; }
+      else { els.dot.className = "dot"; els.statusText.style.color = "var(--muted)"; }
     }
 
     function loadSyncSettings() {
@@ -1295,10 +1126,7 @@
     }
 
     function saveSyncSettings() {
-      localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify({
-        githubPat: els.githubPat.value.trim(),
-        gistId: els.gistId.value.trim()
-      }));
+      localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify({ githubPat: els.githubPat.value.trim(), gistId: els.gistId.value.trim() }));
     }
 
     async function pullFromCloud() {
@@ -1307,21 +1135,13 @@
       if (!pat || !gistId) return null;
 
       setStatus("Pulling from cloud...", "sync");
-
       try {
         const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-          method: "GET",
-          headers: {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": `Bearer ${pat}`
-          }
+          method: "GET", headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` }
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
         const data = await res.json();
         const content = data.files["state.json"]?.content;
-
         return content ? JSON.parse(content) : null;
       } catch (e) {
         console.error("Cloud Pull Failed:", e);
@@ -1335,24 +1155,12 @@
       if (!pat || !gistId) return;
 
       setStatus("Pushing to cloud...", "sync");
-
       try {
         await fetch(`https://api.github.com/gists/${gistId}`, {
           method: "PATCH",
-          headers: {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": `Bearer ${pat}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            files: {
-              "state.json": {
-                content: JSON.stringify(stateObject, null, 2)
-              }
-            }
-          })
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } } })
         });
-
         setStatus("System Ready", "ready");
       } catch (e) {
         console.error("Cloud Push Failed:", e);
@@ -1361,7 +1169,6 @@
     }
 
     let cloudSyncTimer;
-
     function queueCloudSync(stateObject) {
       clearTimeout(cloudSyncTimer);
       cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500);
@@ -1369,13 +1176,10 @@
 
     async function init() {
       loadSyncSettings();
-
       if (els.githubPat.value.trim() && els.gistId.value.trim()) {
         const cloudState = await pullFromCloud();
-
         const localRaw = localStorage.getItem(STORAGE_KEY);
         const localState = localRaw ? JSON.parse(localRaw) : null;
-
         if (cloudState && getSavedShows(cloudState).length > 0) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
           toast("Cloud sync complete.");
@@ -1384,29 +1188,18 @@
           toast("Pushed local board to empty cloud.");
         }
       }
-
       loadState();
       bindEvents();
       render();
       setStatus("System Ready", "ready");
-
       await checkWatchingStatuses();
       await checkLibraryUpdates(10);
     }
 
-    function updateSortModeButton() {
-      if (!els.editOrderBtn) return;
-      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode);
-    }
-
+    function updateSortModeButton() { if (els.editOrderBtn) els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode); }
     function updateLibraryFilterButtons() {
-      if (els.filterCompleteBtn) {
-        els.filterCompleteBtn.classList.toggle("active", !!state.ui.filterComplete);
-      }
-
-      if (els.filterIncompleteBtn) {
-        els.filterIncompleteBtn.classList.toggle("active", !!state.ui.filterIncomplete);
-      }
+      if (els.filterCompleteBtn) els.filterCompleteBtn.classList.toggle("active", !!state.ui.filterComplete);
+      if (els.filterIncompleteBtn) els.filterIncompleteBtn.classList.toggle("active", !!state.ui.filterIncomplete);
     }
 
     function libraryFilterAllows(show) {
@@ -1428,39 +1221,18 @@
 
       els.editOrderBtn.addEventListener("click", () => {
         state.ui.sortMode = !state.ui.sortMode;
-
-        if (state.ui.sortMode) {
-          BOARDS.forEach(board => {
-            if (!isBoardManual(board)) {
-              state.order[board] = state.shows
-                .filter(show => getShowBoard(show) === board)
-                .sort(compareShowsAZ)
-                .map(show => show.id);
-            }
-          });
-        }
-
-        updateSortModeButton();
-        render();
-        saveState();
+        updateSortModeButton(); render(); saveState();
       });
 
       els.searchBtn.addEventListener("click", () => runSearch());
       els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
-
       els.searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Escape") closeResults();
         if (e.key === "Enter") runSearch();
       });
 
-      els.boardSearchInput.addEventListener("input", (e) => {
-        state.localSearch = e.target.value.toLowerCase();
-        render();
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!e.target.closest(".search-card")) closeResults();
-      });
+      els.boardSearchInput.addEventListener("input", (e) => { state.localSearch = e.target.value.toLowerCase(); render(); });
+      document.addEventListener("click", (e) => { if (!e.target.closest(".search-card")) closeResults(); });
 
       els.boards.addEventListener("click", handleBoardClick);
       els.boards.addEventListener("change", handleBoardChange);
@@ -1479,19 +1251,13 @@
       els.filterCompleteBtn.addEventListener("click", () => {
         state.ui.filterComplete = !state.ui.filterComplete;
         if (state.ui.filterComplete) state.ui.filterIncomplete = false;
-
-        updateLibraryFilterButtons();
-        render();
-        saveState();
+        updateLibraryFilterButtons(); render(); saveState();
       });
 
       els.filterIncompleteBtn.addEventListener("click", () => {
         state.ui.filterIncomplete = !state.ui.filterIncomplete;
         if (state.ui.filterIncomplete) state.ui.filterComplete = false;
-
-        updateLibraryFilterButtons();
-        render();
-        saveState();
+        updateLibraryFilterButtons(); render(); saveState();
       });
 
       els.githubPat.addEventListener("change", saveSyncSettings);
@@ -1500,84 +1266,49 @@
       els.gistId.addEventListener("blur", saveSyncSettings);
 
       els.syncNowBtn.addEventListener("click", async () => {
-        els.syncNowBtn.disabled = true;
-        els.syncNowBtn.textContent = "Syncing...";
-
+        els.syncNowBtn.disabled = true; els.syncNowBtn.textContent = "Syncing...";
         const cloudState = await pullFromCloud();
-
         if (cloudState && getSavedShows(cloudState).length > 0) {
-          applyLoadedState(cloudState);
-          saveState();
-          render();
-          toast("Force pull complete.");
+          applyLoadedState(cloudState); saveState(); render(); toast("Force pull complete.");
         } else if (state.shows && state.shows.length > 0) {
-          pushToCloud(state);
-          toast("Force push complete.");
+          pushToCloud(state); toast("Force push complete.");
         } else {
-          toast("Both cloud and local are empty.", "error");
-          setStatus("System Ready", "ready");
+          toast("Both cloud and local are empty.", "error"); setStatus("System Ready", "ready");
         }
-
-        els.syncNowBtn.disabled = false;
-        els.syncNowBtn.textContent = "Pull & Sync";
+        els.syncNowBtn.disabled = false; els.syncNowBtn.textContent = "Pull & Sync";
       });
 
       els.batchImportBtn.addEventListener("click", prepareBatchReview);
       els.batchConfirmBtn.addEventListener("click", confirmBatchImport);
       els.batchCancelBtn.addEventListener("click", clearBatchReview);
-
-      els.batchClearBtn.addEventListener("click", () => {
-        els.batchInput.value = "";
-        clearBatchReview();
-      });
+      els.batchClearBtn.addEventListener("click", () => { els.batchInput.value = ""; clearBatchReview(); });
     }
 
     let aniListCooldownUntil = 0;
-
     function timeoutSignal(ms) {
       if (AbortSignal.timeout) return AbortSignal.timeout(ms);
-
       const controller = new AbortController();
       setTimeout(() => controller.abort(), ms);
       return controller.signal;
     }
 
     async function safeAniListRequest(query, variables, retries = 2) {
-      if (Date.now() < aniListCooldownUntil) {
-        await sleep(aniListCooldownUntil - Date.now());
-      }
-
+      if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
       try {
         const response = await fetch(ANILIST_ENDPOINT, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({ query, variables }),
-          signal: timeoutSignal(15000)
+          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ query, variables }), signal: timeoutSignal(15000)
         });
-
         const json = await response.json().catch(() => ({}));
-
         if (response.status === 429) {
           const retryAfter = Number(response.headers.get("Retry-After")) || 60;
           aniListCooldownUntil = Date.now() + retryAfter * 1000;
-
-          if (retries > 0) {
-            await sleep(retryAfter * 1000);
-            return safeAniListRequest(query, variables, retries - 1);
-          }
-
+          if (retries > 0) { await sleep(retryAfter * 1000); return safeAniListRequest(query, variables, retries - 1); }
           throw new Error("AniList rate limit reached.");
         }
-
         if (!response.ok || json.errors) throw new Error("AniList error");
-
         return json;
-      } catch (error) {
-        throw error;
-      }
+      } catch (error) { throw error; }
     }
 
     async function searchAniList(search) {
@@ -1594,22 +1325,12 @@
 
     async function runSearch() {
       const search = els.searchInput.value.trim();
-
-      if (!search) {
-        closeResults();
-        return;
-      }
-
+      if (!search) { closeResults(); return; }
       const requestId = ++searchRequestId;
-
-      setStatus("Searching...");
-      els.results.classList.add("open");
-      els.results.innerHTML = '<div class="empty">Searching...</div>';
-
+      setStatus("Searching..."); els.results.classList.add("open"); els.results.innerHTML = '<div class="empty">Searching...</div>';
       try {
         const res = await searchAniList(search);
         if (requestId !== searchRequestId) return;
-
         els.results.innerHTML = res.length ? res.map(m => `
           <button class="result-item" data-add-id="${m.id}">
             <img class="result-poster" src="${escapeAttr(m.coverImage?.medium || "")}" alt="${escapeAttr(m.title.english || m.title.romaji)}" loading="lazy" />
@@ -1620,357 +1341,256 @@
             <span class="badge ${isMediaOnBoard(m) ? "downloaded" : "found"}">${isMediaOnBoard(m) ? "Added" : "Add"}</span>
           </button>
         `).join("") : '<div class="empty">No results found.</div>';
-
         els.results.querySelectorAll("[data-add-id]").forEach(b => {
-          b.addEventListener("click", () => {
-            const media = res.find(i => i.id == b.dataset.addId);
-            if (media) addShow(media);
-          });
+          b.addEventListener("click", () => { const media = res.find(i => i.id == b.dataset.addId); if (media) addShow(media); });
         });
-
         setStatus("System Ready");
       } catch(e) {
         if (requestId !== searchRequestId) return;
-        els.results.innerHTML = '<div class="empty">Search failed.</div>';
-        setStatus("Error", "error");
+        els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error", "error");
       }
     }
 
     async function handleBoardClick(e) {
       const sortAzBtn = e.target.closest("[data-sort-az-board]");
-      if (sortAzBtn) {
-        sortBoardAZ(sortAzBtn.dataset.sortAzBoard);
-        return;
-      }
+      if (sortAzBtn) { sortBoardAZ(sortAzBtn.dataset.sortAzBoard); return; }
 
-      const addDividerBtn = e.target.closest("[data-add-divider-board]");
-      if (addDividerBtn) {
-        addDivider(addDividerBtn.dataset.addDividerBoard);
-        return;
-      }
+      const addGroupBtn = e.target.closest("[data-add-group-board]");
+      if (addGroupBtn) { addGroup(addGroupBtn.dataset.addGroupBoard); return; }
 
-      const removeDividerBtn = e.target.closest("[data-remove-divider]");
-      if (removeDividerBtn) {
-        removeDivider(removeDividerBtn.dataset.board, removeDividerBtn.dataset.removeDivider);
-        return;
-      }
+      const removeGroupBtn = e.target.closest("[data-remove-group]");
+      if (removeGroupBtn) { removeGroup(removeGroupBtn.dataset.removeGroup); return; }
 
-      const collapseDivBtn = e.target.closest("[data-collapse-divider]");
-      if (collapseDivBtn) {
-        toggleCollapseDivider(collapseDivBtn.dataset.board, collapseDivBtn.dataset.collapseDivider);
-        return;
-      }
+      const collapseGroupBtn = e.target.closest("[data-collapse-group]");
+      if (collapseGroupBtn) { toggleCollapseGroup(collapseGroupBtn.dataset.collapseGroup); return; }
 
       const topBtn = e.target.closest("[data-send-top-id]");
-      if (topBtn) {
-        prependShowToOrder(topBtn.dataset.sendTopId, topBtn.dataset.board);
-        markBoardManual(topBtn.dataset.board, true);
-        render();
-        saveState();
-        toast("Sent to Top");
-        return;
-      }
+      if (topBtn) { sendShowToTop(topBtn.dataset.sendTopId); return; }
 
       const moveBtn = e.target.closest("[data-move-id]");
-      if (moveBtn) {
-        moveItem(moveBtn.dataset.moveId, moveBtn.dataset.board, moveBtn.dataset.direction);
-        return;
-      }
+      if (moveBtn) { moveItemUI(moveBtn.dataset.moveId, moveBtn.dataset.itemType, moveBtn.dataset.direction); return; }
 
       const nBtn = e.target.closest("[data-notes-id]");
-      if (nBtn) {
-        state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId];
-        render();
-        saveState();
-        return;
-      }
+      if (nBtn) { state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId]; render(); saveState(); return; }
 
       const cBtn = e.target.closest("[data-complete-id]");
-      if (cBtn) {
-        toggleAllAvailableDownloaded(cBtn.dataset.completeId);
-        return;
-      }
+      if (cBtn) { toggleAllAvailableDownloaded(cBtn.dataset.completeId); return; }
 
       const rBtn = e.target.closest("[data-remove-id]");
-      if (rBtn) {
-        removeShow(rBtn.dataset.removeId);
-        return;
-      }
+      if (rBtn) { removeShow(rBtn.dataset.removeId); return; }
 
       const aBtn = e.target.closest("[data-ack-id]");
-      if (aBtn) {
-        acknowledgeUpdate(aBtn.dataset.ackId);
-        return;
-      }
+      if (aBtn) { acknowledgeUpdate(aBtn.dataset.ackId); return; }
 
       const refBtn = e.target.closest("[data-refresh-id]");
       if (refBtn) {
-        const show = state.shows.find(s => s.id === refBtn.dataset.refreshId);
+        const show = getShowById(refBtn.dataset.refreshId);
         if (!show) return;
-
-        refBtn.disabled = true;
-        refBtn.classList.add("spinning");
-
+        refBtn.disabled = true; refBtn.classList.add("spinning");
         await refreshShowStatus(show, { forceMove: true });
-
-        render();
-        saveState();
-        toast(`Refreshed ${show.title}`);
+        render(); saveState(); toast(`Refreshed ${show.title}`);
       }
     }
 
     function handleBoardChange(e) {
       const dCheck = e.target.closest("[data-download-id]");
-      if (dCheck) {
-        toggleDownloadedStatus(dCheck.dataset.downloadId, dCheck.checked);
-      }
+      if (dCheck) toggleDownloadedStatus(dCheck.dataset.downloadId, dCheck.checked);
     }
 
     function handleBoardInput(e) {
       const text = e.target.closest("[data-comment-id]");
-      if (text) {
-        queueCommentUpdate(text.dataset.commentId, text.value);
-        return;
-      }
+      if (text) { queueCommentUpdate(text.dataset.commentId, text.value); return; }
 
-      const divName = e.target.closest("[data-divider-name-id]");
+      const divName = e.target.closest("[data-group-name-id]");
       if (divName) {
-        queueDividerNameUpdate(divName.dataset.dividerNameId, divName.value);
-      }
-    }
-
-    function queueDividerNameUpdate(id, val) {
-      let found = false;
-      BOARDS.forEach(board => {
-        const item = state.order[board].find(i => isDividerItem(i) && i.id === id);
-        if (item) {
-          item.name = val;
-          found = true;
+        const id = divName.dataset.groupNameId;
+        const group = getGroupById(id);
+        if (group) {
+          group.name = divName.value;
+          clearTimeout(dividerSaveTimers.get(id));
+          dividerSaveTimers.set(id, setTimeout(saveState, 500));
         }
-      });
-
-      if (found) {
-        clearTimeout(dividerSaveTimers.get(id));
-        dividerSaveTimers.set(id, setTimeout(saveState, 500));
       }
     }
 
     function clearDragIndicators() {
-      if (dragOverTarget) {
-        dragOverTarget.classList.remove("drag-over-before", "drag-over-after");
-        dragOverTarget = null;
-      }
-
-      if (dragOverList) {
-        dragOverList.classList.remove("drag-over-empty");
-        dragOverList = null;
-      }
+      if (dragOverTarget) { dragOverTarget.classList.remove("drag-over-before", "drag-over-after"); dragOverTarget = null; }
+      if (dragOverList) { dragOverList.classList.remove("drag-over-empty"); dragOverList = null; }
     }
 
     function setDragIndicator(target, position, listEl = null) {
-      if (dragOverTarget && dragOverTarget !== target) {
-        dragOverTarget.classList.remove("drag-over-before", "drag-over-after");
-      }
-
-      if (dragOverList && dragOverList !== listEl) {
-        dragOverList.classList.remove("drag-over-empty");
-      }
-
-      dragOverTarget = target || null;
-      dragOverList = listEl || null;
-
+      if (dragOverTarget && dragOverTarget !== target) dragOverTarget.classList.remove("drag-over-before", "drag-over-after");
+      if (dragOverList && dragOverList !== listEl) dragOverList.classList.remove("drag-over-empty");
+      
+      dragOverTarget = target || null; dragOverList = listEl || null;
       if (dragOverTarget) {
         dragOverTarget.classList.toggle("drag-over-before", position === "before");
         dragOverTarget.classList.toggle("drag-over-after", position === "after");
       }
-
-      if (dragOverList) {
-        dragOverList.classList.add("drag-over-empty");
-      }
+      if (dragOverList) dragOverList.classList.add("drag-over-empty");
     }
 
     function getDropPlacement(e, target) {
-      const rect = target.getBoundingClientRect();
-
+      let measureEl = target;
+      if (target.classList.contains('group-container')) measureEl = target.querySelector('.group-header') || target;
+      
+      const rect = measureEl.getBoundingClientRect();
       if (Math.abs(e.clientX - (rect.left + rect.width / 2)) > Math.abs(e.clientY - (rect.top + rect.height / 2))) {
         return e.clientX < rect.left + rect.width / 2 ? "before" : "after";
       }
-
       return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    }
+
+    function getDragTarget(e) {
+      const card = e.target.closest('.show-card');
+      if (card) return card;
+      const header = e.target.closest('.group-header');
+      if (header) return header.closest('.group-container');
+      return null;
     }
 
     function handleBoardDragStart(e) {
       const item = e.target.closest("[data-order-item-id]");
-      if (!item || !canDragOrderItems()) {
-        e.preventDefault();
-        return;
-      }
+      if (!item || !canDragOrderItems() || e.target.closest("button, input, textarea, select, a")) { e.preventDefault(); return; }
 
-      if (e.target.closest("button, input, textarea, select, a")) {
-        e.preventDefault();
-        return;
-      }
-
-      const board = item.dataset.board;
-      const itemId = item.dataset.orderItemId;
-
-      if (!BOARDS.includes(board) || !itemId) {
-        e.preventDefault();
-        return;
-      }
-
+      e.stopPropagation();
       dragState = {
-        board,
-        itemId
+        itemId: item.dataset.orderItemId,
+        itemType: item.dataset.orderItemType,
+        sourceBoard: item.dataset.board,
+        sourceGroup: item.dataset.groupId || null
       };
 
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", itemId);
-
+      e.dataTransfer.setData("text/plain", dragState.itemId);
       window.setTimeout(() => item.classList.add("is-dragging"), 0);
     }
 
     function handleBoardDragOver(e) {
       if (!dragState || !canDragOrderItems()) return;
+      const container = e.target.closest("[data-board-list], [data-group-list-id]");
+      if (!container) return;
 
-      const listEl = e.target.closest("[data-board-list]");
-      if (!listEl) return;
+      e.preventDefault(); e.stopPropagation();
 
-      e.preventDefault();
+      const targetBoard = container.dataset.board;
+      const targetGroup = container.dataset.groupListId || null;
 
-      const board = listEl.dataset.board;
-      if (board !== dragState.board) {
-        e.dataTransfer.dropEffect = "none";
-        clearDragIndicators();
-        return;
+      if (targetBoard !== dragState.sourceBoard || (dragState.itemType === 'group' && targetGroup)) {
+        e.dataTransfer.dropEffect = "none"; clearDragIndicators(); return;
       }
 
       e.dataTransfer.dropEffect = "move";
+      const targetItem = getDragTarget(e);
 
-      const target = e.target.closest("[data-order-item-id]");
-
-      if (!target || target.dataset.board !== dragState.board || target.dataset.orderItemId === dragState.itemId) {
-        setDragIndicator(null, null, listEl);
-        return;
+      if (targetItem) {
+        if (targetItem.dataset.orderItemId === dragState.itemId) { clearDragIndicators(); return; }
+        if (dragState.itemType === 'group' && targetItem.closest(`[data-group-list-id="${dragState.itemId}"]`)) { clearDragIndicators(); return; }
       }
 
-      const placement = getDropPlacement(e, target);
-      setDragIndicator(target, placement);
+      const placement = targetItem ? getDropPlacement(e, targetItem) : "end";
+      setDragIndicator(targetItem, placement, targetItem ? null : container);
     }
 
     function handleBoardDrop(e) {
       if (!dragState || !canDragOrderItems()) return;
+      const container = e.target.closest("[data-board-list], [data-group-list-id]");
+      if (!container) return;
 
-      const listEl = e.target.closest("[data-board-list]");
-      if (!listEl) return;
+      e.preventDefault(); e.stopPropagation();
 
-      e.preventDefault();
+      const targetBoard = container.dataset.board;
+      let targetGroup = container.dataset.groupListId || null;
 
-      const board = listEl.dataset.board;
+      if (targetBoard !== dragState.sourceBoard) { toast("Drag within the same board."); handleBoardDragEnd(); return; }
+      if (dragState.itemType === 'group' && targetGroup) { handleBoardDragEnd(); return; }
 
-      if (board !== dragState.board) {
-        toast("Drag within the same board.");
-        handleBoardDragEnd();
-        return;
+      const targetItem = getDragTarget(e);
+      if (targetItem && targetItem.dataset.orderItemId === dragState.itemId) { handleBoardDragEnd(); return; }
+
+      let placement = 'end';
+      let resolvedTargetItemId = null;
+
+      if (targetItem) {
+        placement = getDropPlacement(e, targetItem);
+        resolvedTargetItemId = targetItem.dataset.orderItemId;
+        if (targetItem.dataset.orderItemType === 'group') targetGroup = null; 
+        else targetGroup = targetItem.dataset.groupId || null;
       }
 
-      const target = e.target.closest("[data-order-item-id]");
-      const targetItemId = target?.dataset?.board === board ? target.dataset.orderItemId : null;
-
-      if (targetItemId === dragState.itemId) {
-        handleBoardDragEnd();
-        return;
-      }
-
-      const placement = target ? getDropPlacement(e, target) : "end";
-      const moved = reorderBoardItem(board, dragState.itemId, targetItemId, placement);
+      const moved = reorderNestedItem(dragState.itemId, dragState.itemType, dragState.sourceBoard, dragState.sourceGroup, targetBoard, targetGroup, resolvedTargetItemId, placement);
 
       handleBoardDragEnd();
+      if (moved) { render(); saveState(); }
+    }
 
-      if (moved) {
-        render();
-        saveState();
+    function reorderNestedItem(dragId, dragType, sourceBoard, sourceGroup, targetBoard, targetGroup, targetItemId, placement) {
+      if (sourceBoard !== targetBoard) return false;
+      
+      const sourceArray = sourceGroup ? state.groupOrder[sourceGroup] : state.order[sourceBoard];
+      const sourceIdx = sourceArray.indexOf(dragId);
+      if (sourceIdx > -1) sourceArray.splice(sourceIdx, 1);
+      
+      if (dragType === 'show') {
+         const show = getShowById(dragId);
+         if (show) show.groupId = targetGroup || null;
       }
+      
+      const targetArray = targetGroup ? state.groupOrder[targetGroup] : state.order[targetBoard];
+      let toIdx = targetArray.length; 
+      
+      if (targetItemId) {
+         const tIdx = targetArray.indexOf(targetItemId);
+         if (tIdx > -1) toIdx = placement === 'after' ? tIdx + 1 : tIdx;
+      }
+      
+      targetArray.splice(toIdx, 0, dragId);
+      return true;
     }
 
     function handleBoardDragEnd() {
       document.querySelectorAll(".is-dragging").forEach(el => el.classList.remove("is-dragging"));
-      clearDragIndicators();
-      dragState = null;
+      clearDragIndicators(); dragState = null;
     }
 
     function handleBoardDragLeave(e) {
       if (!dragState) return;
-
       const related = e.relatedTarget;
       if (related && els.boards.contains(related)) return;
-
       clearDragIndicators();
     }
 
-    function isMediaOnBoard(media) {
-      return state.shows.some(s => s.anilistId == media.id);
-    }
+    function isMediaOnBoard(media) { return state.shows.some(s => s.anilistId == media.id); }
 
     function getDefaultReleasesMoeState(existing = {}) {
-      return {
-        found: false,
-        recordId: null,
-        checkedAt: null,
-        libraryCheckedAt: null,
-        error: null,
-        updated: null,
-        updateAvailable: false,
-        latestUpdated: null,
-        ...(existing || {})
-      };
+      return { found: false, recordId: null, checkedAt: null, libraryCheckedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null, ...(existing || {}) };
     }
 
     function makeShowFromMedia(media) {
       return {
-        id: crypto.randomUUID(),
-        anilistId: media.id,
-        title: media.title?.english || media.title?.romaji || "Untitled",
-        titleEnglish: media.title?.english || "",
-        titleRomaji: media.title?.romaji || "",
-        coverImage: media.coverImage?.medium || media.coverImage?.large || "",
-        format: media.format || "",
-        seasonYear: media.seasonYear || null,
-        episodes: media.episodes || null,
-        siteUrl: media.siteUrl || `https://anilist.co/anime/${media.id}`,
-        board: "watching",
-        downloaded: false,
-        allAvailableDownloaded: false,
-        comments: "",
-        releasesMoe: getDefaultReleasesMoeState(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        id: crypto.randomUUID(), anilistId: media.id, title: media.title?.english || media.title?.romaji || "Untitled",
+        titleEnglish: media.title?.english || "", titleRomaji: media.title?.romaji || "",
+        coverImage: media.coverImage?.medium || media.coverImage?.large || "", format: media.format || "",
+        seasonYear: media.seasonYear || null, episodes: media.episodes || null, siteUrl: media.siteUrl || `https://anilist.co/anime/${media.id}`,
+        board: "watching", downloaded: false, allAvailableDownloaded: false, comments: "", groupId: null,
+        releasesMoe: getDefaultReleasesMoeState(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
       };
     }
 
     async function addShow(media) {
       if (isMediaOnBoard(media)) return toast("Already on board.");
-
-      closeResults();
-      els.searchInput.value = "";
-      setStatus("Checking release...");
+      closeResults(); els.searchInput.value = ""; setStatus("Checking release...");
 
       const show = makeShowFromMedia(media);
       state.shows.unshift(show);
-
       await refreshShowStatus(show, { forceMove: true });
-      insertShowIntoOrderAZ(show.id, getShowBoard(show));
+      insertIntoUngroupedAZ(state.order[getShowBoard(show)], show.id);
 
-      render();
-      saveState();
-
-      setStatus("System Ready");
-      toast("Added to active board.");
+      render(); saveState(); setStatus("System Ready"); toast("Added to active board.");
     }
 
     async function refreshShowStatus(show, { forceMove = false } = {}) {
       const previousBoard = getShowBoard(show);
-
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
 
       try {
@@ -1982,400 +1602,211 @@
         const apiUpdated = match?.updated || null;
         const isLibrary = show.downloaded || show.board === "downloaded";
 
-        show.releasesMoe.found = !!match;
-        show.releasesMoe.recordId = match?.id || null;
-        show.releasesMoe.checkedAt = new Date().toISOString();
-        show.releasesMoe.error = null;
+        show.releasesMoe.found = !!match; show.releasesMoe.recordId = match?.id || null;
+        show.releasesMoe.checkedAt = new Date().toISOString(); show.releasesMoe.error = null;
 
         if (match && apiUpdated) {
-          const previousUpdatedRaw = show.releasesMoe.updated
-            ? Date.parse(show.releasesMoe.updated)
-            : 0;
-
-          const previousUpdated = Number.isFinite(previousUpdatedRaw) ? previousUpdatedRaw : 0;
+          const previousUpdated = show.releasesMoe.updated ? Date.parse(show.releasesMoe.updated) : 0;
           const nextUpdated = Date.parse(apiUpdated);
 
           if (!show.releasesMoe.updated) {
-            show.releasesMoe.updated = apiUpdated;
-            show.releasesMoe.latestUpdated = null;
-            show.releasesMoe.updateAvailable = false;
-          } else if (
-            apiUpdated !== show.releasesMoe.updated &&
-            Number.isFinite(nextUpdated) &&
-            nextUpdated > previousUpdated
-          ) {
-            if (isLibrary) {
-              show.releasesMoe.updateAvailable = true;
-              show.releasesMoe.latestUpdated = apiUpdated;
-            } else {
-              show.releasesMoe.updated = apiUpdated;
-              show.releasesMoe.latestUpdated = null;
-              show.releasesMoe.updateAvailable = false;
-            }
+            show.releasesMoe.updated = apiUpdated; show.releasesMoe.latestUpdated = null; show.releasesMoe.updateAvailable = false;
+          } else if (apiUpdated !== show.releasesMoe.updated && Number.isFinite(nextUpdated) && nextUpdated > previousUpdated) {
+            if (isLibrary) { show.releasesMoe.updateAvailable = true; show.releasesMoe.latestUpdated = apiUpdated; } 
+            else { show.releasesMoe.updated = apiUpdated; show.releasesMoe.latestUpdated = null; show.releasesMoe.updateAvailable = false; }
           }
         }
 
-        if (!isLibrary && forceMove) {
-          show.board = match ? "found" : "watching";
-        }
-
+        if (!isLibrary && forceMove) show.board = match ? "found" : "watching";
+        
         const nextBoard = getShowBoard(show);
-        if (forceMove && previousBoard !== nextBoard) {
-          moveShowToBoardOrder(show.id, previousBoard, nextBoard, "az");
-        }
+        if (forceMove && previousBoard !== nextBoard) moveShowToBoardOrder(show.id, previousBoard, nextBoard);
 
         show.updatedAt = new Date().toISOString();
-      } catch(e) {
-        console.error(e);
-        show.releasesMoe.error = e.message || "Refresh failed";
-        show.releasesMoe.checkedAt = new Date().toISOString();
-      }
+      } catch(e) { show.releasesMoe.error = e.message || "Refresh failed"; show.releasesMoe.checkedAt = new Date().toISOString(); }
     }
 
     async function checkWatchingStatuses() {
       const watching = state.shows.filter(s => getShowBoard(s) === "watching" && !s.downloaded);
       if (!watching.length) return;
-
       setStatus(`Checking ${watching.length} watching entries...`, "sync");
-
-      for (const s of watching) {
-        await refreshShowStatus(s, { forceMove: true });
-        await sleep(400);
-      }
-
-      render();
-      saveState();
-      setStatus("System Ready", "ready");
+      for (const s of watching) { await refreshShowStatus(s, { forceMove: true }); await sleep(400); }
+      render(); saveState(); setStatus("System Ready", "ready");
     }
 
     async function checkLibraryUpdates(limit = 10) {
-      const libraryShows = state.shows
-        .filter(s => s.downloaded || s.board === "downloaded")
+      const libraryShows = state.shows.filter(s => s.downloaded || s.board === "downloaded")
         .sort((a, b) => {
-          const aRaw = a.releasesMoe?.libraryCheckedAt || a.releasesMoe?.checkedAt || a.createdAt || null;
-          const bRaw = b.releasesMoe?.libraryCheckedAt || b.releasesMoe?.checkedAt || b.createdAt || null;
-
-          const aTimeRaw = aRaw ? Date.parse(aRaw) : 0;
-          const bTimeRaw = bRaw ? Date.parse(bRaw) : 0;
-
-          const aTime = Number.isFinite(aTimeRaw) ? aTimeRaw : 0;
-          const bTime = Number.isFinite(bTimeRaw) ? bTimeRaw : 0;
-
+          const aTime = Date.parse(a.releasesMoe?.libraryCheckedAt || a.releasesMoe?.checkedAt || a.createdAt || null) || 0;
+          const bTime = Date.parse(b.releasesMoe?.libraryCheckedAt || b.releasesMoe?.checkedAt || b.createdAt || null) || 0;
           return aTime - bTime;
-        })
-        .slice(0, limit);
+        }).slice(0, limit);
 
       if (!libraryShows.length) return;
-
       setStatus(`Checking ${libraryShows.length} library entries...`, "sync");
-
       for (const show of libraryShows) {
         await refreshShowStatus(show, { forceMove: false });
         show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
         show.releasesMoe.libraryCheckedAt = new Date().toISOString();
         await sleep(400);
       }
-
-      render();
-      saveState();
-      setStatus("System Ready", "ready");
+      render(); saveState(); setStatus("System Ready", "ready");
     }
 
     function toggleDownloadedStatus(id, checked) {
-      const show = state.shows.find(s => s.id === id);
+      const show = getShowById(id);
       if (!show) return;
 
       const previousBoard = getShowBoard(show);
-
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
       show.downloaded = checked;
 
       if (checked) {
-        show.board = "downloaded";
-        show.releasesMoe.updateAvailable = false;
-
-        if (show.releasesMoe.latestUpdated) {
-          show.releasesMoe.updated = show.releasesMoe.latestUpdated;
-          show.releasesMoe.latestUpdated = null;
-        }
-
+        show.board = "downloaded"; show.releasesMoe.updateAvailable = false;
+        if (show.releasesMoe.latestUpdated) { show.releasesMoe.updated = show.releasesMoe.latestUpdated; show.releasesMoe.latestUpdated = null; }
         show.releasesMoe.libraryCheckedAt = show.releasesMoe.libraryCheckedAt || new Date().toISOString();
       } else {
         show.board = show.releasesMoe?.found ? "found" : "watching";
-        show.allAvailableDownloaded = false;
-        show.releasesMoe.updateAvailable = false;
-        show.releasesMoe.latestUpdated = null;
+        show.allAvailableDownloaded = false; show.releasesMoe.updateAvailable = false; show.releasesMoe.latestUpdated = null;
       }
 
       const nextBoard = getShowBoard(show);
-      moveShowToBoardOrder(show.id, previousBoard, nextBoard, "az");
-
+      moveShowToBoardOrder(show.id, previousBoard, nextBoard);
       show.updatedAt = new Date().toISOString();
 
-      render();
-      saveState();
-      toast(checked ? "Moved to Library" : "Moved back to Active");
+      render(); saveState(); toast(checked ? "Moved to Library" : "Moved back to Active");
     }
 
     function toggleAllAvailableDownloaded(id) {
-      const show = state.shows.find(s => s.id === id);
-
-      if (show) {
-        show.allAvailableDownloaded = !show.allAvailableDownloaded;
-        render();
-        saveState();
-      }
+      const show = getShowById(id);
+      if (show) { show.allAvailableDownloaded = !show.allAvailableDownloaded; render(); saveState(); }
     }
 
     function removeShow(id) {
       if (confirm("Remove this show entirely?")) {
+        const show = getShowById(id);
+        const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
+        const idx = arr.indexOf(id);
+        if (idx > -1) arr.splice(idx, 1);
+        
         state.shows = state.shows.filter(s => s.id !== id);
-        removeShowFromOrder(id);
-
-        render();
-        saveState();
-        toast("Removed.");
+        render(); saveState(); toast("Removed.");
       }
     }
 
     function acknowledgeUpdate(id) {
-      const s = state.shows.find(x => x.id === id);
+      const s = getShowById(id);
       if (!s) return;
-
       s.releasesMoe = getDefaultReleasesMoeState(s.releasesMoe);
-
-      if (s.releasesMoe.latestUpdated) {
-        s.releasesMoe.updated = s.releasesMoe.latestUpdated;
-        s.releasesMoe.latestUpdated = null;
-      }
-
-      s.releasesMoe.updateAvailable = false;
-      s.updatedAt = new Date().toISOString();
-
-      render();
-      saveState();
-      toast("Update acknowledged.");
-    }
-
-    function toggleNotes(id) {
-      state.ui.openNotes[id] = !state.ui.openNotes[id];
-      render();
-      saveState();
+      if (s.releasesMoe.latestUpdated) { s.releasesMoe.updated = s.releasesMoe.latestUpdated; s.releasesMoe.latestUpdated = null; }
+      s.releasesMoe.updateAvailable = false; s.updatedAt = new Date().toISOString();
+      render(); saveState(); toast("Update acknowledged.");
     }
 
     function queueCommentUpdate(id, val) {
-      const s = state.shows.find(x => x.id === id);
+      const s = getShowById(id);
       if (s) s.comments = val;
-
-      clearTimeout(commentSaveTimers.get(id));
-      commentSaveTimers.set(id, setTimeout(saveState, 500));
+      clearTimeout(commentSaveTimers.get(id)); commentSaveTimers.set(id, setTimeout(saveState, 500));
     }
 
     function parseBatchNames(value) {
       const seen = new Set();
-
-      return String(value || "")
-        .split(/[\n,;]+/)
-        .map(n => n.trim())
-        .filter(Boolean)
-        .filter(name => {
-          const key = name.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+      return String(value || "").split(/[\n,;]+/).map(n => n.trim()).filter(Boolean).filter(name => {
+        const key = name.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true;
+      });
     }
 
     function getAniListIdFromInput(input) {
       const val = String(input || "").trim();
-      const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i);
-      if (urlMatch) return Number(urlMatch[1]);
-
-      const labelledMatch = val.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i);
-      if (labelledMatch) return Number(labelledMatch[1]);
-
+      const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i); if (urlMatch) return Number(urlMatch[1]);
+      const labelledMatch = val.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i); if (labelledMatch) return Number(labelledMatch[1]);
       return null;
     }
 
     async function lookupBatchAniList(input) {
       const directId = getAniListIdFromInput(input);
-
-      if (directId) {
-        const media = await getAniListMediaById(directId);
-        return media ? [media] : [];
-      }
-
+      if (directId) { const media = await getAniListMediaById(directId); return media ? [media] : []; }
       return searchAniList(input);
     }
 
     function normalizeTitle(val) {
-      return String(val || "")
-        .normalize("NFKD")
-        .toLowerCase()
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/&/g, " and ")
-        .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+      return String(val || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ").replace(/\s+/g, " ").trim();
     }
-
-    function getMediaTitles(media) {
-      return [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean);
-    }
-
-    function getYearFromText(val) {
-      const match = String(val || "").match(/\b((?:19|20)\d{2})\b/);
-      return match ? Number(match[1]) : null;
-    }
-
+    function getMediaTitles(media) { return [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean); }
+    function getYearFromText(val) { const match = String(val || "").match(/\b((?:19|20)\d{2})\b/); return match ? Number(match[1]) : null; }
     function tokenSimilarity(a, b) {
-      const aTokens = new Set(String(a || "").split(" ").filter(Boolean));
-      const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
-
+      const aTokens = new Set(String(a || "").split(" ").filter(Boolean)); const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
       if (!aTokens.size || !bTokens.size) return 0;
-
-      let overlap = 0;
-
-      for (const token of aTokens) {
-        if (bTokens.has(token)) overlap++;
-      }
-
+      let overlap = 0; for (const token of aTokens) { if (bTokens.has(token)) overlap++; }
       return overlap / Math.max(aTokens.size, bTokens.size);
     }
 
     function getMatchInfo(input, media) {
       if (!media) return { level: "none", label: "No match", score: 0 };
-
       const directId = getAniListIdFromInput(input);
-      if (directId && Number(directId) === Number(media.id)) {
-        return { level: "high", label: "Direct ID", score: 1 };
-      }
-
+      if (directId && Number(directId) === Number(media.id)) return { level: "high", label: "Direct ID", score: 1 };
       const query = normalizeTitle(input).replace(/\b(?:anilist|alid|al)\b\s*\d+\b/g, "").trim();
       const queryWithoutYear = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, ""));
       const titles = getMediaTitles(media).map(normalizeTitle);
       const year = getYearFromText(input);
-
       let bestScore = 0;
-
       for (const title of titles) {
         const titleWithoutYear = title.replace(/\b(19|20)\d{2}\b/g, "").trim();
         const candidates = [query, queryWithoutYear].filter(Boolean);
-
         for (const candidate of candidates) {
           if (!candidate || !title) continue;
-
           if (title === candidate) bestScore = Math.max(bestScore, 1);
           if (titleWithoutYear === candidate) bestScore = Math.max(bestScore, 0.96);
           if (title.includes(candidate) || candidate.includes(titleWithoutYear)) bestScore = Math.max(bestScore, 0.76);
-
           bestScore = Math.max(bestScore, tokenSimilarity(candidate, title));
         }
       }
-
       if (year && Number(media.seasonYear) === year) bestScore += 0.12;
-
       bestScore = Math.min(bestScore, 1);
-
       if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore };
       if (bestScore >= 0.6) return { level: "medium", label: "Check match", score: bestScore };
-
       return { level: "low", label: "Low match", score: bestScore };
     }
 
-    function getSelectedBatchMedia(match) {
-      if (!match?.results?.length || !match.selectedId) return null;
-      return match.results.find(m => m.id === Number(match.selectedId)) || null;
-    }
-
-    function getAddableBatchMatches() {
-      return pendingBatchMatches
-        .filter(m => !m.skipped)
-        .map(match => ({ match, media: getSelectedBatchMedia(match) }))
-        .filter(({ media }) => media && !isMediaOnBoard(media));
-    }
+    function getSelectedBatchMedia(match) { return (!match?.results?.length || !match.selectedId) ? null : match.results.find(m => m.id === Number(match.selectedId)) || null; }
+    function getAddableBatchMatches() { return pendingBatchMatches.filter(m => !m.skipped).map(match => ({ match, media: getSelectedBatchMedia(match) })).filter(({ media }) => media && !isMediaOnBoard(media)); }
 
     async function prepareBatchReview() {
       const names = parseBatchNames(els.batchInput.value);
-
-      if (!names.length) {
-        toast("Paste at least one series name.");
-        els.batchInput.focus();
-        return;
-      }
-
-      pendingBatchMatches = [];
-      renderBatchReview();
-
-      setStatus(`Matching 0/${names.length}...`);
-      els.batchImportBtn.disabled = true;
-      els.batchConfirmBtn.disabled = true;
+      if (!names.length) { toast("Paste at least one series name."); els.batchInput.focus(); return; }
+      pendingBatchMatches = []; renderBatchReview();
+      setStatus(`Matching 0/${names.length}...`); els.batchImportBtn.disabled = true; els.batchConfirmBtn.disabled = true;
 
       try {
         for (let i = 0; i < names.length; i++) {
-          const input = names[i];
-          setStatus(`Matching ${i + 1}/${names.length}...`);
-
+          const input = names[i]; setStatus(`Matching ${i + 1}/${names.length}...`);
           try {
             const results = await lookupBatchAniList(input);
             const firstAvail = results.find(m => !isMediaOnBoard(m));
             const selected = firstAvail || results[0] || null;
-
-            pendingBatchMatches.push({
-              input,
-              results,
-              selectedId: selected?.id ?? null,
-              skipped: !selected,
-              error: null
-            });
-          } catch (e) {
-            pendingBatchMatches.push({
-              input,
-              results: [],
-              selectedId: null,
-              skipped: true,
-              error: e.message || "failed"
-            });
-          }
-
+            pendingBatchMatches.push({ input, results, selectedId: selected?.id ?? null, skipped: !selected, error: null });
+          } catch (e) { pendingBatchMatches.push({ input, results: [], selectedId: null, skipped: true, error: e.message || "failed" }); }
           renderBatchReview();
         }
-      } finally {
-        els.batchImportBtn.disabled = false;
-        setStatus("System Ready");
-      }
-
+      } finally { els.batchImportBtn.disabled = false; setStatus("System Ready"); }
       renderBatchReview();
-
       const addable = getAddableBatchMatches().length;
       toast(addable ? `Review ${addable} matches.` : "No addable matches found.", addable ? "" : "error");
     }
 
     function renderBatchReview() {
       if (!pendingBatchMatches.length) {
-        els.batchReview.hidden = true;
-        els.batchReviewList.innerHTML = "";
-        els.batchReviewSummary.textContent = "No matches prepared.";
-        els.batchConfirmBtn.disabled = true;
-        return;
+        els.batchReview.hidden = true; els.batchReviewList.innerHTML = ""; els.batchReviewSummary.textContent = "No matches prepared."; els.batchConfirmBtn.disabled = true; return;
       }
-
       els.batchReview.hidden = false;
-
       const addable = getAddableBatchMatches();
-      els.batchReviewSummary.textContent = `${addable.length} Selected matches`;
-      els.batchConfirmBtn.disabled = addable.length === 0;
+      els.batchReviewSummary.textContent = `${addable.length} Selected matches`; els.batchConfirmBtn.disabled = addable.length === 0;
 
       els.batchReviewList.innerHTML = pendingBatchMatches.map((match, i) => {
-        const selected = getSelectedBatchMedia(match);
-        const isDup = selected ? isMediaOnBoard(selected) : false;
+        const selected = getSelectedBatchMedia(match); const isDup = selected ? isMediaOnBoard(selected) : false;
         const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
         const title = selected ? selected.title.english || selected.title.romaji : "No result";
-
-        const options = match.results.length ? match.results.map(m => 
-          `<option value="${m.id}" ${m.id === match.selectedId ? "selected" : ""}>${escapeHtml(m.title.english || m.title.romaji)} ${isMediaOnBoard(m) ? "(Already Added)" : ""}</option>`
-        ).join("") : '<option value="">No results</option>';
+        const options = match.results.length ? match.results.map(m => `<option value="${m.id}" ${m.id === match.selectedId ? "selected" : ""}>${escapeHtml(m.title.english || m.title.romaji)} ${isMediaOnBoard(m) ? "(Already Added)" : ""}</option>`).join("") : '<option value="">No results</option>';
 
         return `
           <div class="batch-review-item" style="opacity: ${match.skipped ? "0.5" : "1"};">
@@ -2397,86 +1828,44 @@
       els.batchReviewList.querySelectorAll("[data-batch-select]").forEach(sel => {
         sel.addEventListener("change", () => {
           const match = pendingBatchMatches[Number(sel.dataset.batchSelect)];
-          match.selectedId = sel.value ? Number(sel.value) : null;
-          match.skipped = !match.selectedId;
-          renderBatchReview();
+          match.selectedId = sel.value ? Number(sel.value) : null; match.skipped = !match.selectedId; renderBatchReview();
         });
       });
 
       els.batchReviewList.querySelectorAll("[data-batch-skip]").forEach(btn => {
         btn.addEventListener("click", () => {
-          const match = pendingBatchMatches[Number(btn.dataset.batchSkip)];
-          match.skipped = !match.skipped;
-          if (!match.selectedId && match.results[0]) match.selectedId = match.results[0].id;
-          renderBatchReview();
+          const match = pendingBatchMatches[Number(btn.dataset.batchSkip)]; match.skipped = !match.skipped;
+          if (!match.selectedId && match.results[0]) match.selectedId = match.results[0].id; renderBatchReview();
         });
       });
     }
 
     async function confirmBatchImport() {
-      const matches = getAddableBatchMatches();
-      if (!matches.length) return;
-
-      els.batchConfirmBtn.disabled = true;
-      els.batchConfirmBtn.textContent = "Adding...";
-      setStatus(`Adding 0/${matches.length}...`);
-
+      const matches = getAddableBatchMatches(); if (!matches.length) return;
+      els.batchConfirmBtn.disabled = true; els.batchConfirmBtn.textContent = "Adding..."; setStatus(`Adding 0/${matches.length}...`);
       let added = 0;
-
       for (let i = 0; i < matches.length; i++) {
-        const { media } = matches[i];
-
-        setStatus(`Adding ${i + 1}/${matches.length}...`);
-
+        const { media } = matches[i]; setStatus(`Adding ${i + 1}/${matches.length}...`);
         if (!isMediaOnBoard(media)) {
-          const show = makeShowFromMedia(media);
-          state.shows.unshift(show);
-
+          const show = makeShowFromMedia(media); state.shows.unshift(show);
           await refreshShowStatus(show, { forceMove: true });
-          insertShowIntoOrderAZ(show.id, getShowBoard(show));
-
-          added++;
-
-          render();
-          saveState();
-
-          await sleep(1000); 
+          insertIntoUngroupedAZ(state.order[getShowBoard(show)], show.id);
+          added++; render(); saveState(); await sleep(1000); 
         }
       }
-
-      setStatus("System Ready");
-      els.batchConfirmBtn.disabled = false;
-      els.batchConfirmBtn.textContent = "Add Selected";
-
-      toast(`Successfully added ${added} shows!`);
-      els.batchInput.value = "";
-      clearBatchReview();
+      setStatus("System Ready"); els.batchConfirmBtn.disabled = false; els.batchConfirmBtn.textContent = "Add Selected";
+      toast(`Successfully added ${added} shows!`); els.batchInput.value = ""; clearBatchReview();
     }
 
-    function clearBatchReview() {
-      pendingBatchMatches = [];
-      renderBatchReview();
-      setStatus("System Ready");
-    }
+    function clearBatchReview() { pendingBatchMatches = []; renderBatchReview(); setStatus("System Ready"); }
 
     function render() {
       reconcileOrders();
-
       let visible = state.shows;
 
       if (state.localSearch) {
         const q = state.localSearch.toLowerCase();
-
-        visible = visible.filter(s => {
-          return [
-            s.title,
-            s.titleEnglish,
-            s.titleRomaji,
-            s.format,
-            s.seasonYear,
-            s.comments
-          ].some(value => String(value || "").toLowerCase().includes(q));
-        });
+        visible = visible.filter(s => [s.title, s.titleEnglish, s.titleRomaji, s.format, s.seasonYear, s.comments].some(v => String(v || "").toLowerCase().includes(q)));
       }
 
       const found = visible.filter(s => getShowBoard(s) === "found");
@@ -2484,7 +1873,6 @@
       const dl = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
 
       updateSortModeButton();
-
       renderBoard("found", found, els.foundList, els.foundCount);
       renderBoard("watching", watching, els.watchingList, els.watchingCount);
       renderBoard("downloaded", dl, els.downloadedList, els.downloadedCount);
@@ -2493,30 +1881,20 @@
     function syncBoardSortControls(board, countEl) {
       const header = countEl.closest(".board-header");
       if (!header) return;
-
       let controls = header.querySelector(`[data-board-sort-actions="${board}"]`);
 
-      // ONLY show sorting/dividers on the downloaded (Library) board
-      if (board !== "downloaded") {
-        if (controls) controls.remove();
-        return;
-      }
+      if (board !== "downloaded") { if (controls) controls.remove(); return; }
 
       if (!controls) {
-        controls = document.createElement("div");
-        controls.className = "board-sort-actions";
-        controls.setAttribute("data-board-sort-actions", board);
+        controls = document.createElement("div"); controls.className = "board-sort-actions"; controls.setAttribute("data-board-sort-actions", board);
         controls.innerHTML = `
-          <button class="btn board-sort-btn" type="button" data-sort-az-board="${board}" title="Sort this board alphabetically">A→Z</button>
-          <button class="btn board-sort-btn" type="button" data-add-divider-board="${board}" title="Add divider at the top of this board">+ Divider</button>
+          <button class="btn board-sort-btn" type="button" data-sort-az-board="${board}" title="Sort root items alphabetically">A→Z</button>
+          <button class="btn board-sort-btn" type="button" data-add-group-board="${board}" title="Add a folder">+ Group</button>
         `;
         header.appendChild(controls);
       }
-
       controls.hidden = !(state.ui.sortMode && !state.localSearch);
-      controls.querySelectorAll("button").forEach(button => {
-        button.disabled = !!state.localSearch;
-      });
+      controls.querySelectorAll("button").forEach(b => b.disabled = !!state.localSearch);
     }
 
     function renderBoard(type, shows, listEl, countEl) {
@@ -2525,92 +1903,84 @@
       listEl.dataset.boardList = type;
       syncBoardSortControls(type, countEl);
 
-      if (!shows.length) {
+      if (!shows.length && (!state.groups.some(g => g.board === type) || state.localSearch)) {
         listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
         return;
       }
 
-      const items = getOrderedBoardItems(type, shows);
-      const isSearching = !!state.localSearch;
-      let isCurrentlyCollapsed = false;
+      if (state.localSearch) {
+        listEl.innerHTML = shows.map(s => renderCard(s)).join("");
+        return;
+      }
 
-      listEl.innerHTML = items.map(item => {
-        if (isDividerItem(item)) {
-          isCurrentlyCollapsed = !isSearching && !!item.collapsed;
-          return renderDivider(item, type);
+      const html = [];
+      state.order[type].forEach(id => {
+        const group = getGroupById(id);
+        if (group) {
+          html.push(renderGroup(group, shows.filter(s => s.groupId === group.id)));
+        } else {
+          const show = getShowById(id);
+          if (show && shows.includes(show)) html.push(renderCard(show));
         }
-        return renderCard(item, isCurrentlyCollapsed);
-      }).join("");
+      });
+      listEl.innerHTML = html.join("");
     }
 
-    function renderDivider(divider, board) {
+    function renderGroup(group, groupShows) {
       const canEdit = state.ui.sortMode && !state.localSearch;
       const canDrag = canDragOrderItems();
-      const name = divider.name || "";
-      const isCollapsed = !!divider.collapsed;
-
-      const moveControls = canEdit ? `
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(!canMoveItem(divider.id, board, "up")) ? "disabled" : ""}>▲</button>
-        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(!canMoveItem(divider.id, board, "down")) ? "disabled" : ""}>▼</button>
-      ` : "";
-
-      const collapseBtn = `<button class="divider-collapse-btn ${isCollapsed ? "is-collapsed" : ""}" data-collapse-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="${isCollapsed ? "Expand" : "Collapse"}">▼</button>`;
+      const isCollapsed = !!group.collapsed;
       
-      const inputEl = `<input type="text" class="divider-name-input" data-divider-name-id="${escapeAttr(divider.id)}" value="${escapeAttr(name)}" placeholder="New Group" ${!canEdit ? "readonly tabindex='-1'" : ""} />`;
-
+      const itemsHtml = (state.groupOrder[group.id] || [])
+        .map(id => groupShows.find(s => s.id === id)).filter(Boolean)
+        .map(show => renderCard(show)).join("");
+        
+      const moveControls = canEdit ? `
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" title="Move up" ${!canMoveItem(group.id, 'group', 'up') ? 'disabled' : ''}>▲</button>
+        <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" title="Move down" ${!canMoveItem(group.id, 'group', 'down') ? 'disabled' : ''}>▼</button>
+      ` : "";
+      
       return `
-        <div class="board-divider" data-divider-id="${escapeAttr(divider.id)}" data-order-item-id="${escapeAttr(divider.id)}" data-order-item-type="divider" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
-          ${collapseBtn}
-          ${inputEl}
-          <div class="divider-line"></div>
-          ${moveControls}
-          ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-divider="${escapeAttr(divider.id)}" data-board="${escapeAttr(board)}" title="Remove divider">×</button>` : ""}
+        <div class="group-container" data-order-item-id="${escapeAttr(group.id)}" data-order-item-type="group" data-board="${escapeAttr(group.board)}" ${canDrag ? 'draggable="true"' : ""}>
+          <div class="group-header">
+            <button class="divider-collapse-btn ${isCollapsed ? "is-collapsed" : ""}" data-collapse-group="${escapeAttr(group.id)}" title="Toggle Group">▼</button>
+            <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Group" ${!canEdit ? "readonly tabindex='-1'" : ""} />
+            <div class="divider-line"></div>
+            ${moveControls}
+            ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-group="${escapeAttr(group.id)}" title="Delete group and release shows">×</button>` : ""}
+          </div>
+          <div class="group-list ${isCollapsed ? 'is-collapsed' : ''}" data-group-list-id="${escapeAttr(group.id)}" data-board="${escapeAttr(group.board)}">
+             ${itemsHtml}
+          </div>
         </div>
       `;
     }
 
-    function renderCard(show, isHidden = false) {
+    function renderCard(show) {
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-
       const board = getShowBoard(show);
       const isDl = board === "downloaded";
       const isNotes = state.ui.openNotes[show.id];
-      // Only allow sort mode UI if Edit Order is clicked AND this is the Library board
       const sortModeActive = !!state.ui.sortMode && isDl;
       const sortControlsDisabled = !!state.localSearch;
       const canDrag = canDragOrderItems() && isDl;
 
       const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
-      const titleHtml = link
-        ? `<a href="${escapeAttr(link)}" target="_blank" class="show-link">${escapeHtml(show.title)}</a>`
-        : escapeHtml(show.title);
-
-      const safeTitle = escapeAttr(show.title);
-      const cover = escapeAttr(show.coverImage);
+      const titleHtml = link ? `<a href="${escapeAttr(link)}" target="_blank" class="show-link">${escapeHtml(show.title)}</a>` : escapeHtml(show.title);
+      const safeTitle = escapeAttr(show.title); const cover = escapeAttr(show.coverImage);
 
       let badge = "";
-
-      if (isDl) {
-        badge = show.releasesMoe?.updateAvailable
-          ? '<span class="badge update">Updated</span>'
-          : "";
-      } else {
-        badge = show.releasesMoe?.found
-          ? '<span class="badge found">Found</span>'
-          : '<span class="badge watching">Watching</span>';
-      }
+      if (isDl) badge = show.releasesMoe?.updateAvailable ? '<span class="badge update">Updated</span>' : "";
+      else badge = show.releasesMoe?.found ? '<span class="badge found">Found</span>' : '<span class="badge watching">Watching</span>';
 
       let actionsHtml = "";
-
-      // If in edit order mode, hide normal buttons and strictly show Top/Up/Down.
       if (sortModeActive) {
         actionsHtml = `
-          <button class="action-btn sort-move-btn" data-send-top-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" title="Send to Ungrouped (Top)" ${sortControlsDisabled ? "disabled" : ""}>⤒</button>
-          <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveItem(show.id, board, "up")) ? "disabled" : ""}>▲</button>
-          <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveItem(show.id, board, "down")) ? "disabled" : ""}>▼</button>
+          <button class="action-btn sort-move-btn" data-send-top-id="${escapeAttr(show.id)}" title="Send to Root (Ungrouped)" ${sortControlsDisabled ? "disabled" : ""}>⤒</button>
+          <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveItem(show.id, 'show', 'up')) ? "disabled" : ""}>▲</button>
+          <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveItem(show.id, 'show', 'down')) ? "disabled" : ""}>▼</button>
         `;
       } else {
-        // Normal mode: Standard card buttons
         actionsHtml = `
           ${show.releasesMoe?.updateAvailable ? `<button class="action-btn active" data-ack-id="${escapeAttr(show.id)}" title="Acknowledge Update">✓</button>` : ""}
           ${isDl ? `<button class="action-btn ${show.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(show.id)}" title="Toggle Complete Status">✓</button>` : ""}
@@ -2621,31 +1991,17 @@
       }
 
       return `
-        <article class="show-card ${isHidden ? "collapsed-item" : ""} ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" ${canDrag ? 'draggable="true"' : ""}>
+        <article class="show-card ${sortModeActive ? "sort-mode" : ""} ${isNotes ? "notes-open" : ""} ${isDl ? "is-downloaded" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" data-group-id="${escapeAttr(show.groupId || '')}" ${canDrag ? 'draggable="true"' : ""}>
           <div class="card-main">
-
             <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDl ? "checked" : ""} title="Mark Downloaded" />
-
-            ${link
-              ? `<a href="${escapeAttr(link)}" target="_blank" class="thumb-link"><img src="${cover}" class="thumb" alt="${safeTitle}" loading="lazy"/></a>`
-              : `<img src="${cover}" class="thumb" alt="${safeTitle}" loading="lazy"/>`
-            }
-
+            ${link ? `<a href="${escapeAttr(link)}" target="_blank" class="thumb-link"><img src="${cover}" class="thumb" alt="${safeTitle}" loading="lazy"/></a>` : `<img src="${cover}" class="thumb" alt="${safeTitle}" loading="lazy"/>`}
             <div class="card-content">
               <div class="card-title">${titleHtml}</div>
-              <div class="card-meta">
-                <span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>
-                ${badge}
-              </div>
+              <div class="card-meta"><span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div>
               <div class="card-checked-time">Checked: ${formatTimeAgo(show.releasesMoe?.checkedAt)}</div>
             </div>
-
-            <div class="card-actions-wrapper">
-              ${actionsHtml}
-            </div>
-
+            <div class="card-actions-wrapper">${actionsHtml}</div>
           </div>
-
           <div class="notes-panel">
             <textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea>
           </div>
@@ -2655,100 +2011,21 @@
 
     function formatTimeAgo(value) {
       if (!value) return "Never";
-
       const diff = (Date.now() - new Date(value).getTime()) / 1000;
-
       if (diff < 60) return "Just now";
       if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
       if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-
       return `${Math.floor(diff / 86400)}d ago`;
     }
 
-    function saveState() { 
-      reconcileOrders();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
-      queueCloudSync(state);
-    }
-
-    function loadState() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-
-      if (raw) {
-        const d = JSON.parse(raw);
-        applyLoadedState(d);
-      } else {
-        reconcileOrders();
-        updateLibraryFilterButtons();
-        updateSortModeButton();
-      }
-    }
-
-    function exportJson() {
-      reconcileOrders();
-
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
-      a.download = "anilist-releases-board.json";
-      a.click();
-
-      toast("Exported");
-    }
-
-    async function importJson(e) {
-      const f = e.target.files?.[0];
-      if (!f) return;
-
-      try {
-        const text = await f.text();
-        const d = JSON.parse(text);
-
-        applyLoadedState(d);
-
-        render();
-        saveState();
-        toast("Imported successfully");
-      } catch(err) {
-        toast("Import failed", "error");
-      } finally {
-        e.target.value = "";
-      }
-    }
-
-    function clearBoard() {
-      if (confirm("Nuke everything?")) {
-        state.shows = [];
-        state.order = makeDefaultOrder();
-        state.ui.openNotes = {};
-        state.ui.manualOrderBoards = { found: false, watching: false, downloaded: false };
-
-        render();
-        saveState();
-        toast("Board cleared");
-      }
-    }
-
-    function toast(msg, type = "") {
-      const t = document.createElement("div");
-      t.className = `toast ${type}`;
-      t.textContent = msg;
-
-      els.toastArea.append(t);
-      setTimeout(() => t.remove(), 3000);
-    }
-
-    function closeResults() {
-      els.results.classList.remove("open");
-    }
-
-    function debounce(fn, ms) {
-      let t;
-
-      return (...a) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...a), ms);
-      };
-    }
+    function saveState() { reconcileOrders(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); queueCloudSync(state); }
+    function loadState() { const raw = localStorage.getItem(STORAGE_KEY); if (raw) applyLoadedState(JSON.parse(raw)); else { reconcileOrders(); updateLibraryFilterButtons(); updateSortModeButton(); } }
+    function exportJson() { reconcileOrders(); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" })); a.download = "anilist-releases-board.json"; a.click(); toast("Exported"); }
+    async function importJson(e) { const f = e.target.files?.[0]; if (!f) return; try { const text = await f.text(); applyLoadedState(JSON.parse(text)); render(); saveState(); toast("Imported successfully"); } catch(err) { toast("Import failed", "error"); } finally { e.target.value = ""; } }
+    function clearBoard() { if (confirm("Nuke everything?")) { state.shows = []; state.groups = []; state.groupOrder = {}; state.order = makeDefaultOrder(); state.ui.openNotes = {}; render(); saveState(); toast("Board cleared"); } }
+    function toast(msg, type = "") { const t = document.createElement("div"); t.className = `toast ${type}`; t.textContent = msg; els.toastArea.append(t); setTimeout(() => t.remove(), 3000); }
+    function closeResults() { els.results.classList.remove("open"); }
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
     init();
   </script>
