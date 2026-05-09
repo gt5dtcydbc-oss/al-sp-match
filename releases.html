@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -957,6 +956,32 @@
       });
     }
 
+    function insertIntoUngroupedAZ(arr, showId) {
+      const show = getShowById(showId);
+      if (!show) return;
+
+      const firstDividerIndex = arr.findIndex(item => isDividerItem(item));
+      const ungroupedEnd = firstDividerIndex !== -1 ? firstDividerIndex : arr.length;
+
+      let insertAt = -1;
+      for (let i = 0; i < ungroupedEnd; i++) {
+        const item = arr[i];
+        if (typeof item === "string") {
+          const other = getShowById(item);
+          if (other && compareShowsAZ(show, other) < 0) {
+            insertAt = i;
+            break;
+          }
+        }
+      }
+
+      if (insertAt === -1) {
+        arr.splice(ungroupedEnd, 0, showId);
+      } else {
+        arr.splice(insertAt, 0, showId);
+      }
+    }
+
     function reconcileOrders() {
       ensureOrderState();
 
@@ -988,13 +1013,18 @@
           }
         }
 
+        const missingShows = [];
         for (const show of state.shows) {
           if (getShowBoard(show) !== board) continue;
           if (seenShows.has(show.id) || seenGlobally.has(show.id)) continue;
 
-          next.push(show.id);
+          missingShows.push(show.id);
           seenShows.add(show.id);
           seenGlobally.add(show.id);
+        }
+
+        for (const showId of missingShows) {
+          insertIntoUngroupedAZ(next, showId);
         }
 
         state.order[board] = next;
@@ -1011,27 +1041,10 @@
 
     function insertShowIntoOrderAZ(showId, board) {
       ensureOrderState();
-
       if (!BOARDS.includes(board)) return;
 
-      const show = getShowById(showId);
-      if (!show) return;
-
       removeShowFromOrder(showId);
-
-      const arr = state.order[board];
-      const insertAt = arr.findIndex(item => {
-        if (typeof item !== "string") return false;
-
-        const other = getShowById(item);
-        return other && compareShowsAZ(show, other) < 0;
-      });
-
-      if (insertAt === -1) {
-        arr.push(showId);
-      } else {
-        arr.splice(insertAt, 0, showId);
-      }
+      insertIntoUngroupedAZ(state.order[board], showId);
     }
 
     function prependShowToOrder(showId, board) {
@@ -1058,18 +1071,41 @@
 
     function sortBoardAZ(board) {
       if (!BOARDS.includes(board)) return;
+      ensureOrderState();
 
-      const ids = state.shows
-        .filter(show => getShowBoard(show) === board)
-        .sort(compareShowsAZ)
-        .map(show => show.id);
+      const arr = state.order[board];
+      const groups = [[]]; 
+      const dividers = [];
 
-      state.order[board] = ids;
-      markBoardManual(board, false);
+      for (const item of arr) {
+        if (isDividerItem(item)) {
+          dividers.push(item);
+          groups.push([]);
+        } else if (typeof item === "string") {
+          groups[groups.length - 1].push(item);
+        }
+      }
+
+      for (const group of groups) {
+        group.sort((a, b) => {
+          const showA = getShowById(a);
+          const showB = getShowById(b);
+          if (!showA || !showB) return 0;
+          return compareShowsAZ(showA, showB);
+        });
+      }
+
+      const newOrder = [...groups[0]];
+      for (let i = 0; i < dividers.length; i++) {
+        newOrder.push(dividers[i]);
+        newOrder.push(...groups[i + 1]);
+      }
+
+      state.order[board] = newOrder;
 
       render();
       saveState();
-      toast("Sorted A→Z.");
+      toast("Sorted sections A→Z.");
     }
 
     function getOrderedBoardItems(board, shows) {
@@ -1607,6 +1643,16 @@
       const collapseDivBtn = e.target.closest("[data-collapse-divider]");
       if (collapseDivBtn) {
         toggleCollapseDivider(collapseDivBtn.dataset.board, collapseDivBtn.dataset.collapseDivider);
+        return;
+      }
+
+      const topBtn = e.target.closest("[data-send-top-id]");
+      if (topBtn) {
+        prependShowToOrder(topBtn.dataset.sendTopId, topBtn.dataset.board);
+        markBoardManual(topBtn.dataset.board, true);
+        render();
+        saveState();
+        toast("Sent to Top");
         return;
       }
 
@@ -2533,6 +2579,7 @@
       }
 
       const moveControls = sortModeActive ? `
+        <button class="action-btn sort-move-btn" data-send-top-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" title="Send to Ungrouped (Top)" ${sortControlsDisabled ? "disabled" : ""}>⤒</button>
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="up" title="Move up" ${(sortControlsDisabled || !canMoveItem(show.id, board, "up")) ? "disabled" : ""}>▲</button>
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(show.id)}" data-board="${escapeAttr(board)}" data-direction="down" title="Move down" ${(sortControlsDisabled || !canMoveItem(show.id, board, "down")) ? "disabled" : ""}>▼</button>
       ` : "";
