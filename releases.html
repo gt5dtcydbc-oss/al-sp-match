@@ -1203,7 +1203,9 @@
 
     // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
-      const idsToSync = state.shows.filter(s => !s.relations || s.relations.length === 0).map(s => s.anilistId);
+      // We grab all ungrouped shows to guarantee a fresh, bug-free sync
+      const ungroupedShows = state.shows.filter(s => !s.groupId);
+      const idsToSync = ungroupedShows.map(s => Number(s.anilistId));
       
       if (idsToSync.length > 0) {
         setStatus(`Filtering Family Trees for ${idsToSync.length} shows...`, "sync");
@@ -1216,14 +1218,14 @@
             const json = await safeAniListRequest(query, { ids: chunk });
             
             json.data.Page.media.forEach(m => {
-              const show = state.shows.find(s => s.anilistId == m.id);
+              const show = state.shows.find(s => Number(s.anilistId) === m.id);
               if (show) {
-                // WHITELIST: Only bridge shows that are narratively connected
-                const strongTypes = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ADAPTATION', 'ALTERNATIVE'];
+                // FIX 1: Removed 'ALTERNATIVE' and 'SPIN_OFF' to stop Gundam/Fate massive webs
+                const strongTypes = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'ADAPTATION'];
                 
                 show.relations = m.relations.edges
                   .filter(e => strongTypes.includes(e.relationType))
-                  .map(e => e.node.id);
+                  .map(e => Number(e.node.id));
               }
             });
             await sleep(500);
@@ -1238,14 +1240,12 @@
 
     function performLocalClustering() {
       setStatus("Organizing folders...");
-      
-      // 1. Create a list of "Families" (Sets of related IDs)
       let families = [];
 
       state.shows.forEach(show => {
-        const myFamilyIds = new Set([show.anilistId, ...(show.relations || [])]);
+        // FIX 2: Forced Number() conversion fixes the "String vs Number" bug for older shows
+        const myFamilyIds = new Set([Number(show.anilistId), ...(show.relations || []).map(Number)]);
         
-        // Check if this show belongs to any existing family
         let foundFamilyIndexes = [];
         families.forEach((family, index) => {
           if ([...myFamilyIds].some(id => family.has(id))) {
@@ -1254,17 +1254,14 @@
         });
 
         if (foundFamilyIndexes.length > 0) {
-          // Merge this show and all matching families into the first one found
           const firstIndex = foundFamilyIndexes[0];
           myFamilyIds.forEach(id => families[firstIndex].add(id));
           
-          // If the show bridged two previously separate families, merge them all
           if (foundFamilyIndexes.length > 1) {
             for (let i = 1; i < foundFamilyIndexes.length; i++) {
               const otherIdx = foundFamilyIndexes[i];
               families[otherIdx].forEach(id => families[firstIndex].add(id));
             }
-            // Remove the merged families (from back to front)
             foundFamilyIndexes.slice(1).reverse().forEach(idx => families.splice(idx, 1));
           }
         } else {
@@ -1272,18 +1269,15 @@
         }
       });
 
-      // 2. Process families that have 2+ shows on your board
       families.forEach(familyIds => {
-        const showsInFamily = state.shows.filter(s => familyIds.has(s.anilistId));
+        const showsInFamily = state.shows.filter(s => familyIds.has(Number(s.anilistId)));
         
         if (showsInFamily.length > 1) {
-          // Identify if a group already exists for this family
           let groupId = showsInFamily.find(s => s.groupId)?.groupId;
 
           if (!groupId) {
-            // Find the chronologically oldest show to name the folder
             const oldest = [...showsInFamily].sort((a,b) => (a.seasonYear||0) - (b.seasonYear||0))[0];
-            const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); // Smart trim
+            const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); 
 
             const newGroupId = `grp_${crypto.randomUUID()}`;
             state.groups.push({ id: newGroupId, name: baseTitle, collapsed: false, board: "downloaded" });
@@ -1292,28 +1286,23 @@
             groupId = newGroupId;
           }
 
-          // Move all family members into the folder
           showsInFamily.forEach(s => {
             if (s.groupId !== groupId) {
               s.groupId = groupId;
-              // Remove from root boards
               BOARDS.forEach(b => {
                 const idx = state.order[b].indexOf(s.id);
                 if (idx > -1) state.order[b].splice(idx, 1);
               });
-              // Add to folder if not already there
               if (!state.groupOrder[groupId].includes(s.id)) {
                 state.groupOrder[groupId].push(s.id);
               }
             }
           });
 
-          // 3. Chronological Auto-Sort inside the folder
           state.groupOrder[groupId].sort((aId, bId) => {
             const a = getShowById(aId);
             const b = getShowById(bId);
-            // Sort by Year, then by ID (as a proxy for release order)
-            return (a.seasonYear || 0) - (b.seasonYear || 0) || (a.anilistId - b.anilistId);
+            return (a.seasonYear || 0) - (b.seasonYear || 0) || (Number(a.anilistId) - Number(b.anilistId));
           });
         }
       });
@@ -1623,7 +1612,7 @@
         allAvailableDownloaded: false, 
         comments: "", 
         groupId: null,
-        relations: [], // ADDED for Magic Wand
+        relations: [], 
         releasesMoe: getDefaultReleasesMoeState(), 
         createdAt: new Date().toISOString(), 
         updatedAt: new Date().toISOString()
