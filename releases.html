@@ -1232,7 +1232,7 @@
       }
     }
 
-    // --- MAGIC WAND LOGIC ---
+       // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
       // 1. CLEAR all library groups first to destroy the broken/ghost IDs
       state.groups = state.groups.filter(g => g.board !== "downloaded");
@@ -1241,11 +1241,13 @@
       });
       reconcileOrders();
 
-      // 2. Query relation data for ALL shows to ensure strict whitelisting is applied globally
-      const idsToSync = state.shows.map(s => Number(s.anilistId));
+      // 2. Query relation data ONLY for shows we haven't checked before
+      const idsToSync = state.shows
+        .filter(s => !s.relationsFetched) // <-- THE API SAVER
+        .map(s => Number(s.anilistId));
       
       if (idsToSync.length > 0) {
-        setStatus(`Analyzing ${idsToSync.length} shows...`, "sync");
+        setStatus(`Analyzing ${idsToSync.length} new shows...`, "sync");
         
         for (let i = 0; i < idsToSync.length; i += 50) {
           const chunk = idsToSync.slice(i, i + 50);
@@ -1261,8 +1263,17 @@
                 show.relations = m.relations.edges
                   .filter(e => strongTypes.includes(e.relationType))
                   .map(e => Number(e.node.id));
+                show.relationsFetched = true; // Cache it!
               }
             });
+
+            // Mark all requested IDs as fetched so we don't retry failed/empty ones endlessly
+            state.shows.forEach(s => {
+               if (chunk.includes(Number(s.anilistId))) {
+                 s.relationsFetched = true; 
+               }
+            });
+
             await sleep(500);
           } catch(e) {
             toast("Sync interrupted, but continuing.", "error");
