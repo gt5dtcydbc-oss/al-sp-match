@@ -1077,6 +1077,7 @@
       const groups = [[]]; 
       const dividers = [];
 
+      // 1. Separate into Ungrouped and Divider Groups
       for (const item of arr) {
         if (isDividerItem(item)) {
           dividers.push(item);
@@ -1086,26 +1087,40 @@
         }
       }
 
-      for (const group of groups) {
-        group.sort((a, b) => {
-          const showA = getShowById(a);
-          const showB = getShowById(b);
-          if (!showA || !showB) return 0;
-          return compareShowsAZ(showA, showB);
-        });
+      // 2. Sort Ungrouped shows A-Z
+      groups[0].sort((a, b) => {
+        const showA = getShowById(a);
+        const showB = getShowById(b);
+        if (!showA || !showB) return 0;
+        return compareShowsAZ(showA, showB);
+      });
+
+      // 3. Package dividers with their shows (do NOT sort the shows inside)
+      const dividerGroups = [];
+      for (let i = 0; i < dividers.length; i++) {
+        const dShows = groups[i + 1];
+        dividerGroups.push({ divider: dividers[i], shows: dShows });
       }
 
+      // 4. Sort the groups themselves A-Z based on the Divider name
+      dividerGroups.sort((a, b) => {
+        const nameA = String(a.divider.name || "").trim();
+        const nameB = String(b.divider.name || "").trim();
+        return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+      });
+
+      // 5. Stitch everything back together
       const newOrder = [...groups[0]];
-      for (let i = 0; i < dividers.length; i++) {
-        newOrder.push(dividers[i]);
-        newOrder.push(...groups[i + 1]);
+      for (const dg of dividerGroups) {
+        newOrder.push(dg.divider);
+        newOrder.push(...dg.shows);
       }
 
       state.order[board] = newOrder;
 
       render();
       saveState();
-      toast("Sorted sections A→Z.");
+      toast("Sorted ungrouped and sections A→Z (kept internal group order).");
     }
 
     function getOrderedBoardItems(board, shows) {
