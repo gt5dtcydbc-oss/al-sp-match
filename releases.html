@@ -32,10 +32,7 @@
       --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    * { 
-      box-sizing: border-box; 
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -43,324 +40,111 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
 
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: var(--font);
-      color: var(--text);
-      background: 
-        radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw),
-        linear-gradient(180deg, var(--bg) 0%, #08090d 100%);
-      background-attachment: fixed;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
+      margin: 0; min-height: 100vh; font-family: var(--font); color: var(--text);
+      background: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg) 0%, #08090d 100%);
+      background-attachment: fixed; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
     }
 
-    button, .tab, .action-btn {
-      -webkit-user-select: none;
-      user-select: none;
-    }
-
+    button, .tab, .action-btn { -webkit-user-select: none; user-select: none; }
     button, input, textarea, select { font: inherit; }
     button { border: 0; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
     button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .action-btn:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.4);
-      border-color: var(--brand);
+      outline: none; box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.4); border-color: var(--brand);
     }
 
-    .app {
-      width: min(1200px, calc(100% - 48px));
-      margin: 0 auto;
-      padding: 24px 0 64px;
-    }
-
+    .app { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 64px; }
     .shell { display: grid; gap: 32px; }
 
-    .hero {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 24px;
-    }
-
+    .hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
     .hero-text { max-width: 600px; }
+    .eyebrow { margin: 0 0 8px; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--brand); font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -0.04em; line-height: 1; font-weight: 800; }
 
-    .eyebrow {
-      margin: 0 0 8px;
-      font-size: 0.75rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--brand);
-      font-weight: 800;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2rem, 4vw, 3rem);
-      letter-spacing: -0.04em;
-      line-height: 1;
-      font-weight: 800;
-    }
-
-    .board-controls {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .tabs {
-      display: flex;
-      background: rgba(20, 24, 34, 0.6);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 6px;
-      border-radius: 99px;
-      border: 1px solid var(--line);
-    }
-
-    .tab {
-      background: transparent;
-      color: var(--muted);
-      padding: 8px 20px;
-      border-radius: 99px;
-      font-weight: 700;
-      font-size: 0.9rem;
-      transition: all 0.2s ease;
-    }
-
+    .board-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .tabs { display: flex; background: rgba(20, 24, 34, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 6px; border-radius: 99px; border: 1px solid var(--line); }
+    .tab { background: transparent; color: var(--muted); padding: 8px 20px; border-radius: 99px; font-weight: 700; font-size: 0.9rem; transition: all 0.2s ease; }
     .tab:hover { color: var(--text); }
     .tab.active { background: var(--surface-softer); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 
     .board-filter-input {
-      min-width: 240px;
-      height: 42px;
-      padding: 0 20px;
-      border: 1px solid var(--line);
-      border-radius: 99px;
-      background: rgba(20, 24, 34, 0.6);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      color: var(--text);
-      outline: none;
-      transition: all 0.2s ease;
-      font-size: 0.9rem;
+      min-width: 240px; height: 42px; padding: 0 20px; border: 1px solid var(--line); border-radius: 99px;
+      background: rgba(20, 24, 34, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text); outline: none; transition: all 0.2s ease; font-size: 0.9rem;
     }
-
     .board-filter-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
 
     .tab-view { display: none; animation: fadeIn 0.3s ease; }
     .tab-view.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    .active-boards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 24px;
-      align-items: start;
-    }
+    .active-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; align-items: start; }
 
-    .board-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
+    .board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
     .board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 700; }
     .count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: 0.75rem; font-weight: 800; padding: 0 8px; }
 
-    .library-filter-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      margin-left: auto;
-    }
-
-    .library-filter-actions .btn.active {
-      background: var(--brand);
-      color: #000;
-      border-color: transparent;
-    }
+    .library-filter-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+    .library-filter-actions .btn.active { background: var(--brand); color: #000; border-color: transparent; }
 
     .board-list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
     
     .board-list.drag-over-empty, .group-list.drag-over-empty {
-      outline: 2px dashed rgba(139, 150, 255, 0.45);
-      outline-offset: -2px;
-      border-radius: var(--radius);
-      background: rgba(139, 150, 255, 0.05);
+      outline: 2px dashed rgba(139, 150, 255, 0.45); outline-offset: -2px; border-radius: var(--radius); background: rgba(139, 150, 255, 0.05);
     }
 
     .show-card {
-      position: relative;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
+      position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
       transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.3s ease, filter 0.3s ease;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      overflow: hidden; display: flex; flex-direction: column;
     }
 
-    .show-card.is-downloaded {
-      opacity: 1;
-      filter: none;
-    }
-
+    .show-card.is-downloaded { opacity: 1; filter: none; }
     .show-card:hover, .show-card:focus-within, .show-card.notes-open, .show-card.is-downloaded:hover {
-      transform: translateY(-2px);
-      background: var(--surface-soft);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      border-color: rgba(139, 150, 255, 0.3);
-      opacity: 1;
-      filter: grayscale(0%);
+      transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); border-color: rgba(139, 150, 255, 0.3); opacity: 1; filter: grayscale(0%);
     }
 
     .card-main {
-      display: grid;
-      grid-template-columns: auto 56px minmax(0, 1fr); 
-      align-items: center;
-      gap: 16px;
-      padding: 12px 16px;
-      position: relative;
-      min-height: 104px;
+      display: grid; grid-template-columns: auto 56px minmax(0, 1fr); align-items: center; gap: 16px; padding: 12px 16px; position: relative; min-height: 104px;
     }
 
     .download-check {
-      appearance: none;
-      width: 22px;
-      height: 22px;
-      border: 2px solid var(--muted-2);
-      border-radius: 50%;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      margin: 0;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
+      appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all 0.2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0;
     }
-
     .download-check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69, 212, 155, 0.4); }
     .download-check:checked::after { content: "✓"; color: #000; font-size: 14px; font-weight: bold; }
 
     .thumb-link { display: block; line-height: 0; }
     .thumb {
-      width: 56px;
-      height: 76px;
-      border-radius: 8px;
-      object-fit: cover;
-      background-color: var(--surface-softer);
-      color: transparent;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      transition: transform 0.2s ease;
-      flex-shrink: 0;
+      width: 56px; height: 76px; border-radius: 8px; object-fit: cover; background-color: var(--surface-softer); color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s ease; flex-shrink: 0;
     }
     .thumb-link:hover .thumb { transform: translateY(-2px); }
 
-    .card-content {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .card-title {
-      font-weight: 700;
-      font-size: 1rem;
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
+    .card-content { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .card-title { font-weight: 700; font-size: 1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px;}
     .show-link { color: inherit; text-decoration: none; }
     .show-link:hover { color: var(--brand); }
 
-    .card-meta {
-      display: flex;
-      align-items: center;
-      flex-wrap: nowrap; 
-      gap: 8px;
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 600;
-      min-width: 0;
-      overflow: hidden;
-    }
+    .card-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; color: var(--muted); font-size: 0.8rem; font-weight: 600; min-width: 0; overflow: hidden; }
+    .card-meta span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
-    .card-meta span:first-child {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      min-width: 0;
-    }
-
-    .badge {
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      flex-shrink: 0; 
-    }
-
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
     .badge.found { color: var(--ok); background: rgba(69, 212, 155, 0.1); }
     .badge.watching { color: var(--warn); background: rgba(242, 195, 107, 0.1); }
     .badge.downloaded { color: var(--muted); background: var(--surface-softer); }
     .badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,0.4); }
 
     .card-actions-wrapper {
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%) translateX(10px);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      opacity: 0;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      background: var(--surface-soft);
-      box-shadow: -16px 0 16px var(--surface-soft);
-      padding-left: 8px;
-      border-radius: 8px;
-      pointer-events: none;
-      z-index: 10;
+      position: absolute; right: 16px; top: 50%; transform: translateY(-50%) translateX(10px); display: flex; align-items: center; gap: 6px; opacity: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); background: var(--surface-soft); box-shadow: -16px 0 16px var(--surface-soft); padding-left: 8px; border-radius: 8px; pointer-events: none; z-index: 10;
     }
 
-    .show-card:hover .card-actions-wrapper, 
-    .show-card:focus-within .card-actions-wrapper,
-    .show-card.notes-open .card-actions-wrapper,
-    .show-card.sort-mode .card-actions-wrapper {
-      opacity: 1;
-      transform: translateY(-50%) translateX(0);
-      pointer-events: auto;
+    .show-card:hover .card-actions-wrapper, .show-card:focus-within .card-actions-wrapper, .show-card.notes-open .card-actions-wrapper, .show-card.sort-mode .card-actions-wrapper {
+      opacity: 1; transform: translateY(-50%) translateX(0); pointer-events: auto;
     }
 
     .action-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      background: var(--surface-softer);
-      color: var(--muted);
-      border: 1px solid var(--line);
-      transition: all 0.15s ease;
-      font-weight: 800;
-      font-size: 0.9rem;
-      flex-shrink: 0;
+      width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--surface-softer); color: var(--muted); border: 1px solid var(--line); transition: all 0.15s ease; font-weight: 800; font-size: 0.9rem; flex-shrink: 0;
     }
-
     .action-btn:hover { background: var(--line); color: var(--text); }
     .action-btn.danger:hover { background: rgba(255, 123, 115, 0.15); color: var(--danger); border-color: rgba(255, 123, 115, 0.3); }
     .action-btn.active { background: rgba(139, 150, 255, 0.15); color: var(--brand); border-color: var(--brand); }
@@ -377,132 +161,45 @@
     textarea:focus, select:focus, .search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
     textarea { min-height: 80px; resize: vertical; margin-top: 8px; }
 
-    /* --- Nested Group Styles --- */
-    .group-container {
-      position: relative;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      transition: all 0.2s ease;
-    }
-
-    .group-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 36px;
-    }
-
+    /* --- Group Folder Styles --- */
+    .group-container { padding: 0; display: flex; flex-direction: column; gap: 0; }
+    
+    .group-header { cursor: pointer; grid-template-columns: 28px 56px minmax(0, 1fr); padding-left: 12px; }
+    
     .group-list {
-      display: grid;
-      gap: 12px;
-      min-height: 32px;
-      padding: 12px 0 12px 16px;
-      border-left: 2px solid var(--line);
-      margin-left: 12px;
-      transition: all 0.2s ease;
+      display: grid; gap: 12px; padding: 16px 16px 16px 104px; background: rgba(0,0,0,0.15); border-top: 1px solid var(--line); min-height: 24px;
     }
-
-    .group-list.is-collapsed {
-      display: none;
-    }
+    
+    .group-list.is-collapsed { display: none; }
 
     .divider-collapse-btn {
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      color: var(--muted);
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.75rem;
-      transition: all 0.2s ease;
-      margin-right: 2px;
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s ease; pointer-events: none;
     }
-
-    .divider-collapse-btn:hover { background: var(--surface-soft); color: var(--text); }
+    
+    .group-header:hover .divider-collapse-btn { color: var(--text); }
     .divider-collapse-btn.is-collapsed { transform: rotate(-90deg); }
 
     .divider-name-input {
-      background: transparent;
-      border: none;
-      color: var(--text);
-      font-weight: 800;
-      font-size: 1.1rem;
-      padding: 4px 8px;
-      border-radius: 6px;
-      outline: none;
-      width: auto;
-      min-width: 120px;
-      max-width: 40%;
-      transition: background 0.2s;
-      box-shadow: none !important; 
+      background: transparent; border: none; color: var(--text); font-weight: 800; font-size: 1rem; padding: 4px 8px; border-radius: 6px; outline: none; width: auto; min-width: 120px; transition: background 0.2s; margin-left: -8px; box-shadow: none !important;
     }
-
     .divider-name-input:focus, .divider-name-input:not([readonly]):hover { background: var(--surface-soft); }
     .divider-name-input:focus { border-color: transparent !important; }
-    .divider-name-input[readonly] { pointer-events: none; padding-left: 0; }
-
-    .divider-line {
-      flex: 1;
-      height: 1px;
-      background: var(--line);
-    }
+    .divider-name-input[readonly] { pointer-events: none; padding-left: 0; margin-left: 0; }
     /* ---------------------- */
 
-    .board-sort-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-left: auto;
-    }
-
-    .board-sort-actions[hidden] {
-      display: none !important;
-    }
-
-    .board-sort-btn {
-      height: 32px;
-      padding: 0 12px;
-      border-radius: 99px;
-      font-size: 0.78rem;
-      touch-action: manipulation;
-      white-space: nowrap;
-    }
-
+    .board-sort-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .board-sort-actions[hidden] { display: none !important; }
+    .board-sort-btn { height: 32px; padding: 0 12px; border-radius: 99px; font-size: 0.78rem; touch-action: manipulation; white-space: nowrap; }
     .sort-move-btn { touch-action: manipulation; }
 
-    .show-card.sort-mode[draggable="true"],
-    .group-container[draggable="true"] .group-header {
-      cursor: grab;
-    }
+    .show-card.sort-mode[draggable="true"], .group-container[draggable="true"] .group-header { cursor: grab; }
+    .show-card.sort-mode[draggable="true"]:active, .group-container[draggable="true"] .group-header:active { cursor: grabbing; }
 
-    .show-card.sort-mode[draggable="true"]:active,
-    .group-container[draggable="true"] .group-header:active {
-      cursor: grabbing;
-    }
-
-    .show-card.is-dragging,
-    .group-container.is-dragging {
-      opacity: 0.45;
-      transform: scale(0.99);
-    }
-
+    .show-card.is-dragging, .group-container.is-dragging { opacity: 0.45; transform: scale(0.99); }
     .show-card.drag-over-before, .group-container.drag-over-before { box-shadow: 0 -3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4); }
     .show-card.drag-over-after, .group-container.drag-over-after { box-shadow: 0 3px 0 var(--brand), 0 8px 24px rgba(0, 0, 0, 0.4); }
 
-    #editOrderBtn.active {
-      background: var(--brand);
-      color: #000;
-      border-color: transparent;
-    }
+    #editOrderBtn.active { background: var(--brand); color: #000; border-color: transparent; }
 
     .bottom-section { margin-top: 64px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 48px; }
     .bottom-header { font-size: 1.2rem; font-weight: 800; color: var(--muted); margin: 0; }
@@ -539,39 +236,16 @@
     .dot.syncing { background: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.3); animation: pulseSync 1.5s infinite ease-in-out; }
     .dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(255, 123, 115, 0.3); }
 
-    @keyframes pulseSync { 
-      0% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0.4); } 
-      70% { box-shadow: 0 0 0 6px rgba(139, 150, 255, 0); } 
-      100% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0); } 
-    }
+    @keyframes pulseSync { 0% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(139, 150, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(139, 150, 255, 0); } }
 
     .batch-tools { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
     .batch-label { display: block; font-weight: 700; color: var(--text); margin-bottom: 12px; }
     .batch-actions { display: flex; gap: 12px; margin-top: 12px; }
 
-    .batch-review-item {
-      display: grid; 
-      grid-template-columns: 1fr auto; 
-      gap: 12px; 
-      padding: 12px; 
-      background: var(--surface-softer); 
-      border-radius: 12px; 
-      align-items: center;
-    }
-    .batch-review-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+    .batch-review-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 12px; background: var(--surface-softer); border-radius: 12px; align-items: center; }
+    .batch-review-actions { display: flex; gap: 8px; align-items: center; }
 
-    .toast-area { 
-      position: fixed; 
-      right: 24px; 
-      bottom: calc(24px + env(safe-area-inset-bottom)); 
-      z-index: 100; 
-      display: grid; 
-      gap: 12px; 
-    }
+    .toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 100; display: grid; gap: 12px; }
     .toast { background: var(--surface); border: 1px solid var(--line); padding: 16px 20px; border-radius: 99px; box-shadow: var(--shadow); font-weight: 600; font-size: 0.95rem; animation: toastSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     @keyframes toastSlideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
     .toast.error { border-color: rgba(255, 123, 115, 0.4); color: var(--danger); }
@@ -585,23 +259,11 @@
       .board-filter-input { width: 100%; }
       .search-row { flex-direction: column; }
 
-      .card-main {
-        grid-template-columns: auto 56px minmax(0, 1fr);
-        gap: 12px;
-        min-height: auto;
-      }
-      .card-actions-wrapper { 
-        position: static;
-        grid-column: 1 / -1; 
-        opacity: 1 !important; 
-        transform: none !important; 
-        justify-content: flex-end; 
-        padding-top: 12px; 
-        padding-left: 0;
-        border-top: 1px solid var(--line);
-        background: transparent;
-        box-shadow: none; 
-      }
+      .card-main { grid-template-columns: auto 56px minmax(0, 1fr); gap: 12px; min-height: auto; }
+      .group-header { grid-template-columns: 28px 48px minmax(0, 1fr); }
+      .group-list { padding-left: 16px; }
+
+      .card-actions-wrapper { position: static; grid-column: 1 / -1; opacity: 1 !important; transform: none !important; justify-content: flex-end; padding-top: 12px; padding-left: 0; border-top: 1px solid var(--line); background: transparent; box-shadow: none; }
       .show-card.sort-mode .card-actions-wrapper { transform: none; }
 
       .board-sort-actions { width: 100%; margin-left: 0; justify-content: flex-end; }
@@ -738,68 +400,33 @@
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     const state = {
-      shows: [],
-      groups: [],
-      groupOrder: {},
+      shows: [], groups: [], groupOrder: {},
       order: { found: [], watching: [], downloaded: [] },
-      ui: { filterComplete: false, openNotes: {}, sortMode: false },
-      localSearch: ""
+      ui: { filterComplete: false, openNotes: {}, sortMode: false }, localSearch: ""
     };
 
-    let pendingBatchMatches = [];
-    let searchRequestId = 0;
-    let dragState = null;
-    let dragOverTarget = null;
-    let dragOverList = null;
-    const commentSaveTimers = new Map();
-    const dividerSaveTimers = new Map();
+    let pendingBatchMatches = []; let searchRequestId = 0; let dragState = null; let dragOverTarget = null; let dragOverList = null;
+    const commentSaveTimers = new Map(); const dividerSaveTimers = new Map();
 
     const els = {
-      boards: document.querySelector("#boards"),
-      tabs: document.querySelectorAll(".tab"),
-      tabViews: document.querySelectorAll(".tab-view"),
-      statusText: document.querySelector("#statusText"),
-      dot: document.querySelector(".dot"),
-      searchInput: document.querySelector("#searchInput"),
-      boardSearchInput: document.querySelector("#boardSearchInput"),
-      searchBtn: document.querySelector("#searchBtn"),
-      results: document.querySelector("#results"),
-      exportBtn: document.querySelector("#exportBtn"),
-      importBtn: document.querySelector("#importBtn"),
-      importFile: document.querySelector("#importFile"),
-      clearBtn: document.querySelector("#clearBtn"),
-      editOrderBtn: document.querySelector("#editOrderBtn"),
-      githubPat: document.querySelector("#githubPat"),
-      gistId: document.querySelector("#gistId"),
-      syncNowBtn: document.querySelector("#syncNowBtn"),
-      batchInput: document.querySelector("#batchInput"),
-      batchImportBtn: document.querySelector("#batchImportBtn"),
-      batchClearBtn: document.querySelector("#batchClearBtn"),
-      batchReview: document.querySelector("#batchReview"),
-      batchReviewList: document.querySelector("#batchReviewList"),
-      batchReviewSummary: document.querySelector("#batchReviewSummary"),
-      batchConfirmBtn: document.querySelector("#batchConfirmBtn"),
-      batchCancelBtn: document.querySelector("#batchCancelBtn"),
-      foundList: document.querySelector("#foundList"),
-      watchingList: document.querySelector("#watchingList"),
-      downloadedList: document.querySelector("#downloadedList"),
-      foundCount: document.querySelector("#foundCount"),
-      watchingCount: document.querySelector("#watchingCount"),
-      downloadedCount: document.querySelector("#downloadedCount"),
-      filterCompleteBtn: document.querySelector("#filterCompleteBtn"),
-      filterIncompleteBtn: document.querySelector("#filterIncompleteBtn"),
-      toastArea: document.querySelector("#toastArea")
+      boards: document.querySelector("#boards"), tabs: document.querySelectorAll(".tab"), tabViews: document.querySelectorAll(".tab-view"),
+      statusText: document.querySelector("#statusText"), dot: document.querySelector(".dot"),
+      searchInput: document.querySelector("#searchInput"), boardSearchInput: document.querySelector("#boardSearchInput"),
+      searchBtn: document.querySelector("#searchBtn"), results: document.querySelector("#results"),
+      exportBtn: document.querySelector("#exportBtn"), importBtn: document.querySelector("#importBtn"), importFile: document.querySelector("#importFile"),
+      clearBtn: document.querySelector("#clearBtn"), editOrderBtn: document.querySelector("#editOrderBtn"),
+      githubPat: document.querySelector("#githubPat"), gistId: document.querySelector("#gistId"), syncNowBtn: document.querySelector("#syncNowBtn"),
+      batchInput: document.querySelector("#batchInput"), batchImportBtn: document.querySelector("#batchImportBtn"), batchClearBtn: document.querySelector("#batchClearBtn"),
+      batchReview: document.querySelector("#batchReview"), batchReviewList: document.querySelector("#batchReviewList"), batchReviewSummary: document.querySelector("#batchReviewSummary"),
+      batchConfirmBtn: document.querySelector("#batchConfirmBtn"), batchCancelBtn: document.querySelector("#batchCancelBtn"),
+      foundList: document.querySelector("#foundList"), watchingList: document.querySelector("#watchingList"), downloadedList: document.querySelector("#downloadedList"),
+      foundCount: document.querySelector("#foundCount"), watchingCount: document.querySelector("#watchingCount"), downloadedCount: document.querySelector("#downloadedCount"),
+      filterCompleteBtn: document.querySelector("#filterCompleteBtn"), filterIncompleteBtn: document.querySelector("#filterIncompleteBtn"), toastArea: document.querySelector("#toastArea")
     };
 
-    const emptyCopy = {
-      found: "No matching releases found yet.",
-      watching: "All caught up.",
-      downloaded: "Library is empty."
-    };
+    const emptyCopy = { found: "No matching releases found yet.", watching: "All caught up.", downloaded: "Library is empty." };
 
-    function escapeHtml(value) {
-      return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
+    function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
     function escapeAttr(value) { return escapeHtml(value); }
 
     function makeDefaultOrder() { return { found: [], watching: [], downloaded: [] }; }
@@ -817,17 +444,12 @@
     function getShowSortTitle(show) { return String(show?.titleEnglish || show?.titleRomaji || show?.title || "").trim(); }
 
     function getSortName(id) {
-       const show = getShowById(id);
-       if (show) return getShowSortTitle(show);
-       const group = getGroupById(id);
-       if (group) return group.name || "";
+       const show = getShowById(id); if (show) return getShowSortTitle(show);
+       const group = getGroupById(id); if (group) return group.name || "";
        return "";
     }
 
-    function compareShowsAZ(a, b) {
-      return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, { sensitivity: "base", numeric: true });
-    }
-
+    function compareShowsAZ(a, b) { return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, { sensitivity: "base", numeric: true }); }
     function canUseDesktopDrag() { return window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ?? false; }
     function canDragOrderItems() { return !!state.ui.sortMode && !state.localSearch && canUseDesktopDrag(); }
 
@@ -838,30 +460,20 @@
       BOARDS.forEach(board => {
         if (!state.order[board]) state.order[board] = [];
         const oldOrder = state.order[board];
-        
         const hasLegacyDividers = oldOrder.some(item => typeof item === 'object' && item.type === 'divider');
         
         if (hasLegacyDividers) {
-          const newBoardOrder = [];
-          let currentGroupId = null;
-
+          const newBoardOrder = []; let currentGroupId = null;
           oldOrder.forEach(item => {
             if (typeof item === 'object' && item.type === 'divider') {
               const newGroupId = item.id;
               state.groups.push({ id: newGroupId, name: item.name, collapsed: !!item.collapsed, board: board });
-              state.groupOrder[newGroupId] = [];
-              newBoardOrder.push(newGroupId);
-              currentGroupId = newGroupId;
+              state.groupOrder[newGroupId] = []; newBoardOrder.push(newGroupId); currentGroupId = newGroupId;
             } else if (typeof item === 'string') {
               const show = getShowById(item);
               if (show) {
-                if (currentGroupId) {
-                  show.groupId = currentGroupId;
-                  state.groupOrder[currentGroupId].push(item);
-                } else {
-                  show.groupId = null;
-                  newBoardOrder.push(item);
-                }
+                if (currentGroupId) { show.groupId = currentGroupId; state.groupOrder[currentGroupId].push(item); }
+                else { show.groupId = null; newBoardOrder.push(item); }
               }
             }
           });
@@ -873,7 +485,6 @@
     function reconcileOrders() {
       if (!state.groups) state.groups = [];
       if (!state.groupOrder) state.groupOrder = {};
-      
       const seenShows = new Set();
       
       Object.keys(state.groupOrder).forEach(gId => {
@@ -888,23 +499,16 @@
         state.order[board].forEach(id => {
           const show = getShowById(id);
           if (show) {
-            if (getShowBoard(show) === board && !seenShows.has(id)) {
-              nextOrder.push(id);
-              seenShows.add(id);
-            }
+            if (getShowBoard(show) === board && !seenShows.has(id)) { nextOrder.push(id); seenShows.add(id); }
           } else {
             const group = getGroupById(id);
-            if (group && group.board === board) {
-              nextOrder.push(id);
-            }
+            if (group && group.board === board) nextOrder.push(id);
           }
         });
         
         state.shows.forEach(show => {
           if (getShowBoard(show) === board && !seenShows.has(show.id)) {
-             show.groupId = null; 
-             nextOrder.unshift(show.id);
-             seenShows.add(show.id);
+             show.groupId = null; nextOrder.unshift(show.id); seenShows.add(show.id);
           }
         });
         
@@ -913,43 +517,28 @@
     }
 
     function insertIntoUngroupedAZ(arr, showId) {
-      const show = getShowById(showId);
-      if (!show) return;
-
+      const show = getShowById(showId); if (!show) return;
       const firstGroupIndex = arr.findIndex(id => !!getGroupById(id));
       const ungroupedEnd = firstGroupIndex !== -1 ? firstGroupIndex : arr.length;
 
       let insertAt = -1;
       for (let i = 0; i < ungroupedEnd; i++) {
-        const otherId = arr[i];
-        const other = getShowById(otherId);
-        if (other && compareShowsAZ(show, other) < 0) {
-          insertAt = i;
-          break;
-        }
+        const otherId = arr[i]; const other = getShowById(otherId);
+        if (other && compareShowsAZ(show, other) < 0) { insertAt = i; break; }
       }
-
-      if (insertAt === -1) {
-        arr.splice(ungroupedEnd, 0, showId);
-      } else {
-        arr.splice(insertAt, 0, showId);
-      }
+      if (insertAt === -1) arr.splice(ungroupedEnd, 0, showId);
+      else arr.splice(insertAt, 0, showId);
     }
 
     function moveShowToBoardOrder(showId, previousBoard, nextBoard) {
-      ensureOrderState();
-      if (!BOARDS.includes(nextBoard)) return;
-
-      const show = getShowById(showId);
-      if (!show) return;
+      ensureOrderState(); if (!BOARDS.includes(nextBoard)) return;
+      const show = getShowById(showId); if (!show) return;
 
       if (previousBoard !== nextBoard) {
          const srcArr = show.groupId ? state.groupOrder[show.groupId] : state.order[previousBoard];
          const idx = srcArr.indexOf(showId);
          if (idx > -1) srcArr.splice(idx, 1);
-         
-         show.groupId = null; 
-         insertIntoUngroupedAZ(state.order[nextBoard], showId);
+         show.groupId = null; insertIntoUngroupedAZ(state.order[nextBoard], showId);
       }
     }
 
@@ -963,19 +552,15 @@
       ensureOrderState();
 
       state.order[board].sort((aId, bId) => {
-        const nameA = getSortName(aId);
-        const nameB = getSortName(bId);
+        const nameA = getSortName(aId); const nameB = getSortName(bId);
         return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
       });
 
-      render();
-      saveState();
-      toast("Sorted top-level shows and groups A→Z.");
+      render(); saveState(); toast("Sorted top-level shows and folders A→Z.");
     }
 
     function swap(arr, id, dir) {
-       const idx = arr.indexOf(id);
-       if (idx < 0) return;
+       const idx = arr.indexOf(id); if (idx < 0) return;
        const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
        if (targetIdx < 0 || targetIdx >= arr.length) return;
        [arr[idx], arr[targetIdx]] = [arr[targetIdx], arr[idx]];
@@ -983,51 +568,35 @@
 
     function canMoveItem(id, type, dir) {
        if (type === 'group') {
-          const group = getGroupById(id);
-          if (!group) return false;
-          const arr = state.order[group.board];
-          const idx = arr.indexOf(id);
+          const group = getGroupById(id); if (!group) return false;
+          const arr = state.order[group.board]; const idx = arr.indexOf(id);
           return dir === 'up' ? idx > 0 : idx < arr.length - 1;
        } else {
-          const show = getShowById(id);
-          if (!show) return false;
+          const show = getShowById(id); if (!show) return false;
           const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
-          const idx = arr.indexOf(id);
-          return dir === 'up' ? idx > 0 : idx < arr.length - 1;
+          const idx = arr.indexOf(id); return dir === 'up' ? idx > 0 : idx < arr.length - 1;
        }
     }
 
     function moveItemUI(itemId, itemType, direction) {
-       if (state.localSearch) return;
-       if (!state.ui.sortMode) return;
-
+       if (state.localSearch || !state.ui.sortMode) return;
        if (itemType === 'group') {
-          const group = getGroupById(itemId);
-          if(group) swap(state.order[group.board], itemId, direction);
+          const group = getGroupById(itemId); if(group) swap(state.order[group.board], itemId, direction);
        } else {
           const show = getShowById(itemId);
-          if(show) {
-            const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
-            swap(arr, itemId, direction);
-          }
+          if(show) swap(show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)], itemId, direction);
        }
        render(); saveState();
     }
 
     function sendShowToTop(showId) {
-       const show = getShowById(showId);
-       if (!show) return;
+       const show = getShowById(showId); if (!show) return;
        const board = getShowBoard(show);
-       
        const srcArr = show.groupId ? state.groupOrder[show.groupId] : state.order[board];
-       const idx = srcArr.indexOf(showId);
-       if (idx > -1) srcArr.splice(idx, 1);
+       const idx = srcArr.indexOf(showId); if (idx > -1) srcArr.splice(idx, 1);
        
-       show.groupId = null;
-       state.order[board].unshift(showId);
-       
-       render(); saveState();
-       toast("Sent to Top");
+       show.groupId = null; state.order[board].unshift(showId);
+       render(); saveState(); toast("Sent to Top");
     }
 
     function addGroup(board) {
@@ -1036,52 +605,32 @@
       
       const newGroupId = `grp_${crypto.randomUUID()}`;
       state.groups.push({ id: newGroupId, name: "New Group", collapsed: false, board });
-      state.groupOrder[newGroupId] = [];
-      state.order[board].unshift(newGroupId);
+      state.groupOrder[newGroupId] = []; state.order[board].unshift(newGroupId);
 
-      render();
-      saveState();
+      render(); saveState();
     }
 
     function removeGroup(groupId) {
       if (state.localSearch || !state.ui.sortMode) return;
-      const group = getGroupById(groupId);
-      if (!group) return;
+      const group = getGroupById(groupId); if (!group) return;
       
-      const board = group.board;
-      const items = state.groupOrder[groupId] || [];
-      
-      items.forEach(itemId => {
-        const show = getShowById(itemId);
-        if (show) show.groupId = null;
-      });
+      const board = group.board; const items = state.groupOrder[groupId] || [];
+      items.forEach(itemId => { const show = getShowById(itemId); if (show) show.groupId = null; });
       
       const idx = state.order[board].indexOf(groupId);
-      if (idx !== -1) {
-        state.order[board].splice(idx, 1, ...items);
-      }
+      if (idx !== -1) state.order[board].splice(idx, 1, ...items);
       
-      state.groups = state.groups.filter(g => g.id !== groupId);
-      delete state.groupOrder[groupId];
+      state.groups = state.groups.filter(g => g.id !== groupId); delete state.groupOrder[groupId];
       
-      render();
-      saveState();
-      toast("Group deleted. Shows moved to main board.");
+      render(); saveState(); toast("Folder deleted. Shows moved to main board.");
     }
 
     function toggleCollapseGroup(groupId) {
       const group = getGroupById(groupId);
-      if (group) {
-        group.collapsed = !group.collapsed;
-        render();
-        saveState();
-      }
+      if (group) { group.collapsed = !group.collapsed; render(); saveState(); }
     }
 
-    function getSavedShows(data) {
-      if (Array.isArray(data)) return data;
-      return Array.isArray(data?.shows) ? data.shows : [];
-    }
+    function getSavedShows(data) { return Array.isArray(data) ? data : (Array.isArray(data?.shows) ? data.shows : []); }
 
     function applyLoadedState(data) {
       state.shows = getSavedShows(data);
@@ -1101,10 +650,7 @@
         if (!show.board) show.board = show.downloaded ? "downloaded" : "watching";
       });
 
-      migrateStateIfNeeded();
-      reconcileOrders();
-      updateLibraryFilterButtons();
-      updateSortModeButton();
+      migrateStateIfNeeded(); reconcileOrders(); updateLibraryFilterButtons(); updateSortModeButton();
     }
 
     function setStatus(text, mode = "ready") {
@@ -1115,85 +661,45 @@
     }
 
     function loadSyncSettings() {
-      try {
-        const raw = localStorage.getItem(SYNC_SETTINGS_KEY);
-        if (raw) {
-          const d = JSON.parse(raw);
-          els.githubPat.value = d.githubPat || "";
-          els.gistId.value = d.gistId || "";
-        }
-      } catch(e) {}
+      try { const raw = localStorage.getItem(SYNC_SETTINGS_KEY); if (raw) { const d = JSON.parse(raw); els.githubPat.value = d.githubPat || ""; els.gistId.value = d.gistId || ""; } } catch(e) {}
     }
-
-    function saveSyncSettings() {
-      localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify({ githubPat: els.githubPat.value.trim(), gistId: els.gistId.value.trim() }));
-    }
+    function saveSyncSettings() { localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify({ githubPat: els.githubPat.value.trim(), gistId: els.gistId.value.trim() })); }
 
     async function pullFromCloud() {
-      const pat = els.githubPat.value.trim();
-      const gistId = els.gistId.value.trim();
-      if (!pat || !gistId) return null;
-
+      const pat = els.githubPat.value.trim(); const gistId = els.gistId.value.trim(); if (!pat || !gistId) return null;
       setStatus("Pulling from cloud...", "sync");
       try {
-        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-          method: "GET", headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` }
-        });
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, { method: "GET", headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const content = data.files["state.json"]?.content;
+        const data = await res.json(); const content = data.files["state.json"]?.content;
         return content ? JSON.parse(content) : null;
-      } catch (e) {
-        console.error("Cloud Pull Failed:", e);
-        return null;
-      }
+      } catch (e) { return null; }
     }
 
     async function pushToCloud(stateObject) {
-      const pat = els.githubPat.value.trim();
-      const gistId = els.gistId.value.trim();
-      if (!pat || !gistId) return;
-
+      const pat = els.githubPat.value.trim(); const gistId = els.gistId.value.trim(); if (!pat || !gistId) return;
       setStatus("Pushing to cloud...", "sync");
       try {
         await fetch(`https://api.github.com/gists/${gistId}`, {
-          method: "PATCH",
-          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}`, "Content-Type": "application/json" },
+          method: "PATCH", headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}`, "Content-Type": "application/json" },
           body: JSON.stringify({ files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } } })
         });
         setStatus("System Ready", "ready");
-      } catch (e) {
-        console.error("Cloud Push Failed:", e);
-        setStatus("Sync Failed", "error");
-      }
+      } catch (e) { setStatus("Sync Failed", "error"); }
     }
 
     let cloudSyncTimer;
-    function queueCloudSync(stateObject) {
-      clearTimeout(cloudSyncTimer);
-      cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500);
-    }
+    function queueCloudSync(stateObject) { clearTimeout(cloudSyncTimer); cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500); }
 
     async function init() {
       loadSyncSettings();
       if (els.githubPat.value.trim() && els.gistId.value.trim()) {
-        const cloudState = await pullFromCloud();
-        const localRaw = localStorage.getItem(STORAGE_KEY);
-        const localState = localRaw ? JSON.parse(localRaw) : null;
-        if (cloudState && getSavedShows(cloudState).length > 0) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
-          toast("Cloud sync complete.");
-        } else if (localState && getSavedShows(localState).length > 0) {
-          pushToCloud(localState);
-          toast("Pushed local board to empty cloud.");
-        }
+        const cloudState = await pullFromCloud(); const localRaw = localStorage.getItem(STORAGE_KEY); const localState = localRaw ? JSON.parse(localRaw) : null;
+        if (cloudState && getSavedShows(cloudState).length > 0) { localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState)); toast("Cloud sync complete."); }
+        else if (localState && getSavedShows(localState).length > 0) { pushToCloud(localState); toast("Pushed local board to empty cloud."); }
       }
-      loadState();
-      bindEvents();
-      render();
-      setStatus("System Ready", "ready");
-      await checkWatchingStatuses();
-      await checkLibraryUpdates(10);
+      loadState(); bindEvents(); render(); setStatus("System Ready", "ready");
+      await checkWatchingStatuses(); await checkLibraryUpdates(10);
     }
 
     function updateSortModeButton() { if (els.editOrderBtn) els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode); }
@@ -1211,98 +717,56 @@
     function bindEvents() {
       els.tabs.forEach(tab => {
         tab.addEventListener("click", () => {
-          els.tabs.forEach(t => t.classList.remove("active"));
-          els.tabViews.forEach(v => v.classList.remove("active"));
-          tab.classList.add("active");
-          document.getElementById(tab.dataset.target).classList.add("active");
+          els.tabs.forEach(t => t.classList.remove("active")); els.tabViews.forEach(v => v.classList.remove("active"));
+          tab.classList.add("active"); document.getElementById(tab.dataset.target).classList.add("active");
           els.boardSearchInput.placeholder = tab.dataset.target === "view-downloaded" ? "Search library..." : "Filter active shows...";
         });
       });
 
-      els.editOrderBtn.addEventListener("click", () => {
-        state.ui.sortMode = !state.ui.sortMode;
-        updateSortModeButton(); render(); saveState();
-      });
-
-      els.searchBtn.addEventListener("click", () => runSearch());
-      els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
-      els.searchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeResults();
-        if (e.key === "Enter") runSearch();
-      });
-
+      els.editOrderBtn.addEventListener("click", () => { state.ui.sortMode = !state.ui.sortMode; updateSortModeButton(); render(); saveState(); });
+      els.searchBtn.addEventListener("click", () => runSearch()); els.searchInput.addEventListener("input", debounce(() => runSearch(), 350));
+      els.searchInput.addEventListener("keydown", (e) => { if (e.key === "Escape") closeResults(); if (e.key === "Enter") runSearch(); });
       els.boardSearchInput.addEventListener("input", (e) => { state.localSearch = e.target.value.toLowerCase(); render(); });
       document.addEventListener("click", (e) => { if (!e.target.closest(".search-card")) closeResults(); });
 
-      els.boards.addEventListener("click", handleBoardClick);
-      els.boards.addEventListener("change", handleBoardChange);
-      els.boards.addEventListener("input", handleBoardInput);
-      els.boards.addEventListener("dragstart", handleBoardDragStart);
-      els.boards.addEventListener("dragover", handleBoardDragOver);
-      els.boards.addEventListener("drop", handleBoardDrop);
-      els.boards.addEventListener("dragend", handleBoardDragEnd);
-      els.boards.addEventListener("dragleave", handleBoardDragLeave);
+      els.boards.addEventListener("click", handleBoardClick); els.boards.addEventListener("change", handleBoardChange);
+      els.boards.addEventListener("input", handleBoardInput); els.boards.addEventListener("dragstart", handleBoardDragStart);
+      els.boards.addEventListener("dragover", handleBoardDragOver); els.boards.addEventListener("drop", handleBoardDrop);
+      els.boards.addEventListener("dragend", handleBoardDragEnd); els.boards.addEventListener("dragleave", handleBoardDragLeave);
 
-      els.exportBtn.addEventListener("click", exportJson);
-      els.importBtn.addEventListener("click", () => els.importFile.click());
-      els.importFile.addEventListener("change", importJson);
-      els.clearBtn.addEventListener("click", clearBoard);
+      els.exportBtn.addEventListener("click", exportJson); els.importBtn.addEventListener("click", () => els.importFile.click()); els.importFile.addEventListener("change", importJson); els.clearBtn.addEventListener("click", clearBoard);
+      els.filterCompleteBtn.addEventListener("click", () => { state.ui.filterComplete = !state.ui.filterComplete; if (state.ui.filterComplete) state.ui.filterIncomplete = false; updateLibraryFilterButtons(); render(); saveState(); });
+      els.filterIncompleteBtn.addEventListener("click", () => { state.ui.filterIncomplete = !state.ui.filterIncomplete; if (state.ui.filterIncomplete) state.ui.filterComplete = false; updateLibraryFilterButtons(); render(); saveState(); });
 
-      els.filterCompleteBtn.addEventListener("click", () => {
-        state.ui.filterComplete = !state.ui.filterComplete;
-        if (state.ui.filterComplete) state.ui.filterIncomplete = false;
-        updateLibraryFilterButtons(); render(); saveState();
-      });
-
-      els.filterIncompleteBtn.addEventListener("click", () => {
-        state.ui.filterIncomplete = !state.ui.filterIncomplete;
-        if (state.ui.filterIncomplete) state.ui.filterComplete = false;
-        updateLibraryFilterButtons(); render(); saveState();
-      });
-
-      els.githubPat.addEventListener("change", saveSyncSettings);
-      els.githubPat.addEventListener("blur", saveSyncSettings);
-      els.gistId.addEventListener("change", saveSyncSettings);
-      els.gistId.addEventListener("blur", saveSyncSettings);
+      els.githubPat.addEventListener("change", saveSyncSettings); els.githubPat.addEventListener("blur", saveSyncSettings);
+      els.gistId.addEventListener("change", saveSyncSettings); els.gistId.addEventListener("blur", saveSyncSettings);
 
       els.syncNowBtn.addEventListener("click", async () => {
         els.syncNowBtn.disabled = true; els.syncNowBtn.textContent = "Syncing...";
         const cloudState = await pullFromCloud();
-        if (cloudState && getSavedShows(cloudState).length > 0) {
-          applyLoadedState(cloudState); saveState(); render(); toast("Force pull complete.");
-        } else if (state.shows && state.shows.length > 0) {
-          pushToCloud(state); toast("Force push complete.");
-        } else {
-          toast("Both cloud and local are empty.", "error"); setStatus("System Ready", "ready");
-        }
+        if (cloudState && getSavedShows(cloudState).length > 0) { applyLoadedState(cloudState); saveState(); render(); toast("Force pull complete."); }
+        else if (state.shows && state.shows.length > 0) { pushToCloud(state); toast("Force push complete."); }
+        else { toast("Both cloud and local are empty.", "error"); setStatus("System Ready", "ready"); }
         els.syncNowBtn.disabled = false; els.syncNowBtn.textContent = "Pull & Sync";
       });
 
-      els.batchImportBtn.addEventListener("click", prepareBatchReview);
-      els.batchConfirmBtn.addEventListener("click", confirmBatchImport);
-      els.batchCancelBtn.addEventListener("click", clearBatchReview);
-      els.batchClearBtn.addEventListener("click", () => { els.batchInput.value = ""; clearBatchReview(); });
+      els.batchImportBtn.addEventListener("click", prepareBatchReview); els.batchConfirmBtn.addEventListener("click", confirmBatchImport);
+      els.batchCancelBtn.addEventListener("click", clearBatchReview); els.batchClearBtn.addEventListener("click", () => { els.batchInput.value = ""; clearBatchReview(); });
     }
 
     let aniListCooldownUntil = 0;
     function timeoutSignal(ms) {
       if (AbortSignal.timeout) return AbortSignal.timeout(ms);
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), ms);
-      return controller.signal;
+      const controller = new AbortController(); setTimeout(() => controller.abort(), ms); return controller.signal;
     }
 
     async function safeAniListRequest(query, variables, retries = 2) {
       if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
       try {
-        const response = await fetch(ANILIST_ENDPOINT, {
-          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({ query, variables }), signal: timeoutSignal(15000)
-        });
+        const response = await fetch(ANILIST_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ query, variables }), signal: timeoutSignal(15000) });
         const json = await response.json().catch(() => ({}));
         if (response.status === 429) {
-          const retryAfter = Number(response.headers.get("Retry-After")) || 60;
-          aniListCooldownUntil = Date.now() + retryAfter * 1000;
+          const retryAfter = Number(response.headers.get("Retry-After")) || 60; aniListCooldownUntil = Date.now() + retryAfter * 1000;
           if (retries > 0) { await sleep(retryAfter * 1000); return safeAniListRequest(query, variables, retries - 1); }
           throw new Error("AniList rate limit reached.");
         }
@@ -1313,103 +777,62 @@
 
     async function searchAniList(search) {
       const query = `query($search: String){ Page(perPage: 8){ media(search: $search, type: ANIME, sort: SEARCH_MATCH){ id title{ romaji english native } coverImage{ medium large } format seasonYear episodes siteUrl } } }`;
-      const json = await safeAniListRequest(query, { search });
-      return json?.data?.Page?.media ?? [];
+      const json = await safeAniListRequest(query, { search }); return json?.data?.Page?.media ?? [];
     }
 
     async function getAniListMediaById(id) {
       const query = `query($id: Int){ Media(id: $id, type: ANIME){ id title{ romaji english native } coverImage{ medium large } format seasonYear episodes siteUrl } } }`;
-      const json = await safeAniListRequest(query, { id: Number(id) });
-      return json?.data?.Media ?? null;
+      const json = await safeAniListRequest(query, { id: Number(id) }); return json?.data?.Media ?? null;
     }
 
     async function runSearch() {
-      const search = els.searchInput.value.trim();
-      if (!search) { closeResults(); return; }
-      const requestId = ++searchRequestId;
-      setStatus("Searching..."); els.results.classList.add("open"); els.results.innerHTML = '<div class="empty">Searching...</div>';
+      const search = els.searchInput.value.trim(); if (!search) { closeResults(); return; }
+      const requestId = ++searchRequestId; setStatus("Searching..."); els.results.classList.add("open"); els.results.innerHTML = '<div class="empty">Searching...</div>';
       try {
-        const res = await searchAniList(search);
-        if (requestId !== searchRequestId) return;
+        const res = await searchAniList(search); if (requestId !== searchRequestId) return;
         els.results.innerHTML = res.length ? res.map(m => `
           <button class="result-item" data-add-id="${m.id}">
             <img class="result-poster" src="${escapeAttr(m.coverImage?.medium || "")}" alt="${escapeAttr(m.title.english || m.title.romaji)}" loading="lazy" />
-            <div class="result-info">
-              <span class="result-title">${escapeHtml(m.title.english || m.title.romaji)}</span>
-              <span class="result-meta">${escapeHtml(m.format || "Anime")} · ${escapeHtml(m.seasonYear || "")}</span>
-            </div>
+            <div class="result-info"><span class="result-title">${escapeHtml(m.title.english || m.title.romaji)}</span><span class="result-meta">${escapeHtml(m.format || "Anime")} · ${escapeHtml(m.seasonYear || "")}</span></div>
             <span class="badge ${isMediaOnBoard(m) ? "downloaded" : "found"}">${isMediaOnBoard(m) ? "Added" : "Add"}</span>
           </button>
         `).join("") : '<div class="empty">No results found.</div>';
-        els.results.querySelectorAll("[data-add-id]").forEach(b => {
-          b.addEventListener("click", () => { const media = res.find(i => i.id == b.dataset.addId); if (media) addShow(media); });
-        });
+        els.results.querySelectorAll("[data-add-id]").forEach(b => { b.addEventListener("click", () => { const media = res.find(i => i.id == b.dataset.addId); if (media) addShow(media); }); });
         setStatus("System Ready");
-      } catch(e) {
-        if (requestId !== searchRequestId) return;
-        els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error", "error");
-      }
+      } catch(e) { if (requestId !== searchRequestId) return; els.results.innerHTML = '<div class="empty">Search failed.</div>'; setStatus("Error", "error"); }
     }
 
     async function handleBoardClick(e) {
-      const sortAzBtn = e.target.closest("[data-sort-az-board]");
-      if (sortAzBtn) { sortBoardAZ(sortAzBtn.dataset.sortAzBoard); return; }
+      const sortAzBtn = e.target.closest("[data-sort-az-board]"); if (sortAzBtn) { sortBoardAZ(sortAzBtn.dataset.sortAzBoard); return; }
+      const addGroupBtn = e.target.closest("[data-add-group-board]"); if (addGroupBtn) { addGroup(addGroupBtn.dataset.addGroupBoard); return; }
+      const removeGroupBtn = e.target.closest("[data-remove-group]"); if (removeGroupBtn) { removeGroup(removeGroupBtn.dataset.removeGroup); return; }
+      
+      const groupHeader = e.target.closest(".group-header");
+      if (groupHeader && !e.target.closest(".divider-name-input") && !e.target.closest(".card-actions-wrapper")) {
+        toggleCollapseGroup(groupHeader.dataset.collapseGroup); return;
+      }
 
-      const addGroupBtn = e.target.closest("[data-add-group-board]");
-      if (addGroupBtn) { addGroup(addGroupBtn.dataset.addGroupBoard); return; }
-
-      const removeGroupBtn = e.target.closest("[data-remove-group]");
-      if (removeGroupBtn) { removeGroup(removeGroupBtn.dataset.removeGroup); return; }
-
-      const collapseGroupBtn = e.target.closest("[data-collapse-group]");
-      if (collapseGroupBtn) { toggleCollapseGroup(collapseGroupBtn.dataset.collapseGroup); return; }
-
-      const topBtn = e.target.closest("[data-send-top-id]");
-      if (topBtn) { sendShowToTop(topBtn.dataset.sendTopId); return; }
-
-      const moveBtn = e.target.closest("[data-move-id]");
-      if (moveBtn) { moveItemUI(moveBtn.dataset.moveId, moveBtn.dataset.itemType, moveBtn.dataset.direction); return; }
-
-      const nBtn = e.target.closest("[data-notes-id]");
-      if (nBtn) { state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId]; render(); saveState(); return; }
-
-      const cBtn = e.target.closest("[data-complete-id]");
-      if (cBtn) { toggleAllAvailableDownloaded(cBtn.dataset.completeId); return; }
-
-      const rBtn = e.target.closest("[data-remove-id]");
-      if (rBtn) { removeShow(rBtn.dataset.removeId); return; }
-
-      const aBtn = e.target.closest("[data-ack-id]");
-      if (aBtn) { acknowledgeUpdate(aBtn.dataset.ackId); return; }
-
+      const topBtn = e.target.closest("[data-send-top-id]"); if (topBtn) { sendShowToTop(topBtn.dataset.sendTopId); return; }
+      const moveBtn = e.target.closest("[data-move-id]"); if (moveBtn) { moveItemUI(moveBtn.dataset.moveId, moveBtn.dataset.itemType, moveBtn.dataset.direction); return; }
+      const nBtn = e.target.closest("[data-notes-id]"); if (nBtn) { state.ui.openNotes[nBtn.dataset.notesId] = !state.ui.openNotes[nBtn.dataset.notesId]; render(); saveState(); return; }
+      const cBtn = e.target.closest("[data-complete-id]"); if (cBtn) { toggleAllAvailableDownloaded(cBtn.dataset.completeId); return; }
+      const rBtn = e.target.closest("[data-remove-id]"); if (rBtn) { removeShow(rBtn.dataset.removeId); return; }
+      const aBtn = e.target.closest("[data-ack-id]"); if (aBtn) { acknowledgeUpdate(aBtn.dataset.ackId); return; }
       const refBtn = e.target.closest("[data-refresh-id]");
       if (refBtn) {
-        const show = getShowById(refBtn.dataset.refreshId);
-        if (!show) return;
-        refBtn.disabled = true; refBtn.classList.add("spinning");
-        await refreshShowStatus(show, { forceMove: true });
-        render(); saveState(); toast(`Refreshed ${show.title}`);
+        const show = getShowById(refBtn.dataset.refreshId); if (!show) return;
+        refBtn.disabled = true; refBtn.classList.add("spinning"); await refreshShowStatus(show, { forceMove: true }); render(); saveState(); toast(`Refreshed ${show.title}`);
       }
     }
 
-    function handleBoardChange(e) {
-      const dCheck = e.target.closest("[data-download-id]");
-      if (dCheck) toggleDownloadedStatus(dCheck.dataset.downloadId, dCheck.checked);
-    }
+    function handleBoardChange(e) { const dCheck = e.target.closest("[data-download-id]"); if (dCheck) toggleDownloadedStatus(dCheck.dataset.downloadId, dCheck.checked); }
 
     function handleBoardInput(e) {
-      const text = e.target.closest("[data-comment-id]");
-      if (text) { queueCommentUpdate(text.dataset.commentId, text.value); return; }
-
+      const text = e.target.closest("[data-comment-id]"); if (text) { queueCommentUpdate(text.dataset.commentId, text.value); return; }
       const divName = e.target.closest("[data-group-name-id]");
       if (divName) {
-        const id = divName.dataset.groupNameId;
-        const group = getGroupById(id);
-        if (group) {
-          group.name = divName.value;
-          clearTimeout(dividerSaveTimers.get(id));
-          dividerSaveTimers.set(id, setTimeout(saveState, 500));
-        }
+        const id = divName.dataset.groupNameId; const group = getGroupById(id);
+        if (group) { group.name = divName.value; clearTimeout(dividerSaveTimers.get(id)); dividerSaveTimers.set(id, setTimeout(saveState, 500)); }
       }
     }
 
@@ -1421,150 +844,88 @@
     function setDragIndicator(target, position, listEl = null) {
       if (dragOverTarget && dragOverTarget !== target) dragOverTarget.classList.remove("drag-over-before", "drag-over-after");
       if (dragOverList && dragOverList !== listEl) dragOverList.classList.remove("drag-over-empty");
-      
       dragOverTarget = target || null; dragOverList = listEl || null;
-      if (dragOverTarget) {
-        dragOverTarget.classList.toggle("drag-over-before", position === "before");
-        dragOverTarget.classList.toggle("drag-over-after", position === "after");
-      }
+      if (dragOverTarget) { dragOverTarget.classList.toggle("drag-over-before", position === "before"); dragOverTarget.classList.toggle("drag-over-after", position === "after"); }
       if (dragOverList) dragOverList.classList.add("drag-over-empty");
     }
 
     function getDropPlacement(e, target) {
-      let measureEl = target;
-      if (target.classList.contains('group-container')) measureEl = target.querySelector('.group-header') || target;
-      
+      let measureEl = target; if (target.classList.contains('group-container')) measureEl = target.querySelector('.group-header') || target;
       const rect = measureEl.getBoundingClientRect();
-      if (Math.abs(e.clientX - (rect.left + rect.width / 2)) > Math.abs(e.clientY - (rect.top + rect.height / 2))) {
-        return e.clientX < rect.left + rect.width / 2 ? "before" : "after";
-      }
+      if (Math.abs(e.clientX - (rect.left + rect.width / 2)) > Math.abs(e.clientY - (rect.top + rect.height / 2))) { return e.clientX < rect.left + rect.width / 2 ? "before" : "after"; }
       return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
     }
 
     function getDragTarget(e) {
-      const card = e.target.closest('.show-card');
-      if (card) return card;
-      const header = e.target.closest('.group-header');
-      if (header) return header.closest('.group-container');
+      const card = e.target.closest('.show-card:not(.group-container)'); if (card) return card;
+      const header = e.target.closest('.group-header'); if (header) return header.closest('.group-container');
       return null;
     }
 
     function handleBoardDragStart(e) {
       const item = e.target.closest("[data-order-item-id]");
       if (!item || !canDragOrderItems() || e.target.closest("button, input, textarea, select, a")) { e.preventDefault(); return; }
-
       e.stopPropagation();
-      dragState = {
-        itemId: item.dataset.orderItemId,
-        itemType: item.dataset.orderItemType,
-        sourceBoard: item.dataset.board,
-        sourceGroup: item.dataset.groupId || null
-      };
-
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", dragState.itemId);
+      dragState = { itemId: item.dataset.orderItemId, itemType: item.dataset.orderItemType, sourceBoard: item.dataset.board, sourceGroup: item.dataset.groupId || null };
+      e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragState.itemId);
       window.setTimeout(() => item.classList.add("is-dragging"), 0);
     }
 
     function handleBoardDragOver(e) {
       if (!dragState || !canDragOrderItems()) return;
-      const container = e.target.closest("[data-board-list], [data-group-list-id]");
-      if (!container) return;
-
+      const container = e.target.closest("[data-board-list], [data-group-list-id]"); if (!container) return;
       e.preventDefault(); e.stopPropagation();
 
-      const targetBoard = container.dataset.board;
-      const targetGroup = container.dataset.groupListId || null;
+      const targetBoard = container.dataset.board; const targetGroup = container.dataset.groupListId || null;
+      if (targetBoard !== dragState.sourceBoard || (dragState.itemType === 'group' && targetGroup)) { e.dataTransfer.dropEffect = "none"; clearDragIndicators(); return; }
 
-      if (targetBoard !== dragState.sourceBoard || (dragState.itemType === 'group' && targetGroup)) {
-        e.dataTransfer.dropEffect = "none"; clearDragIndicators(); return;
-      }
-
-      e.dataTransfer.dropEffect = "move";
-      const targetItem = getDragTarget(e);
-
+      e.dataTransfer.dropEffect = "move"; const targetItem = getDragTarget(e);
       if (targetItem) {
         if (targetItem.dataset.orderItemId === dragState.itemId) { clearDragIndicators(); return; }
         if (dragState.itemType === 'group' && targetItem.closest(`[data-group-list-id="${dragState.itemId}"]`)) { clearDragIndicators(); return; }
       }
-
       const placement = targetItem ? getDropPlacement(e, targetItem) : "end";
       setDragIndicator(targetItem, placement, targetItem ? null : container);
     }
 
     function handleBoardDrop(e) {
       if (!dragState || !canDragOrderItems()) return;
-      const container = e.target.closest("[data-board-list], [data-group-list-id]");
-      if (!container) return;
-
+      const container = e.target.closest("[data-board-list], [data-group-list-id]"); if (!container) return;
       e.preventDefault(); e.stopPropagation();
 
-      const targetBoard = container.dataset.board;
-      let targetGroup = container.dataset.groupListId || null;
-
+      const targetBoard = container.dataset.board; let targetGroup = container.dataset.groupListId || null;
       if (targetBoard !== dragState.sourceBoard) { toast("Drag within the same board."); handleBoardDragEnd(); return; }
       if (dragState.itemType === 'group' && targetGroup) { handleBoardDragEnd(); return; }
 
       const targetItem = getDragTarget(e);
       if (targetItem && targetItem.dataset.orderItemId === dragState.itemId) { handleBoardDragEnd(); return; }
 
-      let placement = 'end';
-      let resolvedTargetItemId = null;
-
+      let placement = 'end'; let resolvedTargetItemId = null;
       if (targetItem) {
-        placement = getDropPlacement(e, targetItem);
-        resolvedTargetItemId = targetItem.dataset.orderItemId;
-        if (targetItem.dataset.orderItemType === 'group') targetGroup = null; 
-        else targetGroup = targetItem.dataset.groupId || null;
+        placement = getDropPlacement(e, targetItem); resolvedTargetItemId = targetItem.dataset.orderItemId;
+        if (targetItem.dataset.orderItemType === 'group') targetGroup = null; else targetGroup = targetItem.dataset.groupId || null;
       }
-
       const moved = reorderNestedItem(dragState.itemId, dragState.itemType, dragState.sourceBoard, dragState.sourceGroup, targetBoard, targetGroup, resolvedTargetItemId, placement);
-
-      handleBoardDragEnd();
-      if (moved) { render(); saveState(); }
+      handleBoardDragEnd(); if (moved) { render(); saveState(); }
     }
 
     function reorderNestedItem(dragId, dragType, sourceBoard, sourceGroup, targetBoard, targetGroup, targetItemId, placement) {
       if (sourceBoard !== targetBoard) return false;
-      
       const sourceArray = sourceGroup ? state.groupOrder[sourceGroup] : state.order[sourceBoard];
-      const sourceIdx = sourceArray.indexOf(dragId);
-      if (sourceIdx > -1) sourceArray.splice(sourceIdx, 1);
-      
-      if (dragType === 'show') {
-         const show = getShowById(dragId);
-         if (show) show.groupId = targetGroup || null;
-      }
+      const sourceIdx = sourceArray.indexOf(dragId); if (sourceIdx > -1) sourceArray.splice(sourceIdx, 1);
+      if (dragType === 'show') { const show = getShowById(dragId); if (show) show.groupId = targetGroup || null; }
       
       const targetArray = targetGroup ? state.groupOrder[targetGroup] : state.order[targetBoard];
       let toIdx = targetArray.length; 
-      
-      if (targetItemId) {
-         const tIdx = targetArray.indexOf(targetItemId);
-         if (tIdx > -1) toIdx = placement === 'after' ? tIdx + 1 : tIdx;
-      }
-      
-      targetArray.splice(toIdx, 0, dragId);
-      return true;
+      if (targetItemId) { const tIdx = targetArray.indexOf(targetItemId); if (tIdx > -1) toIdx = placement === 'after' ? tIdx + 1 : tIdx; }
+      targetArray.splice(toIdx, 0, dragId); return true;
     }
 
-    function handleBoardDragEnd() {
-      document.querySelectorAll(".is-dragging").forEach(el => el.classList.remove("is-dragging"));
-      clearDragIndicators(); dragState = null;
-    }
-
-    function handleBoardDragLeave(e) {
-      if (!dragState) return;
-      const related = e.relatedTarget;
-      if (related && els.boards.contains(related)) return;
-      clearDragIndicators();
-    }
-
+    function handleBoardDragEnd() { document.querySelectorAll(".is-dragging").forEach(el => el.classList.remove("is-dragging")); clearDragIndicators(); dragState = null; }
+    function handleBoardDragLeave(e) { if (!dragState) return; const related = e.relatedTarget; if (related && els.boards.contains(related)) return; clearDragIndicators(); }
     function isMediaOnBoard(media) { return state.shows.some(s => s.anilistId == media.id); }
 
-    function getDefaultReleasesMoeState(existing = {}) {
-      return { found: false, recordId: null, checkedAt: null, libraryCheckedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null, ...(existing || {}) };
-    }
+    function getDefaultReleasesMoeState(existing = {}) { return { found: false, recordId: null, checkedAt: null, libraryCheckedAt: null, error: null, updated: null, updateAvailable: false, latestUpdated: null, ...(existing || {}) }; }
 
     function makeShowFromMedia(media) {
       return {
@@ -1580,86 +941,55 @@
     async function addShow(media) {
       if (isMediaOnBoard(media)) return toast("Already on board.");
       closeResults(); els.searchInput.value = ""; setStatus("Checking release...");
-
-      const show = makeShowFromMedia(media);
-      state.shows.unshift(show);
+      const show = makeShowFromMedia(media); state.shows.unshift(show);
       await refreshShowStatus(show, { forceMove: true });
       insertIntoUngroupedAZ(state.order[getShowBoard(show)], show.id);
-
       render(); saveState(); setStatus("System Ready"); toast("Added to active board.");
     }
 
     async function refreshShowStatus(show, { forceMove = false } = {}) {
-      const previousBoard = getShowBoard(show);
-      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-
+      const previousBoard = getShowBoard(show); show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
       try {
         const res = await fetch(`${RELEASES_ENDPOINT}?perPage=1&filter=alID=${show.anilistId}`);
         if (!res.ok) throw new Error("API Error");
-
-        const json = await res.json();
-        const match = json.items?.[0];
-        const apiUpdated = match?.updated || null;
-        const isLibrary = show.downloaded || show.board === "downloaded";
-
-        show.releasesMoe.found = !!match; show.releasesMoe.recordId = match?.id || null;
-        show.releasesMoe.checkedAt = new Date().toISOString(); show.releasesMoe.error = null;
+        const json = await res.json(); const match = json.items?.[0]; const apiUpdated = match?.updated || null; const isLibrary = show.downloaded || show.board === "downloaded";
+        show.releasesMoe.found = !!match; show.releasesMoe.recordId = match?.id || null; show.releasesMoe.checkedAt = new Date().toISOString(); show.releasesMoe.error = null;
 
         if (match && apiUpdated) {
-          const previousUpdated = show.releasesMoe.updated ? Date.parse(show.releasesMoe.updated) : 0;
-          const nextUpdated = Date.parse(apiUpdated);
-
-          if (!show.releasesMoe.updated) {
-            show.releasesMoe.updated = apiUpdated; show.releasesMoe.latestUpdated = null; show.releasesMoe.updateAvailable = false;
-          } else if (apiUpdated !== show.releasesMoe.updated && Number.isFinite(nextUpdated) && nextUpdated > previousUpdated) {
+          const previousUpdated = show.releasesMoe.updated ? Date.parse(show.releasesMoe.updated) : 0; const nextUpdated = Date.parse(apiUpdated);
+          if (!show.releasesMoe.updated) { show.releasesMoe.updated = apiUpdated; show.releasesMoe.latestUpdated = null; show.releasesMoe.updateAvailable = false; }
+          else if (apiUpdated !== show.releasesMoe.updated && Number.isFinite(nextUpdated) && nextUpdated > previousUpdated) {
             if (isLibrary) { show.releasesMoe.updateAvailable = true; show.releasesMoe.latestUpdated = apiUpdated; } 
             else { show.releasesMoe.updated = apiUpdated; show.releasesMoe.latestUpdated = null; show.releasesMoe.updateAvailable = false; }
           }
         }
-
         if (!isLibrary && forceMove) show.board = match ? "found" : "watching";
-        
-        const nextBoard = getShowBoard(show);
-        if (forceMove && previousBoard !== nextBoard) moveShowToBoardOrder(show.id, previousBoard, nextBoard);
-
+        const nextBoard = getShowBoard(show); if (forceMove && previousBoard !== nextBoard) moveShowToBoardOrder(show.id, previousBoard, nextBoard);
         show.updatedAt = new Date().toISOString();
       } catch(e) { show.releasesMoe.error = e.message || "Refresh failed"; show.releasesMoe.checkedAt = new Date().toISOString(); }
     }
 
     async function checkWatchingStatuses() {
-      const watching = state.shows.filter(s => getShowBoard(s) === "watching" && !s.downloaded);
-      if (!watching.length) return;
+      const watching = state.shows.filter(s => getShowBoard(s) === "watching" && !s.downloaded); if (!watching.length) return;
       setStatus(`Checking ${watching.length} watching entries...`, "sync");
       for (const s of watching) { await refreshShowStatus(s, { forceMove: true }); await sleep(400); }
       render(); saveState(); setStatus("System Ready", "ready");
     }
 
     async function checkLibraryUpdates(limit = 10) {
-      const libraryShows = state.shows.filter(s => s.downloaded || s.board === "downloaded")
-        .sort((a, b) => {
+      const libraryShows = state.shows.filter(s => s.downloaded || s.board === "downloaded").sort((a, b) => {
           const aTime = Date.parse(a.releasesMoe?.libraryCheckedAt || a.releasesMoe?.checkedAt || a.createdAt || null) || 0;
-          const bTime = Date.parse(b.releasesMoe?.libraryCheckedAt || b.releasesMoe?.checkedAt || b.createdAt || null) || 0;
-          return aTime - bTime;
-        }).slice(0, limit);
-
+          const bTime = Date.parse(b.releasesMoe?.libraryCheckedAt || b.releasesMoe?.checkedAt || b.createdAt || null) || 0; return aTime - bTime;
+      }).slice(0, limit);
       if (!libraryShows.length) return;
       setStatus(`Checking ${libraryShows.length} library entries...`, "sync");
-      for (const show of libraryShows) {
-        await refreshShowStatus(show, { forceMove: false });
-        show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-        show.releasesMoe.libraryCheckedAt = new Date().toISOString();
-        await sleep(400);
-      }
+      for (const show of libraryShows) { await refreshShowStatus(show, { forceMove: false }); show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe); show.releasesMoe.libraryCheckedAt = new Date().toISOString(); await sleep(400); }
       render(); saveState(); setStatus("System Ready", "ready");
     }
 
     function toggleDownloadedStatus(id, checked) {
-      const show = getShowById(id);
-      if (!show) return;
-
-      const previousBoard = getShowBoard(show);
-      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-      show.downloaded = checked;
+      const show = getShowById(id); if (!show) return;
+      const previousBoard = getShowBoard(show); show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe); show.downloaded = checked;
 
       if (checked) {
         show.board = "downloaded"; show.releasesMoe.updateAvailable = false;
@@ -1669,142 +999,94 @@
         show.board = show.releasesMoe?.found ? "found" : "watching";
         show.allAvailableDownloaded = false; show.releasesMoe.updateAvailable = false; show.releasesMoe.latestUpdated = null;
       }
-
-      const nextBoard = getShowBoard(show);
-      moveShowToBoardOrder(show.id, previousBoard, nextBoard);
-      show.updatedAt = new Date().toISOString();
-
+      const nextBoard = getShowBoard(show); moveShowToBoardOrder(show.id, previousBoard, nextBoard); show.updatedAt = new Date().toISOString();
       render(); saveState(); toast(checked ? "Moved to Library" : "Moved back to Active");
     }
 
-    function toggleAllAvailableDownloaded(id) {
-      const show = getShowById(id);
-      if (show) { show.allAvailableDownloaded = !show.allAvailableDownloaded; render(); saveState(); }
-    }
+    function toggleAllAvailableDownloaded(id) { const show = getShowById(id); if (show) { show.allAvailableDownloaded = !show.allAvailableDownloaded; render(); saveState(); } }
 
     function removeShow(id) {
       if (confirm("Remove this show entirely?")) {
-        const show = getShowById(id);
-        const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
-        const idx = arr.indexOf(id);
-        if (idx > -1) arr.splice(idx, 1);
-        
-        state.shows = state.shows.filter(s => s.id !== id);
-        render(); saveState(); toast("Removed.");
+        const show = getShowById(id); const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
+        const idx = arr.indexOf(id); if (idx > -1) arr.splice(idx, 1);
+        state.shows = state.shows.filter(s => s.id !== id); render(); saveState(); toast("Removed.");
       }
     }
 
     function acknowledgeUpdate(id) {
-      const s = getShowById(id);
-      if (!s) return;
+      const s = getShowById(id); if (!s) return;
       s.releasesMoe = getDefaultReleasesMoeState(s.releasesMoe);
       if (s.releasesMoe.latestUpdated) { s.releasesMoe.updated = s.releasesMoe.latestUpdated; s.releasesMoe.latestUpdated = null; }
-      s.releasesMoe.updateAvailable = false; s.updatedAt = new Date().toISOString();
-      render(); saveState(); toast("Update acknowledged.");
+      s.releasesMoe.updateAvailable = false; s.updatedAt = new Date().toISOString(); render(); saveState(); toast("Update acknowledged.");
     }
 
-    function queueCommentUpdate(id, val) {
-      const s = getShowById(id);
-      if (s) s.comments = val;
-      clearTimeout(commentSaveTimers.get(id)); commentSaveTimers.set(id, setTimeout(saveState, 500));
-    }
+    function queueCommentUpdate(id, val) { const s = getShowById(id); if (s) s.comments = val; clearTimeout(commentSaveTimers.get(id)); commentSaveTimers.set(id, setTimeout(saveState, 500)); }
 
     function parseBatchNames(value) {
-      const seen = new Set();
-      return String(value || "").split(/[\n,;]+/).map(n => n.trim()).filter(Boolean).filter(name => {
-        const key = name.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true;
-      });
+      const seen = new Set(); return String(value || "").split(/[\n,;]+/).map(n => n.trim()).filter(Boolean).filter(name => { const key = name.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; });
     }
 
     function getAniListIdFromInput(input) {
-      const val = String(input || "").trim();
-      const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i); if (urlMatch) return Number(urlMatch[1]);
-      const labelledMatch = val.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i); if (labelledMatch) return Number(labelledMatch[1]);
-      return null;
+      const val = String(input || "").trim(); const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i); if (urlMatch) return Number(urlMatch[1]);
+      const labelledMatch = val.match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i); if (labelledMatch) return Number(labelledMatch[1]); return null;
     }
 
     async function lookupBatchAniList(input) {
-      const directId = getAniListIdFromInput(input);
-      if (directId) { const media = await getAniListMediaById(directId); return media ? [media] : []; }
+      const directId = getAniListIdFromInput(input); if (directId) { const media = await getAniListMediaById(directId); return media ? [media] : []; }
       return searchAniList(input);
     }
 
-    function normalizeTitle(val) {
-      return String(val || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ").replace(/\s+/g, " ").trim();
-    }
+    function normalizeTitle(val) { return String(val || "").normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ").replace(/\s+/g, " ").trim(); }
     function getMediaTitles(media) { return [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean); }
     function getYearFromText(val) { const match = String(val || "").match(/\b((?:19|20)\d{2})\b/); return match ? Number(match[1]) : null; }
     function tokenSimilarity(a, b) {
       const aTokens = new Set(String(a || "").split(" ").filter(Boolean)); const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
-      if (!aTokens.size || !bTokens.size) return 0;
-      let overlap = 0; for (const token of aTokens) { if (bTokens.has(token)) overlap++; }
-      return overlap / Math.max(aTokens.size, bTokens.size);
+      if (!aTokens.size || !bTokens.size) return 0; let overlap = 0; for (const token of aTokens) { if (bTokens.has(token)) overlap++; } return overlap / Math.max(aTokens.size, bTokens.size);
     }
 
     function getMatchInfo(input, media) {
       if (!media) return { level: "none", label: "No match", score: 0 };
-      const directId = getAniListIdFromInput(input);
-      if (directId && Number(directId) === Number(media.id)) return { level: "high", label: "Direct ID", score: 1 };
-      const query = normalizeTitle(input).replace(/\b(?:anilist|alid|al)\b\s*\d+\b/g, "").trim();
-      const queryWithoutYear = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, ""));
-      const titles = getMediaTitles(media).map(normalizeTitle);
-      const year = getYearFromText(input);
-      let bestScore = 0;
+      const directId = getAniListIdFromInput(input); if (directId && Number(directId) === Number(media.id)) return { level: "high", label: "Direct ID", score: 1 };
+      const query = normalizeTitle(input).replace(/\b(?:anilist|alid|al)\b\s*\d+\b/g, "").trim(); const queryWithoutYear = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, ""));
+      const titles = getMediaTitles(media).map(normalizeTitle); const year = getYearFromText(input); let bestScore = 0;
       for (const title of titles) {
-        const titleWithoutYear = title.replace(/\b(19|20)\d{2}\b/g, "").trim();
-        const candidates = [query, queryWithoutYear].filter(Boolean);
+        const titleWithoutYear = title.replace(/\b(19|20)\d{2}\b/g, "").trim(); const candidates = [query, queryWithoutYear].filter(Boolean);
         for (const candidate of candidates) {
           if (!candidate || !title) continue;
-          if (title === candidate) bestScore = Math.max(bestScore, 1);
-          if (titleWithoutYear === candidate) bestScore = Math.max(bestScore, 0.96);
+          if (title === candidate) bestScore = Math.max(bestScore, 1); if (titleWithoutYear === candidate) bestScore = Math.max(bestScore, 0.96);
           if (title.includes(candidate) || candidate.includes(titleWithoutYear)) bestScore = Math.max(bestScore, 0.76);
           bestScore = Math.max(bestScore, tokenSimilarity(candidate, title));
         }
       }
-      if (year && Number(media.seasonYear) === year) bestScore += 0.12;
-      bestScore = Math.min(bestScore, 1);
-      if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore };
-      if (bestScore >= 0.6) return { level: "medium", label: "Check match", score: bestScore };
-      return { level: "low", label: "Low match", score: bestScore };
+      if (year && Number(media.seasonYear) === year) bestScore += 0.12; bestScore = Math.min(bestScore, 1);
+      if (bestScore >= 0.9) return { level: "high", label: "High match", score: bestScore }; if (bestScore >= 0.6) return { level: "medium", label: "Check match", score: bestScore }; return { level: "low", label: "Low match", score: bestScore };
     }
 
     function getSelectedBatchMedia(match) { return (!match?.results?.length || !match.selectedId) ? null : match.results.find(m => m.id === Number(match.selectedId)) || null; }
     function getAddableBatchMatches() { return pendingBatchMatches.filter(m => !m.skipped).map(match => ({ match, media: getSelectedBatchMedia(match) })).filter(({ media }) => media && !isMediaOnBoard(media)); }
 
     async function prepareBatchReview() {
-      const names = parseBatchNames(els.batchInput.value);
-      if (!names.length) { toast("Paste at least one series name."); els.batchInput.focus(); return; }
-      pendingBatchMatches = []; renderBatchReview();
-      setStatus(`Matching 0/${names.length}...`); els.batchImportBtn.disabled = true; els.batchConfirmBtn.disabled = true;
-
+      const names = parseBatchNames(els.batchInput.value); if (!names.length) { toast("Paste at least one series name."); els.batchInput.focus(); return; }
+      pendingBatchMatches = []; renderBatchReview(); setStatus(`Matching 0/${names.length}...`); els.batchImportBtn.disabled = true; els.batchConfirmBtn.disabled = true;
       try {
         for (let i = 0; i < names.length; i++) {
           const input = names[i]; setStatus(`Matching ${i + 1}/${names.length}...`);
           try {
-            const results = await lookupBatchAniList(input);
-            const firstAvail = results.find(m => !isMediaOnBoard(m));
-            const selected = firstAvail || results[0] || null;
+            const results = await lookupBatchAniList(input); const firstAvail = results.find(m => !isMediaOnBoard(m)); const selected = firstAvail || results[0] || null;
             pendingBatchMatches.push({ input, results, selectedId: selected?.id ?? null, skipped: !selected, error: null });
           } catch (e) { pendingBatchMatches.push({ input, results: [], selectedId: null, skipped: true, error: e.message || "failed" }); }
           renderBatchReview();
         }
       } finally { els.batchImportBtn.disabled = false; setStatus("System Ready"); }
-      renderBatchReview();
-      const addable = getAddableBatchMatches().length;
-      toast(addable ? `Review ${addable} matches.` : "No addable matches found.", addable ? "" : "error");
+      renderBatchReview(); const addable = getAddableBatchMatches().length; toast(addable ? `Review ${addable} matches.` : "No addable matches found.", addable ? "" : "error");
     }
 
     function renderBatchReview() {
-      if (!pendingBatchMatches.length) {
-        els.batchReview.hidden = true; els.batchReviewList.innerHTML = ""; els.batchReviewSummary.textContent = "No matches prepared."; els.batchConfirmBtn.disabled = true; return;
-      }
-      els.batchReview.hidden = false;
-      const addable = getAddableBatchMatches();
-      els.batchReviewSummary.textContent = `${addable.length} Selected matches`; els.batchConfirmBtn.disabled = addable.length === 0;
+      if (!pendingBatchMatches.length) { els.batchReview.hidden = true; els.batchReviewList.innerHTML = ""; els.batchReviewSummary.textContent = "No matches prepared."; els.batchConfirmBtn.disabled = true; return; }
+      els.batchReview.hidden = false; const addable = getAddableBatchMatches(); els.batchReviewSummary.textContent = `${addable.length} Selected matches`; els.batchConfirmBtn.disabled = addable.length === 0;
 
       els.batchReviewList.innerHTML = pendingBatchMatches.map((match, i) => {
-        const selected = getSelectedBatchMedia(match); const isDup = selected ? isMediaOnBoard(selected) : false;
-        const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
+        const selected = getSelectedBatchMedia(match); const isDup = selected ? isMediaOnBoard(selected) : false; const info = selected ? getMatchInfo(match.input, selected) : { level: "none", label: match.error ? "Failed" : "No match" };
         const title = selected ? selected.title.english || selected.title.romaji : "No result";
         const options = match.results.length ? match.results.map(m => `<option value="${m.id}" ${m.id === match.selectedId ? "selected" : ""}>${escapeHtml(m.title.english || m.title.romaji)} ${isMediaOnBoard(m) ? "(Already Added)" : ""}</option>`).join("") : '<option value="">No results</option>';
 
@@ -1825,32 +1107,18 @@
         `;
       }).join("");
 
-      els.batchReviewList.querySelectorAll("[data-batch-select]").forEach(sel => {
-        sel.addEventListener("change", () => {
-          const match = pendingBatchMatches[Number(sel.dataset.batchSelect)];
-          match.selectedId = sel.value ? Number(sel.value) : null; match.skipped = !match.selectedId; renderBatchReview();
-        });
-      });
-
-      els.batchReviewList.querySelectorAll("[data-batch-skip]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const match = pendingBatchMatches[Number(btn.dataset.batchSkip)]; match.skipped = !match.skipped;
-          if (!match.selectedId && match.results[0]) match.selectedId = match.results[0].id; renderBatchReview();
-        });
-      });
+      els.batchReviewList.querySelectorAll("[data-batch-select]").forEach(sel => { sel.addEventListener("change", () => { const match = pendingBatchMatches[Number(sel.dataset.batchSelect)]; match.selectedId = sel.value ? Number(sel.value) : null; match.skipped = !match.selectedId; renderBatchReview(); }); });
+      els.batchReviewList.querySelectorAll("[data-batch-skip]").forEach(btn => { btn.addEventListener("click", () => { const match = pendingBatchMatches[Number(btn.dataset.batchSkip)]; match.skipped = !match.skipped; if (!match.selectedId && match.results[0]) match.selectedId = match.results[0].id; renderBatchReview(); }); });
     }
 
     async function confirmBatchImport() {
       const matches = getAddableBatchMatches(); if (!matches.length) return;
-      els.batchConfirmBtn.disabled = true; els.batchConfirmBtn.textContent = "Adding..."; setStatus(`Adding 0/${matches.length}...`);
-      let added = 0;
+      els.batchConfirmBtn.disabled = true; els.batchConfirmBtn.textContent = "Adding..."; setStatus(`Adding 0/${matches.length}...`); let added = 0;
       for (let i = 0; i < matches.length; i++) {
         const { media } = matches[i]; setStatus(`Adding ${i + 1}/${matches.length}...`);
         if (!isMediaOnBoard(media)) {
-          const show = makeShowFromMedia(media); state.shows.unshift(show);
-          await refreshShowStatus(show, { forceMove: true });
-          insertIntoUngroupedAZ(state.order[getShowBoard(show)], show.id);
-          added++; render(); saveState(); await sleep(1000); 
+          const show = makeShowFromMedia(media); state.shows.unshift(show); await refreshShowStatus(show, { forceMove: true });
+          insertIntoUngroupedAZ(state.order[getShowBoard(show)], show.id); added++; render(); saveState(); await sleep(1000); 
         }
       }
       setStatus("System Ready"); els.batchConfirmBtn.disabled = false; els.batchConfirmBtn.textContent = "Add Selected";
@@ -1860,80 +1128,44 @@
     function clearBatchReview() { pendingBatchMatches = []; renderBatchReview(); setStatus("System Ready"); }
 
     function render() {
-      reconcileOrders();
-      let visible = state.shows;
-
-      if (state.localSearch) {
-        const q = state.localSearch.toLowerCase();
-        visible = visible.filter(s => [s.title, s.titleEnglish, s.titleRomaji, s.format, s.seasonYear, s.comments].some(v => String(v || "").toLowerCase().includes(q)));
-      }
-
-      const found = visible.filter(s => getShowBoard(s) === "found");
-      const watching = visible.filter(s => getShowBoard(s) === "watching");
-      const dl = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
-
-      updateSortModeButton();
-      renderBoard("found", found, els.foundList, els.foundCount);
-      renderBoard("watching", watching, els.watchingList, els.watchingCount);
-      renderBoard("downloaded", dl, els.downloadedList, els.downloadedCount);
+      reconcileOrders(); let visible = state.shows;
+      if (state.localSearch) { const q = state.localSearch.toLowerCase(); visible = visible.filter(s => [s.title, s.titleEnglish, s.titleRomaji, s.format, s.seasonYear, s.comments].some(v => String(v || "").toLowerCase().includes(q))); }
+      const found = visible.filter(s => getShowBoard(s) === "found"); const watching = visible.filter(s => getShowBoard(s) === "watching"); const dl = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
+      updateSortModeButton(); renderBoard("found", found, els.foundList, els.foundCount); renderBoard("watching", watching, els.watchingList, els.watchingCount); renderBoard("downloaded", dl, els.downloadedList, els.downloadedCount);
     }
 
     function syncBoardSortControls(board, countEl) {
-      const header = countEl.closest(".board-header");
-      if (!header) return;
+      const header = countEl.closest(".board-header"); if (!header) return;
       let controls = header.querySelector(`[data-board-sort-actions="${board}"]`);
-
       if (board !== "downloaded") { if (controls) controls.remove(); return; }
-
       if (!controls) {
         controls = document.createElement("div"); controls.className = "board-sort-actions"; controls.setAttribute("data-board-sort-actions", board);
-        controls.innerHTML = `
-          <button class="btn board-sort-btn" type="button" data-sort-az-board="${board}" title="Sort root items alphabetically">A→Z</button>
-          <button class="btn board-sort-btn" type="button" data-add-group-board="${board}" title="Add a folder">+ Group</button>
-        `;
+        controls.innerHTML = `<button class="btn board-sort-btn" type="button" data-sort-az-board="${board}" title="Sort root items alphabetically">A→Z</button><button class="btn board-sort-btn" type="button" data-add-group-board="${board}" title="Add a folder">+ Folder</button>`;
         header.appendChild(controls);
       }
-      controls.hidden = !(state.ui.sortMode && !state.localSearch);
-      controls.querySelectorAll("button").forEach(b => b.disabled = !!state.localSearch);
+      controls.hidden = !(state.ui.sortMode && !state.localSearch); controls.querySelectorAll("button").forEach(b => b.disabled = !!state.localSearch);
     }
 
     function renderBoard(type, shows, listEl, countEl) {
-      countEl.textContent = shows.length;
-      listEl.dataset.board = type;
-      listEl.dataset.boardList = type;
-      syncBoardSortControls(type, countEl);
-
-      if (!shows.length && (!state.groups.some(g => g.board === type) || state.localSearch)) {
-        listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
-        return;
-      }
-
-      if (state.localSearch) {
-        listEl.innerHTML = shows.map(s => renderCard(s)).join("");
-        return;
-      }
+      countEl.textContent = shows.length; listEl.dataset.board = type; listEl.dataset.boardList = type; syncBoardSortControls(type, countEl);
+      if (!shows.length && (!state.groups.some(g => g.board === type) || state.localSearch)) { listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`; return; }
+      if (state.localSearch) { listEl.innerHTML = shows.map(s => renderCard(s)).join(""); return; }
 
       const html = [];
       state.order[type].forEach(id => {
         const group = getGroupById(id);
-        if (group) {
-          html.push(renderGroup(group, shows.filter(s => s.groupId === group.id)));
-        } else {
-          const show = getShowById(id);
-          if (show && shows.includes(show)) html.push(renderCard(show));
-        }
+        if (group) { html.push(renderGroup(group, shows.filter(s => s.groupId === group.id))); } 
+        else { const show = getShowById(id); if (show && shows.includes(show)) html.push(renderCard(show)); }
       });
       listEl.innerHTML = html.join("");
     }
 
     function renderGroup(group, groupShows) {
-      const canEdit = state.ui.sortMode && !state.localSearch;
-      const canDrag = canDragOrderItems();
-      const isCollapsed = !!group.collapsed;
-      
-      const itemsHtml = (state.groupOrder[group.id] || [])
-        .map(id => groupShows.find(s => s.id === id)).filter(Boolean)
-        .map(show => renderCard(show)).join("");
+      const canEdit = state.ui.sortMode && !state.localSearch; const canDrag = canDragOrderItems(); const isCollapsed = !!group.collapsed;
+      const firstShow = groupShows[0];
+      const cover = firstShow ? escapeAttr(firstShow.coverImage) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
+
+      const itemsHtml = (state.groupOrder[group.id] || []).map(id => groupShows.find(s => s.id === id)).filter(Boolean).map(show => renderCard(show)).join("");
         
       const moveControls = canEdit ? `
         <button class="action-btn sort-move-btn" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" title="Move up" ${!canMoveItem(group.id, 'group', 'up') ? 'disabled' : ''}>▲</button>
@@ -1941,32 +1173,30 @@
       ` : "";
       
       return `
-        <div class="group-container" data-order-item-id="${escapeAttr(group.id)}" data-order-item-type="group" data-board="${escapeAttr(group.board)}" ${canDrag ? 'draggable="true"' : ""}>
-          <div class="group-header">
-            <button class="divider-collapse-btn ${isCollapsed ? "is-collapsed" : ""}" data-collapse-group="${escapeAttr(group.id)}" title="Toggle Group">▼</button>
-            <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Group" ${!canEdit ? "readonly tabindex='-1'" : ""} />
-            <div class="divider-line"></div>
-            ${moveControls}
-            ${canEdit ? `<button class="action-btn board-divider-remove" data-remove-group="${escapeAttr(group.id)}" title="Delete group and release shows">×</button>` : ""}
+        <article class="show-card group-container ${isCollapsed ? '' : 'is-expanded'}" data-order-item-id="${escapeAttr(group.id)}" data-order-item-type="group" data-board="${escapeAttr(group.board)}" ${canDrag ? 'draggable="true"' : ""}>
+          <div class="card-main group-header" data-collapse-group="${escapeAttr(group.id)}">
+            <button class="divider-collapse-btn ${isCollapsed ? "is-collapsed" : ""}">▼</button>
+            <img src="${cover}" class="thumb" alt="Group Cover" loading="lazy" />
+            <div class="card-content">
+              <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Folder" ${!canEdit ? "readonly tabindex='-1'" : ""} />
+              <div class="card-meta">
+                <span class="badge downloaded">Folder</span>
+                <span>${groupShows.length} Shows</span>
+              </div>
+            </div>
+            <div class="card-actions-wrapper">
+              ${moveControls}
+              ${canEdit ? `<button class="action-btn danger" data-remove-group="${escapeAttr(group.id)}" title="Delete folder and release shows">×</button>` : ""}
+            </div>
           </div>
-          <div class="group-list ${isCollapsed ? 'is-collapsed' : ''}" data-group-list-id="${escapeAttr(group.id)}" data-board="${escapeAttr(group.board)}">
-             ${itemsHtml}
-          </div>
-        </div>
+          <div class="group-list ${isCollapsed ? 'is-collapsed' : ''}" data-group-list-id="${escapeAttr(group.id)}" data-board="${escapeAttr(group.board)}">${itemsHtml}</div>
+        </article>
       `;
     }
 
     function renderCard(show) {
-      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-      const board = getShowBoard(show);
-      const isDl = board === "downloaded";
-      const isNotes = state.ui.openNotes[show.id];
-      const sortModeActive = !!state.ui.sortMode && isDl;
-      const sortControlsDisabled = !!state.localSearch;
-      const canDrag = canDragOrderItems() && isDl;
-
-      const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null;
-      const titleHtml = link ? `<a href="${escapeAttr(link)}" target="_blank" class="show-link">${escapeHtml(show.title)}</a>` : escapeHtml(show.title);
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe); const board = getShowBoard(show); const isDl = board === "downloaded"; const isNotes = state.ui.openNotes[show.id]; const sortModeActive = !!state.ui.sortMode && isDl; const sortControlsDisabled = !!state.localSearch; const canDrag = canDragOrderItems() && isDl;
+      const link = show.releasesMoe?.found ? `https://releases.moe/${show.anilistId}/` : null; const titleHtml = link ? `<a href="${escapeAttr(link)}" target="_blank" class="show-link">${escapeHtml(show.title)}</a>` : escapeHtml(show.title);
       const safeTitle = escapeAttr(show.title); const cover = escapeAttr(show.coverImage);
 
       let badge = "";
@@ -2002,20 +1232,9 @@
             </div>
             <div class="card-actions-wrapper">${actionsHtml}</div>
           </div>
-          <div class="notes-panel">
-            <textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea>
-          </div>
+          <div class="notes-panel"><textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea></div>
         </article>
       `;
-    }
-
-    function formatTimeAgo(value) {
-      if (!value) return "Never";
-      const diff = (Date.now() - new Date(value).getTime()) / 1000;
-      if (diff < 60) return "Just now";
-      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-      return `${Math.floor(diff / 86400)}d ago`;
     }
 
     function saveState() { reconcileOrders(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); queueCloudSync(state); }
