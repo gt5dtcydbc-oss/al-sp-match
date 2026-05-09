@@ -8,37 +8,38 @@
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
         :root {
-            /* EVA Aesthetic Variables */
-            --primary: #ff8c00;
-            --primary-dark: #b36200;
-            --bg: #080808;
-            --card-bg: rgba(12, 12, 12, 0.95);
-            --text: #ffb84d;
-            --muted: #a67b40;
-            --border: #ff8c00;
-            --soft: #261500;
-            --success: #39ff14;
-            --warning: #ffcc00;
-            --error: #ff003c;
-            --terminal-bg: #000000;
+            /* Toned-down EVA Aesthetic */
+            --primary: #f59e0b; /* Softer amber/orange */
+            --primary-dark: #d97706;
+            --bg: #111111;
+            --card-bg: #1a1a1a;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --border: #333333;
+            --border-highlight: #f59e0b;
+            --soft: #262626;
+            --success: #4ade80; /* Softer green */
+            --warning: #fbbf24;
+            --error: #ef4444;
+            --terminal-bg: #0a0a0a;
         }
 
         * { box-sizing: border-box; }
 
         body {
-            font-family: 'Share Tech Mono', monospace;
+            /* Clean system-ui for standard text, fallback to standard sans-serif */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
             background-color: var(--bg);
-            /* Tactical Grid Background */
-            background-image: 
-                linear-gradient(rgba(255, 140, 0, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 140, 0, 0.05) 1px, transparent 1px);
-            background-size: 20px 20px;
             color: var(--text);
             display: flex;
             justify-content: center;
             padding: 40px 20px;
             margin: 0;
-            text-transform: uppercase;
+        }
+
+        /* Use the MAGI font for headers, buttons, and tech elements */
+        h1, .magi-header, button, .metric-value, .status, textarea, .log-line, .divider {
+            font-family: 'Share Tech Mono', monospace;
         }
 
         .card {
@@ -46,49 +47,49 @@
             width: 100%;
             max-width: 980px;
             padding: 30px;
-            border: 2px solid var(--border);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--primary); /* Subtle MAGI top-bar */
             position: relative;
-            box-shadow: 0 0 20px rgba(255, 140, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        /* Decorative MAGI Corner Accents */
-        .card::before, .card::after {
+        /* Subtle Corner Accents */
+        .card::after {
             content: "";
             position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 4px solid var(--primary);
+            bottom: -1px;
+            right: -1px;
+            width: 15px;
+            height: 15px;
+            border-bottom: 2px solid var(--primary);
+            border-right: 2px solid var(--primary);
             pointer-events: none;
         }
-        .card::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
-        .card::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
         /* Fake System Header */
         .magi-header {
             display: flex;
             justify-content: space-between;
-            border-bottom: 2px solid var(--primary);
-            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
             margin-bottom: 20px;
-            font-size: 14px;
-            color: var(--error);
-            font-weight: bold;
-            letter-spacing: 2px;
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         h1 {
             margin: 0 0 8px;
-            font-size: clamp(28px, 4vw, 42px);
-            letter-spacing: 2px;
+            font-size: clamp(28px, 4vw, 36px);
             color: var(--primary);
-            text-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
         }
 
         .subtitle {
             color: var(--muted);
             margin: 0 0 22px;
             line-height: 1.5;
-            text-transform: none; /* Keep instructions readable */
+            font-size: 15px;
         }
 
         .input-group {
@@ -100,18 +101,18 @@
         .divider {
             text-align: center;
             margin-bottom: 14px;
-            font-weight: 700;
-            color: var(--primary);
-            font-size: 14px;
+            color: var(--muted);
+            font-size: 13px;
             letter-spacing: 0.1em;
             display: flex;
             align-items: center;
+            text-transform: uppercase;
         }
         
         .divider::before, .divider::after {
             content: "";
             flex: 1;
-            border-bottom: 1px dashed var(--muted);
+            border-bottom: 1px solid var(--border);
             margin: 0 15px;
         }
 
@@ -119,48 +120,43 @@
             flex-grow: 1;
             padding: 12px;
             background: var(--terminal-bg);
-            color: var(--success);
+            color: var(--text);
             border: 1px solid var(--border);
-            font-family: 'Share Tech Mono', monospace;
             font-size: 16px;
             outline: none;
             min-width: 0;
-            text-transform: none; /* Usernames might need case */
+            border-radius: 4px;
+            transition: border-color 0.2s;
         }
 
         input[type="text"]:focus {
-            border-color: var(--success);
-            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+            border-color: var(--primary);
         }
         
-        input::placeholder { color: var(--muted); }
+        input::placeholder { color: #555; }
 
         button {
             padding: 12px 20px;
             cursor: pointer;
             background: var(--primary);
             color: #000;
-            font-family: 'Share Tech Mono', monospace;
-            border: 1px solid var(--primary);
+            border: none;
+            border-radius: 4px;
             font-size: 16px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            transition: all 0.2s;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            transition: background 0.2s;
             white-space: nowrap;
+            text-transform: uppercase;
         }
 
         button:hover:not(:disabled) { 
-            background: #000; 
-            color: var(--primary);
-            box-shadow: inset 0 0 10px var(--primary);
+            background: var(--primary-dark); 
         }
-        button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--muted); background: var(--muted); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .secondary-btn { background: #222; color: var(--primary); border-color: var(--primary); }
-        .secondary-btn:hover:not(:disabled) { background: var(--primary); color: #000; }
-        
-        .danger-btn { background: var(--error); color: #000; border-color: var(--error); }
-        .danger-btn:hover:not(:disabled) { background: #000; color: var(--error); }
+        .secondary-btn { background: #333; color: var(--text); }
+        .secondary-btn:hover:not(:disabled) { background: #444; }
 
         .options {
             display: grid;
@@ -174,57 +170,52 @@
             align-items: flex-start;
             gap: 10px;
             padding: 12px;
-            border: 1px solid var(--muted);
-            background: var(--terminal-bg);
+            border: 1px solid var(--border);
+            background: var(--soft);
+            border-radius: 6px;
             transition: border-color 0.2s;
             cursor: pointer;
         }
 
-        .option:hover { border-color: var(--primary); }
+        .option:hover { border-color: #555; }
 
-        .option input { 
+        /* Fixed Checkbox Styling */
+        .option input[type="checkbox"] { 
             margin-top: 3px; 
-            accent-color: var(--primary); 
-            filter: grayscale(1) brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); /* Make standard checkbox look orange */
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary); /* Native browser support for custom color */
+            cursor: pointer;
         }
         
-        .option strong { display: block; font-size: 15px; color: var(--primary); }
-        .option span { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 4px; text-transform: none; }
+        .option strong { display: block; font-size: 14px; color: var(--text); }
+        .option span { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 4px; }
 
         .status {
-            font-size: 16px;
-            font-weight: bold;
+            font-size: 15px;
             margin: 0 0 12px;
             min-height: 22px;
-            letter-spacing: 1px;
         }
 
-        .status::before { content: "> "; color: inherit; }
+        .status::before { content: "> "; color: var(--muted); }
         .status.success { color: var(--success); }
         .status.error { color: var(--error); }
         .status.warning { color: var(--warning); }
 
         .progress-wrap {
             display: none;
-            height: 16px;
-            border: 1px solid var(--border);
-            background: var(--terminal-bg);
+            height: 8px;
+            background: var(--soft);
             margin-bottom: 20px;
-            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
         }
 
         .progress-bar {
             width: 0%;
             height: 100%;
-            /* Warning/Hazard Stripe Pattern */
-            background: repeating-linear-gradient(
-                -45deg,
-                var(--primary),
-                var(--primary) 10px,
-                #000 10px,
-                #000 20px
-            );
-            transition: width 0.2s linear;
+            background: var(--primary);
+            transition: width 0.25s ease;
         }
 
         textarea {
@@ -233,18 +224,16 @@
             margin-top: 10px;
             padding: 15px;
             border: 1px solid var(--border);
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 14px;
+            font-size: 13px;
             background: var(--terminal-bg);
-            color: var(--success);
+            color: var(--text);
             resize: vertical;
-            text-transform: none; /* Raw output needs exact case */
+            border-radius: 4px;
         }
         
         textarea:focus {
             outline: none;
-            box-shadow: inset 0 0 10px rgba(57, 255, 20, 0.1);
-            border-color: var(--success);
+            border-color: var(--primary);
         }
 
         .button-row {
@@ -254,8 +243,8 @@
             margin-top: 15px;
         }
 
-        #copyBtn { display: none; background: var(--success); color: #000; border-color: var(--success); flex: 1; }
-        #copyBtn:hover:not(:disabled) { background: #000; color: var(--success); box-shadow: inset 0 0 10px var(--success); }
+        #copyBtn { display: none; background: var(--success); color: #000; flex: 1; }
+        #copyBtn:hover:not(:disabled) { background: #22c55e; }
 
         .summary {
             display: grid;
@@ -265,47 +254,27 @@
         }
 
         .metric {
-            border: 1px solid var(--muted);
-            background: var(--terminal-bg);
+            border: 1px solid var(--border);
+            background: var(--soft);
             padding: 12px;
             text-align: center;
-            position: relative;
-        }
-        
-        /* Tactical bracket overlays on metrics */
-        .metric::before {
-            content: "[";
-            position: absolute;
-            left: 5px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--muted);
-            font-size: 24px;
-        }
-        .metric::after {
-            content: "]";
-            position: absolute;
-            right: 5px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--muted);
-            font-size: 24px;
+            border-radius: 6px;
         }
 
         .metric-value {
             display: block;
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--success);
+            font-size: 24px;
+            color: var(--primary);
         }
 
         .metric-label {
             display: block;
-            color: var(--primary);
+            color: var(--muted);
             font-size: 11px;
-            font-weight: 700;
+            text-transform: uppercase;
             margin-top: 4px;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
         }
 
         .hint {
@@ -313,39 +282,34 @@
             font-size: 12px;
             line-height: 1.5;
             margin: 15px 0 0;
-            text-transform: none;
-            border-left: 2px solid var(--muted);
-            padding-left: 10px;
         }
 
         .log {
             margin-top: 20px;
-            border: 1px solid var(--muted);
+            border: 1px solid var(--border);
             background: var(--terminal-bg);
             max-height: 260px;
             overflow: auto;
             display: none;
-            padding: 5px;
+            border-radius: 4px;
         }
 
         .log-line {
-            padding: 4px 8px;
-            border-bottom: 1px dashed #222;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 13px;
-            text-transform: none;
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            color: #ccc;
         }
 
         .log-line:last-child { border-bottom: 0; }
         .log-line.ok { color: var(--success); }
         .log-line.warn { color: var(--warning); }
-        .log-line.err { color: var(--error); background: rgba(255,0,60,0.1); }
+        .log-line.err { color: var(--error); }
 
-        /* Custom Scrollbar for terminal vibe */
-        ::-webkit-scrollbar { width: 10px; }
-        ::-webkit-scrollbar-track { background: var(--terminal-bg); border-left: 1px solid var(--muted); }
-        ::-webkit-scrollbar-thumb { background: var(--primary); }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
         @media (max-width: 900px) {
             .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -363,83 +327,83 @@
 
 <div class="card">
     <div class="magi-header">
-        <span>MAGI SYSTEM // SUPERCOMPUTER</span>
-        <span>CASPER // BALTHASAR // MELCHIOR</span>
+        <span>MAGI // Data Sync Interface</span>
+        <span>CASPER / BALTHASAR / MELCHIOR</span>
     </div>
 
     <h1>AniList + MAL → AutoBrr</h1>
     <p class="subtitle">
-        Enter an AniList username to pull CURRENT anime, or match a specific show. The system enriches titles through Jikan/MAL when possible, then constructs wildcard filters.
+        Enter an AniList username to pull CURRENT anime, or match a specific show. The page enriches titles through Jikan/MAL when possible, then creates comma-separated AutoBrr wildcard filters.
     </p>
 
     <!-- User List Input -->
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
-        <button id="generateBtn" type="button">Initiate Sync</button>
+        <button id="generateBtn" type="button">Generate User List</button>
     </div>
 
-    <div class="divider">OVERRIDE DIRECTIVE</div>
+    <div class="divider">OR</div>
 
     <!-- Single Show Input -->
     <div class="input-group">
-        <input type="text" id="singleShowInput" placeholder="AniList Anime URL or ID (e.g., 16498)">
-        <button id="generateSingleBtn" type="button" class="secondary-btn">Target Entity</button>
+        <input type="text" id="singleShowInput" placeholder="Paste AniList Anime URL or ID (e.g., 16498)">
+        <button id="generateSingleBtn" type="button" class="secondary-btn">Match One Show</button>
     </div>
 
     <div class="options">
         <label class="option">
             <input type="checkbox" id="useJikan" checked>
             <span>
-                <strong>Cross-Ref MAL/Jikan</strong>
-                <span>Uses AniList MAL IDs first, then fuzzy Jikan search fallback.</span>
+                <strong>Enrich with MAL/Jikan titles</strong>
+                <span>Uses AniList MAL IDs first, then fuzzy Jikan search only when needed.</span>
             </span>
         </label>
 
         <label class="option">
             <input type="checkbox" id="includeNonAscii">
             <span>
-                <strong>Include Native Scripts</strong>
-                <span>Off by default to avoid parsing errors with Japanese-script releases.</span>
+                <strong>Include native / non-ASCII titles</strong>
+                <span>Off by default to avoid filters for Japanese-script release names.</span>
             </span>
         </label>
 
         <label class="option">
             <input type="checkbox" id="shortDescriptorVariants" checked>
             <span>
-                <strong>Arc/Saga Sub-Variants</strong>
-                <span>Matches classifications dropping trailing labels (Arc, Chapter, Hen).</span>
+                <strong>Add shortened arc/saga variants</strong>
+                <span>Also matches names that drop trailing words like Arc, Saga, Chapter, Movie.</span>
             </span>
         </label>
 
         <label class="option">
             <input type="checkbox" id="showLog" checked>
             <span>
-                <strong>Display System Logs</strong>
-                <span>Exposes terminal readout of matched, dropped, and cached packets.</span>
+                <strong>Show match log</strong>
+                <span>Shows which MAL entries were accepted, skipped, failed, or pulled from cache.</span>
             </span>
         </label>
     </div>
 
-    <div id="status" class="status">AWAITING INPUT...</div>
+    <div id="status" class="status">Awaiting input...</div>
     <div id="progressWrap" class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
 
     <div class="summary" id="summary" style="display:none;">
-        <div class="metric"><span class="metric-value" id="animeCount">0</span><span class="metric-label">Entities</span></div>
-        <div class="metric"><span class="metric-value" id="jikanAddedCount">0</span><span class="metric-label">MAL Hooks</span></div>
-        <div class="metric"><span class="metric-value" id="jikanErrorCount">0</span><span class="metric-label">Failures</span></div>
+        <div class="metric"><span class="metric-value" id="animeCount">0</span><span class="metric-label">AniList anime</span></div>
+        <div class="metric"><span class="metric-value" id="jikanAddedCount">0</span><span class="metric-label">MAL titles added</span></div>
+        <div class="metric"><span class="metric-value" id="jikanErrorCount">0</span><span class="metric-label">Jikan failures</span></div>
         <div class="metric"><span class="metric-value" id="patternCount">0</span><span class="metric-label">Patterns</span></div>
         <div class="metric"><span class="metric-value" id="charCount">0</span><span class="metric-label">Characters</span></div>
     </div>
 
-    <textarea id="output" readonly placeholder="Filter output matrix will be generated here..."></textarea>
+    <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
 
     <div class="button-row">
-        <button id="copyBtn" type="button">Extract to Clipboard</button>
-        <button id="clearCacheBtn" type="button" class="secondary-btn">Purge Jikan Cache</button>
+        <button id="copyBtn" type="button">Copy to Clipboard</button>
+        <button id="clearCacheBtn" type="button" class="secondary-btn">Clear Jikan Cache</button>
     </div>
 
     <p class="hint">
-        WARNING: When utilizing a username, only CURRENT entries are targeted. MAL data is cached locally for 7 cycles (days). Protect the resulting output matrix.
+        When using a username, only AniList entries with status CURRENT are included. Very short titles are emitted exactly instead of as broad wildcards. Jikan/MAL enrichment is cached locally for 7 days.
     </p>
 
     <div id="log" class="log"></div>
@@ -1045,11 +1009,11 @@
                 aniListCooldownUntil = Date.now() + (retryAfter * 1000);
                 
                 if (retries > 0) {
-                    setStatus(`SYSTEM THROTTLED. PAUSING FOR ${retryAfter}s...`, 'warning');
+                    setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning');
                     await sleep(retryAfter * 1000);
                     return fetchAniListCurrent(username, retries - 1);
                 }
-                throw new Error("AniList rate limit reached. Terminating connection.");
+                throw new Error("AniList rate limit reached. Try again later.");
             }
 
             if (!response.ok || result.errors) {
@@ -1109,11 +1073,11 @@
                 const retryAfter = Number(response.headers.get('Retry-After')) || 60;
                 aniListCooldownUntil = Date.now() + (retryAfter * 1000);
                 if (retries > 0) {
-                    setStatus(`SYSTEM THROTTLED. PAUSING FOR ${retryAfter}s...`, 'warning');
+                    setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning');
                     await sleep(retryAfter * 1000);
                     return fetchSingleAniListAnime(id, retries - 1);
                 }
-                throw new Error("AniList rate limit reached. Terminating connection.");
+                throw new Error("AniList rate limit reached. Try again later.");
             }
 
             if (!response.ok || result.errors) {
@@ -1172,9 +1136,9 @@
             const name = media.title?.userPreferred || media.title?.english || media.title?.romaji || `AniList ${media.id}`;
             
             if (mediaList.length > 1) {
-                setStatus(`${options.useJikan ? 'ENRICHING MAL/JIKAN' : 'COMPILING DATA'}: ${i + 1}/${mediaList.length} — ${name}`);
+                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'}: ${i + 1}/${mediaList.length} — ${name}`);
             } else {
-                setStatus(`${options.useJikan ? 'ENRICHING MAL/JIKAN' : 'COMPILING DATA'} — ${name}`);
+                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'} — ${name}`);
             }
 
             if (options.useJikan) {
@@ -1200,11 +1164,11 @@
             setProgress(i + 1, mediaList.length);
         }
 
-        setStatus('GENERATING SYSTEM OVERRIDE PATTERNS...');
+        setStatus('Generating AutoBrr patterns...');
         const uniqueEntries = buildFilterPatterns(mediaTitleMap, options);
 
         if (uniqueEntries.length === 0) {
-            throw new Error('Pattern compilation failed. Refusing to output empty matrix.');
+            throw new Error('No usable title patterns were generated. Refusing to output an empty AutoBrr filter.');
         }
 
         const final = uniqueEntries.join(',');
@@ -1218,18 +1182,19 @@
         els.charCount.textContent = final.length.toLocaleString();
 
         let statusMessage = mediaList.length > 1 
-            ? `GENERATED ${uniqueEntries.length.toLocaleString()} CLEAN PATTERNS FROM ${mediaList.length.toLocaleString()} ENTITIES`
-            : `GENERATED ${uniqueEntries.length.toLocaleString()} PATTERNS FOR TARGET`;
+            ? `Generated ${uniqueEntries.length.toLocaleString()} clean patterns from ${mediaList.length.toLocaleString()} AniList anime`
+            : `Generated ${uniqueEntries.length.toLocaleString()} patterns for ${mediaList[0].title?.userPreferred || mediaList[0].title?.romaji}`;
 
-        if (options.useJikan) statusMessage += ` (${jikanAdded.toLocaleString()} EXTERNAL HOOKS)`;
-        
+        if (options.useJikan) statusMessage += `, with ${jikanAdded.toLocaleString()} extra MAL/Jikan titles added`;
+        statusMessage += ` (${final.length.toLocaleString()} characters).`;
+
         if (jikanErrors > 0) {
-            statusMessage += ` - MAL RESOLUTION FAILED FOR ${jikanErrors.toLocaleString()} TARGET(S).`;
+            statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but AniList patterns were still generated.`;
         }
 
         const isLarge = final.length > LARGE_OUTPUT_WARNING_LENGTH;
         if (isLarge) {
-            statusMessage += ' [CRITICAL: OUTPUT MATRIX EXCEEDS STANDARD LIMITS]';
+            statusMessage += ' Warning: this output is very large and may be difficult to save or process in some AutoBrr/reverse-proxy setups.';
         }
 
         setStatus(statusMessage, isLarge ? 'warning' : 'success');
@@ -1238,7 +1203,7 @@
     async function generateUserFilter() {
         const username = els.username.value.trim();
         if (!username) {
-            setStatus('INPUT REQUIRED: ANILIST USERNAME.', 'error');
+            setStatus('Please enter an AniList username.', 'error');
             return;
         }
 
@@ -1251,14 +1216,14 @@
         resetUi();
         safeSetItem('anilist_username', username);
         toggleButtons(true);
-        setStatus('ESTABLISHING CONNECTION TO ANILIST MAINFRAME...');
+        setStatus('Querying AniList for user list...');
 
         try {
             const mediaList = await fetchAniListCurrent(username);
-            if (!mediaList.length) throw new Error('NO ACTIVE ENTITIES FOUND ON THIS ID.');
+            if (!mediaList.length) throw new Error('No CURRENT anime found on this AniList account.');
             await processMediaList(mediaList, options);
         } catch (error) {
-            setStatus(`FATAL ERROR: ${error?.message || 'UNKNOWN EXCEPTION.'}`, 'error');
+            setStatus(`Error: ${error?.message || 'Unknown error.'}`, 'error');
         } finally {
             toggleButtons(false);
             setProgress(0, 0);
@@ -1268,13 +1233,13 @@
     async function generateSingleFilter() {
         const input = els.singleShowInput.value.trim();
         if (!input) {
-            setStatus('INPUT REQUIRED: ANILIST URL OR ID.', 'error');
+            setStatus('Please enter an AniList URL or ID.', 'error');
             return;
         }
 
         const mediaId = getAniListIdFromInput(input);
         if (!mediaId) {
-            setStatus('PARSING ERROR: INVALID TARGET ID FORMAT.', 'error');
+            setStatus('Could not find a valid AniList Anime ID in that input. Check your URL.', 'error');
             return;
         }
 
@@ -1286,14 +1251,14 @@
 
         resetUi();
         toggleButtons(true);
-        setStatus('PINGING ANILIST FOR TARGET ENTITY...');
+        setStatus('Querying AniList for single show...');
 
         try {
             const media = await fetchSingleAniListAnime(mediaId);
-            if (!media) throw new Error('TARGET ENTITY NOT FOUND.');
+            if (!media) throw new Error('Could not find that anime on AniList.');
             await processMediaList([media], options);
         } catch (error) {
-            setStatus(`FATAL ERROR: ${error?.message || 'UNKNOWN EXCEPTION.'}`, 'error');
+            setStatus(`Error: ${error?.message || 'Unknown error.'}`, 'error');
         } finally {
             toggleButtons(false);
             setProgress(0, 0);
@@ -1312,7 +1277,7 @@
         }
 
         const old = els.copyBtn.textContent;
-        els.copyBtn.textContent = 'DATA COPIED';
+        els.copyBtn.textContent = 'Copied!';
         setTimeout(() => { els.copyBtn.textContent = old; }, 1600);
     }
 
@@ -1327,11 +1292,11 @@
                 }
             }
         } catch {
-            setStatus('CACHE PURGE FAILED. LOCAL STORAGE LOCKED.', 'warning');
+            setStatus('Could not clear cache. Browser storage may be unavailable.', 'warning');
             return;
         }
 
-        setStatus(`CACHE PURGED: ${removed.toLocaleString()} FRAGMENTS DELETED.`, 'success');
+        setStatus(`Cleared ${removed.toLocaleString()} cached Jikan entr${removed === 1 ? 'y' : 'ies'}.`, 'success');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
