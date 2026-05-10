@@ -2064,19 +2064,46 @@
       if (!show) return;
 
       els.exploreModal.classList.add("open");
-      els.exploreModalTitle.textContent = `Related to ${show.titleEnglish || show.titleRomaji || show.title}`;
-      els.exploreModalBody.innerHTML = `<div class="empty">Scanning AniList database...</div>`;
+      els.exploreModalTitle.textContent = `Franchise: ${show.titleEnglish || show.titleRomaji || show.title}`;
+      els.exploreModalBody.innerHTML = `<div class="empty">Deep scanning franchise tree...</div>`;
 
       try {
-        const query = `query($id:Int){Media(id:$id){relations{edges{relationType node{id title{english romaji native} coverImage{medium large} format seasonYear episodes siteUrl}}}}}`;
-        const json = await safeAniListRequest(query, { id: Number(show.anilistId) });
-        
-        const edges = json?.data?.Media?.relations?.edges || [];
-        const validMedia = edges
-           .filter(e => e.node.format !== "MANGA" && e.node.format !== "NOVEL" && e.node.format !== "ONE_SHOT" && e.node.format !== "MUSIC")
-           .map(e => ({ ...e.node, relationType: e.relationType }));
+        let queue = [Number(show.anilistId)];
+        let visited = new Set([Number(show.anilistId)]);
+        let foundMedia = new Map();
 
-        const addable = validMedia.filter(m => !isMediaOnBoard(m));
+        // Perform a Deep Scan (Breadth-First Search) up to 3 layers deep into AniList
+        for (let pass = 0; pass < 3; pass++) {
+          if (queue.length === 0) break;
+          
+          let nextQueue = [];
+          
+          // Process current queue in chunks of 50 to respect rate limits
+          for (let i = 0; i < queue.length; i += 50) {
+            const chunk = queue.slice(i, i + 50);
+            const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{relationType node{id title{english romaji native} coverImage{medium large} format seasonYear episodes siteUrl}}}}}}`;
+            const json = await safeAniListRequest(query, { ids: chunk });
+            
+            const mediaNodes = json?.data?.Page?.media || [];
+            mediaNodes.forEach(m => {
+              const edges = m.relations?.edges || [];
+              edges.forEach(e => {
+                const node = e.node;
+                if (!visited.has(node.id)) {
+                  visited.add(node.id);
+                  // Ignore manga, light novels, music videos
+                  if (!["MANGA", "NOVEL", "ONE_SHOT", "MUSIC"].includes(node.format)) {
+                    foundMedia.set(node.id, { ...node, relationType: e.relationType });
+                    nextQueue.push(node.id);
+                  }
+                }
+              });
+            });
+          }
+          queue = nextQueue;
+        }
+
+        const addable = Array.from(foundMedia.values()).filter(m => !isMediaOnBoard(m));
 
         if (addable.length === 0) {
             els.exploreModalBody.innerHTML = `<div class="empty">All related anime are already on your board!</div>`;
@@ -2104,7 +2131,6 @@
 
     // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
-      // 1. Memorize custom group names before destroying them
       const groupMemory = {};
       state.shows.forEach(s => {
         if (s.groupId && getShowBoard(s) === "downloaded") {
@@ -2115,7 +2141,6 @@
         }
       });
 
-      // 2. Clear out all existing downloaded groups
       state.groups = state.groups.filter(g => g.board !== "downloaded");
       state.shows.forEach(s => { 
         if (getShowBoard(s) === "downloaded") s.groupId = null; 
@@ -2135,7 +2160,8 @@
             json.data.Page.media.forEach(m => {
               const show = state.shows.find(s => Number(s.anilistId) === m.id);
               if (show) {
-                const strongTypes = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'ADAPTATION'];
+                // Strict watch-order connections only! 
+                const strongTypes = ['PREQUEL', 'SEQUEL', 'SUMMARY'];
                 show.relations = m.relations.edges.filter(e => strongTypes.includes(e.relationType)).map(e => Number(e.node.id));
                 show.relationsFetched = true; 
               }
@@ -2151,7 +2177,6 @@
         }
       }
       
-      // Pass the memory object to the clustering function
       performLocalClustering(groupMemory);
     }
 
@@ -2190,16 +2215,14 @@
           const oldest = [...showsInFamilyInLibrary].sort((a,b) => (a.seasonYear||0) - (b.seasonYear||0))[0];
           const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); 
 
-          // Check if any of these shows previously lived in a custom-named folder
           let recoveredName = null;
           for (const s of showsInFamilyInLibrary) {
             if (groupMemory[s.id]) {
                recoveredName = groupMemory[s.id];
-               break; // Found one! Stop looking.
+               break; 
             }
           }
 
-          // If we found a recovered name, use it. Otherwise, fallback to baseTitle.
           const finalGroupName = recoveredName || baseTitle;
 
           const newGroupId = `grp_${crypto.randomUUID()}`;
