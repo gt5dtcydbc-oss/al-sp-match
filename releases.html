@@ -2131,20 +2131,8 @@
 
     // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
-      const groupMemory = {};
-      state.shows.forEach(s => {
-        if (s.groupId && getShowBoard(s) === "downloaded") {
-          const group = getGroupById(s.groupId);
-          if (group) {
-            groupMemory[s.id] = group.name;
-          }
-        }
-      });
-
-      state.groups = state.groups.filter(g => g.board !== "downloaded");
-      state.shows.forEach(s => { 
-        if (getShowBoard(s) === "downloaded") s.groupId = null; 
-      });
+      // ONLY re-evaluate shows that are NOT currently in a folder. 
+      // Manual folders are kept perfectly intact.
       reconcileOrders();
 
       const idsToSync = state.shows.filter(s => !s.relationsFetched).map(s => Number(s.anilistId));
@@ -2160,7 +2148,6 @@
             json.data.Page.media.forEach(m => {
               const show = state.shows.find(s => Number(s.anilistId) === m.id);
               if (show) {
-                // Strict watch-order connections only! 
                 const strongTypes = ['PREQUEL', 'SEQUEL', 'SUMMARY'];
                 show.relations = m.relations.edges.filter(e => strongTypes.includes(e.relationType)).map(e => Number(e.node.id));
                 show.relationsFetched = true; 
@@ -2177,10 +2164,10 @@
         }
       }
       
-      performLocalClustering(groupMemory);
+      performLocalClustering();
     }
 
-    function performLocalClustering(groupMemory = {}) {
+    function performLocalClustering() {
       setStatus("Organizing folders...");
       let families = [];
 
@@ -2211,31 +2198,49 @@
       families.forEach(familyIds => {
         const showsInFamilyInLibrary = state.shows.filter(s => familyIds.has(Number(s.anilistId)) && getShowBoard(s) === "downloaded");
         
-        if (showsInFamilyInLibrary.length > 1) {
-          const oldest = [...showsInFamilyInLibrary].sort((a,b) => (a.seasonYear||0) - (b.seasonYear||0))[0];
-          const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); 
+        const groupedShows = showsInFamilyInLibrary.filter(s => s.groupId);
+        const ungroupedShows = showsInFamilyInLibrary.filter(s => !s.groupId);
 
-          let recoveredName = null;
-          for (const s of showsInFamilyInLibrary) {
-            if (groupMemory[s.id]) {
-               recoveredName = groupMemory[s.id];
-               break; 
+        // If there are no stray shows in this family, move on to the next one
+        if (ungroupedShows.length === 0) return;
+
+        let targetGroupId = null;
+        if (groupedShows.length > 0) {
+          // If part of the family is already in a custom folder, funnel the strays into that folder
+          targetGroupId = groupedShows[0].groupId;
+        }
+
+        if (targetGroupId) {
+          ungroupedShows.forEach(s => {
+            s.groupId = targetGroupId;
+            const idx = state.order.downloaded.indexOf(s.id);
+            if (idx > -1) state.order.downloaded.splice(idx, 1);
+            if (!state.groupOrder[targetGroupId].includes(s.id)) {
+                state.groupOrder[targetGroupId].push(s.id);
             }
-          }
+          });
 
-          const finalGroupName = recoveredName || baseTitle;
+          state.groupOrder[targetGroupId].sort((aId, bId) => {
+            const a = getShowById(aId);
+            const b = getShowById(bId);
+            return (a.seasonYear || 0) - (b.seasonYear || 0) || (Number(a.anilistId) - Number(b.anilistId));
+          });
+        } else if (ungroupedShows.length > 1) {
+          // No custom folder exists for this family, and there are multiple strays. Create a new one.
+          const oldest = [...ungroupedShows].sort((a,b) => (a.seasonYear||0) - (b.seasonYear||0))[0];
+          const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); 
 
           const newGroupId = `grp_${crypto.randomUUID()}`;
           state.groups.push({ 
             id: newGroupId, 
-            name: finalGroupName, 
-            collapsed: false, 
+            name: baseTitle, 
+            collapsed: true, // Auto-collapse newly created Smart Groups
             board: "downloaded" 
           });
           state.groupOrder[newGroupId] = [];
           state.order.downloaded.unshift(newGroupId);
 
-          showsInFamilyInLibrary.forEach(s => {
+          ungroupedShows.forEach(s => {
             s.groupId = newGroupId;
             const idx = state.order.downloaded.indexOf(s.id);
             if (idx > -1) state.order.downloaded.splice(idx, 1);
