@@ -2104,6 +2104,18 @@
 
     // --- MAGIC WAND LOGIC ---
     async function runSmartGrouping() {
+      // 1. Memorize custom group names before destroying them
+      const groupMemory = {};
+      state.shows.forEach(s => {
+        if (s.groupId && getShowBoard(s) === "downloaded") {
+          const group = getGroupById(s.groupId);
+          if (group) {
+            groupMemory[s.id] = group.name;
+          }
+        }
+      });
+
+      // 2. Clear out all existing downloaded groups
       state.groups = state.groups.filter(g => g.board !== "downloaded");
       state.shows.forEach(s => { 
         if (getShowBoard(s) === "downloaded") s.groupId = null; 
@@ -2138,10 +2150,12 @@
           }
         }
       }
-      performLocalClustering();
+      
+      // Pass the memory object to the clustering function
+      performLocalClustering(groupMemory);
     }
 
-    function performLocalClustering() {
+    function performLocalClustering(groupMemory = {}) {
       setStatus("Organizing folders...");
       let families = [];
 
@@ -2176,10 +2190,22 @@
           const oldest = [...showsInFamilyInLibrary].sort((a,b) => (a.seasonYear||0) - (b.seasonYear||0))[0];
           const baseTitle = oldest.title.split(/[:\-\(]/)[0].trim(); 
 
+          // Check if any of these shows previously lived in a custom-named folder
+          let recoveredName = null;
+          for (const s of showsInFamilyInLibrary) {
+            if (groupMemory[s.id]) {
+               recoveredName = groupMemory[s.id];
+               break; // Found one! Stop looking.
+            }
+          }
+
+          // If we found a recovered name, use it. Otherwise, fallback to baseTitle.
+          const finalGroupName = recoveredName || baseTitle;
+
           const newGroupId = `grp_${crypto.randomUUID()}`;
           state.groups.push({ 
             id: newGroupId, 
-            name: baseTitle, 
+            name: finalGroupName, 
             collapsed: false, 
             board: "downloaded" 
           });
@@ -2204,7 +2230,6 @@
       setStatus("System Ready");
       toast("Dashboard organized!");
       
-      // AUTO SORT FIX: Instantly restore alphabetical order after the groups are built
       if (state.order.downloaded.length > 0) {
           sortBoardAZ("downloaded");
       } else {
