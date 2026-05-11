@@ -42,15 +42,23 @@
       margin: 0;
       min-height: 100vh;
       min-height: 100svh;
+      min-height: 100dvh;
       font-family: var(--font);
       color: var(--text);
+      background: var(--bg);
+      background-color: var(--bg);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
       background-color: var(--bg);
       background-image: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d);
       background-repeat: no-repeat;
-      background-size: 100% 100%;
-      background-attachment: fixed;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
+      background-size: cover;
     }
 
     button, input, textarea, select { font: inherit; }
@@ -65,7 +73,7 @@
       border-color: var(--brand);
     }
 
-    .app { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 64px; }
+    .app { position: relative; z-index: 1; width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 0 calc(64px + env(safe-area-inset-bottom)); }
     .shell { display: grid; gap: 32px; }
     .hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
     .hero-text { max-width: 680px; }
@@ -268,15 +276,6 @@
     .relation-type { font-size: 0.7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
 
 
-    .timeline-list { display: grid; gap: 12px; position: relative; }
-    .timeline-list::before { content: ""; position: absolute; left: 25px; top: 14px; bottom: 14px; width: 2px; background: var(--line); }
-    .timeline-item { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,0.03); }
-    .timeline-dot { position: relative; z-index: 1; width: 28px; height: 28px; margin-left: 11px; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: #000; font-size: 0.72rem; font-weight: 950; box-shadow: 0 0 0 6px rgba(139,150,255,0.12); }
-    .timeline-title { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .timeline-meta { margin-top: 4px; color: var(--muted); font-size: 0.82rem; font-weight: 700; }
-    .timeline-link { min-height: 34px; padding: 0 12px; border-radius: 99px; background: var(--surface-softer); border: 1px solid var(--line); text-decoration: none; display: inline-flex; align-items: center; font-weight: 850; font-size: 0.82rem; }
-    .timeline-link:hover { background: rgba(255,255,255,0.08); }
-
     @media (max-width: 800px) {
       .app { width: min(100% - 28px, 1200px); }
       .active-boards { grid-template-columns: 1fr; }
@@ -299,10 +298,6 @@
       .summary-actions { width: 100%; justify-content: space-between; }
       .collapse-chip { min-height: 38px; }
       .collapsible-card > .maintenance-grid { padding: 16px; }
-      .timeline-item { grid-template-columns: 42px minmax(0, 1fr); }
-      .timeline-link { grid-column: 2; justify-self: start; }
-      .timeline-list::before { left: 21px; }
-      .timeline-dot { margin-left: 7px; }
     }
   </style>
 </head>
@@ -1835,14 +1830,11 @@
       const cover = firstShow ? escapeAttr(getDisplayCoverUrl(firstShow)) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
       const itemsHtml = timelineShows.map(renderCard).join("");
       const completeCount = groupShows.filter(s => s.allAvailableDownloaded).length;
-      const actions = `
-        <button data-timeline-group="${escapeAttr(group.id)}" type="button">Timeline</button>
-        ${canEdit ? `
-          <button data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" type="button" ${!canMoveItem(group.id, "group", "up") ? "disabled" : ""}>Move up</button>
-          <button data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" type="button" ${!canMoveItem(group.id, "group", "down") ? "disabled" : ""}>Move down</button>
-          <button class="danger" data-remove-group="${escapeAttr(group.id)}" type="button">Delete folder</button>
-        ` : ""}
-      `;
+      const actions = canEdit ? `
+        <button data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" type="button" ${!canMoveItem(group.id, "group", "up") ? "disabled" : ""}>Move up</button>
+        <button data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" type="button" ${!canMoveItem(group.id, "group", "down") ? "disabled" : ""}>Move down</button>
+        <button class="danger" data-remove-group="${escapeAttr(group.id)}" type="button">Delete folder</button>
+      ` : "";
       return `
         <article class="show-card group-container" data-order-item-id="${escapeAttr(group.id)}" data-order-item-type="group" data-board="${escapeAttr(group.board)}">
           <div class="card-main group-header" data-collapse-group="${escapeAttr(group.id)}">
@@ -1852,10 +1844,10 @@
               <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Folder" ${!canEdit ? "readonly tabindex='-1'" : ""} />
               <div class="card-meta"><span class="badge downloaded">Folder</span><span>${groupShows.length} Shows</span><span>${completeCount}/${groupShows.length || 0}</span></div>
             </div>
-            <details class="menu">
+            ${actions ? `<details class="menu">
               <summary aria-label="Folder actions">⋯</summary>
               <div class="menu-panel">${actions}</div>
-            </details>
+            </details>` : ""}
           </div>
           <div class="group-list ${isCollapsed ? "is-collapsed" : ""}" data-group-list-id="${escapeAttr(group.id)}" data-board="${escapeAttr(group.board)}">${itemsHtml}</div>
         </article>
@@ -1918,7 +1910,6 @@
         ${show.needsAniList || !getAniListId(show) ? `<button data-regen-id="${escapeAttr(show.id)}" type="button">Regenerate AniList</button>` : ""}
         <button data-refresh-id="${escapeAttr(show.id)}" type="button">Refresh release</button>
         <button data-explore-id="${escapeAttr(show.id)}" type="button" ${!getAniListId(show) ? "disabled" : ""}>Find related</button>
-        ${show.groupId ? `<button data-timeline-group="${escapeAttr(show.groupId)}" type="button">Folder timeline</button>` : ""}
         ${show.releasesMoe.updateAvailable ? `<button data-ack-id="${escapeAttr(show.id)}" type="button">Acknowledge update</button>` : ""}
         ${isDownloaded ? `<button data-complete-id="${escapeAttr(show.id)}" type="button">${show.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}
         <button data-notes-id="${escapeAttr(show.id)}" type="button">${isNotes ? "Close notes" : "Edit notes"}</button>
@@ -1946,400 +1937,6 @@
           <div class="notes-panel"><textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea></div>
         </article>
       `;
-    }
-
-    function openTimeline(groupId) {
-      const group = getGroupById(groupId);
-      if (!group) return;
-      const shows = getTimelineSortedShows((state.groupOrder[group.id] || []).map(getShowById));
-
-      els.exploreModal.classList.add("open");
-      els.exploreModalTitle.textContent = `Timeline: ${group.name || "Folder"}`;
-      if (!shows.length) {
-        els.exploreModalBody.innerHTML = '<div class="empty">This folder has no visible shows.</div>';
-        return;
-      }
-      els.exploreModalBody.innerHTML = `
-        <div class="timeline-list">
-          ${shows.map((show, index) => {
-            const url = show.releasesMoe?.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "";
-            return `
-              <div class="timeline-item">
-                <div class="timeline-dot">${index + 1}</div>
-                <div>
-                  <div class="timeline-title">${escapeHtml(show.title)}</div>
-                  <div class="timeline-meta">${escapeHtml([show.format, show.seasonYear, show.episodes ? `${show.episodes} eps` : ""].filter(Boolean).join(" · ") || "Anime")}</div>
-                </div>
-                ${url ? `<a class="timeline-link" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">Open</a>` : ""}
-              </div>
-            `;
-          }).join("")}
-        </div>
-      `;
-    }
-
-    function formatTimeAgo(value) {
-      if (!value) return "Never";
-      const diff = (Date.now() - new Date(value).getTime()) / 1000;
-      if (!Number.isFinite(diff)) return "Never";
-      if (diff < 60) return "Just now";
-      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-      return `${Math.floor(diff / 86400)}d ago`;
-    }
-
-    function toggleDownloadedStatus(id, checked) {
-      const show = getShowById(id);
-      if (!show) return;
-      const previousBoard = getShowBoard(show);
-      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-      show.downloaded = checked;
-      if (checked) {
-        show.board = "downloaded";
-        show.releasesMoe.updateAvailable = false;
-        if (show.releasesMoe.latestUpdated) {
-          show.releasesMoe.updated = show.releasesMoe.latestUpdated;
-          show.releasesMoe.latestUpdated = null;
-        }
-        show.releasesMoe.libraryCheckedAt = show.releasesMoe.libraryCheckedAt || new Date().toISOString();
-      } else {
-        show.board = show.releasesMoe.found ? "found" : "watching";
-        show.allAvailableDownloaded = false;
-        show.releasesMoe.updateAvailable = false;
-        show.releasesMoe.latestUpdated = null;
-      }
-      const nextBoard = getShowBoard(show);
-      moveShowToBoardOrder(show.id, previousBoard, nextBoard);
-      show.updatedAt = new Date().toISOString();
-      render();
-      saveState();
-      toast(checked ? "Moved to Library" : "Moved back to Active");
-    }
-
-    function toggleAllAvailableDownloaded(id) {
-      const show = getShowById(id);
-      if (!show) return;
-      show.allAvailableDownloaded = !show.allAvailableDownloaded;
-      show.updatedAt = new Date().toISOString();
-      render();
-      saveState();
-    }
-
-    function acknowledgeUpdate(id) {
-      const show = getShowById(id);
-      if (!show) return;
-      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-      if (show.releasesMoe.latestUpdated) {
-        show.releasesMoe.updated = show.releasesMoe.latestUpdated;
-        show.releasesMoe.latestUpdated = null;
-      }
-      show.releasesMoe.updateAvailable = false;
-      show.updatedAt = new Date().toISOString();
-      render();
-      saveState();
-      toast("Update acknowledged.");
-    }
-
-    function removeShow(id) {
-      if (!confirm("Remove this show entirely?")) return;
-      const show = getShowById(id);
-      if (!show) return;
-      const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
-      const idx = arr?.indexOf(id) ?? -1;
-      if (idx > -1) arr.splice(idx, 1);
-      state.shows = state.shows.filter(s => s.id !== id);
-      render();
-      saveState();
-      toast("Removed.");
-    }
-
-    function queueCommentUpdate(id, value) {
-      const show = getShowById(id);
-      if (show) show.comments = value;
-      clearTimeout(commentSaveTimers.get(id));
-      commentSaveTimers.set(id, setTimeout(saveState, 500));
-    }
-
-    function addGroup(board) {
-      if (state.localSearch || !state.ui.sortMode || !BOARDS.includes(board)) return;
-      const id = uniqueId("grp");
-      state.groups.push({ id, name: "New Folder", collapsed: false, board });
-      state.groupOrder[id] = [];
-      state.order[board].unshift(id);
-      render();
-      saveState();
-    }
-
-    function removeGroup(groupId) {
-      if (!state.ui.sortMode) return;
-      const group = getGroupById(groupId);
-      if (!group) return;
-      state.shows.forEach(show => {
-        if (show.groupId === groupId) show.groupId = null;
-      });
-      state.groups = state.groups.filter(g => g.id !== groupId);
-      delete state.groupOrder[groupId];
-      render();
-      saveState();
-      toast("Folder deleted. Shows moved to root.");
-    }
-
-    function toggleCollapseGroup(groupId) {
-      const group = getGroupById(groupId);
-      if (!group) return;
-      group.collapsed = !group.collapsed;
-      render();
-      saveState();
-    }
-
-    function sortBoardAZ(board) {
-      if (!BOARDS.includes(board)) return;
-      state.order[board].sort((aId, bId) => getSortName(aId).localeCompare(getSortName(bId), undefined, { sensitivity: "base", numeric: true }));
-      render();
-      saveState();
-    }
-
-    function swap(arr, id, dir) {
-      const idx = arr.indexOf(id);
-      if (idx < 0) return;
-      const target = dir === "up" ? idx - 1 : idx + 1;
-      if (target < 0 || target >= arr.length) return;
-      [arr[idx], arr[target]] = [arr[target], arr[idx]];
-    }
-
-    function canMoveItem(id, type, dir) {
-      if (type === "group") {
-        const group = getGroupById(id);
-        if (!group) return false;
-        const arr = state.order[group.board];
-        const idx = arr.indexOf(id);
-        return dir === "up" ? idx > 0 : idx < arr.length - 1;
-      }
-      const show = getShowById(id);
-      if (!show) return false;
-      const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
-      const idx = arr.indexOf(id);
-      return dir === "up" ? idx > 0 : idx < arr.length - 1;
-    }
-
-    function moveItemUI(itemId, itemType, direction) {
-      if (state.localSearch || !state.ui.sortMode) return;
-      if (itemType === "group") {
-        const group = getGroupById(itemId);
-        if (group) swap(state.order[group.board], itemId, direction);
-      } else {
-        const show = getShowById(itemId);
-        if (show) swap(show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)], itemId, direction);
-      }
-      render();
-      saveState();
-    }
-
-    function sendShowToTop(showId) {
-      const show = getShowById(showId);
-      if (!show) return;
-      const board = getShowBoard(show);
-      const source = show.groupId ? state.groupOrder[show.groupId] : state.order[board];
-      const idx = source.indexOf(showId);
-      if (idx > -1) source.splice(idx, 1);
-      show.groupId = null;
-      state.order[board].unshift(showId);
-      render();
-      saveState();
-      toast("Sent to root.");
-    }
-
-    async function runSmartGrouping() {
-      reconcileOrders();
-      const idsToSync = state.shows.filter(s => getShowBoard(s) === "downloaded" && getAniListId(s) && !s.relationsFetched).map(s => getAniListId(s));
-      if (idsToSync.length) {
-        setStatus(`Analyzing ${idsToSync.length} shows...`, "sync");
-        for (let i = 0; i < idsToSync.length; i += 50) {
-          const chunk = idsToSync.slice(i, i + 50);
-          try {
-            const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{node{id}relationType}}}}}`;
-            const json = await safeAniListRequest(query, { ids: chunk });
-            json.data.Page.media.forEach(m => {
-              const show = state.shows.find(s => getAniListId(s) === m.id);
-              if (!show) return;
-              const strongTypes = ["PREQUEL", "SEQUEL", "SUMMARY"];
-              show.relations = m.relations.edges.filter(e => strongTypes.includes(e.relationType)).map(e => Number(e.node.id));
-              show.relationsFetched = true;
-            });
-            await sleep(500);
-          } catch (e) {
-            toast("Smart group sync interrupted.", "error");
-            break;
-          }
-        }
-      }
-      performLocalClustering();
-    }
-
-    function performLocalClustering() {
-      setStatus("Organizing folders...", "sync");
-      const families = [];
-      state.shows.filter(s => getShowBoard(s) === "downloaded" && getAniListId(s)).forEach(show => {
-        const ids = new Set([getAniListId(show), ...(show.relations || []).map(Number)]);
-        const matches = [];
-        families.forEach((family, index) => {
-          if ([...ids].some(id => family.has(id))) matches.push(index);
-        });
-        if (matches.length) {
-          const first = matches[0];
-          ids.forEach(id => families[first].add(id));
-          matches.slice(1).reverse().forEach(idx => {
-            families[idx].forEach(id => families[first].add(id));
-            families.splice(idx, 1);
-          });
-        } else {
-          families.push(ids);
-        }
-      });
-
-      families.forEach(familyIds => {
-        const shows = state.shows.filter(s => familyIds.has(getAniListId(s)) && getShowBoard(s) === "downloaded");
-        const grouped = shows.filter(s => s.groupId);
-        const ungrouped = shows.filter(s => !s.groupId);
-        if (!ungrouped.length) return;
-        let targetGroupId = grouped[0]?.groupId || null;
-        if (!targetGroupId && ungrouped.length > 1) {
-          const oldest = [...ungrouped].sort((a, b) => (a.seasonYear || 0) - (b.seasonYear || 0))[0];
-          targetGroupId = uniqueId("grp");
-          state.groups.push({ id: targetGroupId, name: oldest.title.split(/[:\-(]/)[0].trim() || "Franchise", collapsed: true, board: "downloaded" });
-          state.groupOrder[targetGroupId] = [];
-          state.order.downloaded.unshift(targetGroupId);
-        }
-        if (!targetGroupId) return;
-        ungrouped.forEach(show => {
-          show.groupId = targetGroupId;
-          const idx = state.order.downloaded.indexOf(show.id);
-          if (idx > -1) state.order.downloaded.splice(idx, 1);
-          if (!state.groupOrder[targetGroupId].includes(show.id)) state.groupOrder[targetGroupId].push(show.id);
-        });
-        state.groupOrder[targetGroupId].sort((aId, bId) => {
-          const a = getShowById(aId);
-          const b = getShowById(bId);
-          return (a.seasonYear || 0) - (b.seasonYear || 0) || ((getAniListId(a) || 0) - (getAniListId(b) || 0));
-        });
-      });
-      sortBoardAZ("downloaded");
-      setStatus("System Ready");
-      toast("Dashboard organized.");
-    }
-
-    async function openExplorer(showId) {
-      const show = getShowById(showId);
-      const anilistId = getAniListId(show);
-      if (!show || !anilistId) return;
-      els.exploreModal.classList.add("open");
-      els.exploreModalTitle.textContent = `Franchise: ${show.title}`;
-      els.exploreModalBody.innerHTML = '<div class="empty">Scanning franchise tree...</div>';
-      try {
-        let queue = [anilistId];
-        const visited = new Set(queue);
-        const foundMedia = new Map();
-        for (let pass = 0; pass < 3; pass++) {
-          if (!queue.length) break;
-          const nextQueue = [];
-          for (let i = 0; i < queue.length; i += 50) {
-            const chunk = queue.slice(i, i + 50);
-            const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{relationType node{${ANILIST_MEDIA_FIELDS}}}}}}}`;
-            const json = await safeAniListRequest(query, { ids: chunk });
-            const mediaNodes = json?.data?.Page?.media || [];
-            mediaNodes.forEach(m => {
-              (m.relations?.edges || []).forEach(edge => {
-                const node = edge.node;
-                if (!node || visited.has(node.id)) return;
-                visited.add(node.id);
-                const normalized = normalizeAniListMedia(node);
-                if (!["MANGA", "NOVEL", "ONE_SHOT", "MUSIC"].includes(normalized.format)) {
-                  foundMedia.set(node.id, { ...normalized, relationType: edge.relationType });
-                  nextQueue.push(node.id);
-                }
-              });
-            });
-          }
-          queue = nextQueue;
-        }
-        const addable = Array.from(foundMedia.values()).filter(m => !isMediaOnBoard(m));
-        window._exploreCache = addable;
-        els.exploreModalBody.innerHTML = addable.length ? addable.map((m, index) => `
-          <div class="relation-item">
-            <img class="result-poster" src="${escapeAttr(getBestCoverUrl(m))}" alt="${escapeAttr(m.title)}" loading="lazy" decoding="async" />
-            <div class="result-info">
-              <span class="relation-type">${escapeHtml(String(m.relationType || "Related").replace(/_/g, " "))}</span>
-              <span class="result-title">${escapeHtml(m.title)}</span>
-              <span class="result-meta">${escapeHtml([m.format, m.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>
-            </div>
-            <button class="btn primary compact" data-add-explore-index="${index}" type="button">Add</button>
-          </div>
-        `).join("") : '<div class="empty">All related anime are already on your board.</div>';
-      } catch (e) {
-        els.exploreModalBody.innerHTML = '<div class="empty" style="color: var(--danger);">Failed to load relations.</div>';
-      }
-    }
-
-    function cloneForStorage(sourceState, { includeEmbeddedCovers = true } = {}) {
-      const clone = JSON.parse(JSON.stringify(sourceState));
-      clone.schemaVersion = SCHEMA_VERSION;
-      clone.exportedAt = new Date().toISOString();
-      clone.exportType = includeEmbeddedCovers ? "portable" : "lightweight";
-      if (!includeEmbeddedCovers) {
-        (clone.shows || []).forEach(show => { delete show.coverImageData; });
-      }
-      return clone;
-    }
-
-    function getStateTimestamp(data) {
-      const times = [];
-      const addTime = value => {
-        const time = Date.parse(value || "");
-        if (Number.isFinite(time)) times.push(time);
-      };
-      // Do not use exportedAt for conflict detection: exporting or cloud serializing
-      // should not make a board look newer than actual content edits.
-      addTime(data?.updatedAt);
-      getSavedShowsFromData(data).forEach(show => {
-        addTime(show.updatedAt);
-        addTime(show.createdAt);
-        addTime(show.releasesMoe?.checkedAt);
-        addTime(show.releasesMoe?.libraryCheckedAt);
-      });
-      return times.length ? Math.max(...times) : 0;
-    }
-
-    function findMatchingShowInList(target, list = []) {
-      const targetAl = getAniListId(target);
-      const targetMal = getMalId(target);
-      const targetTitle = normalizeTitle(target?.title);
-      return list.find(candidate => {
-        if (targetAl && getAniListId(candidate) === targetAl) return true;
-        if (targetMal && getMalId(candidate) === targetMal) return true;
-        if (target?.id && candidate.id === target.id) return true;
-        return targetTitle && normalizeTitle(candidate.title) === targetTitle && String(candidate.seasonYear || "") === String(target?.seasonYear || "");
-      }) || null;
-    }
-
-    function preserveEmbeddedCoversForImport(incomingData, localData) {
-      const clone = JSON.parse(JSON.stringify(incomingData || {}));
-      const incomingShows = getSavedShowsFromData(clone);
-      const localShows = getSavedShowsFromData(localData);
-      incomingShows.forEach(show => {
-        if (show.coverImageData) return;
-        const localMatch = findMatchingShowInList(show, localShows);
-        if (localMatch?.coverImageData) show.coverImageData = localMatch.coverImageData;
-        if (!show.coverImage && localMatch?.coverImage) show.coverImage = localMatch.coverImage;
-      });
-      return clone;
-    }
-
-    function downloadJson(filename, data) {
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-      link.download = filename;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     }
 
     function exportJson() {
@@ -2804,8 +2401,6 @@
         if (!ok) toast("Could not regenerate yet.", "error");
         return;
       }
-      const timelineBtn = e.target.closest("[data-timeline-group]");
-      if (timelineBtn) { openTimeline(timelineBtn.dataset.timelineGroup); return; }
       const exploreBtn = e.target.closest("[data-explore-id]");
       if (exploreBtn) { openExplorer(exploreBtn.dataset.exploreId); return; }
       const notesBtn = e.target.closest("[data-notes-id]");
