@@ -1556,28 +1556,38 @@
     function renderBoard(type, shows, listEl, countEl) {
       countEl.textContent = shows.length;
       listEl.dataset.board = type;
-      const hasGroups = state.groups.some(g => g.board === type);
-      if (!shows.length && (!hasGroups || state.localSearch)) {
-        listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
-        return;
-      }
+
       if (state.localSearch) {
-        listEl.innerHTML = shows.map(renderCard).join("");
+        listEl.innerHTML = shows.length ? shows.map(renderCard).join("") : `<div class="empty">${emptyCopy[type]}</div>`;
         return;
       }
+
       const html = [];
+      const isFilteredLibrary = type === "downloaded" && (!!state.ui.filterComplete || !!state.ui.filterIncomplete);
+
       if (type === "downloaded" && state.ui.sortMode) {
         html.push(`<div class="mini-actions"><button class="btn compact" type="button" data-sort-az-board="downloaded">A-Z Root</button><button class="btn compact" type="button" data-add-group-board="downloaded">+ Folder</button></div>`);
       }
+
       state.order[type].forEach(id => {
         const group = getGroupById(id);
         if (group) {
-          html.push(renderGroup(group, shows.filter(s => s.groupId === group.id)));
-        } else {
-          const show = getShowById(id);
-          if (show && shows.includes(show)) html.push(renderCard(show));
+          const groupShows = shows.filter(s => s.groupId === group.id);
+          const shouldShowGroup = groupShows.length > 0 || (!isFilteredLibrary && state.ui.sortMode);
+          if (shouldShowGroup) html.push(renderGroup(group, groupShows));
+          return;
         }
+
+        const show = getShowById(id);
+        if (show && shows.includes(show)) html.push(renderCard(show));
       });
+
+      const onlySortTools = html.length === 1 && html[0].includes('data-sort-az-board="downloaded"');
+      if (!shows.length || onlySortTools) {
+        listEl.innerHTML = `${type === "downloaded" && state.ui.sortMode ? html[0] || "" : ""}<div class="empty">${emptyCopy[type]}</div>`;
+        return;
+      }
+
       listEl.innerHTML = html.join("");
     }
 
