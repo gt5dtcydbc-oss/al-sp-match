@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Archive" />
@@ -33,12 +33,21 @@
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html {
+      min-height: 100%;
+      background: var(--bg);
+      background-color: var(--bg);
+    }
     body {
       margin: 0;
       min-height: 100vh;
+      min-height: 100svh;
       font-family: var(--font);
       color: var(--text);
-      background: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d);
+      background-color: var(--bg);
+      background-image: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
       background-attachment: fixed;
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
@@ -277,7 +286,7 @@
     }
     .cover-tile:hover { transform: translateY(-3px); border-color: rgba(139,150,255,0.35); background: var(--surface-soft); }
     .cover-tile a { display: grid; gap: 10px; text-decoration: none; color: inherit; padding: 10px; }
-    .cover-poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 12px; background: var(--surface-softer); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
+    .cover-poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; border-radius: 12px; background: var(--surface-softer); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
     .cover-title { font-size: 0.86rem; font-weight: 850; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2em; }
     .cover-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 0.72rem; font-weight: 800; }
     .cover-tile .badge { font-size: 0.58rem; padding: 3px 6px; }
@@ -423,7 +432,8 @@
                 <option>ONA</option>
                 <option>MUSIC</option>
               </select>
-              <input class="input" id="manualImageUrl" type="url" placeholder="Image URL *" autocomplete="off" />
+              <input class="input" id="manualImageUrl" type="url" placeholder="Image URL or upload image *" autocomplete="off" />
+              <input class="input" id="manualImageFile" type="file" accept="image/*" aria-label="Upload local image" />
               <input class="input" id="manualAnilistId" type="number" placeholder="AniList ID (optional)" autocomplete="off" />
               <input class="input" id="manualMalId" type="number" placeholder="MAL ID (optional)" autocomplete="off" />
               <textarea class="wide" id="manualNotes" rows="3" placeholder="Notes (optional)"></textarea>
@@ -460,16 +470,22 @@
             </div>
             <div class="maintenance-box">
               <strong>Data</strong>
+              <p class="hint">Normal JSON and cloud sync stay small. Portable archives embed covers for offline use and can be merged back later.</p>
               <div class="mini-actions">
                 <button class="btn" id="exportBtn" type="button">Export JSON</button>
-                <input class="file-input" id="importFile" type="file" accept=".json" />
-                <button class="btn" id="importBtn" type="button">Import JSON</button>
+                <button class="btn" id="exportPortableBtn" type="button">Export Portable Archive</button>
+                <input class="file-input" id="importFile" type="file" accept=".json,application/json" />
+                <button class="btn" id="importBtn" type="button">Import JSON / Portable</button>
+                <select class="input" id="importMode" aria-label="Import mode" style="min-width: 170px; width: auto;">
+                  <option value="replace">Replace board</option>
+                  <option value="merge">Merge into board</option>
+                </select>
                 <button class="btn danger" id="clearBtn" type="button">Clear Board</button>
               </div>
             </div>
             <div class="maintenance-box">
               <strong>Cloud Sync</strong>
-              <p class="hint">PAT and Gist ID are stored in this browser's localStorage.</p>
+              <p class="hint">PAT and Gist ID stay in localStorage; the board itself is stored in IndexedDB.</p>
               <input class="input" id="githubPat" type="password" placeholder="GitHub PAT (ghp_...)" autocomplete="off" spellcheck="false" />
               <input class="input" id="gistId" type="text" placeholder="Gist ID" autocomplete="off" spellcheck="false" />
               <button class="btn primary" id="syncNowBtn" type="button">Pull & Sync</button>
@@ -499,6 +515,10 @@
     const STORAGE_KEY = "anilist-releases-board:v3";
     const LEGACY_STORAGE_KEYS = ["anilist-releases-board:v2"];
     const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1";
+    const DB_NAME = "anime-archive-dashboard-db";
+    const DB_VERSION = 1;
+    const DB_STORE = "kv";
+    const DB_BOARD_KEY = "main-board";
     const SCHEMA_VERSION = 3;
     const BOARDS = ["found", "watching", "downloaded"];
 
@@ -531,6 +551,7 @@
       manualYear: document.querySelector("#manualYear"),
       manualFormat: document.querySelector("#manualFormat"),
       manualImageUrl: document.querySelector("#manualImageUrl"),
+      manualImageFile: document.querySelector("#manualImageFile"),
       manualAnilistId: document.querySelector("#manualAnilistId"),
       manualMalId: document.querySelector("#manualMalId"),
       manualNotes: document.querySelector("#manualNotes"),
@@ -552,8 +573,10 @@
       refreshAllBtn: document.querySelector("#refreshAllBtn"),
       regenAllBtn: document.querySelector("#regenAllBtn"),
       exportBtn: document.querySelector("#exportBtn"),
+      exportPortableBtn: document.querySelector("#exportPortableBtn"),
       importBtn: document.querySelector("#importBtn"),
       importFile: document.querySelector("#importFile"),
+      importMode: document.querySelector("#importMode"),
       clearBtn: document.querySelector("#clearBtn"),
       githubPat: document.querySelector("#githubPat"),
       gistId: document.querySelector("#gistId"),
@@ -612,6 +635,138 @@
       const controller = new AbortController();
       setTimeout(() => controller.abort(), ms);
       return controller.signal;
+    }
+
+
+    let archiveDbPromise = null;
+    let saveChain = Promise.resolve();
+    let loadedStateSource = "none";
+
+    function cloneForLocalStore(sourceState) {
+      const clone = JSON.parse(JSON.stringify(sourceState || makeDefaultState()));
+      clone.schemaVersion = SCHEMA_VERSION;
+      return clone;
+    }
+
+    function openArchiveDb() {
+      if (!("indexedDB" in window)) return Promise.reject(new Error("IndexedDB is not available."));
+      if (archiveDbPromise) return archiveDbPromise;
+
+      archiveDbPromise = new Promise((resolve, reject) => {
+        let request;
+        try {
+          request = indexedDB.open(DB_NAME, DB_VERSION);
+        } catch (error) {
+          archiveDbPromise = null;
+          reject(error);
+          return;
+        }
+
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => {
+          archiveDbPromise = null;
+          reject(request.error || new Error("IndexedDB open failed."));
+        };
+        request.onblocked = () => console.warn("IndexedDB upgrade is blocked by another open tab.");
+      });
+
+      return archiveDbPromise;
+    }
+
+    async function idbGet(key) {
+      const db = await openArchiveDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, "readonly");
+        const store = tx.objectStore(DB_STORE);
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result ?? null);
+        request.onerror = () => reject(request.error || new Error("IndexedDB read failed."));
+      });
+    }
+
+    async function idbSet(key, value) {
+      const db = await openArchiveDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, "readwrite");
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("IndexedDB write failed."));
+        tx.onabort = () => reject(tx.error || new Error("IndexedDB write aborted."));
+        tx.objectStore(DB_STORE).put(value, key);
+      });
+    }
+
+    function loadLegacyLocalStorageState() {
+      const keys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
+      for (const key of keys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(`Corrupted localStorage board at ${key}.`, error);
+        }
+      }
+      return null;
+    }
+
+    async function loadStoredBoardState() {
+      let indexedState = null;
+      try {
+        indexedState = await idbGet(DB_BOARD_KEY);
+      } catch (error) {
+        console.warn("IndexedDB load unavailable; falling back to localStorage.", error);
+      }
+
+      const legacyState = loadLegacyLocalStorageState();
+      if (indexedState && legacyState) {
+        const indexedTime = getStateTimestamp(indexedState);
+        const legacyTime = getStateTimestamp(legacyState);
+        if (legacyTime > indexedTime + 2000) {
+          loadedStateSource = "localStorage";
+          return legacyState;
+        }
+        loadedStateSource = "indexedDB";
+        return indexedState;
+      }
+      if (indexedState) {
+        loadedStateSource = "indexedDB";
+        return indexedState;
+      }
+      if (legacyState) {
+        loadedStateSource = "localStorage";
+        return legacyState;
+      }
+      loadedStateSource = "none";
+      return null;
+    }
+
+    async function persistBoardState({ syncCloud = true } = {}) {
+      reconcileOrders();
+      let savedToIndexedDb = false;
+      try {
+        await idbSet(DB_BOARD_KEY, cloneForLocalStore(state));
+        savedToIndexedDb = true;
+      } catch (error) {
+        console.warn("IndexedDB save failed; trying lightweight localStorage fallback.", error);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloneForStorage(state, { includeEmbeddedCovers: false })));
+          toast("Saved lightweight fallback because IndexedDB was unavailable.", "error");
+        } catch (fallbackError) {
+          console.error("Could not save board locally.", fallbackError);
+          toast("Local save failed. Export a JSON backup now.", "error");
+        }
+      }
+
+      if (savedToIndexedDb) {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {}
+      }
+      if (syncCloud) queueCloudSync(state);
     }
 
     function getShowById(id) {
@@ -777,7 +932,8 @@
         titleEnglish: media.title?.english || "",
         titleRomaji: media.title?.romaji || "",
         titleNative: media.title?.native || "",
-        coverImage: media.coverImage?.large || media.coverImage?.medium || media.coverImage?.extraLarge || "",
+        coverImage: media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium || "",
+        coverImageData: "",
         format: media.format || "",
         seasonYear: media.seasonYear || null,
         episodes: media.episodes || null,
@@ -800,6 +956,7 @@
         titleRomaji: media.title || "",
         titleNative: media.title_japanese || "",
         coverImage: image,
+        coverImageData: "",
         format: normalizeFormat(media.type || ""),
         seasonYear: media.year || getYearFromText(media.aired?.from) || null,
         episodes: media.episodes || null,
@@ -848,6 +1005,7 @@
         titleRomaji: media.titleRomaji || "",
         titleNative: media.titleNative || "",
         coverImage: media.coverImage || "",
+        coverImageData: media.coverImageData || "",
         format: media.format || "",
         seasonYear: media.seasonYear || null,
         episodes: media.episodes || null,
@@ -871,18 +1029,32 @@
       };
     }
 
-    function makeManualMedia() {
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Could not read image file."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function makeManualMedia() {
       const title = els.manualTitle.value.trim();
       const year = Number(els.manualYear.value);
       const format = els.manualFormat.value.trim();
       const imageUrl = els.manualImageUrl.value.trim();
+      const imageFile = els.manualImageFile?.files?.[0] || null;
       const anilist = Number(els.manualAnilistId.value) || null;
       const mal = Number(els.manualMalId.value) || null;
 
-      if (!title || !year || !format || !imageUrl) {
-        throw new Error("Title, year, format, and image URL are required.");
+      if (!title || !year || !format || (!imageUrl && !imageFile)) {
+        throw new Error("Title, year, format, and either image URL or image upload are required.");
       }
-      try { new URL(imageUrl); } catch { throw new Error("Image URL is not valid."); }
+      if (imageUrl) {
+        try { new URL(imageUrl); } catch { throw new Error("Image URL is not valid."); }
+      }
+
+      const coverImageData = imageFile ? await fileToDataUrl(imageFile) : "";
 
       return {
         source: anilist ? "anilist" : "manual",
@@ -893,6 +1065,7 @@
         titleRomaji: title,
         titleNative: "",
         coverImage: imageUrl,
+        coverImageData,
         format,
         seasonYear: year,
         episodes: null,
@@ -980,6 +1153,8 @@
         toast("Already on board.");
         return null;
       }
+      if (!resolved.coverImageData && media.coverImageData) resolved.coverImageData = media.coverImageData;
+      if (!resolved.coverImage && media.coverImage) resolved.coverImage = media.coverImage;
       const notes = media.source === "manual" ? els.manualNotes.value.trim() : "";
       const show = makeShowFromMedia(resolved, { comments: notes });
       state.shows.unshift(show);
@@ -1168,7 +1343,7 @@
         <div class="hint" style="padding: 8px 10px;">Source: ${escapeHtml(sourceLabel)}</div>
         ${results.map((m, i) => `
           <button class="result-item" data-result-index="${i}" type="button">
-            <img class="result-poster" src="${escapeAttr(m.coverImage || "")}" alt="${escapeAttr(m.title)}" loading="lazy" />
+            <img class="result-poster" src="${escapeAttr(getBestCoverUrl(m))}" alt="${escapeAttr(m.title)}" loading="lazy" decoding="async" />
             <div class="result-info">
               <span class="result-title">${escapeHtml(m.title)}</span>
               <span class="result-meta">${escapeHtml([m.format, m.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>
@@ -1271,7 +1446,7 @@
 
     async function addManualShow() {
       try {
-        const manualMedia = makeManualMedia();
+        const manualMedia = await makeManualMedia();
         setStatus("Adding manual show...", "sync");
         let media = manualMedia;
         if (manualMedia.externalIds.anilist) {
@@ -1281,6 +1456,8 @@
         } else {
           media = await resolveMediaToAniList(manualMedia);
         }
+        media.coverImageData = media.coverImageData || manualMedia.coverImageData || "";
+        media.coverImage = media.coverImage || manualMedia.coverImage || "";
         await addShowFromMedia(media, { skipRefresh: false });
         clearManualForm();
       } catch (e) {
@@ -1292,6 +1469,7 @@
 
     function clearManualForm() {
       [els.manualTitle, els.manualYear, els.manualImageUrl, els.manualAnilistId, els.manualMalId, els.manualNotes].forEach(el => el.value = "");
+      if (els.manualImageFile) els.manualImageFile.value = "";
       els.manualFormat.value = "";
     }
 
@@ -1335,6 +1513,7 @@
       show.titleRomaji = resolved.titleRomaji;
       show.titleNative = resolved.titleNative;
       show.coverImage = resolved.coverImage || previous.coverImage;
+      show.coverImageData = previous.coverImageData || resolved.coverImageData || "";
       show.format = resolved.format || previous.format;
       show.seasonYear = resolved.seasonYear || previous.seasonYear;
       show.episodes = resolved.episodes || previous.episodes;
@@ -1421,6 +1600,7 @@
         show.titleRomaji = show.titleRomaji || show.title || "";
         show.titleNative = show.titleNative || "";
         show.coverImage = show.coverImage || "";
+        show.coverImageData = show.coverImageData || "";
         show.format = show.format || "";
         show.seasonYear = show.seasonYear || null;
         show.episodes = show.episodes || null;
@@ -1559,20 +1739,27 @@
       insertIntoUngroupedAZ(state.order[nextBoard], showId);
     }
 
-    function saveState() {
-      reconcileOrders();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      queueCloudSync(state);
+    function saveState(options = {}) {
+      saveChain = saveChain
+        .then(() => persistBoardState(options))
+        .catch(error => {
+          console.error("Queued save failed.", error);
+          toast("Local save failed. Export a JSON backup now.", "error");
+        });
+      return saveChain;
     }
 
-    function loadState() {
-      let parsed = null;
-      const raw = localStorage.getItem(STORAGE_KEY) || LEGACY_STORAGE_KEYS.map(k => localStorage.getItem(k)).find(Boolean);
-      if (raw) {
-        try { parsed = JSON.parse(raw); } catch (e) { console.error("Corrupted local storage.", e); }
-      }
+    async function loadState() {
+      const parsed = await loadStoredBoardState();
       if (parsed) Object.assign(state, Array.isArray(parsed) ? { shows: parsed } : parsed);
       migrateStateIfNeeded();
+      if (parsed && (loadedStateSource === "localStorage" || !(await hasIndexedDbBoard()).catch(() => false))) {
+        saveState({ syncCloud: false });
+      }
+    }
+
+    async function hasIndexedDbBoard() {
+      return !!(await idbGet(DB_BOARD_KEY));
     }
 
     function applyLoadedState(data) {
@@ -1687,7 +1874,7 @@
       const isCollapsed = !!group.collapsed;
       const timelineShows = getTimelineSortedShows(groupShows);
       const firstShow = timelineShows[0] || null;
-      const cover = firstShow ? escapeAttr(firstShow.coverImage) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
+      const cover = firstShow ? escapeAttr(getDisplayCoverUrl(firstShow)) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
       const itemsHtml = timelineShows.map(renderCard).join("");
       const completeCount = groupShows.filter(s => s.allAvailableDownloaded).length;
       const actions = `
@@ -1705,7 +1892,7 @@
             <img src="${cover}" class="thumb" alt="Group Cover" loading="lazy" />
             <div class="card-content">
               <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Folder" ${!canEdit ? "readonly tabindex='-1'" : ""} />
-              <div class="card-meta"><span class="badge downloaded">Folder</span><span>${groupShows.length} Shows</span><span>${completeCount}/${groupShows.length || 0} Complete</span></div>
+              <div class="card-meta"><span class="badge downloaded">Folder</span><span>${groupShows.length} Shows</span><span>${completeCount}/${groupShows.length || 0}</span></div>
             </div>
             <details class="menu">
               <summary aria-label="Folder actions">⋯</summary>
@@ -1717,6 +1904,30 @@
       `;
     }
 
+    function getBestCoverUrl(show) {
+      const raw = String(show?.coverImage || "").trim();
+      if (!raw) return "";
+      try {
+        const url = new URL(raw, window.location.href);
+        if (url.hostname.includes("anilist.co") || url.hostname.includes("anilistcdn")) {
+          url.pathname = url.pathname.replace("/medium/", "/large/");
+          return url.toString();
+        }
+        if (url.hostname.includes("myanimelist.net")) {
+          url.pathname = url.pathname.replace(/\/r\/\d+x\d+\//, "/");
+          url.search = "";
+          return url.toString();
+        }
+        return raw;
+      } catch {
+        return raw.replace("/medium/", "/large/").replace(/\/r\/\d+x\d+\//, "/");
+      }
+    }
+
+    function getDisplayCoverUrl(show) {
+      return String(show?.coverImageData || "").trim() || getBestCoverUrl(show);
+    }
+
     function renderCard(show) {
       show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
       const board = getShowBoard(show);
@@ -1725,7 +1936,8 @@
       const sortMode = !!state.ui.sortMode && isDownloaded;
       const titleUrl = show.releasesMoe.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "";
       const titleHtml = titleUrl ? `<a href="${escapeAttr(titleUrl)}" target="_blank" rel="noreferrer">${escapeHtml(show.title)}</a>` : escapeHtml(show.title);
-      const thumbHtml = titleUrl ? `<a class="thumb-link" href="${escapeAttr(titleUrl)}" target="_blank" rel="noreferrer"><img src="${escapeAttr(show.coverImage)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" /></a>` : `<img src="${escapeAttr(show.coverImage)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" />`;
+      const coverUrl = getDisplayCoverUrl(show);
+      const thumbHtml = titleUrl ? `<a class="thumb-link" href="${escapeAttr(titleUrl)}" target="_blank" rel="noreferrer"><img src="${escapeAttr(coverUrl)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" decoding="async" /></a>` : `<img src="${escapeAttr(coverUrl)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" decoding="async" />`;
       const badges = [];
       if (show.needsAniList || !getAniListId(show)) badges.push('<span class="badge pending">Needs AniList</span>');
       if (show.source === "manual") badges.push('<span class="badge manual">Manual</span>');
@@ -1788,7 +2000,7 @@
       return `
         <article class="cover-tile" data-show-id="${escapeAttr(show.id)}">
           <a href="${escapeAttr(url)}" target="_blank" rel="noreferrer">
-            <img class="cover-poster" src="${escapeAttr(show.coverImage)}" alt="${escapeAttr(show.title)}" loading="lazy" />
+            <img class="cover-poster" src="${escapeAttr(getDisplayCoverUrl(show))}" alt="${escapeAttr(show.title)}" loading="lazy" decoding="async" sizes="(max-width: 800px) 33vw, 160px" />
             <span class="cover-title">${escapeHtml(show.title)}</span>
             <span class="cover-meta"><span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badges.join("")}</span>
           </a>
@@ -2114,7 +2326,7 @@
         window._exploreCache = addable;
         els.exploreModalBody.innerHTML = addable.length ? addable.map((m, index) => `
           <div class="relation-item">
-            <img class="result-poster" src="${escapeAttr(m.coverImage || "")}" alt="${escapeAttr(m.title)}" loading="lazy" />
+            <img class="result-poster" src="${escapeAttr(getBestCoverUrl(m))}" alt="${escapeAttr(m.title)}" loading="lazy" decoding="async" />
             <div class="result-info">
               <span class="relation-type">${escapeHtml(String(m.relationType || "Related").replace(/_/g, " "))}</span>
               <span class="result-title">${escapeHtml(m.title)}</span>
@@ -2128,13 +2340,218 @@
       }
     }
 
+    function cloneForStorage(sourceState, { includeEmbeddedCovers = true } = {}) {
+      const clone = JSON.parse(JSON.stringify(sourceState));
+      clone.schemaVersion = SCHEMA_VERSION;
+      clone.exportedAt = new Date().toISOString();
+      clone.exportType = includeEmbeddedCovers ? "portable" : "lightweight";
+      if (!includeEmbeddedCovers) {
+        (clone.shows || []).forEach(show => { delete show.coverImageData; });
+      }
+      return clone;
+    }
+
+    function getStateTimestamp(data) {
+      const times = [];
+      const addTime = value => {
+        const time = Date.parse(value || "");
+        if (Number.isFinite(time)) times.push(time);
+      };
+      // Do not use exportedAt for conflict detection: exporting or cloud serializing
+      // should not make a board look newer than actual content edits.
+      addTime(data?.updatedAt);
+      getSavedShowsFromData(data).forEach(show => {
+        addTime(show.updatedAt);
+        addTime(show.createdAt);
+        addTime(show.releasesMoe?.checkedAt);
+        addTime(show.releasesMoe?.libraryCheckedAt);
+      });
+      return times.length ? Math.max(...times) : 0;
+    }
+
+    function findMatchingShowInList(target, list = []) {
+      const targetAl = getAniListId(target);
+      const targetMal = getMalId(target);
+      const targetTitle = normalizeTitle(target?.title);
+      return list.find(candidate => {
+        if (targetAl && getAniListId(candidate) === targetAl) return true;
+        if (targetMal && getMalId(candidate) === targetMal) return true;
+        if (target?.id && candidate.id === target.id) return true;
+        return targetTitle && normalizeTitle(candidate.title) === targetTitle && String(candidate.seasonYear || "") === String(target?.seasonYear || "");
+      }) || null;
+    }
+
+    function preserveEmbeddedCoversForImport(incomingData, localData) {
+      const clone = JSON.parse(JSON.stringify(incomingData || {}));
+      const incomingShows = getSavedShowsFromData(clone);
+      const localShows = getSavedShowsFromData(localData);
+      incomingShows.forEach(show => {
+        if (show.coverImageData) return;
+        const localMatch = findMatchingShowInList(show, localShows);
+        if (localMatch?.coverImageData) show.coverImageData = localMatch.coverImageData;
+        if (!show.coverImage && localMatch?.coverImage) show.coverImage = localMatch.coverImage;
+      });
+      return clone;
+    }
+
+    function downloadJson(filename, data) {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      link.download = filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
     function exportJson() {
       reconcileOrders();
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
-      link.download = "anime-releases-board-v3.json";
-      link.click();
-      toast("Exported.");
+      downloadJson("anime-releases-board-v3.json", cloneForStorage(state, { includeEmbeddedCovers: false }));
+      toast("Exported lightweight JSON.");
+    }
+
+    async function fetchImageAsDataUrl(url) {
+      if (!url || String(url).startsWith("data:")) return String(url || "");
+      const response = await fetch(url, { mode: "cors", signal: timeoutSignal(20000) });
+      if (!response.ok) throw new Error(`Image HTTP ${response.status}`);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Could not convert image."));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function exportPortableArchive() {
+      reconcileOrders();
+      const portable = cloneForStorage(state, { includeEmbeddedCovers: true });
+      const shows = portable.shows || [];
+      let embedded = 0;
+      let failed = 0;
+      els.exportPortableBtn.disabled = true;
+      try {
+        for (let i = 0; i < shows.length; i++) {
+          const show = shows[i];
+          if (show.coverImageData || !show.coverImage) continue;
+          setStatus(`Embedding covers ${i + 1}/${shows.length}...`, "sync");
+          try {
+            show.coverImageData = await fetchImageAsDataUrl(getBestCoverUrl(show));
+            if (show.coverImageData) embedded++;
+          } catch (e) {
+            failed++;
+          }
+          await sleep(80);
+        }
+        downloadJson("anime-releases-portable-archive.json", portable);
+        toast(failed ? `Portable archive exported. ${failed} covers could not be embedded.` : "Portable archive exported.");
+      } finally {
+        els.exportPortableBtn.disabled = false;
+        setStatus("System Ready");
+      }
+    }
+
+    function getSavedShowsFromData(data) {
+      return Array.isArray(data) ? data : (Array.isArray(data?.shows) ? data.shows : []);
+    }
+
+    function normalizeImportedState(data) {
+      const backup = JSON.parse(JSON.stringify(state));
+      try {
+        applyLoadedState(data);
+        return JSON.parse(JSON.stringify(state));
+      } finally {
+        Object.keys(state).forEach(key => delete state[key]);
+        Object.assign(state, backup);
+        migrateStateIfNeeded();
+      }
+    }
+
+    function getShowMergeKey(show) {
+      const al = getAniListId(show);
+      if (al) return `al:${al}`;
+      const mal = getMalId(show);
+      if (mal) return `mal:${mal}`;
+      if (show.id) return `id:${show.id}`;
+      return `title:${normalizeTitle(show.title)}:${show.seasonYear || ""}`;
+    }
+
+    function findMatchingShow(incoming) {
+      const incomingAl = getAniListId(incoming);
+      const incomingMal = getMalId(incoming);
+      const incomingTitle = normalizeTitle(incoming.title);
+      return state.shows.find(existing => {
+        if (incomingAl && getAniListId(existing) === incomingAl) return true;
+        if (incomingMal && getMalId(existing) === incomingMal) return true;
+        if (incoming.id && existing.id === incoming.id) return true;
+        return incomingTitle && normalizeTitle(existing.title) === incomingTitle && String(existing.seasonYear || "") === String(incoming.seasonYear || "");
+      }) || null;
+    }
+
+    function mergeImportedState(importedState) {
+      const groupIdMap = new Map();
+      let added = 0;
+      let updated = 0;
+
+      (importedState.shows || []).forEach(incoming => {
+        const existing = findMatchingShow(incoming);
+        if (existing) {
+          const existingId = existing.id;
+          const merged = { ...existing, ...incoming, id: existingId };
+          if (!merged.coverImageData && existing.coverImageData) merged.coverImageData = existing.coverImageData;
+          if (!merged.coverImage && existing.coverImage) merged.coverImage = existing.coverImage;
+          Object.assign(existing, merged);
+          updated++;
+        } else {
+          const clone = JSON.parse(JSON.stringify(incoming));
+          if (!clone.id || getShowById(clone.id)) clone.id = uniqueId("show");
+          state.shows.push(clone);
+          added++;
+        }
+      });
+
+      (importedState.groups || []).forEach(group => {
+        const existing = state.groups.find(g => g.id === group.id || (g.name === group.name && g.board === group.board));
+        if (existing) {
+          groupIdMap.set(group.id, existing.id);
+          existing.name = group.name || existing.name;
+          existing.collapsed = !!group.collapsed;
+          existing.board = group.board || existing.board;
+          if (!state.order[existing.board]?.includes(existing.id)) state.order[existing.board].push(existing.id);
+        } else {
+          const clone = JSON.parse(JSON.stringify(group));
+          if (!clone.id || getGroupById(clone.id)) clone.id = uniqueId("grp");
+          groupIdMap.set(group.id, clone.id);
+          state.groups.push(clone);
+          state.groupOrder[clone.id] = [];
+          if (!state.order[clone.board]?.includes(clone.id)) state.order[clone.board].push(clone.id);
+        }
+      });
+
+      // Recreate group membership from imported grouped shows where possible.
+      (importedState.shows || []).forEach(incoming => {
+        if (!incoming.groupId) return;
+        const targetShow = findMatchingShow(incoming);
+        const targetGroupId = groupIdMap.get(incoming.groupId) || incoming.groupId;
+        if (targetShow && getGroupById(targetGroupId)) {
+          targetShow.groupId = targetGroupId;
+          state.groupOrder[targetGroupId] = state.groupOrder[targetGroupId] || [];
+          if (!state.groupOrder[targetGroupId].includes(targetShow.id)) state.groupOrder[targetGroupId].push(targetShow.id);
+        }
+      });
+
+      // Preserve imported root/folder ordering for merged groups where possible.
+      Object.entries(importedState.groupOrder || {}).forEach(([oldGroupId, order]) => {
+        const targetGroupId = groupIdMap.get(oldGroupId) || oldGroupId;
+        if (!getGroupById(targetGroupId)) return;
+        state.groupOrder[targetGroupId] = [];
+        (order || []).forEach(importedShowId => {
+          const incoming = importedState.shows.find(s => s.id === importedShowId);
+          const target = incoming ? findMatchingShow(incoming) : getShowById(importedShowId);
+          if (target && !state.groupOrder[targetGroupId].includes(target.id)) state.groupOrder[targetGroupId].push(target.id);
+        });
+      });
+
+      reconcileOrders();
+      return { added, updated };
     }
 
     async function importJson(e) {
@@ -2142,11 +2559,22 @@
       if (!file) return;
       try {
         const text = await file.text();
-        applyLoadedState(JSON.parse(text));
-        render();
-        saveState();
-        toast("Imported successfully.");
+        const imported = JSON.parse(text);
+        const mode = els.importMode?.value || "replace";
+        if (mode === "merge") {
+          const importedState = normalizeImportedState(imported);
+          const result = mergeImportedState(importedState);
+          render();
+          saveState();
+          toast(`Merged archive: ${result.added} added, ${result.updated} updated.`);
+        } else {
+          applyLoadedState(imported);
+          render();
+          saveState();
+          toast("Imported successfully.");
+        }
       } catch (err) {
+        console.error(err);
         toast("Import failed.", "error");
       } finally {
         e.target.value = "";
@@ -2207,11 +2635,12 @@
       if (!pat || !gistId) return;
       setStatus("Pushing to cloud...", "sync");
       try {
-        await fetch(`https://api.github.com/gists/${gistId}`, {
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
           method: "PATCH",
           headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } } })
+          body: JSON.stringify({ files: { "state.json": { content: JSON.stringify(cloneForStorage(stateObject, { includeEmbeddedCovers: false }), null, 2) } } })
         });
+        if (!res.ok) throw new Error(`GitHub HTTP ${res.status}`);
         setStatus("System Ready");
       } catch (e) {
         setStatus("Sync Failed", "error");
@@ -2229,14 +2658,29 @@
         els.syncNowBtn.textContent = "Syncing...";
         saveSyncSettings();
         const cloudState = await pullFromCloud();
-        if (cloudState && Array.isArray(cloudState.shows) && cloudState.shows.length > 0) {
-          applyLoadedState(cloudState);
-          saveState();
+        const cloudHasShows = getSavedShowsFromData(cloudState).length > 0;
+        const localHasShows = state.shows.length > 0;
+
+        if (cloudHasShows && !localHasShows) {
+          applyLoadedState(preserveEmbeddedCoversForImport(cloudState, state));
+          saveState({ syncCloud: false });
           render();
-          toast("Force pull complete.");
-        } else if (state.shows.length > 0) {
+          toast("Pulled cloud board.");
+        } else if (!cloudHasShows && localHasShows) {
           await pushToCloud(state);
-          toast("Force push complete.");
+          toast("Pushed local board to cloud.");
+        } else if (cloudHasShows && localHasShows) {
+          const cloudTime = getStateTimestamp(cloudState);
+          const localTime = getStateTimestamp(state);
+          if (cloudTime > localTime + 2000) {
+            applyLoadedState(preserveEmbeddedCoversForImport(cloudState, state));
+            saveState({ syncCloud: false });
+            render();
+            toast("Pulled newer cloud board.");
+          } else {
+            await pushToCloud(state);
+            toast(localTime > cloudTime + 2000 ? "Pushed newer local board to cloud." : "Cloud sync checked.");
+          }
         } else {
           toast("Both cloud and local are empty.", "error");
           setStatus("System Ready");
@@ -2343,6 +2787,7 @@
       els.refreshAllBtn.addEventListener("click", refreshAllReleases);
       els.regenAllBtn.addEventListener("click", regenerateAllPending);
       els.exportBtn.addEventListener("click", exportJson);
+      els.exportPortableBtn.addEventListener("click", exportPortableArchive);
       els.importBtn.addEventListener("click", () => els.importFile.click());
       els.importFile.addEventListener("change", importJson);
       els.clearBtn.addEventListener("click", clearBoard);
@@ -2505,26 +2950,52 @@
       }
     }
 
+    async function initialCloudSync() {
+      if (!els.githubPat.value.trim() || !els.gistId.value.trim()) return;
+      const cloudState = await pullFromCloud();
+      const cloudHasShows = getSavedShowsFromData(cloudState).length > 0;
+      const localHasShows = Array.isArray(state.shows) && state.shows.length > 0;
+
+      if (cloudHasShows && !localHasShows) {
+        applyLoadedState(preserveEmbeddedCoversForImport(cloudState, state));
+        saveState({ syncCloud: false });
+        render();
+        toast("Cloud sync complete.");
+        return;
+      }
+
+      if (!cloudHasShows && localHasShows) {
+        await pushToCloud(state);
+        toast("Pushed local board to empty cloud.");
+        return;
+      }
+
+      if (cloudHasShows && localHasShows) {
+        const cloudTime = getStateTimestamp(cloudState);
+        const localTime = getStateTimestamp(state);
+        const skew = 2000;
+        if (cloudTime > localTime + skew) {
+          applyLoadedState(preserveEmbeddedCoversForImport(cloudState, state));
+          saveState({ syncCloud: false });
+          render();
+          toast("Pulled newer cloud board.");
+        } else if (localTime > cloudTime + skew) {
+          await pushToCloud(state);
+          toast("Pushed newer local board to cloud.");
+        } else {
+          setStatus("System Ready");
+        }
+      }
+    }
+
     async function init() {
       try {
         loadSyncSettings();
-        if (els.githubPat.value.trim() && els.gistId.value.trim()) {
-          const cloudState = await pullFromCloud();
-          const localRaw = localStorage.getItem(STORAGE_KEY);
-          let localState = null;
-          try { localState = localRaw ? JSON.parse(localRaw) : null; } catch {}
-          if (cloudState && Array.isArray(cloudState.shows) && cloudState.shows.length > 0) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
-            toast("Cloud sync complete.");
-          } else if (localState && Array.isArray(localState.shows) && localState.shows.length > 0) {
-            pushToCloud(localState);
-            toast("Pushed local board to empty cloud.");
-          }
-        }
-        loadState();
+        await loadState();
         bindEvents();
         render();
         setStatus("System Ready");
+        await initialCloudSync();
         await checkWatchingStatuses();
         await checkLibraryUpdates(10);
       } catch (error) {
