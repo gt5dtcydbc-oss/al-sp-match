@@ -6,6 +6,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Archive" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b0d13" />
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Archived%20Anime%20Dashboard%22%2C%22short_name%22%3A%22Archive%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b0d13%22%2C%22theme_color%22%3A%22%230b0d13%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A//upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image/svg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D" />
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
   <title>Archived Anime Dashboard</title>
   <style>
@@ -119,8 +122,8 @@
       flex-direction: column;
     }
     .show-card:hover, .show-card:focus-within { z-index: 20; transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0,0,0,0.4); border-color: rgba(139,150,255,0.3); }
-    .show-card.menu-open, .show-card:has(.menu[open]), .show-card:has(.release-menu[open]) { z-index: 100; }
-    .card-main { display: grid; grid-template-columns: auto 56px minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
+    .show-card.menu-open, .show-card:has(.menu[open]) { z-index: 100; }
+    .card-main { display: grid; grid-template-columns: auto 56px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
     .download-check { appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all 0.2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
     .download-check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69,212,155,0.4); }
     .download-check:checked::after { content: "✓"; color: #000; font-size: 14px; font-weight: 900; }
@@ -129,6 +132,8 @@
     .card-title { font-weight: 800; font-size: 1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-title a { text-decoration: none; }
     .card-title a:hover { color: var(--brand); }
+    .thumb-link { display: block; line-height: 0; border-radius: 8px; }
+    .thumb-link:hover .thumb { transform: translateY(-1px); }
     .card-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; color: var(--muted); font-size: 0.8rem; font-weight: 650; min-width: 0; overflow: hidden; }
     .card-meta span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
@@ -139,7 +144,7 @@
     .badge.pending { color: var(--warn); background: rgba(242,195,107,0.12); }
     .badge.manual { color: var(--brand); background: rgba(139,150,255,0.12); }
     .card-checked-time { font-size: 0.7rem; color: var(--muted-2); font-weight: 650; }
-    .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 14px 12px 106px; }
+    .card-footer { display: none; }
     .quick-link { min-height: 30px; padding: 0 11px; border-radius: 99px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 900; }
     .quick-link:hover { color: var(--text); background: rgba(255,255,255,0.08); }
     .quick-link.disabled { opacity: 0.45; pointer-events: none; }
@@ -161,8 +166,8 @@
     .release-panel a { min-height: 34px; border-radius: 10px; color: var(--text); text-decoration: none; display: flex; align-items: center; padding: 0 10px; font-weight: 800; font-size: 0.85rem; white-space: nowrap; }
     .release-panel a:hover { background: var(--surface-softer); }
 
-    .menu { position: relative; z-index: 1; margin-left: auto; }
-    .menu[open], .release-menu[open] { z-index: 120; }
+    .menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
+    .menu[open] { z-index: 120; }
     .menu summary { list-style: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); font-weight: 900; cursor: pointer; }
     .menu summary::-webkit-details-marker { display: none; }
     .menu summary:hover { color: var(--text); background: rgba(255,255,255,0.08); }
@@ -177,7 +182,7 @@
     @keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
     .group-container { padding: 0; display: flex; flex-direction: column; gap: 0; }
-    .group-header { cursor: pointer; grid-template-columns: 28px 56px minmax(0, 1fr); padding-left: 12px; }
+    .group-header { cursor: pointer; grid-template-columns: 28px 56px minmax(0, 1fr) auto; padding-left: 12px; }
     .group-list { display: grid; gap: 12px; padding: 16px 16px 16px 104px; background: rgba(0,0,0,0.15); border-top: 1px solid var(--line); min-height: 24px; }
     .group-list.is-collapsed { display: none; }
     .divider-collapse-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border: none; border-radius: 6px; pointer-events: none; font-size: 0.75rem; transition: all 0.2s ease; }
@@ -253,6 +258,39 @@
     .relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
     .relation-type { font-size: 0.7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
 
+
+
+    .wall-grid {
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+    .cover-tile {
+      position: relative;
+      min-width: 0;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+    .cover-tile:hover { transform: translateY(-3px); border-color: rgba(139,150,255,0.35); background: var(--surface-soft); }
+    .cover-tile a { display: grid; gap: 10px; text-decoration: none; color: inherit; padding: 10px; }
+    .cover-poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 12px; background: var(--surface-softer); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
+    .cover-title { font-size: 0.86rem; font-weight: 850; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2em; }
+    .cover-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 0.72rem; font-weight: 800; }
+    .cover-tile .badge { font-size: 0.58rem; padding: 3px 6px; }
+
+    .timeline-list { display: grid; gap: 12px; position: relative; }
+    .timeline-list::before { content: ""; position: absolute; left: 25px; top: 14px; bottom: 14px; width: 2px; background: var(--line); }
+    .timeline-item { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,0.03); }
+    .timeline-dot { position: relative; z-index: 1; width: 28px; height: 28px; margin-left: 11px; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: #000; font-size: 0.72rem; font-weight: 950; box-shadow: 0 0 0 6px rgba(139,150,255,0.12); }
+    .timeline-title { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timeline-meta { margin-top: 4px; color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+    .timeline-link { min-height: 34px; padding: 0 12px; border-radius: 99px; background: var(--surface-softer); border: 1px solid var(--line); text-decoration: none; display: inline-flex; align-items: center; font-weight: 850; font-size: 0.82rem; }
+    .timeline-link:hover { background: rgba(255,255,255,0.08); }
+
     @media (max-width: 800px) {
       .app { width: min(100% - 28px, 1200px); }
       .active-boards { grid-template-columns: 1fr; }
@@ -261,20 +299,25 @@
       .pill-input { width: 100%; }
       .search-row, .form-row { grid-template-columns: 1fr; }
       .manual-grid { grid-template-columns: 1fr; }
-      .card-main { grid-template-columns: auto 52px minmax(0, 1fr); gap: 12px; }
+      .card-main { grid-template-columns: auto 52px minmax(0, 1fr) auto; gap: 12px; }
       .thumb { width: 52px; height: 72px; }
-      .card-footer { padding-left: 14px; align-items: flex-start; flex-direction: column; }
-      .menu { margin-left: 0; align-self: flex-end; }
+      .card-footer { display: none; }
+      .menu { margin-left: 0; align-self: center; }
       .menu-panel { right: 0; }
       .release-panel { left: 0; }
       .notes-panel { padding-left: 14px; }
-      .group-header { grid-template-columns: 28px 48px minmax(0, 1fr); }
+      .group-header { grid-template-columns: 28px 48px minmax(0, 1fr) auto; }
       .group-list { padding-left: 14px; }
       .toolbar-actions { width: 100%; align-items: stretch; }
       .toolbar-actions .btn { flex: 1; }
       .summary-actions { width: 100%; justify-content: space-between; }
       .collapse-chip { min-height: 38px; }
       .collapsible-card > .maintenance-grid { padding: 16px; }
+      .wall-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+      .timeline-item { grid-template-columns: 42px minmax(0, 1fr); }
+      .timeline-link { grid-column: 2; justify-self: start; }
+      .timeline-list::before { left: 21px; }
+      .timeline-dot { margin-left: 7px; }
     }
   </style>
 </head>
@@ -321,6 +364,10 @@
                 <button class="segment active" id="filterAllBtn" type="button">All</button>
                 <button class="segment" id="filterCompleteBtn" type="button">Complete</button>
                 <button class="segment" id="filterIncompleteBtn" type="button">Incomplete</button>
+              </div>
+              <div class="segmented" aria-label="Library view">
+                <button class="segment active" id="viewCardsBtn" type="button">Cards</button>
+                <button class="segment" id="viewWallBtn" type="button">Wall</button>
               </div>
               <button class="btn compact" id="editOrderBtn" type="button">Edit Order</button>
             </div>
@@ -498,6 +545,8 @@
       filterAllBtn: document.querySelector("#filterAllBtn"),
       filterCompleteBtn: document.querySelector("#filterCompleteBtn"),
       filterIncompleteBtn: document.querySelector("#filterIncompleteBtn"),
+      viewCardsBtn: document.querySelector("#viewCardsBtn"),
+      viewWallBtn: document.querySelector("#viewWallBtn"),
       editOrderBtn: document.querySelector("#editOrderBtn"),
       smartGroupBtn: document.querySelector("#smartGroupBtn"),
       refreshAllBtn: document.querySelector("#refreshAllBtn"),
@@ -541,7 +590,7 @@
     }
 
     function makeDefaultUi() {
-      return { filterComplete: false, filterIncomplete: false, openNotes: {}, sortMode: false, addMode: "search" };
+      return { filterComplete: false, filterIncomplete: false, openNotes: {}, sortMode: false, addMode: "search", libraryView: "cards" };
     }
 
     function escapeHtml(value) {
@@ -600,6 +649,27 @@
 
     function compareShowsAZ(a, b) {
       return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, { sensitivity: "base", numeric: true });
+    }
+
+    function compareShowsTimeline(a, b) {
+      const yearA = Number(a?.seasonYear) || 9999;
+      const yearB = Number(b?.seasonYear) || 9999;
+      if (yearA !== yearB) return yearA - yearB;
+
+      const formatPriority = { TV: 1, TV_SHORT: 2, OVA: 3, ONA: 4, SPECIAL: 5, MOVIE: 6, MUSIC: 7 };
+      const formatA = formatPriority[String(a?.format || "").toUpperCase()] || 99;
+      const formatB = formatPriority[String(b?.format || "").toUpperCase()] || 99;
+      if (formatA !== formatB) return formatA - formatB;
+
+      const anilistA = getAniListId(a) || 999999999;
+      const anilistB = getAniListId(b) || 999999999;
+      if (anilistA !== anilistB) return anilistA - anilistB;
+
+      return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, { sensitivity: "base", numeric: true });
+    }
+
+    function getTimelineSortedShows(shows) {
+      return (shows || []).filter(Boolean).slice().sort(compareShowsTimeline);
     }
 
     function setStatus(text, mode = "ready") {
@@ -1373,6 +1443,7 @@
       migrateLegacyDividers();
       reconcileOrders();
       updateLibraryFilterButtons();
+      updateLibraryViewButtons();
       updateSortModeButton();
       updateAddMode();
     }
@@ -1519,9 +1590,18 @@
       els.filterIncompleteBtn.classList.toggle("active", !!state.ui.filterIncomplete);
     }
 
+    function updateLibraryViewButtons() {
+      const view = state.ui.libraryView === "wall" ? "wall" : "cards";
+      if (els.viewCardsBtn) els.viewCardsBtn.classList.toggle("active", view === "cards");
+      if (els.viewWallBtn) els.viewWallBtn.classList.toggle("active", view === "wall");
+      if (els.editOrderBtn) els.editOrderBtn.disabled = view === "wall";
+    }
+
     function updateSortModeButton() {
-      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode);
-      els.editOrderBtn.textContent = state.ui.sortMode ? "Done Ordering" : "Edit Order";
+      const wallMode = state.ui.libraryView === "wall";
+      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode && !wallMode);
+      els.editOrderBtn.disabled = wallMode;
+      els.editOrderBtn.textContent = state.ui.sortMode && !wallMode ? "Done Ordering" : "Edit Order";
     }
 
     function updateAddMode() {
@@ -1548,6 +1628,7 @@
       const downloaded = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
       updateSortModeButton();
       updateLibraryFilterButtons();
+      updateLibraryViewButtons();
       renderBoard("found", found, els.foundList, els.foundCount);
       renderBoard("watching", watching, els.watchingList, els.watchingCount);
       renderBoard("downloaded", downloaded, els.downloadedList, els.downloadedCount);
@@ -1556,6 +1637,16 @@
     function renderBoard(type, shows, listEl, countEl) {
       countEl.textContent = shows.length;
       listEl.dataset.board = type;
+      listEl.classList.toggle("wall-grid", type === "downloaded" && state.ui.libraryView === "wall");
+
+      if (type === "downloaded" && state.ui.libraryView === "wall") {
+        if (!shows.length) {
+          listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
+          return;
+        }
+        listEl.innerHTML = shows.slice().sort(compareShowsAZ).map(renderCoverTile).join("");
+        return;
+      }
 
       if (state.localSearch) {
         listEl.innerHTML = shows.length ? shows.map(renderCard).join("") : `<div class="empty">${emptyCopy[type]}</div>`;
@@ -1594,20 +1685,19 @@
     function renderGroup(group, groupShows) {
       const canEdit = state.ui.sortMode && !state.localSearch;
       const isCollapsed = !!group.collapsed;
-      const orderedIds = state.groupOrder[group.id] || [];
-      const firstShow = orderedIds.length ? getShowById(orderedIds[0]) : null;
-      const cover = firstShow ? escapeAttr(firstShow.coverImage) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
-      const itemsHtml = orderedIds.map(id => groupShows.find(s => s.id === id)).filter(Boolean).map(renderCard).join("");
-      const actions = canEdit ? `
-        <div class="menu">
-          <summary style="display:none"></summary>
-          <div class="mini-actions">
-            <button class="btn compact" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" type="button" ${!canMoveItem(group.id, "group", "up") ? "disabled" : ""}>Up</button>
-            <button class="btn compact" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" type="button" ${!canMoveItem(group.id, "group", "down") ? "disabled" : ""}>Down</button>
-            <button class="btn compact danger" data-remove-group="${escapeAttr(group.id)}" type="button">Delete</button>
-          </div>
-        </div>
-      ` : "";
+      const timelineShows = getTimelineSortedShows(groupShows);
+      const firstShow = timelineShows[0] || null;
+      const cover = firstShow ? escapeAttr(firstShow.coverImage) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
+      const itemsHtml = timelineShows.map(renderCard).join("");
+      const completeCount = groupShows.filter(s => s.allAvailableDownloaded).length;
+      const actions = `
+        <button data-timeline-group="${escapeAttr(group.id)}" type="button">Timeline</button>
+        ${canEdit ? `
+          <button data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" type="button" ${!canMoveItem(group.id, "group", "up") ? "disabled" : ""}>Move up</button>
+          <button data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" type="button" ${!canMoveItem(group.id, "group", "down") ? "disabled" : ""}>Move down</button>
+          <button class="danger" data-remove-group="${escapeAttr(group.id)}" type="button">Delete folder</button>
+        ` : ""}
+      `;
       return `
         <article class="show-card group-container" data-order-item-id="${escapeAttr(group.id)}" data-order-item-type="group" data-board="${escapeAttr(group.board)}">
           <div class="card-main group-header" data-collapse-group="${escapeAttr(group.id)}">
@@ -1615,10 +1705,13 @@
             <img src="${cover}" class="thumb" alt="Group Cover" loading="lazy" />
             <div class="card-content">
               <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Folder" ${!canEdit ? "readonly tabindex='-1'" : ""} />
-              <div class="card-meta"><span class="badge downloaded">Folder</span><span>${groupShows.length} Shows</span></div>
+              <div class="card-meta"><span class="badge downloaded">Folder</span><span>${groupShows.length} Shows</span><span>${completeCount}/${groupShows.length || 0} Complete</span></div>
             </div>
+            <details class="menu">
+              <summary aria-label="Folder actions">⋯</summary>
+              <div class="menu-panel">${actions}</div>
+            </details>
           </div>
-          ${actions ? `<div style="padding: 0 14px 12px 104px;">${actions}</div>` : ""}
           <div class="group-list ${isCollapsed ? "is-collapsed" : ""}" data-group-list-id="${escapeAttr(group.id)}" data-board="${escapeAttr(group.board)}">${itemsHtml}</div>
         </article>
       `;
@@ -1632,6 +1725,7 @@
       const sortMode = !!state.ui.sortMode && isDownloaded;
       const titleUrl = show.releasesMoe.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "";
       const titleHtml = titleUrl ? `<a href="${escapeAttr(titleUrl)}" target="_blank" rel="noreferrer">${escapeHtml(show.title)}</a>` : escapeHtml(show.title);
+      const thumbHtml = titleUrl ? `<a class="thumb-link" href="${escapeAttr(titleUrl)}" target="_blank" rel="noreferrer"><img src="${escapeAttr(show.coverImage)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" /></a>` : `<img src="${escapeAttr(show.coverImage)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" />`;
       const badges = [];
       if (show.needsAniList || !getAniListId(show)) badges.push('<span class="badge pending">Needs AniList</span>');
       if (show.source === "manual") badges.push('<span class="badge manual">Manual</span>');
@@ -1641,30 +1735,20 @@
       } else {
         badges.push(show.releasesMoe.found ? '<span class="badge found">Found</span>' : '<span class="badge watching">Watching</span>');
       }
-      const releaseLink = show.releasesMoe.releaseUrl || (getAniListId(show) && show.releasesMoe.found ? `https://releases.moe/${getAniListId(show)}/` : "");
-      const nyaaLink = show.releasesMoe.nyaaUrl || "";
-      const quickLinks = releaseLink ? `
-        <div class="release-split">
-          <a class="release-main ${nyaaLink ? "" : "release-single"}" href="${escapeAttr(releaseLink)}" target="_blank" rel="noreferrer">Releases</a>
-          ${nyaaLink ? `
-            <details class="release-menu">
-              <summary class="release-arrow" aria-label="More release links"><span>▾</span></summary>
-              <div class="release-panel">
-                <a href="${escapeAttr(nyaaLink)}" target="_blank" rel="noreferrer">Nyaa</a>
-              </div>
-            </details>
-          ` : ""}
-        </div>
-      ` : (nyaaLink ? `<a class="quick-link" href="${escapeAttr(nyaaLink)}" target="_blank" rel="noreferrer">Nyaa</a>` : `<span class="quick-link disabled">No release link</span>`);
       const orderActions = sortMode ? `
-        <button data-send-top-id="${escapeAttr(show.id)}" type="button">Send to root</button>
-        <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="up" type="button" ${!canMoveItem(show.id, "show", "up") ? "disabled" : ""}>Move up</button>
-        <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="down" type="button" ${!canMoveItem(show.id, "show", "down") ? "disabled" : ""}>Move down</button>
+        ${show.groupId ? `<button data-send-top-id="${escapeAttr(show.id)}" type="button">Send to root</button>` : `
+          <button data-send-top-id="${escapeAttr(show.id)}" type="button">Send to root</button>
+          <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="up" type="button" ${!canMoveItem(show.id, "show", "up") ? "disabled" : ""}>Move up</button>
+          <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="down" type="button" ${!canMoveItem(show.id, "show", "down") ? "disabled" : ""}>Move down</button>
+        `}
       ` : "";
       const normalActions = `
+        ${show.releasesMoe.releaseUrl ? `<a href="${escapeAttr(show.releasesMoe.releaseUrl)}" target="_blank" rel="noreferrer">Open releases</a>` : ""}
+        ${show.releasesMoe.nyaaUrl ? `<a href="${escapeAttr(show.releasesMoe.nyaaUrl)}" target="_blank" rel="noreferrer">Open Nyaa</a>` : ""}
         ${show.needsAniList || !getAniListId(show) ? `<button data-regen-id="${escapeAttr(show.id)}" type="button">Regenerate AniList</button>` : ""}
         <button data-refresh-id="${escapeAttr(show.id)}" type="button">Refresh release</button>
         <button data-explore-id="${escapeAttr(show.id)}" type="button" ${!getAniListId(show) ? "disabled" : ""}>Find related</button>
+        ${show.groupId ? `<button data-timeline-group="${escapeAttr(show.groupId)}" type="button">Folder timeline</button>` : ""}
         ${show.releasesMoe.updateAvailable ? `<button data-ack-id="${escapeAttr(show.id)}" type="button">Acknowledge update</button>` : ""}
         ${isDownloaded ? `<button data-complete-id="${escapeAttr(show.id)}" type="button">${show.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}
         <button data-notes-id="${escapeAttr(show.id)}" type="button">${isNotes ? "Close notes" : "Edit notes"}</button>
@@ -1674,15 +1758,12 @@
         <article class="show-card ${isNotes ? "notes-open" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" data-group-id="${escapeAttr(show.groupId || "")}">
           <div class="card-main">
             <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDownloaded ? "checked" : ""} title="Mark downloaded" />
-            <img src="${escapeAttr(show.coverImage)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" />
+            ${thumbHtml}
             <div class="card-content">
               <div class="card-title">${titleHtml}</div>
               <div class="card-meta"><span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badges.join("")}</div>
               <div class="card-checked-time">Checked: ${formatTimeAgo(show.releasesMoe.checkedAt)}${show.releasesMoe.error ? ` · ${escapeHtml(show.releasesMoe.error)}` : ""}</div>
             </div>
-          </div>
-          <div class="card-footer">
-            <div class="links-row">${quickLinks}</div>
             <details class="menu">
               <summary aria-label="Show actions">⋯</summary>
               <div class="menu-panel">
@@ -1694,6 +1775,54 @@
           </div>
           <div class="notes-panel"><textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea></div>
         </article>
+      `;
+    }
+
+    function renderCoverTile(show) {
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+      const url = show.releasesMoe.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "#";
+      const badges = [];
+      if (show.releasesMoe.updateAvailable) badges.push('<span class="badge update">Updated</span>');
+      if (show.allAvailableDownloaded) badges.push('<span class="badge downloaded">Complete</span>');
+      if (show.needsAniList || !getAniListId(show)) badges.push('<span class="badge pending">Needs AniList</span>');
+      return `
+        <article class="cover-tile" data-show-id="${escapeAttr(show.id)}">
+          <a href="${escapeAttr(url)}" target="_blank" rel="noreferrer">
+            <img class="cover-poster" src="${escapeAttr(show.coverImage)}" alt="${escapeAttr(show.title)}" loading="lazy" />
+            <span class="cover-title">${escapeHtml(show.title)}</span>
+            <span class="cover-meta"><span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badges.join("")}</span>
+          </a>
+        </article>
+      `;
+    }
+
+    function openTimeline(groupId) {
+      const group = getGroupById(groupId);
+      if (!group) return;
+      const shows = getTimelineSortedShows((state.groupOrder[group.id] || []).map(getShowById));
+
+      els.exploreModal.classList.add("open");
+      els.exploreModalTitle.textContent = `Timeline: ${group.name || "Folder"}`;
+      if (!shows.length) {
+        els.exploreModalBody.innerHTML = '<div class="empty">This folder has no visible shows.</div>';
+        return;
+      }
+      els.exploreModalBody.innerHTML = `
+        <div class="timeline-list">
+          ${shows.map((show, index) => {
+            const url = show.releasesMoe?.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "";
+            return `
+              <div class="timeline-item">
+                <div class="timeline-dot">${index + 1}</div>
+                <div>
+                  <div class="timeline-title">${escapeHtml(show.title)}</div>
+                  <div class="timeline-meta">${escapeHtml([show.format, show.seasonYear, show.episodes ? `${show.episodes} eps` : ""].filter(Boolean).join(" · ") || "Anime")}</div>
+                </div>
+                ${url ? `<a class="timeline-link" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">Open</a>` : ""}
+              </div>
+            `;
+          }).join("")}
+        </div>
       `;
     }
 
@@ -2192,7 +2321,19 @@
         render();
         saveState();
       });
+      els.viewCardsBtn.addEventListener("click", () => {
+        state.ui.libraryView = "cards";
+        render();
+        saveState();
+      });
+      els.viewWallBtn.addEventListener("click", () => {
+        state.ui.libraryView = "wall";
+        state.ui.sortMode = false;
+        render();
+        saveState();
+      });
       els.editOrderBtn.addEventListener("click", () => {
+        if (state.ui.libraryView === "wall") return;
         state.ui.sortMode = !state.ui.sortMode;
         render();
         saveState();
@@ -2227,10 +2368,10 @@
     }
 
     function handleBoardMenuToggle(e) {
-      const menu = e.target.closest?.("details.menu, details.release-menu");
+      const menu = e.target.closest?.("details.menu");
       if (!menu) return;
 
-      document.querySelectorAll("details.menu[open], details.release-menu[open]").forEach(other => {
+      document.querySelectorAll("details.menu[open]").forEach(other => {
         if (other !== menu) {
           other.open = false;
           other.closest(".show-card")?.classList.remove("menu-open");
@@ -2242,7 +2383,7 @@
     }
 
     async function handleBoardClick(e) {
-      const details = e.target.closest("details.menu, details.release-menu");
+      const details = e.target.closest("details.menu");
       if (details && e.target.closest("button, a")) {
         setTimeout(() => {
           details.open = false;
@@ -2276,6 +2417,8 @@
         if (!ok) toast("Could not regenerate yet.", "error");
         return;
       }
+      const timelineBtn = e.target.closest("[data-timeline-group]");
+      if (timelineBtn) { openTimeline(timelineBtn.dataset.timelineGroup); return; }
       const exploreBtn = e.target.closest("[data-explore-id]");
       if (exploreBtn) { openExplorer(exploreBtn.dataset.exploreId); return; }
       const notesBtn = e.target.closest("[data-notes-id]");
@@ -2302,7 +2445,7 @@
       const topBtn = e.target.closest("[data-send-top-id]");
       if (topBtn) { sendShowToTop(topBtn.dataset.sendTopId); return; }
       const groupHeader = e.target.closest(".group-header");
-      if (groupHeader && !e.target.closest(".divider-name-input")) {
+      if (groupHeader && !e.target.closest(".divider-name-input, .menu")) {
         toggleCollapseGroup(groupHeader.dataset.collapseGroup);
       }
     }
@@ -2336,6 +2479,32 @@
       };
     }
 
+
+
+    function registerOfflineShell() {
+      if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+      try {
+        const swCode = `
+          const CACHE_NAME = "archive-dashboard-shell-v1";
+          self.addEventListener("install", event => {
+            event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll([self.location.href.replace(/sw-dashboard\.js$/, "")]))) ;
+            self.skipWaiting();
+          });
+          self.addEventListener("activate", event => event.waitUntil(self.clients.claim()));
+          self.addEventListener("fetch", event => {
+            if (event.request.mode === "navigate") {
+              event.respondWith(fetch(event.request).catch(() => caches.match(self.location.href.replace(/sw-dashboard\.js$/, ""))));
+            }
+          });
+        `;
+        const blob = new Blob([swCode], { type: "text/javascript" });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      } catch (e) {
+        console.warn("Offline shell registration skipped", e);
+      }
+    }
+
     async function init() {
       try {
         loadSyncSettings();
@@ -2365,6 +2534,7 @@
       }
     }
 
+    registerOfflineShell();
     init();
   </script>
 </body>
