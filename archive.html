@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Archive" />
+  <meta name="apple-mobile-web-app-title" content="Archived Releases" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b0d13" />
   <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Archived%20Anime%20Dashboard%22%2C%22short_name%22%3A%22Archive%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b0d13%22%2C%22theme_color%22%3A%22%230b0d13%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A//upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image/svg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D" />
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
-  <title>Archived Anime</title>
+  <title>Archived Releases</title>
   <style>
 :root {
   color-scheme: dark;
@@ -184,7 +184,6 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
   <section class="shell">
     <header class="hero">
       <div class="hero-text">
-        <p class="eyebrow"></p>
         <h1>Archived Releases</h1>
       </div>
       <div class="board-controls">
@@ -237,7 +236,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         <div class="section-header">
           <div>
             <h3 class="section-title">Add Show</h3>
-            <p class="hint">AniList is canonical. If AniList is down, Jikan is used temporarily and entries can regenerate to AniList later.</p>
+            <p class="hint">AniList is canonical. If AniList is unavailable, use Manual Add or import an existing backup for now.</p>
           </div>
           <div class="segmented" id="addModeTabs">
             <button class="segment active" data-add-mode="search" type="button">Search</button>
@@ -248,7 +247,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 
         <div class="add-panel active" id="add-search-panel">
           <div class="search-row">
-            <input class="input" id="searchInput" type="search" autocomplete="off" placeholder="Search AniList; falls back to Jikan if AniList fails..." />
+            <input class="input" id="searchInput" type="search" autocomplete="off" placeholder="Search AniList to add a show..." />
             <button class="btn primary" id="searchBtn" type="button">Search</button>
           </div>
           <div class="results" id="results"></div>
@@ -366,7 +365,6 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 <script>
 
       const ANILIST_ENDPOINT = "https://graphql.anilist.co";
-      const JIKAN_ENDPOINT = "https://api.jikan.moe/v4/anime";
       const RELEASES_ENDPOINT =
         "https://releases.moe/api/collections/entries/records";
       const STORAGE_KEY = "anilist-releases-board:v2";
@@ -402,7 +400,6 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         cloudSyncTimer = null,
         startupTasksStarted = false,
         aniListCooldownUntil = 0,
-        jikanCooldownUntil = 0,
         dbPromise = null,
         idbAvailable = null,
         suppressCloudSync = false;
@@ -606,8 +603,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         if (!("allAvailableDownloaded" in s)) s.allAvailableDownloaded = false;
         if (!("needsAnilist" in s)) s.needsAnilist = !s.anilistId;
         if (!("temporary" in s)) s.temporary = !s.anilistId;
-        if (!s.source)
-          s.source = s.anilistId ? "anilist" : s.malId ? "jikan" : "manual";
+        if (!s.anilistId) s.source = "manual";
+        else s.source = "anilist";
       }
       function reconcile() {
         if (!state.order || typeof state.order !== "object")
@@ -1287,75 +1284,10 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const j = await aniRequest(query, { id: Number(id) });
         return j?.data?.Media || null;
       }
-      function normalizeJikan(x) {
-        return {
-          source: "jikan",
-          temporary: true,
-          needsAnilist: true,
-          id: null,
-          anilistId: null,
-          malId: x?.mal_id || null,
-          title: {
-            english: x?.title_english || "",
-            romaji: x?.title || "",
-            native: x?.title_japanese || "",
-          },
-          coverImage: {
-            medium:
-              x?.images?.webp?.image_url || x?.images?.jpg?.image_url || "",
-            large:
-              x?.images?.webp?.large_image_url ||
-              x?.images?.jpg?.large_image_url ||
-              x?.images?.jpg?.image_url ||
-              "",
-          },
-          format: normalizeFormat(x?.type),
-          seasonYear: x?.year || getYearFromText(x?.aired?.from),
-          episodes: x?.episodes || null,
-          siteUrl: x?.url || "",
-        };
-      }
-      async function jikanRequest(path, retries = 1) {
-        if (Date.now() < jikanCooldownUntil) {
-          await sleep(jikanCooldownUntil - Date.now());
-        }
-        const r = await fetch(`${JIKAN_ENDPOINT}${path}`, {
-          signal: timeoutSignal(12000),
-        });
-        if (r.status === 429 && retries > 0) {
-          jikanCooldownUntil = Date.now() + 1400;
-          await sleep(1400);
-          return jikanRequest(path, retries - 1);
-        }
-        if (!r.ok) throw new Error("Jikan HTTP " + r.status);
-        jikanCooldownUntil = Date.now() + 900;
-        return r.json();
-      }
-      async function searchJikan(search) {
-        const j = await jikanRequest(
-          `?q=${encodeURIComponent(search)}&sfw=true&limit=8`,
-        );
-        return (j.data || []).map(normalizeJikan);
-      }
-      async function getJikanByMalId(id) {
-        const j = await jikanRequest(`/${encodeURIComponent(id)}`);
-        return j.data ? normalizeJikan(j.data) : null;
-      }
-      async function searchAniThenJikan(term, jikanOnEmpty = false) {
-        try {
-          const a = await searchAniList(term, {
-            retries: 0,
-            timeoutMs: 6500,
-            respectCooldown: false,
-          });
-          if (a.length || !jikanOnEmpty)
-            return { results: a, source: "anilist" };
-        } catch (e) {
-          console.warn("AniList failed, using Jikan fallback", e);
-          setStatus("AniList unavailable; searching Jikan...", "sync");
-        }
-        const j = await searchJikan(term);
-        return { results: j, source: "jikan" };
+      async function getAniListByMalId(idMal) {
+        const query = `query($idMal:Int){Media(idMal:$idMal,type:ANIME){id title{romaji english native} coverImage{medium large} format seasonYear episodes siteUrl}}`;
+        const j = await aniRequest(query, { idMal: Number(idMal) });
+        return j?.data?.Media || null;
       }
       async function runSearch() {
         const term = els.searchInput.value.trim();
@@ -1368,11 +1300,15 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         els.results.innerHTML = '<div class="empty">Searching...</div>';
         setStatus("Searching...");
         try {
-          const out = await searchAniThenJikan(term, false);
+          const results = await searchAniList(term, {
+            retries: 0,
+            timeoutMs: 6500,
+            respectCooldown: false,
+          });
           if (rid !== searchRequestId) return;
-          window._searchResults = out.results;
-          els.results.innerHTML = out.results.length
-            ? out.results.map((m) => renderResult(m, out.source)).join("")
+          window._searchResults = results;
+          els.results.innerHTML = results.length
+            ? results.map((m) => renderResult(m)).join("")
             : '<div class="empty">No results found.</div>';
           qa("[data-add-key]").forEach((b) =>
             on(b, "click", () => {
@@ -1385,14 +1321,13 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           setStatus("System Ready");
         } catch (e) {
           if (rid !== searchRequestId) return;
-          els.results.innerHTML = '<div class="empty">Search failed. AniList and Jikan are both unavailable right now.</div>';
+          els.results.innerHTML = '<div class="empty">AniList search is unavailable right now. Use Manual Add or try again later.</div>';
           setStatus("Search failed", "error");
         }
       }
-      function renderResult(m, source) {
-        const added = mediaOnBoard(m),
-          temp = source === "jikan" || m.source === "jikan";
-        return `<button class="result" type="button" data-add-key="${escapeAttr(mediaKey(m))}"><img class="poster" src="${escapeAttr(getMediaCover(m))}" alt="${escapeAttr(getMediaTitle(m))}" loading="lazy"><span class="result-info"><span class="result-title">${escapeHtml(getMediaTitle(m))}</span><span class="result-meta">${escapeHtml(mediaMeta(m))}${temp ? " · Jikan fallback" : ""}</span></span><span class="badge ${added ? "done" : temp ? "need" : "found"}">${added ? "Added" : temp ? "Jikan Temp" : "Add"}</span></button>`;
+      function renderResult(m) {
+        const added = mediaOnBoard(m);
+        return `<button class="result" type="button" data-add-key="${escapeAttr(mediaKey(m))}"><img class="poster" src="${escapeAttr(getMediaCover(m))}" alt="${escapeAttr(getMediaTitle(m))}" loading="lazy"><span class="result-info"><span class="result-title">${escapeHtml(getMediaTitle(m))}</span><span class="result-meta">${escapeHtml(mediaMeta(m))}</span></span><span class="badge ${added ? "done" : "found"}">${added ? "Added" : "Add"}</span></button>`;
       }
       async function addShow(m) {
         if (mediaOnBoard(m)) return toast("Already on board.");
@@ -1407,7 +1342,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         setStatus("System Ready");
         toast(
           s.needsAnilist
-            ? "Added temporary entry. Regenerate AniList later."
+            ? "Added manual entry. Regenerate AniList later."
             : "Added to active board.",
         );
       }
@@ -1574,16 +1509,18 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         }
         const mid = malIdFromInput(input);
         if (mid) {
-          const jm = await getJikanByMalId(mid);
-          if (!jm) return [];
           try {
-            const a = await searchAniList(getMediaTitle(jm));
-            if (a.length) return a.concat(jm);
-          } catch (e) {}
-          return [jm];
+            const m = await getAniListByMalId(mid);
+            return m ? [m] : [];
+          } catch (e) {
+            throw new Error("AniList MAL lookup unavailable");
+          }
         }
-        const out = await searchAniThenJikan(input, true);
-        return out.results;
+        return searchAniList(input, {
+          retries: 0,
+          timeoutMs: 6500,
+          respectCooldown: false,
+        });
       }
       function matchInfo(input, m) {
         if (!m) return { level: "none", label: "No match", score: 0 };
@@ -1592,7 +1529,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           return { level: "high", label: "Direct ID", score: 1 };
         const mid = malIdFromInput(input);
         if (mid && Number(mid) === Number(m.malId || m.mal_id))
-          return { level: "medium", label: "MAL temp", score: 0.8 };
+          return { level: "high", label: "MAL ID", score: 1 };
         const query = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, "")),
           year = getYearFromText(input);
         let best = 0;
@@ -1626,7 +1563,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             ? { level: "medium", label: "Check match", score: best }
             : {
                 level: "low",
-                label: m.source === "jikan" ? "Jikan temp" : "Low match",
+                label: "Low match",
                 score: best,
               };
       }
@@ -1705,12 +1642,12 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               info = sel
                 ? matchInfo(m.input, sel)
                 : { label: m.error ? "Failed" : "No match" },
-              temp = sel && (sel.source === "jikan" || sel.needsAnilist);
+              temp = sel && sel.needsAnilist;
             const opts = m.results.length
               ? m.results
                   .map(
                     (r) =>
-                      `<option value="${escapeAttr(mediaKey(r))}" ${mediaKey(r) === m.selectedKey ? "selected" : ""}>${escapeHtml(getMediaTitle(r) + (mediaOnBoard(r) ? " (Already Added)" : "") + (r.source === "jikan" ? " (Jikan temp)" : ""))}</option>`,
+                      `<option value="${escapeAttr(mediaKey(r))}" ${mediaKey(r) === m.selectedKey ? "selected" : ""}>${escapeHtml(getMediaTitle(r) + (mediaOnBoard(r) ? " (Already Added)" : ""))}</option>`,
                   )
                   .join("")
               : '<option value="">No results</option>';
