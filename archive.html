@@ -1,1550 +1,370 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no"
-    />
-    <meta name="theme-color" content="#0b0d13" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
-    <meta name="apple-mobile-web-app-title" content="Releases" />
-    <title>Archived Releases</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        --bg: #0b0d13;
-        --surface: #141822;
-        --soft: #1d2331;
-        --softer: #252c3d;
-        --text: #edf1f8;
-        --muted: #a1abc0;
-        --muted2: #6b768e;
-        --line: rgba(255, 255, 255, 0.08);
-        --brand: #8b96ff;
-        --brand2: #a8b0ff;
-        --ok: #45d49b;
-        --warn: #f2c36b;
-        --danger: #ff7b73;
-        --radius: 16px;
-        --shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-        --font:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-          "Segoe UI", sans-serif;
-      }
-      * {
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-      }
-      html {
-        background: var(--bg);
-      }
-      body {
-        margin: 0;
-        min-height: 100svh;
-        font-family: var(--font);
-        color: var(--text);
-        background:
-          radial-gradient(
-            circle at 15% 0%,
-            rgba(139, 150, 255, 0.08),
-            transparent 40vw
-          ),
-          linear-gradient(180deg, var(--bg), #08090d);
-        background-attachment: fixed;
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-      body:before {
-        content: "";
-        position: fixed;
-        inset: 0 0 auto 0;
-        height: env(safe-area-inset-top);
-        background: var(--bg);
-        z-index: -1;
-      }
-      button,
-      input,
-      textarea,
-      select {
-        font: inherit;
-      }
-      button {
-        border: 0;
-        cursor: pointer;
-      }
-      button:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-      }
-      .app {
-        width: min(1200px, calc(100% - 48px));
-        margin: 0 auto;
-        padding: 24px 0 64px;
-      }
-      .shell {
-        display: grid;
-        gap: 32px;
-      }
-      .hero {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 24px;
-        flex-wrap: wrap;
-      }
-      .eyebrow {
-        margin: 0 0 8px;
-        color: var(--brand);
-        font-size: 0.75rem;
-        font-weight: 800;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-      }
-      h1 {
-        margin: 0;
-        font-size: clamp(2rem, 4vw, 3rem);
-        line-height: 1;
-        letter-spacing: -0.04em;
-      }
-      .tabs {
-        display: flex;
-        gap: 6px;
-        padding: 6px;
-        border: 1px solid var(--line);
-        background: rgba(20, 24, 34, 0.6);
-        border-radius: 99px;
-      }
-      .tab {
-        padding: 8px 20px;
-        border-radius: 99px;
-        background: transparent;
-        color: var(--muted);
-        font-weight: 800;
-      }
-      .tab.active {
-        background: var(--softer);
-        color: var(--text);
-      }
-      .board-controls {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .input,
-      .search-input,
-      textarea,
-      select {
-        width: 100%;
-        background: rgba(20, 24, 34, 0.65);
-        border: 1px solid var(--line);
-        color: var(--text);
-        border-radius: 12px;
-        padding: 10px 14px;
-        outline: none;
-      }
-      .pill-input {
-        min-width: 240px;
-        height: 42px;
-        border-radius: 99px;
-        padding: 0 20px;
-      }
-      .input:focus,
-      .search-input:focus,
-      textarea:focus,
-      select:focus {
-        border-color: var(--brand);
-        box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15);
-      }
-      .tab-view {
-        display: none;
-      }
-      .tab-view.active {
-        display: block;
-      }
-      .active-boards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
-        gap: 24px;
-        align-items: start;
-      }
-      .board-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--line);
-      }
-      .board-title {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin: 0;
-        font-size: 1.1rem;
-      }
-      .count {
-        min-width: 24px;
-        height: 24px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 99px;
-        background: var(--softer);
-        color: var(--muted);
-        font-size: 0.75rem;
-        font-weight: 900;
-        padding: 0 8px;
-      }
-      .list {
-        display: grid;
-        gap: 12px;
-        min-height: 64px;
-      }
-      .card {
-        position: relative;
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        transition: 0.2s;
-        overflow: visible;
-      }
-      .card:hover,
-      .card:focus-within {
-        background: var(--soft);
-        border-color: rgba(139, 150, 255, 0.3);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-        z-index: 20;
-      }
-      .card-main {
-        display: grid;
-        grid-template-columns: auto 56px minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 16px;
-        min-height: 104px;
-        padding: 12px 16px;
-      }
-      .check {
-        appearance: none;
-        width: 22px;
-        height: 22px;
-        border: 2px solid var(--muted2);
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-      }
-      .check:checked {
-        background: var(--ok);
-        border-color: var(--ok);
-        box-shadow: 0 0 12px rgba(69, 212, 155, 0.35);
-      }
-      .check:checked:after {
-        content: "✓";
-        color: #000;
-        font-weight: 900;
-      }
-      .thumb {
-        width: 56px;
-        height: 76px;
-        border-radius: 8px;
-        object-fit: cover;
-        background: var(--softer);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      }
-      .content {
-        display: grid;
-        gap: 6px;
-        min-width: 0;
-      }
-      .title {
-        font-weight: 800;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .title a {
-        color: inherit;
-        text-decoration: none;
-      }
-      .title a:hover {
-        color: var(--brand);
-      }
-      .meta {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        min-width: 0;
-        overflow: hidden;
-        color: var(--muted);
-        font-size: 0.8rem;
-        font-weight: 700;
-      }
-      .meta span:first-child {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .badge {
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 0.68rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        flex-shrink: 0;
-      }
-      .badge.found {
-        color: var(--ok);
-        background: rgba(69, 212, 155, 0.1);
-      }
-      .badge.watch {
-        color: var(--warn);
-        background: rgba(242, 195, 107, 0.1);
-      }
-      .badge.done {
-        color: var(--muted);
-        background: var(--softer);
-      }
-      .badge.need {
-        color: var(--danger);
-        background: rgba(255, 123, 115, 0.12);
-      }
-      .badge.update {
-        color: #fff;
-        background: var(--brand);
-      }
-      .time {
-        color: var(--muted2);
-        font-size: 0.7rem;
-        font-weight: 700;
-      }
-      .menu {
-        position: relative;
-      }
-      .menu summary {
-        list-style: none;
-        cursor: pointer;
-      }
-      .menu summary::-webkit-details-marker {
-        display: none;
-      }
-      .icon-btn {
-        width: 32px;
-        height: 32px;
-        display: grid;
-        place-items: center;
-        border-radius: 8px;
-        border: 1px solid var(--line);
-        background: var(--softer);
-        color: var(--muted);
-        font-weight: 900;
-        text-decoration: none;
-      }
-      .icon-btn:hover,
-      .icon-btn.active {
-        color: var(--text);
-        background: rgba(255, 255, 255, 0.08);
-      }
-      .menu-panel {
-        position: absolute;
-        right: 0;
-        top: calc(100% + 8px);
-        min-width: 220px;
-        padding: 8px;
-        border-radius: 14px;
-        border: 1px solid var(--line);
-        background: var(--soft);
-        box-shadow: var(--shadow);
-        display: grid;
-        gap: 4px;
-        z-index: 80;
-      }
-      .menu-action {
-        min-height: 36px;
-        width: 100%;
-        border-radius: 10px;
-        background: transparent;
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0 10px;
-        text-decoration: none;
-        text-align: left;
-        font-weight: 800;
-        border: 1px solid transparent;
-      }
-      .menu-action:hover {
-        background: var(--softer);
-        border-color: var(--line);
-      }
-      .menu-action.danger {
-        color: var(--danger);
-      }
-      .menu-action.active {
-        color: var(--brand);
-      }
-      .notes {
-        display: none;
-        padding: 16px 16px 16px 110px;
-        border-top: 1px solid var(--line);
-        background: rgba(0, 0, 0, 0.12);
-      }
-      .card.notes-open .notes {
-        display: block;
-      }
-      .folder .card-main {
-        grid-template-columns: 28px 56px minmax(0, 1fr) auto;
-        cursor: pointer;
-      }
-      .folder-list {
-        display: grid;
-        gap: 12px;
-        padding: 16px 16px 16px 104px;
-        border-top: 1px solid var(--line);
-        background: rgba(0, 0, 0, 0.14);
-        border-bottom-left-radius: var(--radius);
-        border-bottom-right-radius: var(--radius);
-      }
-      .folder-list.collapsed {
-        display: none;
-      }
-      .folder-toggle {
-        background: transparent;
-        color: var(--muted);
-        font-weight: 900;
-      }
-      .folder-toggle.collapsed {
-        transform: rotate(-90deg);
-      }
-      .folder-name {
-        background: transparent;
-        border: 0;
-        color: var(--text);
-        font-weight: 900;
-        padding: 4px 8px;
-        margin-left: -8px;
-        border-radius: 8px;
-      }
-      .folder-name:not([readonly]):focus,
-      .folder-name:not([readonly]):hover {
-        background: var(--soft);
-      }
-      .bottom {
-        margin-top: 64px;
-        display: grid;
-        gap: 24px;
-        border-top: 1px solid var(--line);
-        padding-top: 48px;
-      }
-      .section-card {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 24px;
-        display: grid;
-        gap: 16px;
-      }
-      .section-title {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 900;
-      }
-      .help {
-        margin: -8px 0 0;
-        color: var(--muted);
-        font-size: 0.9rem;
-        line-height: 1.5;
-      }
-      .search-row {
-        display: flex;
-        gap: 12px;
-      }
-      .search-input {
-        height: 48px;
-        border-radius: 99px;
-        padding: 0 24px;
-      }
-      .btn {
-        height: 48px;
-        padding: 0 24px;
-        border-radius: 99px;
-        background: var(--softer);
-        color: var(--text);
-        border: 1px solid var(--line);
-        font-weight: 900;
-        display: inline-flex;
-        gap: 8px;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-      }
-      .btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-      .btn.primary {
-        background: var(--brand);
-        color: #000;
-        border: 0;
-      }
-      .btn.primary:hover {
-        background: var(--brand2);
-      }
-      .btn.danger {
-        color: var(--danger);
-      }
-      .btn.active {
-        background: var(--brand);
-        color: #000;
-        border-color: transparent;
-      }
-      .results {
-        display: none;
-        margin-top: 12px;
-        padding: 12px;
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        background: rgba(20, 24, 34, 0.9);
-        max-height: 310px;
-        overflow: auto;
-      }
-      .results.open {
-        display: grid;
-        gap: 4px;
-      }
-      .result {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 12px;
-        border-radius: 12px;
-        background: transparent;
-        color: var(--text);
-        text-align: left;
-        width: 100%;
-      }
-      .result:hover {
-        background: var(--softer);
-      }
-      .poster {
-        width: 40px;
-        height: 56px;
-        border-radius: 6px;
-        object-fit: cover;
-        background: var(--softer);
-      }
-      .result-info {
-        min-width: 0;
-        flex: 1;
-      }
-      .result-title {
-        font-weight: 900;
-        display: block;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .result-meta {
-        display: block;
-        color: var(--muted);
-        font-size: 0.8rem;
-        margin-top: 4px;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-      }
-      .span2 {
-        grid-column: 1/-1;
-      }
-      .label {
-        display: grid;
-        gap: 6px;
-        color: var(--muted);
-        font-size: 0.75rem;
-        font-weight: 900;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-      .label input,
-      .label select,
-      .label textarea {
-        text-transform: none;
-        letter-spacing: 0;
-      }
-      .toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-      .actions {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        flex: 1;
-      }
-      .status {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        color: var(--muted);
-        font-weight: 800;
-      }
-      .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--ok);
-        box-shadow: 0 0 0 3px rgba(69, 212, 155, 0.15);
-      }
-      .dot.sync {
-        background: var(--brand);
-        box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.3);
-      }
-      .dot.err {
-        background: var(--danger);
-        box-shadow: 0 0 0 3px rgba(255, 123, 115, 0.25);
-      }
-      .file {
-        display: none;
-      }
-      .review {
-        display: grid;
-        gap: 8px;
-        max-height: 300px;
-        overflow: auto;
-      }
-      .review-item {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 12px;
-        align-items: center;
-        padding: 12px;
-        border-radius: 12px;
-        background: var(--softer);
-      }
-      .empty {
-        padding: 44px 24px;
-        text-align: center;
-        color: var(--muted2);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 24px;
-      }
-      .toast-area {
-        position: fixed;
-        right: 24px;
-        bottom: calc(24px + env(safe-area-inset-bottom));
-        display: grid;
-        gap: 12px;
-        z-index: 200;
-      }
-      .toast {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        padding: 14px 18px;
-        border-radius: 99px;
-        box-shadow: var(--shadow);
-        font-weight: 800;
-      }
-      .toast.error {
-        color: var(--danger);
-        border-color: rgba(255, 123, 115, 0.4);
-      }
-      .modal {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.8);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        z-index: 1000;
-      }
-      .modal.open {
-        display: flex;
-      }
-      .modal-card {
-        width: min(600px, 100%);
-        max-height: 80vh;
-        overflow: auto;
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        box-shadow: var(--shadow);
-      }
-      .modal-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--line);
-        padding: 20px 24px;
-      }
-      .modal-body {
-        display: grid;
-        gap: 12px;
-        padding: 24px;
-      }
-      .relation {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-        background: var(--softer);
-        border-radius: 12px;
-        padding: 12px;
-      }
-      @media (max-width: 800px) {
-        .app {
-          width: min(100% - 24px, 1200px);
-          padding-top: 16px;
-        }
-        .active-boards {
-          grid-template-columns: 1fr;
-        }
-        .hero {
-          align-items: flex-start;
-        }
-        .board-controls,
-        .pill-input {
-          width: 100%;
-        }
-        .search-row,
-        .actions {
-          flex-direction: column;
-        }
-        .card-main {
-          grid-template-columns: auto 48px minmax(0, 1fr) auto;
-          gap: 12px;
-          padding: 12px;
-          min-height: 96px;
-        }
-        .thumb {
-          width: 48px;
-          height: 66px;
-        }
-        .folder .card-main {
-          grid-template-columns: 28px 48px minmax(0, 1fr) auto;
-        }
-        .folder-list {
-          padding-left: 16px;
-        }
-        .notes {
-          padding-left: 16px;
-        }
-        .grid {
-          grid-template-columns: 1fr;
-        }
-        .span2 {
-          grid-column: auto;
-        }
-        .review-item {
-          grid-template-columns: 1fr;
-        }
-        .active-boards[style] {
-          grid-template-columns: 1fr !important;
-        }
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Archive" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b0d13" />
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Archived%20Anime%20Dashboard%22%2C%22short_name%22%3A%22Archive%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b0d13%22%2C%22theme_color%22%3A%22%230b0d13%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A//upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image/svg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D" />
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
+  <title>Archived Anime</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0d13;
+  --surface: #141822;
+  --surface-soft: #1d2331;
+  --surface-softer: #252c3d;
+  --soft: #1d2331;
+  --softer: #252c3d;
+  --text: #edf1f8;
+  --muted: #a1abc0;
+  --muted-2: #6b768e;
+  --muted2: #6b768e;
+  --line: rgba(255, 255, 255, 0.08);
+  --brand: #8b96ff;
+  --brand-strong: #a8b0ff;
+  --brand2: #a8b0ff;
+  --ok: #45d49b;
+  --warn: #f2c36b;
+  --danger: #ff7b73;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --radius: 16px;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { min-height: 100%; background: var(--bg); background-color: var(--bg); }
+body { margin: 0; min-height: 100vh; min-height: 100svh; min-height: 100dvh; font-family: var(--font); color: var(--text); background: var(--bg); background-color: var(--bg); overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-color: var(--bg); background-image: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d); background-repeat: no-repeat; background-size: cover; }
+button, input, textarea, select { font: inherit; }
+button { border: 0; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+a { color: inherit; }
+textarea { resize: vertical; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(139,150,255,.4); border-color: var(--brand); }
+.app { position: relative; z-index: 1; width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 0 calc(64px + env(safe-area-inset-bottom)); }
+.shell { display: grid; gap: 32px; }
+.hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.hero-text { max-width: 680px; }
+.eyebrow { margin: 0 0 8px; font-size: .75rem; letter-spacing: .15em; text-transform: uppercase; color: var(--brand); font-weight: 800; }
+h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-height: 1; font-weight: 800; }
+.board-controls, .toolbar-actions, .mini-actions, .segmented, .links-row, .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tabs, .segmented { background: rgba(20,24,34,.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 6px; border-radius: 99px; border: 1px solid var(--line); }
+.tab, .segment { background: transparent; color: var(--muted); padding: 8px 18px; border-radius: 99px; font-weight: 800; font-size: .9rem; transition: all .2s ease; }
+.tab:hover, .segment:hover { color: var(--text); }
+.tab.active, .segment.active { background: var(--surface-softer); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.input, .search-input, textarea, select { width: 100%; background: rgba(20,24,34,.65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 11px 14px; outline: none; transition: border-color .2s, box-shadow .2s; }
+.pill-input { min-width: 240px; height: 42px; border-radius: 99px; padding: 0 18px; font-size: .9rem; }
+.input:focus, .search-input:focus, textarea:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,.15); }
+.tab-view { display: none; animation: fadeIn .25s ease; }
+.tab-view.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.active-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; align-items: start; }
+.board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 800; }
+.count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: .75rem; font-weight: 800; padding: 0 8px; }
+.board, .active-boards, .board-list, .list { overflow: visible; }
+.board-list, .list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
+.card { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); transition: transform .2s cubic-bezier(.2,0,0,1), box-shadow .2s ease, border-color .2s ease, background .2s ease; overflow: visible; display: flex; flex-direction: column; }
+.card:hover, .card:focus-within { z-index: 20; transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0,0,0,.4); border-color: rgba(139,150,255,.3); }
+.card:has(.menu[open]), .card.menu-open { z-index: 100; }
+.card-main { display: grid; grid-template-columns: auto 56px minmax(0,1fr) auto; align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
+.check { appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all .2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
+.check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69,212,155,.4); }
+.check:checked::after { content: "✓"; color: #000; font-size: 14px; font-weight: 900; }
+.thumb { width: 56px; height: 76px; border-radius: 8px; object-fit: cover; background-color: var(--surface-softer); color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.2); flex-shrink: 0; transition: transform .2s ease; }
+.card:hover .thumb, .thumb-link:hover .thumb { transform: translateY(-1px); }
+.content { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.title { font-weight: 800; font-size: 1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title a { text-decoration: none; }
+.title a:hover { color: var(--brand); }
+.meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; color: var(--muted); font-size: .8rem; font-weight: 650; min-width: 0; overflow: hidden; }
+.meta span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.badge { padding: 4px 8px; border-radius: 6px; font-size: .68rem; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
+.badge.found { color: var(--ok); background: rgba(69,212,155,.1); }
+.badge.watch { color: var(--warn); background: rgba(242,195,107,.1); }
+.badge.done { color: var(--muted); background: var(--surface-softer); }
+.badge.need { color: var(--warn); background: rgba(242,195,107,.12); }
+.badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,.4); }
+.time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
+.menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
+.menu[open] { z-index: 120; }
+.menu summary { list-style: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.icon-btn, .menu summary.icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); font-weight: 900; cursor: pointer; text-decoration: none; }
+.icon-btn:hover, .menu[open] summary, .icon-btn.active { color: var(--brand); border-color: rgba(139,150,255,.4); background: rgba(255,255,255,.08); }
+.menu-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 220px; z-index: 130; background: #111520; border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); display: grid; gap: 4px; }
+.menu-panel a, .menu-panel button, .menu-action { width: 100%; min-height: 34px; border-radius: 10px; background: transparent; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-weight: 750; font-size: .85rem; text-align: left; }
+.menu-panel a:hover, .menu-panel button:hover, .menu-action:hover { background: var(--surface-softer); }
+.menu-panel .danger, .menu-action.danger { color: var(--danger); }
+.menu-action.active { color: var(--brand); }
+.notes { display: none; padding: 0 14px 14px 106px; border-top: 1px solid var(--line); background: rgba(0,0,0,.1); }
+.card.notes-open .notes { display: block; padding-top: 14px; animation: slideDownPanel .2s ease-out; }
+@keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.folder { padding: 0; display: flex; flex-direction: column; gap: 0; }
+.folder .card-main { cursor: pointer; grid-template-columns: 28px 56px minmax(0,1fr) auto; padding-left: 12px; min-height: 104px; }
+.folder-list { display: grid; gap: 12px; padding: 16px 16px 16px 104px; background: rgba(0,0,0,.15); border-top: 1px solid var(--line); min-height: 24px; }
+.folder-list.collapsed { display: none; }
+.folder-toggle { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border: none; border-radius: 6px; pointer-events: none; font-size: .75rem; transition: all .2s ease; }
+.folder-toggle.collapsed { transform: rotate(-90deg); }
+.folder-name { background: transparent; border: none; color: var(--text); font-weight: 900; font-size: 1rem; padding: 4px 8px; border-radius: 6px; outline: none; width: auto; min-width: 120px; margin-left: -8px; box-shadow: none !important; }
+.folder-name:focus, .folder-name:not([readonly]):hover { background: var(--surface-soft); }
+.folder-name[readonly] { pointer-events: none; }
+.bottom-section, .bottom { margin-top: 48px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 42px; }
+.section-card { background: rgba(20,24,34,.74); border: 1px solid var(--line); border-radius: 24px; padding: 20px; display: grid; gap: 16px; box-shadow: 0 1px 0 rgba(255,255,255,.02) inset; }
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.section-title { margin: 0; font-size: 1rem; font-weight: 900; color: var(--text); }
+.hint, .help { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.45; }
+.add-panel { display: none; gap: 14px; }
+.add-panel.active { display: grid; }
+.search-row, .form-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; align-items: center; }
+.manual-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.manual-grid .wide { grid-column: 1 / -1; }
+.btn { min-height: 42px; padding: 0 18px; border-radius: 99px; background: var(--surface-softer); color: var(--text); font-weight: 850; border: 1px solid var(--line); transition: all .2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.btn:hover { background: rgba(255,255,255,.08); }
+.btn.primary { background: var(--brand); color: #000; border-color: transparent; }
+.btn.primary:hover { background: var(--brand-strong); }
+.btn.danger { color: var(--danger); }
+.btn.compact { min-height: 34px; padding: 0 13px; font-size: .82rem; }
+.btn.active, .segment.active { background: var(--brand); color: #000; border-color: transparent; }
+.results { display: none; background: rgba(20,24,34,.9); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 18px; max-height: 360px; overflow-y: auto; padding: 10px; transform-origin: top; }
+.results.open { display: grid; gap: 5px; animation: slideDown .2s cubic-bezier(.4,0,.2,1); }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px) scaleY(.95); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
+.result { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 12px; background: transparent; text-align: left; transition: background .2s; width: 100%; color: var(--text); }
+.result:hover { background: var(--surface-softer); }
+.poster { width: 42px; height: 58px; border-radius: 6px; object-fit: cover; color: transparent; background-color: var(--surface-softer); flex-shrink: 0; }
+.result-info { flex: 1; min-width: 0; }
+.result-title { display: block; font-weight: 850; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-meta { display: block; font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.status { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--muted); font-size: .9rem; transition: color .3s; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,.15); transition: all .3s ease; }
+.dot.sync { background: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,.3); animation: pulseSync 1.5s infinite ease-in-out; }
+.dot.err { background: var(--danger); box-shadow: 0 0 0 3px rgba(255,123,115,.3); }
+@keyframes pulseSync { 0% { box-shadow: 0 0 0 0 rgba(139,150,255,.4); } 70% { box-shadow: 0 0 0 6px rgba(139,150,255,0); } 100% { box-shadow: 0 0 0 0 rgba(139,150,255,0); } }
+.maintenance-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.maintenance-box { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.14); }
+.file { display: none; }
+.review { display: grid; gap: 8px; max-height: 300px; overflow: auto; }
+.review-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--surface-softer); }
+.batch-review-box { margin-top: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.12); }
+.review-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.settings-toggle { width: 100%; min-height: 78px; border-radius: 24px; justify-content: space-between; text-align: left; padding: 18px 20px; background: rgba(20,24,34,.55); border: 1px dashed var(--line); color: var(--text); }
+.settings-toggle:hover { border-color: var(--brand); background: rgba(139,150,255,.06); }
+.settings-toggle.active { border-style: solid; border-color: rgba(139,150,255,.45); background: rgba(139,150,255,.1); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+.settings-toggle-copy { display: grid; gap: 4px; min-width: 0; }
+.settings-toggle-copy strong { font-size: 1rem; font-weight: 950; }
+.settings-toggle-copy small { color: var(--muted); font-weight: 700; line-height: 1.35; }
+.settings-toggle-state { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 99px; background: var(--surface-softer); color: var(--muted); transition: transform .2s ease, color .2s ease; flex-shrink: 0; }
+.settings-toggle.active .settings-toggle-state { transform: rotate(180deg); color: var(--brand); }
+.settings-panel { margin-top: -12px; border-top-left-radius: 16px; border-top-right-radius: 16px; background: rgba(20,24,34,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 100; display: grid; gap: 12px; }
+.toast { background: var(--surface); border: 1px solid var(--line); padding: 14px 18px; border-radius: 99px; box-shadow: var(--shadow); font-weight: 750; font-size: .92rem; animation: toastSlideIn .3s cubic-bezier(.175,.885,.32,1.275); }
+.toast.error { border-color: rgba(255,123,115,.4); color: var(--danger); }
+@keyframes toastSlideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+.empty { padding: 34px 20px; text-align: center; color: var(--muted-2); background: rgba(255,255,255,.02); border-radius: 18px; font-weight: 650; border: 1px solid rgba(255,255,255,.05); }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; padding: 24px; }
+.modal.open { opacity: 1; pointer-events: auto; }
+.modal-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; width: 100%; max-width: 620px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.5); transform: translateY(20px); transition: transform .3s cubic-bezier(.175,.885,.32,1.275); }
+.modal.open .modal-card { transform: translateY(0); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+.modal-head h3 { margin: 0; font-size: 1.2rem; }
+.modal-body { padding: 24px; overflow-y: auto; display: grid; gap: 12px; }
+.relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
+.relation-type { font-size: .7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
+.compact-select { min-width: 170px; width: auto; height: 42px; border-radius: 99px; }
+@media (max-width: 800px) { .app { width: min(100% - 28px, 1200px); } .active-boards { grid-template-columns: 1fr; } .hero { flex-direction: column; align-items: flex-start; } .board-controls { width: 100%; } .pill-input { width: 100%; } .search-row, .form-row { grid-template-columns: 1fr; } .manual-grid { grid-template-columns: 1fr; } .card-main { grid-template-columns: auto 52px minmax(0,1fr) auto; gap: 12px; } .thumb { width: 52px; height: 72px; } .notes { padding-left: 14px; } .folder .card-main { grid-template-columns: 28px 48px minmax(0,1fr) auto; } .folder-list { padding-left: 14px; } .toolbar-actions { width: 100%; align-items: stretch; } .toolbar-actions .btn { flex: 1; } .settings-toggle { min-height: 68px; padding: 16px; } .settings-toggle-copy small { font-size: .8rem; } .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); } .review-item { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
 
-      /* --- Safe UI polish layer: visual-only, no startup/storage changes --- */
-      html {
-        min-height: 100%;
-        background: var(--bg);
-        background-color: var(--bg);
-      }
-      body {
-        position: relative;
-        min-height: 100vh;
-        min-height: 100svh;
-        min-height: 100dvh;
-        background: var(--bg);
-        background-color: var(--bg);
-        overflow-x: hidden;
-        padding-top: 0;
-        padding-bottom: 0;
-      }
-      body:before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-        height: auto;
-        background-color: var(--bg);
-        background-image:
-          radial-gradient(
-            circle at 15% 0%,
-            rgba(139, 150, 255, 0.08),
-            transparent 40vw
-          ),
-          linear-gradient(180deg, var(--bg), #08090d);
-        background-repeat: no-repeat;
-        background-size: cover;
-      }
-      .app {
-        position: relative;
-        z-index: 1;
-        padding: calc(24px + env(safe-area-inset-top)) 0
-          calc(64px + env(safe-area-inset-bottom));
-      }
-      .card {
-        overflow: visible;
-      }
-      .card:has(.menu[open]) {
-        z-index: 100;
-      }
-      .card-main,
-      .folder .card-main {
-        min-height: 104px;
-      }
-      .folder .card-main {
-        grid-template-columns: 28px 56px minmax(0, 1fr) auto;
-      }
-      .folder-name {
-        width: 100%;
-        min-width: 0;
-      }
-      .folder .meta {
-        gap: 8px;
-      }
-      .folder .meta .folder-completion {
-        color: var(--muted);
-        font-weight: 900;
-        white-space: nowrap;
-      }
-      .menu[open] summary.icon-btn {
-        color: var(--brand);
-        border-color: rgba(139, 150, 255, 0.4);
-        background: rgba(139, 150, 255, 0.12);
-      }
-      .menu-panel {
-        background: #111520;
-      }
-      .menu-action:disabled {
-        opacity: 0.55;
-        cursor: default;
-      }
-      .menu-action:disabled:hover {
-        background: transparent;
-        border-color: transparent;
-      }
-      .settings-toggle {
-        width: 100%;
-        min-height: 74px;
-        height: auto;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding: 18px 22px;
-        border-radius: 24px;
-        border-style: dashed;
-        background: rgba(20, 24, 34, 0.74);
-        text-align: left;
-      }
-      .settings-toggle:hover {
-        border-color: rgba(139, 150, 255, 0.45);
-        background: rgba(139, 150, 255, 0.06);
-      }
-      .settings-toggle.active {
-        border-style: solid;
-        border-color: rgba(139, 150, 255, 0.6);
-        background: rgba(139, 150, 255, 0.1);
-        color: var(--text);
-        border-bottom-left-radius: 16px;
-        border-bottom-right-radius: 16px;
-      }
-      .settings-toggle-copy {
-        display: grid;
-        gap: 4px;
-        min-width: 0;
-      }
-      .settings-toggle-copy strong {
-        font-size: 1rem;
-        font-weight: 950;
-      }
-      .settings-toggle-copy small {
-        color: var(--muted);
-        font-weight: 700;
-        line-height: 1.35;
-      }
-      .settings-toggle-state {
-        display: grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 99px;
-        background: var(--softer);
-        color: var(--muted);
-        transition:
-          transform 0.2s ease,
-          color 0.2s ease;
-        flex-shrink: 0;
-      }
-      .settings-toggle.active .settings-toggle-state {
-        transform: rotate(180deg);
-        color: var(--brand);
-      }
-      .settings-panel {
-        margin-top: -12px;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
-        background: rgba(20, 24, 34, 0.82);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-      }
-      .section-card {
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
-      }
-      .card:hover .thumb,
-      .thumb-link:hover .thumb {
-        transform: translateY(-1px);
-      }
-      .thumb {
-        transition: transform 0.2s ease;
-      }
-      @media (max-width: 800px) {
-        .app {
-          width: min(100% - 28px, 1200px);
-          padding-top: calc(16px + env(safe-area-inset-top));
-        }
-        .card-main,
-        .folder .card-main {
-          min-height: 96px;
-        }
-        .settings-toggle {
-          min-height: 68px;
-          padding: 16px;
-        }
-        .settings-toggle-copy small {
-          font-size: 0.8rem;
-        }
-        .menu-panel {
-          right: 0;
-          max-width: min(260px, calc(100vw - 48px));
-        }
-      }
+<main class="app">
+  <section class="shell">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Archive</p>
+        <h1>Releases Dashboard</h1>
+      </div>
+      <div class="board-controls">
+        <div class="tabs" id="mainTabs">
+          <button class="tab active" data-target="view-active" type="button">Active</button>
+          <button class="tab" data-target="view-downloaded" type="button">Library</button>
+        </div>
+        <input type="text" id="boardSearchInput" class="input pill-input" placeholder="Filter active shows..." autocomplete="off" />
+      </div>
+    </header>
 
-      /* Exact cleaner add/settings layout; experimental extras omitted */
-      .section-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-      .add-show-card {
-        gap: 18px;
-      }
-      .segmented {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-        padding: 6px;
-        border: 1px solid var(--line);
-        border-radius: 99px;
-        background: rgba(20, 24, 34, 0.6);
-        flex-shrink: 0;
-      }
-      .segment {
-        min-height: 34px;
-        padding: 0 16px;
-        border-radius: 99px;
-        background: transparent;
-        color: var(--muted);
-        font-weight: 900;
-        font-size: 0.88rem;
-        transition:
-          background 0.2s,
-          color 0.2s;
-      }
-      .segment:hover {
-        color: var(--text);
-      }
-      .segment.active {
-        background: var(--softer);
-        color: var(--text);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      }
-      .add-panel {
-        display: none;
-        gap: 14px;
-      }
-      .add-panel.active {
-        display: grid;
-      }
-      .mini-actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
-      .btn.compact {
-        height: 34px;
-        min-height: 34px;
-        padding: 0 14px;
-        font-size: 0.82rem;
-      }
-      .manual-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-      }
-      .manual-grid .wide {
-        grid-column: 1/-1;
-      }
-      .batch-review-box {
-        margin-top: 4px;
-        padding: 16px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: rgba(0, 0, 0, 0.12);
-      }
-      .review-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-      .settings-summary {
-        width: 100%;
-        min-height: 76px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        text-align: left;
-        padding: 18px 20px;
-        border-radius: 24px;
-        border: 1px dashed var(--line);
-        background: rgba(20, 24, 34, 0.35);
-        color: var(--text);
-        transition:
-          background 0.2s,
-          border-color 0.2s;
-      }
-      .settings-summary:hover {
-        border-color: rgba(139, 150, 255, 0.45);
-        background: rgba(139, 150, 255, 0.06);
-      }
-      .settings-summary.active {
-        border-style: solid;
-        border-color: rgba(139, 150, 255, 0.5);
-        background: rgba(139, 150, 255, 0.1);
-        border-bottom-left-radius: 16px;
-        border-bottom-right-radius: 16px;
-      }
-      .settings-summary.active .settings-toggle-state {
-        transform: rotate(180deg);
-        color: var(--brand);
-      }
-      .settings-toggle-copy {
-        display: grid;
-        gap: 4px;
-        min-width: 0;
-      }
-      .settings-toggle-copy strong {
-        font-size: 1rem;
-        font-weight: 950;
-      }
-      .settings-toggle-copy small {
-        color: var(--muted);
-        font-weight: 700;
-        line-height: 1.35;
-      }
-      .settings-toggle-state {
-        display: grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 99px;
-        background: var(--softer);
-        color: var(--muted);
-        transition:
-          transform 0.2s ease,
-          color 0.2s ease;
-        flex-shrink: 0;
-      }
-      .settings-panel {
-        margin-top: -12px;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
-        background: rgba(20, 24, 34, 0.82);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-      }
-      .maintenance-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 16px;
-      }
-      .maintenance-box {
-        display: grid;
-        gap: 12px;
-        padding: 14px;
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        background: rgba(0, 0, 0, 0.14);
-        align-content: start;
-      }
-      .status-box {
-        min-height: 128px;
-      }
-      .compact-select {
-        width: auto;
-        min-width: 160px;
-        height: 48px;
-        border-radius: 99px;
-      }
-      @media (max-width: 800px) {
-        .section-header {
-          align-items: stretch;
-        }
-        .segmented {
-          width: 100%;
-          justify-content: space-between;
-        }
-        .segment {
-          flex: 1;
-        }
-        .manual-grid {
-          grid-template-columns: 1fr;
-        }
-        .settings-summary {
-          min-height: 68px;
-          padding: 16px;
-        }
-        .settings-toggle-copy small {
-          font-size: 0.8rem;
-        }
-        .maintenance-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="app">
-      <section class="shell">
-        <header class="hero">
-          <div>
-            <p class="eyebrow"></p>
-            <h1>Releases Dashboard</h1>
-          </div>
-          <div class="board-controls">
-            <div class="tabs" id="mainTabs">
-              <button
-                class="tab active"
-                data-target="view-active"
-                type="button"
-              >
-                Active</button
-              ><button class="tab" data-target="view-downloaded" type="button">
-                Library
-              </button>
+    <section class="boards" id="boards">
+      <div class="tab-view active" id="view-active">
+        <div class="active-boards">
+          <article class="board" data-board="found">
+            <header class="board-header">
+              <h2 class="board-title">Found <span class="count" id="foundCount">0</span></h2>
+            </header>
+            <div class="board-list list" id="foundList"></div>
+          </article>
+          <article class="board" data-board="watching">
+            <header class="board-header">
+              <h2 class="board-title">Watching <span class="count" id="watchingCount">0</span></h2>
+            </header>
+            <div class="board-list list" id="watchingList"></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="tab-view" id="view-downloaded">
+        <header class="board-header" style="margin-bottom: 24px;">
+          <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
+          <div class="toolbar-actions">
+            <div class="segmented" aria-label="Library filter">
+              <button class="segment active" id="filterAllBtn" type="button">All</button>
+              <button class="segment" id="filterCompleteBtn" type="button">Complete</button>
+              <button class="segment" id="filterIncompleteBtn" type="button">Incomplete</button>
             </div>
-            <input
-              id="boardSearchInput"
-              class="input pill-input"
-              type="text"
-              placeholder="Filter active shows..."
-              autocomplete="off"
-            />
+            <button class="btn compact" id="editOrderBtn" type="button">Edit Order</button>
+            <button class="btn compact" id="addFolderBtn" type="button">+ Folder</button>
+            <button class="btn compact" id="sortLibraryBtn" type="button">A-Z</button>
           </div>
         </header>
-
-        <section id="boards">
-          <div class="tab-view active" id="view-active">
-            <div class="active-boards">
-              <article>
-                <header class="board-header">
-                  <h2 class="board-title">
-                    Found <span class="count" id="foundCount">0</span>
-                  </h2>
-                </header>
-                <div class="list" id="foundList"></div>
-              </article>
-              <article>
-                <header class="board-header">
-                  <h2 class="board-title">
-                    Watching <span class="count" id="watchingCount">0</span>
-                  </h2>
-                </header>
-                <div class="list" id="watchingList"></div>
-              </article>
-            </div>
-          </div>
-          <div class="tab-view" id="view-downloaded">
-            <header class="board-header" style="margin-bottom: 24px">
-              <h2 class="board-title">
-                Downloaded Archive
-                <span class="count" id="downloadedCount">0</span>
-              </h2>
-              <div class="actions">
-                <button
-                  class="btn"
-                  id="editOrderBtn"
-                  type="button"
-                  style="height: 36px"
-                >
-                  ✎ Edit Order
-                </button>
-                <button
-                  class="btn"
-                  id="addFolderBtn"
-                  type="button"
-                  style="height: 36px"
-                >
-                  + Folder
-                </button>
-                <button
-                  class="btn"
-                  id="sortLibraryBtn"
-                  type="button"
-                  style="height: 36px"
-                >
-                  A→Z
-                </button>
-                <button
-                  class="btn"
-                  id="filterCompleteBtn"
-                  type="button"
-                  style="height: 36px"
-                >
-                  Toggle Completed
-                </button>
-                <button
-                  class="btn"
-                  id="filterIncompleteBtn"
-                  type="button"
-                  style="height: 36px"
-                >
-                  Toggle Incomplete
-                </button>
-              </div>
-            </header>
-            <div
-              class="active-boards"
-              style="
-                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-              "
-              id="downloadedList"
-            ></div>
-          </div>
-        </section>
-
-        <section class="bottom">
-          <article class="section-card add-show-card">
-            <div class="section-header">
-              <div>
-                <h3 class="section-title">Add Show</h3>
-                <p class="help">
-                  AniList is canonical. Search, paste import, and manual offline
-                  entries live together here. Jikan/MAL is used only as a
-                  fallback and temporary entries can regenerate to AniList
-                  later.
-                </p>
-              </div>
-              <div
-                class="segmented"
-                id="addModeTabs"
-                aria-label="Add show mode"
-              >
-                <button
-                  class="segment active"
-                  data-add-mode="search"
-                  type="button"
-                >
-                  Search
-                </button>
-                <button class="segment" data-add-mode="paste" type="button">
-                  Paste
-                </button>
-                <button class="segment" data-add-mode="manual" type="button">
-                  Manual
-                </button>
-              </div>
-            </div>
-
-            <div class="add-panel active search-card" id="add-search-panel">
-              <div class="search-row">
-                <input
-                  class="search-input"
-                  id="searchInput"
-                  type="search"
-                  placeholder="Search AniList; falls back to Jikan if needed..."
-                  autocomplete="off"
-                />
-                <button class="btn primary" id="searchBtn" type="button">
-                  Search
-                </button>
-              </div>
-              <div class="results" id="results"></div>
-            </div>
-
-            <div class="add-panel" id="add-paste-panel">
-              <p class="help">
-                Paste AniList URLs, MAL URLs, releases.moe URLs, labelled IDs,
-                or plain titles. One item per line works best.
-              </p>
-              <textarea
-                id="batchInput"
-                rows="6"
-                placeholder="https://anilist.co/anime/154587/Frieren-Beyond-Journeys-End/&#10;https://myanimelist.net/anime/52991/Sousou_no_Frieren&#10;releases.moe/52991&#10;Cowboy Bebop"
-              ></textarea>
-              <div class="mini-actions">
-                <button class="btn primary" id="batchImportBtn" type="button">
-                  Review Paste Import
-                </button>
-                <button class="btn" id="batchClearBtn" type="button">
-                  Clear
-                </button>
-              </div>
-              <div id="batchReview" hidden class="batch-review-box">
-                <div class="review-head">
-                  <strong id="batchReviewSummary">Review Matches</strong>
-                  <div class="mini-actions">
-                    <button
-                      class="btn primary compact"
-                      id="batchConfirmBtn"
-                      type="button"
-                    >
-                      Add Selected
-                    </button>
-                    <button
-                      class="btn danger compact"
-                      id="batchCancelBtn"
-                      type="button"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-                <div class="review" id="batchReviewList"></div>
-              </div>
-            </div>
-
-            <div class="add-panel" id="add-manual-panel">
-              <p class="help">
-                For offline-safe entries, title, year, format, and an image URL
-                or uploaded image are required. Entries without AniList ID are
-                marked “Needs AniList”.
-              </p>
-              <div class="manual-grid">
-                <input
-                  class="input"
-                  id="manualTitle"
-                  type="text"
-                  placeholder="Title *"
-                  autocomplete="off"
-                />
-                <input
-                  class="input"
-                  id="manualYear"
-                  type="number"
-                  min="1900"
-                  max="2100"
-                  placeholder="Year *"
-                  autocomplete="off"
-                  inputmode="numeric"
-                />
-                <select id="manualFormat" class="input" aria-label="Format *">
-                  <option value="">Format *</option>
-                  <option>TV</option>
-                  <option>TV_SHORT</option>
-                  <option>MOVIE</option>
-                  <option>SPECIAL</option>
-                  <option>OVA</option>
-                  <option>ONA</option>
-                  <option>MUSIC</option>
-                  <option>UNKNOWN</option>
-                </select>
-                <input
-                  class="input"
-                  id="manualImageUrl"
-                  type="url"
-                  placeholder="Image URL or upload image *"
-                  autocomplete="off"
-                />
-                <input
-                  class="input"
-                  id="manualImageFile"
-                  type="file"
-                  accept="image/*"
-                  aria-label="Upload local image"
-                />
-                <input
-                  class="input"
-                  id="manualAniListId"
-                  type="number"
-                  placeholder="AniList ID (optional)"
-                  autocomplete="off"
-                  inputmode="numeric"
-                />
-                <input
-                  class="input"
-                  id="manualMalId"
-                  type="number"
-                  placeholder="MAL ID (optional)"
-                  autocomplete="off"
-                  inputmode="numeric"
-                />
-                <textarea
-                  class="wide"
-                  id="manualNotes"
-                  rows="3"
-                  placeholder="Notes (optional)"
-                ></textarea>
-              </div>
-              <div class="mini-actions">
-                <button class="btn primary" id="manualAddBtn" type="button">
-                  Add Manual Show
-                </button>
-                <button class="btn" id="manualClearBtn" type="button">
-                  Clear Form
-                </button>
-              </div>
-            </div>
-          </article>
-
-          <button
-            id="toggleSettingsBtn"
-            class="settings-summary"
-            type="button"
-            aria-expanded="false"
-          >
-            <span class="settings-toggle-copy">
-              <strong>Settings & Maintenance</strong>
-              <small
-                >Import/export, GitHub sync, Smart Group, Regenerate AniList,
-                and Refresh Releases are hidden here.</small
-              >
-            </span>
-            <span class="settings-toggle-state" aria-hidden="true">⌄</span>
-          </button>
-
-          <div
-            class="section-card settings-panel"
-            id="settingsPanel"
-            style="display: none"
-          >
-            <div class="maintenance-grid">
-              <div class="maintenance-box status-box">
-                <strong>Status</strong>
-                <div class="status">
-                  <span class="dot" id="statusDot"></span
-                  ><span id="statusText">System Ready</span>
-                </div>
-              </div>
-
-              <div class="maintenance-box">
-                <strong>Library Tools</strong>
-                <div class="mini-actions">
-                  <button class="btn" id="smartGroupBtn" type="button">
-                    Smart Group
-                  </button>
-                  <button class="btn" id="regenerateAniListBtn" type="button">
-                    Regenerate AniList
-                  </button>
-                  <button class="btn" id="refreshReleasesBtn" type="button">
-                    Refresh Releases
-                  </button>
-                </div>
-              </div>
-
-              <div class="maintenance-box">
-                <strong>Data</strong>
-                <p class="help">
-                  Normal JSON and cloud sync stay lightweight. Portable archives
-                  can embed covers for offline use.
-                </p>
-                <div class="mini-actions">
-                  <button class="btn" id="exportBtn" type="button">
-                    Export JSON
-                  </button>
-                  <button class="btn" id="portableExportBtn" type="button">
-                    Export Portable Archive
-                  </button>
-                  <select
-                    id="importMode"
-                    title="Import mode"
-                    class="input compact-select"
-                  >
-                    <option value="replace">Import: Replace</option>
-                    <option value="merge">Import: Merge</option>
-                  </select>
-                  <input
-                    class="file"
-                    id="importFile"
-                    type="file"
-                    accept=".json,application/json"
-                  />
-                  <button class="btn" id="importBtn" type="button">
-                    Import JSON
-                  </button>
-                  <button class="btn danger" id="clearBtn" type="button">
-                    Clear Board
-                  </button>
-                </div>
-              </div>
-
-              <div class="maintenance-box">
-                <strong>Cloud Sync (GitHub Gist)</strong>
-                <p class="help">
-                  Automatic cloud pushes remain enabled after normal saves.
-                  Startup does not force-push.
-                </p>
-                <input
-                  class="input"
-                  id="githubPat"
-                  type="password"
-                  placeholder="GitHub PAT (ghp_...)"
-                  autocomplete="off"
-                  spellcheck="false"
-                />
-                <input
-                  class="input"
-                  id="gistId"
-                  type="text"
-                  placeholder="Gist ID"
-                  autocomplete="off"
-                  spellcheck="false"
-                />
-                <button class="btn primary" id="syncNowBtn" type="button">
-                  Pull & Sync
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
-
-    <div class="modal" id="exploreModal">
-      <div class="modal-card">
-        <div class="modal-head">
-          <h3 id="exploreModalTitle">Related Shows</h3>
-          <button class="icon-btn" id="closeExploreBtn" type="button">×</button>
-        </div>
-        <div class="modal-body" id="exploreModalBody"></div>
+        <div class="active-boards" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));" id="downloadedList"></div>
       </div>
-    </div>
-    <div class="toast-area" id="toastArea"></div>
+    </section>
 
-    <script>
+    <section class="bottom-section">
+      <article class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Add Show</h3>
+            <p class="hint">AniList is canonical. If AniList is down, Jikan is used temporarily and entries can regenerate to AniList later.</p>
+          </div>
+          <div class="segmented" id="addModeTabs">
+            <button class="segment active" data-add-mode="search" type="button">Search</button>
+            <button class="segment" data-add-mode="paste" type="button">Paste</button>
+            <button class="segment" data-add-mode="manual" type="button">Manual</button>
+          </div>
+        </div>
+
+        <div class="add-panel active" id="add-search-panel">
+          <div class="search-row">
+            <input class="input" id="searchInput" type="search" autocomplete="off" placeholder="Search AniList; falls back to Jikan if AniList fails..." />
+            <button class="btn primary" id="searchBtn" type="button">Search</button>
+          </div>
+          <div class="results" id="results"></div>
+        </div>
+
+        <div class="add-panel" id="add-paste-panel">
+          <p class="hint">Paste AniList URLs, MAL URLs, releases.moe URLs, labelled IDs, or plain titles. One item per line works best.</p>
+          <textarea id="batchInput" rows="6" placeholder="https://anilist.co/anime/154587/Frieren-Beyond-Journeys-End/&#10;https://myanimelist.net/anime/52991/Sousou_no_Frieren&#10;Cowboy Bebop"></textarea>
+          <div class="mini-actions">
+            <button class="btn primary" id="batchImportBtn" type="button">Review Paste Import</button>
+            <button class="btn" id="batchClearBtn" type="button">Clear</button>
+          </div>
+          <div id="batchReview" hidden class="batch-review-box">
+            <div class="review-head">
+              <strong id="batchReviewSummary">Review Matches</strong>
+              <div class="mini-actions">
+                <button class="btn primary compact" id="batchConfirmBtn" type="button">Add Selected</button>
+                <button class="btn danger compact" id="batchCancelBtn" type="button">Cancel</button>
+              </div>
+            </div>
+            <div class="review" id="batchReviewList"></div>
+          </div>
+        </div>
+
+        <div class="add-panel" id="add-manual-panel">
+          <p class="hint">For offline-safe entries, title, year, format, and image URL or upload are mandatory. AniList/MAL IDs are optional and help regeneration.</p>
+          <div class="manual-grid">
+            <input class="input" id="manualTitle" type="text" placeholder="Title *" autocomplete="off" />
+            <input class="input" id="manualYear" type="number" min="1900" max="2100" placeholder="Year *" autocomplete="off" />
+            <select id="manualFormat" class="input" aria-label="Format *">
+              <option value="">Format *</option>
+              <option>TV</option>
+              <option>TV_SHORT</option>
+              <option>MOVIE</option>
+              <option>SPECIAL</option>
+              <option>OVA</option>
+              <option>ONA</option>
+              <option>MUSIC</option>
+              <option>UNKNOWN</option>
+            </select>
+            <input class="input" id="manualImageUrl" type="url" placeholder="Image URL or upload image *" autocomplete="off" />
+            <input class="input" id="manualImageFile" type="file" accept="image/*" aria-label="Upload local image" />
+            <input class="input" id="manualAniListId" type="number" placeholder="AniList ID (optional)" autocomplete="off" />
+            <input class="input" id="manualMalId" type="number" placeholder="MAL ID (optional)" autocomplete="off" />
+            <textarea class="wide" id="manualNotes" rows="3" placeholder="Notes (optional)"></textarea>
+          </div>
+          <div class="mini-actions">
+            <button class="btn primary" id="manualAddBtn" type="button">Add Manual Show</button>
+            <button class="btn" id="manualClearBtn" type="button">Clear Form</button>
+          </div>
+        </div>
+      </article>
+
+      <button id="toggleSettingsBtn" class="btn settings-toggle" type="button" aria-expanded="false">
+        <span class="settings-toggle-copy">
+          <strong>Settings & Maintenance</strong>
+          <small>Data, sync, grouping, archive, and cleanup tools</small>
+        </span>
+        <span class="settings-toggle-state" aria-hidden="true">⌄</span>
+      </button>
+
+      <div class="section-card settings-panel" id="settingsPanel" style="display:none">
+        <div class="maintenance-grid">
+          <div class="maintenance-box">
+            <strong>Status</strong>
+            <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">System Ready</span></div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Library tools</strong>
+            <div class="mini-actions">
+              <button class="btn" id="smartGroupBtn" type="button">Smart Group</button>
+              <button class="btn" id="refreshReleasesBtn" type="button">Refresh Releases</button>
+              <button class="btn" id="regenerateAniListBtn" type="button">Regenerate AniList</button>
+            </div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Data</strong>
+            <p class="hint">Normal JSON and cloud sync stay small. Portable archives embed covers for offline use and can be merged back later.</p>
+            <div class="mini-actions">
+              <button class="btn" id="exportBtn" type="button">Export JSON</button>
+              <button class="btn" id="portableExportBtn" type="button">Export Portable Archive</button>
+              <input class="file" id="importFile" type="file" accept=".json,application/json" />
+              <button class="btn" id="importBtn" type="button">Import JSON / Portable</button>
+              <select class="input compact-select" id="importMode" aria-label="Import mode">
+                <option value="replace">Replace board</option>
+                <option value="merge">Merge into board</option>
+              </select>
+              <button class="btn danger" id="clearBtn" type="button">Clear Board</button>
+            </div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Cloud Sync</strong>
+            <p class="hint">PAT and Gist ID stay in localStorage. The board is saved in IndexedDB/local fallback and synced lightweight to Gist.</p>
+            <input class="input" id="githubPat" type="password" placeholder="GitHub PAT (ghp_...)" autocomplete="off" spellcheck="false" />
+            <input class="input" id="gistId" type="text" placeholder="Gist ID" autocomplete="off" spellcheck="false" />
+            <button class="btn primary" id="syncNowBtn" type="button">Pull & Sync</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+</main>
+
+<div class="modal" id="exploreModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="exploreModalTitle">Related Shows</h3>
+      <button class="icon-btn" id="closeExploreBtn" type="button">×</button>
+    </div>
+    <div class="modal-body" id="exploreModalBody"></div>
+  </div>
+</div>
+<div class="toast-area" id="toastArea"></div>
+
+<script>
+
       const ANILIST_ENDPOINT = "https://graphql.anilist.co";
       const JIKAN_ENDPOINT = "https://api.jikan.moe/v4/anime";
       const RELEASES_ENDPOINT =
@@ -1582,6 +402,7 @@
         cloudSyncTimer = null,
         startupTasksStarted = false,
         aniListCooldownUntil = 0,
+        jikanCooldownUntil = 0,
         dbPromise = null,
         idbAvailable = null,
         suppressCloudSync = false;
@@ -1605,6 +426,7 @@
         editOrderBtn: q("#editOrderBtn"),
         addFolderBtn: q("#addFolderBtn"),
         sortLibraryBtn: q("#sortLibraryBtn"),
+        filterAllBtn: q("#filterAllBtn"),
         filterCompleteBtn: q("#filterCompleteBtn"),
         filterIncompleteBtn: q("#filterIncompleteBtn"),
         foundList: q("#foundList"),
@@ -2344,7 +1166,7 @@
               body: JSON.stringify({
                 files: { "state.json": { content: payload } },
               }),
-              signal: timeoutSignal(15000),
+              signal: timeoutSignal(timeoutMs),
             },
           );
           setStatus("System Ready");
@@ -2424,8 +1246,8 @@
         }
       }
 
-      async function aniRequest(query, variables, retries = 2) {
-        if (Date.now() < aniListCooldownUntil)
+      async function aniRequest(query, variables, retries = 2, timeoutMs = 15000, respectCooldown = true) {
+        if (respectCooldown && Date.now() < aniListCooldownUntil)
           await sleep(aniListCooldownUntil - Date.now());
         const r = await fetch(ANILIST_ENDPOINT, {
           method: "POST",
@@ -2442,16 +1264,22 @@
           aniListCooldownUntil = Date.now() + wait * 1000;
           if (retries > 0) {
             await sleep(wait * 1000);
-            return aniRequest(query, variables, retries - 1);
+            return aniRequest(query, variables, retries - 1, timeoutMs, respectCooldown);
           }
           throw new Error("AniList rate limit");
         }
         if (!r.ok || j.errors) throw new Error("AniList error");
         return j;
       }
-      async function searchAniList(search) {
+      async function searchAniList(search, options = {}) {
         const query = `query($search:String){Page(perPage:8){media(search:$search,type:ANIME,sort:SEARCH_MATCH){id title{romaji english native} coverImage{medium large} format seasonYear episodes siteUrl}}}`;
-        const j = await aniRequest(query, { search });
+        const j = await aniRequest(
+          query,
+          { search },
+          options.retries ?? 2,
+          options.timeoutMs ?? 15000,
+          options.respectCooldown ?? true,
+        );
         return j?.data?.Page?.media || [];
       }
       async function getAniListById(id) {
@@ -2487,32 +1315,47 @@
           siteUrl: x?.url || "",
         };
       }
-      async function searchJikan(search) {
-        const r = await fetch(
-          `${JIKAN_ENDPOINT}?q=${encodeURIComponent(search)}&sfw=true&limit=8`,
-          { signal: timeoutSignal(12000) },
-        );
+      async function jikanRequest(path, retries = 1) {
+        if (Date.now() < jikanCooldownUntil) {
+          await sleep(jikanCooldownUntil - Date.now());
+        }
+        const r = await fetch(`${JIKAN_ENDPOINT}${path}`, {
+          signal: timeoutSignal(12000),
+        });
+        if (r.status === 429 && retries > 0) {
+          jikanCooldownUntil = Date.now() + 1400;
+          await sleep(1400);
+          return jikanRequest(path, retries - 1);
+        }
         if (!r.ok) throw new Error("Jikan HTTP " + r.status);
-        const j = await r.json();
+        jikanCooldownUntil = Date.now() + 900;
+        return r.json();
+      }
+      async function searchJikan(search) {
+        const j = await jikanRequest(
+          `?q=${encodeURIComponent(search)}&sfw=true&limit=8`,
+        );
         return (j.data || []).map(normalizeJikan);
       }
       async function getJikanByMalId(id) {
-        const r = await fetch(`${JIKAN_ENDPOINT}/${encodeURIComponent(id)}`, {
-          signal: timeoutSignal(12000),
-        });
-        if (!r.ok) throw new Error("Jikan HTTP " + r.status);
-        const j = await r.json();
+        const j = await jikanRequest(`/${encodeURIComponent(id)}`);
         return j.data ? normalizeJikan(j.data) : null;
       }
       async function searchAniThenJikan(term, jikanOnEmpty = false) {
         try {
-          const a = await searchAniList(term);
+          const a = await searchAniList(term, {
+            retries: 0,
+            timeoutMs: 6500,
+            respectCooldown: false,
+          });
           if (a.length || !jikanOnEmpty)
             return { results: a, source: "anilist" };
         } catch (e) {
-          console.warn("AniList failed, fallback Jikan", e);
+          console.warn("AniList failed, using Jikan fallback", e);
+          setStatus("AniList unavailable; searching Jikan...", "sync");
         }
-        return { results: await searchJikan(term), source: "jikan" };
+        const j = await searchJikan(term);
+        return { results: j, source: "jikan" };
       }
       async function runSearch() {
         const term = els.searchInput.value.trim();
@@ -2542,8 +1385,8 @@
           setStatus("System Ready");
         } catch (e) {
           if (rid !== searchRequestId) return;
-          els.results.innerHTML = '<div class="empty">Search failed.</div>';
-          setStatus("Error", "error");
+          els.results.innerHTML = '<div class="empty">Search failed. AniList and Jikan are both unavailable right now.</div>';
+          setStatus("Search failed", "error");
         }
       }
       function renderResult(m, source) {
@@ -2722,8 +1565,12 @@
       async function lookupItem(input) {
         const aid = aniIdFromInput(input);
         if (aid) {
-          const m = await getAniListById(aid);
-          return m ? [m] : [];
+          try {
+            const m = await getAniListById(aid);
+            return m ? [m] : [];
+          } catch (e) {
+            throw new Error("AniList ID lookup unavailable");
+          }
         }
         const mid = malIdFromInput(input);
         if (mid) {
@@ -3095,6 +1942,7 @@
       }
       function updateButtons() {
         els.editOrderBtn?.classList.toggle("active", !!state.ui.sortMode);
+        els.filterAllBtn?.classList.toggle("active", !state.ui.filterComplete && !state.ui.filterIncomplete);
         els.filterCompleteBtn?.classList.toggle(
           "active",
           !!state.ui.filterComplete,
@@ -3919,14 +2767,20 @@
         });
         on(els.addFolderBtn, "click", addFolder);
         on(els.sortLibraryBtn, "click", sortLibraryAZ);
+        on(els.filterAllBtn, "click", () => {
+          state.ui.filterComplete = false;
+          state.ui.filterIncomplete = false;
+          render();
+          save();
+        });
         on(els.filterCompleteBtn, "click", () => {
-          state.ui.filterComplete = !state.ui.filterComplete;
+          state.ui.filterComplete = true;
           if (state.ui.filterComplete) state.ui.filterIncomplete = false;
           render();
           save();
         });
         on(els.filterIncompleteBtn, "click", () => {
-          state.ui.filterIncomplete = !state.ui.filterIncomplete;
+          state.ui.filterIncomplete = true;
           if (state.ui.filterIncomplete) state.ui.filterComplete = false;
           render();
           save();
@@ -4026,6 +2880,7 @@
         }, 0);
       }
       init();
-    </script>
-  </body>
+    
+</script>
+</body>
 </html>
