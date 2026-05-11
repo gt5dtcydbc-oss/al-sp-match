@@ -2242,17 +2242,29 @@
     }
 
     function bindEvents() {
+      const on = (target, type, handler, options) => {
+        if (target && typeof target.addEventListener === "function") {
+          target.addEventListener(type, handler, options);
+          return true;
+        }
+        console.warn("Missing event target for", type, target);
+        return false;
+      };
+
       els.tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
+        on(tab, "click", () => {
           els.tabs.forEach(t => t.classList.remove("active"));
           els.tabViews.forEach(v => v.classList.remove("active"));
           tab.classList.add("active");
-          document.getElementById(tab.dataset.target).classList.add("active");
-          els.boardSearchInput.placeholder = tab.dataset.target === "view-downloaded" ? "Search library..." : "Filter active shows...";
+          const targetView = document.getElementById(tab.dataset.target);
+          if (targetView) targetView.classList.add("active");
+          if (els.boardSearchInput) {
+            els.boardSearchInput.placeholder = tab.dataset.target === "view-downloaded" ? "Search library..." : "Filter active shows...";
+          }
         });
       });
 
-      els.addModeTabs.addEventListener("click", e => {
+      on(els.addModeTabs, "click", e => {
         const btn = e.target.closest("[data-add-mode]");
         if (!btn) return;
         state.ui.addMode = btn.dataset.addMode;
@@ -2260,87 +2272,89 @@
         saveState();
       });
 
-      els.searchBtn.addEventListener("click", runSearch);
-      els.searchInput.addEventListener("input", debounce(runSearch, 350));
-      els.searchInput.addEventListener("keydown", e => {
+      on(els.searchBtn, "click", runSearch);
+      on(els.searchInput, "input", debounce(runSearch, 350));
+      on(els.searchInput, "keydown", e => {
         if (e.key === "Escape") closeResults();
         if (e.key === "Enter") runSearch();
       });
-      els.results.addEventListener("click", e => {
+      on(els.results, "click", e => {
         const btn = e.target.closest("[data-result-index]");
         if (!btn) return;
         const media = pendingSearchResults[Number(btn.dataset.resultIndex)];
         if (media) addShowFromSearchResult(media);
       });
-      document.addEventListener("click", e => {
+      on(document, "click", e => {
         if (!e.target.closest("#add-search-panel")) closeResults();
       });
 
-      els.pasteImportBtn.addEventListener("click", importPastedItems);
-      els.pasteClearBtn.addEventListener("click", () => {
-        els.pasteInput.value = "";
-        els.pasteResults.innerHTML = "";
-        els.pasteResults.classList.remove("open");
+      on(els.pasteImportBtn, "click", importPastedItems);
+      on(els.pasteClearBtn, "click", () => {
+        if (els.pasteInput) els.pasteInput.value = "";
+        if (els.pasteResults) {
+          els.pasteResults.innerHTML = "";
+          els.pasteResults.classList.remove("open");
+        }
       });
-      els.manualAddBtn.addEventListener("click", addManualShow);
-      els.manualClearBtn.addEventListener("click", clearManualForm);
+      on(els.manualAddBtn, "click", addManualShow);
+      on(els.manualClearBtn, "click", clearManualForm);
 
-      els.boardSearchInput.addEventListener("input", e => {
+      on(els.boardSearchInput, "input", e => {
         state.localSearch = e.target.value.toLowerCase();
         render();
       });
-      els.boards.addEventListener("click", handleBoardClick);
-      els.boards.addEventListener("toggle", handleBoardMenuToggle, true);
-      els.boards.addEventListener("change", e => {
+      on(els.boards, "click", handleBoardClick);
+      on(els.boards, "toggle", handleBoardMenuToggle, true);
+      on(els.boards, "change", e => {
         const checkbox = e.target.closest("[data-download-id]");
         if (checkbox) toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked);
       });
-      els.boards.addEventListener("input", handleBoardInput);
+      on(els.boards, "input", handleBoardInput);
 
-      els.filterAllBtn.addEventListener("click", () => {
+      on(els.filterAllBtn, "click", () => {
         state.ui.filterComplete = false;
         state.ui.filterIncomplete = false;
         render();
         saveState();
       });
-      els.filterCompleteBtn.addEventListener("click", () => {
+      on(els.filterCompleteBtn, "click", () => {
         state.ui.filterComplete = true;
         state.ui.filterIncomplete = false;
         render();
         saveState();
       });
-      els.filterIncompleteBtn.addEventListener("click", () => {
+      on(els.filterIncompleteBtn, "click", () => {
         state.ui.filterComplete = false;
         state.ui.filterIncomplete = true;
         render();
         saveState();
       });
-      els.editOrderBtn.addEventListener("click", () => {
+      on(els.editOrderBtn, "click", () => {
         state.ui.sortMode = !state.ui.sortMode;
         render();
         saveState();
       });
 
-      els.smartGroupBtn.addEventListener("click", runSmartGrouping);
-      els.refreshAllBtn.addEventListener("click", refreshAllReleases);
-      els.regenAllBtn.addEventListener("click", regenerateAllPending);
-      els.exportBtn.addEventListener("click", exportJson);
-      els.exportPortableBtn.addEventListener("click", exportPortableArchive);
-      els.clearEmbeddedCoversBtn.addEventListener("click", clearEmbeddedCovers);
-      els.importBtn.addEventListener("click", () => els.importFile.click());
-      els.importFile.addEventListener("change", importJson);
-      els.clearBtn.addEventListener("click", clearBoard);
-      [els.githubPat, els.gistId].forEach(el => {
-        el.addEventListener("change", saveSyncSettings);
-        el.addEventListener("blur", saveSyncSettings);
+      on(els.smartGroupBtn, "click", runSmartGrouping);
+      on(els.refreshAllBtn, "click", refreshAllReleases);
+      on(els.regenAllBtn, "click", regenerateAllPending);
+      on(els.exportBtn, "click", exportJson);
+      on(els.exportPortableBtn, "click", exportPortableArchive);
+      on(els.clearEmbeddedCoversBtn, "click", clearEmbeddedCovers);
+      on(els.importBtn, "click", () => els.importFile?.click());
+      on(els.importFile, "change", importJson);
+      on(els.clearBtn, "click", clearBoard);
+      [els.githubPat, els.gistId].filter(Boolean).forEach(el => {
+        on(el, "change", saveSyncSettings);
+        on(el, "blur", saveSyncSettings);
       });
-      els.syncNowBtn.addEventListener("click", forceSync);
+      on(els.syncNowBtn, "click", forceSync);
 
-      els.closeExploreBtn.addEventListener("click", () => els.exploreModal.classList.remove("open"));
-      els.exploreModal.addEventListener("click", e => {
+      on(els.closeExploreBtn, "click", () => els.exploreModal?.classList.remove("open"));
+      on(els.exploreModal, "click", e => {
         if (e.target === els.exploreModal) els.exploreModal.classList.remove("open");
       });
-      els.exploreModalBody.addEventListener("click", async e => {
+      on(els.exploreModalBody, "click", async e => {
         const btn = e.target.closest("[data-add-explore-index]");
         if (!btn) return;
         const media = window._exploreCache?.[Number(btn.dataset.addExploreIndex)];
@@ -2534,8 +2548,12 @@
       } catch (error) {
         console.error("Initial UI binding failed:", error);
         setStatus("System Ready", "error");
-        toast("Startup controls failed to bind. Export/import may not work.", "error");
-        return;
+        // Last-resort recovery: keep import and cloud sync usable even if another
+        // startup control failed in an older browser.
+        els.importBtn?.addEventListener("click", () => els.importFile?.click());
+        els.importFile?.addEventListener("change", importJson);
+        els.syncNowBtn?.addEventListener("click", forceSync);
+        toast("Some startup controls failed, but Import and Pull & Sync were recovered.", "error");
       }
 
       try {
