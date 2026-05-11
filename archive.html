@@ -1724,7 +1724,13 @@
       const parsed = await loadStoredBoardState();
       if (parsed) Object.assign(state, Array.isArray(parsed) ? { shows: parsed } : parsed);
       migrateStateIfNeeded();
-      if (parsed && (loadedStateSource === "localStorage" || !(await hasIndexedDbBoard()).catch(() => false))) {
+
+      // If we loaded from legacy localStorage, or IndexedDB is empty/unavailable,
+      // migrate the parsed board into the current local store. Keep this check
+      // deliberately non-fatal: a failed availability check should never make
+      // the whole board load fail.
+      const hasIdbBoard = await hasIndexedDbBoard().catch(() => false);
+      if (parsed && (loadedStateSource === "localStorage" || !hasIdbBoard)) {
         saveState({ syncCloud: false });
       }
     }
