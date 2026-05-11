@@ -1,0 +1,2296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Releases" />
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
+  <title>Anime Releases Dashboard</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d13;
+      --surface: #141822;
+      --surface-soft: #1d2331;
+      --surface-softer: #252c3d;
+      --text: #edf1f8;
+      --muted: #a1abc0;
+      --muted-2: #6b768e;
+      --line: rgba(255, 255, 255, 0.08);
+      --brand: #8b96ff;
+      --brand-strong: #a8b0ff;
+      --ok: #45d49b;
+      --warn: #f2c36b;
+      --danger: #ff7b73;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      --radius: 16px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d);
+      background-attachment: fixed;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    a { color: inherit; }
+    textarea { resize: vertical; }
+
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.4);
+      border-color: var(--brand);
+    }
+
+    .app { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 64px; }
+    .shell { display: grid; gap: 32px; }
+    .hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+    .hero-text { max-width: 680px; }
+    .eyebrow { margin: 0 0 8px; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--brand); font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -0.04em; line-height: 1; font-weight: 800; }
+
+    .board-controls, .toolbar-actions, .mini-actions, .segmented, .links-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .tabs, .segmented {
+      background: rgba(20, 24, 34, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 6px;
+      border-radius: 99px;
+      border: 1px solid var(--line);
+    }
+    .tab, .segment {
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 18px;
+      border-radius: 99px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+    .tab:hover, .segment:hover { color: var(--text); }
+    .tab.active, .segment.active { background: var(--surface-softer); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+    .input, .search-input, textarea, select {
+      width: 100%;
+      background: rgba(20, 24, 34, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .pill-input { min-width: 240px; height: 42px; border-radius: 99px; padding: 0 18px; font-size: 0.9rem; }
+    .input:focus, .search-input:focus, textarea:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139, 150, 255, 0.15); }
+
+    .tab-view { display: none; animation: fadeIn 0.25s ease; }
+    .tab-view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .active-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; align-items: start; }
+    .board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 800; }
+    .count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: 0.75rem; font-weight: 800; padding: 0 8px; }
+    .board-list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
+
+    .show-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+    }
+    .show-card:hover, .show-card:focus-within { transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0,0,0,0.4); border-color: rgba(139,150,255,0.3); }
+    .card-main { display: grid; grid-template-columns: auto 56px minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
+    .download-check { appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all 0.2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
+    .download-check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69,212,155,0.4); }
+    .download-check:checked::after { content: "✓"; color: #000; font-size: 14px; font-weight: 900; }
+    .thumb { width: 56px; height: 76px; border-radius: 8px; object-fit: cover; background-color: var(--surface-softer); color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; }
+    .card-content { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+    .card-title { font-weight: 800; font-size: 1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-title a { text-decoration: none; }
+    .card-title a:hover { color: var(--brand); }
+    .card-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; color: var(--muted); font-size: 0.8rem; font-weight: 650; min-width: 0; overflow: hidden; }
+    .card-meta span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
+    .badge.found { color: var(--ok); background: rgba(69,212,155,0.1); }
+    .badge.watching { color: var(--warn); background: rgba(242,195,107,0.1); }
+    .badge.downloaded { color: var(--muted); background: var(--surface-softer); }
+    .badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,0.4); }
+    .badge.pending { color: var(--warn); background: rgba(242,195,107,0.12); }
+    .badge.manual { color: var(--brand); background: rgba(139,150,255,0.12); }
+    .card-checked-time { font-size: 0.7rem; color: var(--muted-2); font-weight: 650; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 14px 12px 106px; }
+    .quick-link { min-height: 30px; padding: 0 11px; border-radius: 99px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 900; }
+    .quick-link:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+    .quick-link.primary { color: #000; background: var(--brand); border-color: transparent; }
+    .quick-link.primary:hover { background: var(--brand-strong); }
+    .quick-link.disabled { opacity: 0.45; pointer-events: none; }
+
+    .menu { position: relative; margin-left: auto; }
+    .menu summary { list-style: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); font-weight: 900; cursor: pointer; }
+    .menu summary::-webkit-details-marker { display: none; }
+    .menu summary:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+    .menu[open] summary { color: var(--brand); border-color: rgba(139,150,255,0.4); }
+    .menu-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; z-index: 30; background: #111520; border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); display: grid; gap: 4px; }
+    .menu-panel a, .menu-panel button { width: 100%; min-height: 34px; border-radius: 10px; background: transparent; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-weight: 750; font-size: 0.85rem; text-align: left; }
+    .menu-panel a:hover, .menu-panel button:hover { background: var(--surface-softer); }
+    .menu-panel .danger { color: var(--danger); }
+
+    .notes-panel { display: none; padding: 0 14px 14px 106px; border-top: 1px solid var(--line); background: rgba(0,0,0,0.1); }
+    .show-card.notes-open .notes-panel { display: block; padding-top: 14px; animation: slideDownPanel 0.2s ease-out; }
+    @keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .group-container { padding: 0; display: flex; flex-direction: column; gap: 0; }
+    .group-header { cursor: pointer; grid-template-columns: 28px 56px minmax(0, 1fr); padding-left: 12px; }
+    .group-list { display: grid; gap: 12px; padding: 16px 16px 16px 104px; background: rgba(0,0,0,0.15); border-top: 1px solid var(--line); min-height: 24px; }
+    .group-list.is-collapsed { display: none; }
+    .divider-collapse-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border: none; border-radius: 6px; pointer-events: none; font-size: 0.75rem; transition: all 0.2s ease; }
+    .divider-collapse-btn.is-collapsed { transform: rotate(-90deg); }
+    .divider-name-input { background: transparent; border: none; color: var(--text); font-weight: 900; font-size: 1rem; padding: 4px 8px; border-radius: 6px; outline: none; width: auto; min-width: 120px; margin-left: -8px; box-shadow: none !important; }
+    .divider-name-input:focus, .divider-name-input:not([readonly]):hover { background: var(--surface-soft); }
+    .divider-name-input[readonly] { pointer-events: none; }
+
+    .bottom-section { margin-top: 48px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 42px; }
+    .section-card { background: rgba(20,24,34,0.74); border: 1px solid var(--line); border-radius: 24px; padding: 20px; display: grid; gap: 16px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .section-title { margin: 0; font-size: 1rem; font-weight: 900; color: var(--text); }
+    .hint { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+    .add-panel { display: none; gap: 14px; }
+    .add-panel.active { display: grid; }
+    .search-row, .form-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+    .manual-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .manual-grid .wide { grid-column: 1 / -1; }
+
+    .btn { min-height: 42px; padding: 0 18px; border-radius: 99px; background: var(--surface-softer); color: var(--text); font-weight: 850; border: 1px solid var(--line); transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+    .btn:hover { background: rgba(255,255,255,0.08); }
+    .btn.primary { background: var(--brand); color: #000; border-color: transparent; }
+    .btn.primary:hover { background: var(--brand-strong); }
+    .btn.danger { color: var(--danger); }
+    .btn.compact { min-height: 34px; padding: 0 13px; font-size: 0.82rem; }
+    .btn.active { background: var(--brand); color: #000; border-color: transparent; }
+
+    .results { display: none; background: rgba(20,24,34,0.9); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 18px; max-height: 360px; overflow-y: auto; padding: 10px; transform-origin: top; }
+    .results.open { display: grid; gap: 5px; animation: slideDown 0.2s cubic-bezier(0.4,0,0.2,1); }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px) scaleY(0.95); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
+    .result-item { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 12px; background: transparent; text-align: left; transition: background 0.2s; width: 100%; color: var(--text); }
+    .result-item:hover { background: var(--surface-softer); }
+    .result-poster { width: 42px; height: 58px; border-radius: 6px; object-fit: cover; color: transparent; background-color: var(--surface-softer); flex-shrink: 0; }
+    .result-info { flex: 1; min-width: 0; }
+    .result-title { display: block; font-weight: 850; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-meta { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    .status-indicator { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--muted); font-size: 0.9rem; transition: color 0.3s; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,0.15); transition: all 0.3s ease; }
+    .dot.syncing { background: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,0.3); animation: pulseSync 1.5s infinite ease-in-out; }
+    .dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(255,123,115,0.3); }
+    @keyframes pulseSync { 0% { box-shadow: 0 0 0 0 rgba(139,150,255,0.4); } 70% { box-shadow: 0 0 0 6px rgba(139,150,255,0); } 100% { box-shadow: 0 0 0 0 rgba(139,150,255,0); } }
+
+    .maintenance-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .maintenance-box { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,0.14); }
+    .file-input { display: none; }
+
+    .toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 100; display: grid; gap: 12px; }
+    .toast { background: var(--surface); border: 1px solid var(--line); padding: 14px 18px; border-radius: 99px; box-shadow: var(--shadow); font-weight: 750; font-size: 0.92rem; animation: toastSlideIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+    .toast.error { border-color: rgba(255,123,115,0.4); color: var(--danger); }
+    @keyframes toastSlideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    .empty { padding: 34px 20px; text-align: center; color: var(--muted-2); background: rgba(255,255,255,0.02); border-radius: 18px; font-weight: 650; border: 1px solid rgba(255,255,255,0.05); }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; padding: 24px; }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal-content { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; width: 100%; max-width: 620px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+    .modal-overlay.open .modal-content { transform: translateY(0); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+    .modal-header h3 { margin: 0; font-size: 1.2rem; }
+    .modal-body { padding: 24px; overflow-y: auto; display: grid; gap: 12px; }
+    .relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
+    .relation-type { font-size: 0.7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
+
+    @media (max-width: 800px) {
+      .app { width: min(100% - 28px, 1200px); }
+      .active-boards { grid-template-columns: 1fr; }
+      .hero { flex-direction: column; align-items: flex-start; }
+      .board-controls { width: 100%; }
+      .pill-input { width: 100%; }
+      .search-row, .form-row { grid-template-columns: 1fr; }
+      .manual-grid { grid-template-columns: 1fr; }
+      .card-main { grid-template-columns: auto 52px minmax(0, 1fr); gap: 12px; }
+      .thumb { width: 52px; height: 72px; }
+      .card-footer { padding-left: 14px; align-items: flex-start; flex-direction: column; }
+      .menu { margin-left: 0; align-self: flex-end; }
+      .menu-panel { right: 0; }
+      .notes-panel { padding-left: 14px; }
+      .group-header { grid-template-columns: 28px 48px minmax(0, 1fr); }
+      .group-list { padding-left: 14px; }
+      .toolbar-actions { width: 100%; align-items: stretch; }
+      .toolbar-actions .btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="shell">
+      <header class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">AniList × Jikan fallback × SeaDex</p>
+          <h1>Releases Dashboard</h1>
+        </div>
+        <div class="board-controls">
+          <div class="tabs" id="mainTabs">
+            <button class="tab active" data-target="view-active" type="button">Active</button>
+            <button class="tab" data-target="view-downloaded" type="button">Library</button>
+          </div>
+          <input type="text" id="boardSearchInput" class="input pill-input" placeholder="Filter active shows..." autocomplete="off" />
+        </div>
+      </header>
+
+      <section class="boards" id="boards">
+        <div class="tab-view active" id="view-active">
+          <div class="active-boards">
+            <article class="board" data-board="found">
+              <header class="board-header">
+                <h2 class="board-title">Found <span class="count" id="foundCount">0</span></h2>
+              </header>
+              <div class="board-list" id="foundList"></div>
+            </article>
+            <article class="board" data-board="watching">
+              <header class="board-header">
+                <h2 class="board-title">Watching <span class="count" id="watchingCount">0</span></h2>
+              </header>
+              <div class="board-list" id="watchingList"></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="tab-view" id="view-downloaded">
+          <header class="board-header" style="margin-bottom: 24px;">
+            <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
+            <div class="toolbar-actions">
+              <div class="segmented" aria-label="Library filter">
+                <button class="segment active" id="filterAllBtn" type="button">All</button>
+                <button class="segment" id="filterCompleteBtn" type="button">Complete</button>
+                <button class="segment" id="filterIncompleteBtn" type="button">Incomplete</button>
+              </div>
+              <button class="btn compact" id="editOrderBtn" type="button">Edit Order</button>
+            </div>
+          </header>
+          <div class="active-boards" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));" id="downloadedList"></div>
+        </div>
+      </section>
+
+      <section class="bottom-section">
+        <article class="section-card">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">Add Show</h3>
+              <p class="hint">AniList is canonical. If AniList is down, Jikan is used temporarily and entries can regenerate to AniList later.</p>
+            </div>
+            <div class="segmented" id="addModeTabs">
+              <button class="segment active" data-add-mode="search" type="button">Search</button>
+              <button class="segment" data-add-mode="paste" type="button">Paste</button>
+              <button class="segment" data-add-mode="manual" type="button">Manual</button>
+            </div>
+          </div>
+
+          <div class="add-panel active" id="add-search-panel">
+            <div class="search-row">
+              <input class="input" id="searchInput" type="search" autocomplete="off" placeholder="Search AniList; falls back to Jikan if needed..." />
+              <button class="btn primary" id="searchBtn" type="button">Search</button>
+            </div>
+            <div class="results" id="results"></div>
+          </div>
+
+          <div class="add-panel" id="add-paste-panel">
+            <p class="hint">Paste AniList URLs, MAL URLs, releases.moe URLs, AniList/MAL IDs, or plain titles. One item per line works best.</p>
+            <textarea id="pasteInput" rows="6" placeholder="https://anilist.co/anime/154587/Frieren-Beyond-Journeys-End/&#10;https://myanimelist.net/anime/52991/Sousou_no_Frieren&#10;Cowboy Bebop"></textarea>
+            <div class="mini-actions">
+              <button class="btn primary" id="pasteImportBtn" type="button">Import Pasted</button>
+              <button class="btn" id="pasteClearBtn" type="button">Clear</button>
+            </div>
+            <div class="results" id="pasteResults"></div>
+          </div>
+
+          <div class="add-panel" id="add-manual-panel">
+            <p class="hint">For offline-safe entries, title, year, format, and image URL are mandatory. AniList/MAL IDs are optional and help regeneration.</p>
+            <div class="manual-grid">
+              <input class="input" id="manualTitle" type="text" placeholder="Title *" autocomplete="off" />
+              <input class="input" id="manualYear" type="number" min="1900" max="2100" placeholder="Year *" autocomplete="off" />
+              <select id="manualFormat" class="input" aria-label="Format *">
+                <option value="">Format *</option>
+                <option>TV</option>
+                <option>TV_SHORT</option>
+                <option>MOVIE</option>
+                <option>SPECIAL</option>
+                <option>OVA</option>
+                <option>ONA</option>
+                <option>MUSIC</option>
+              </select>
+              <input class="input" id="manualImageUrl" type="url" placeholder="Image URL *" autocomplete="off" />
+              <input class="input" id="manualAnilistId" type="number" placeholder="AniList ID (optional)" autocomplete="off" />
+              <input class="input" id="manualMalId" type="number" placeholder="MAL ID (optional)" autocomplete="off" />
+              <textarea class="wide" id="manualNotes" rows="3" placeholder="Notes (optional)"></textarea>
+            </div>
+            <div class="mini-actions">
+              <button class="btn primary" id="manualAddBtn" type="button">Add Manual Show</button>
+              <button class="btn" id="manualClearBtn" type="button">Clear Form</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="section-card">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">Maintenance</h3>
+              <p class="hint">Data, sync, grouping, and cleanup tools live here so the main board stays uncluttered.</p>
+            </div>
+            <div class="status-indicator">
+              <span class="dot"></span> <span id="statusText">System Ready</span>
+            </div>
+          </div>
+
+          <div class="maintenance-grid">
+            <div class="maintenance-box">
+              <strong>Library tools</strong>
+              <div class="mini-actions">
+                <button class="btn" id="smartGroupBtn" type="button">Smart Group</button>
+                <button class="btn" id="refreshAllBtn" type="button">Refresh Releases</button>
+                <button class="btn" id="regenAllBtn" type="button">Regenerate AniList</button>
+              </div>
+            </div>
+            <div class="maintenance-box">
+              <strong>Data</strong>
+              <div class="mini-actions">
+                <button class="btn" id="exportBtn" type="button">Export JSON</button>
+                <input class="file-input" id="importFile" type="file" accept=".json" />
+                <button class="btn" id="importBtn" type="button">Import JSON</button>
+                <button class="btn danger" id="clearBtn" type="button">Clear Board</button>
+              </div>
+            </div>
+            <div class="maintenance-box">
+              <strong>Cloud Sync</strong>
+              <p class="hint">PAT and Gist ID are stored in this browser's localStorage.</p>
+              <input class="input" id="githubPat" type="password" placeholder="GitHub PAT (ghp_...)" autocomplete="off" spellcheck="false" />
+              <input class="input" id="gistId" type="text" placeholder="Gist ID" autocomplete="off" spellcheck="false" />
+              <button class="btn primary" id="syncNowBtn" type="button">Pull & Sync</button>
+            </div>
+          </div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="exploreModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="exploreModalTitle">Related Shows</h3>
+        <button class="btn compact" id="closeExploreBtn" type="button">Close</button>
+      </div>
+      <div class="modal-body" id="exploreModalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast-area" id="toastArea"></div>
+
+  <script>
+    const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+    const JIKAN_ENDPOINT = "https://api.jikan.moe/v4";
+    const RELEASES_ENDPOINT = "https://releases.moe/api/collections/entries/records";
+    const STORAGE_KEY = "anilist-releases-board:v3";
+    const LEGACY_STORAGE_KEYS = ["anilist-releases-board:v2"];
+    const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1";
+    const SCHEMA_VERSION = 3;
+    const BOARDS = ["found", "watching", "downloaded"];
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const state = makeDefaultState();
+    let searchRequestId = 0;
+    let pendingSearchResults = [];
+    let aniListCooldownUntil = 0;
+    let jikanCooldownUntil = 0;
+    let cloudSyncTimer;
+    const commentSaveTimers = new Map();
+    const dividerSaveTimers = new Map();
+
+    const els = {
+      boards: document.querySelector("#boards"),
+      tabs: document.querySelectorAll(".tab"),
+      tabViews: document.querySelectorAll(".tab-view"),
+      boardSearchInput: document.querySelector("#boardSearchInput"),
+      addModeTabs: document.querySelector("#addModeTabs"),
+      addPanels: document.querySelectorAll(".add-panel"),
+      searchInput: document.querySelector("#searchInput"),
+      searchBtn: document.querySelector("#searchBtn"),
+      results: document.querySelector("#results"),
+      pasteInput: document.querySelector("#pasteInput"),
+      pasteImportBtn: document.querySelector("#pasteImportBtn"),
+      pasteClearBtn: document.querySelector("#pasteClearBtn"),
+      pasteResults: document.querySelector("#pasteResults"),
+      manualTitle: document.querySelector("#manualTitle"),
+      manualYear: document.querySelector("#manualYear"),
+      manualFormat: document.querySelector("#manualFormat"),
+      manualImageUrl: document.querySelector("#manualImageUrl"),
+      manualAnilistId: document.querySelector("#manualAnilistId"),
+      manualMalId: document.querySelector("#manualMalId"),
+      manualNotes: document.querySelector("#manualNotes"),
+      manualAddBtn: document.querySelector("#manualAddBtn"),
+      manualClearBtn: document.querySelector("#manualClearBtn"),
+      foundList: document.querySelector("#foundList"),
+      watchingList: document.querySelector("#watchingList"),
+      downloadedList: document.querySelector("#downloadedList"),
+      foundCount: document.querySelector("#foundCount"),
+      watchingCount: document.querySelector("#watchingCount"),
+      downloadedCount: document.querySelector("#downloadedCount"),
+      filterAllBtn: document.querySelector("#filterAllBtn"),
+      filterCompleteBtn: document.querySelector("#filterCompleteBtn"),
+      filterIncompleteBtn: document.querySelector("#filterIncompleteBtn"),
+      editOrderBtn: document.querySelector("#editOrderBtn"),
+      smartGroupBtn: document.querySelector("#smartGroupBtn"),
+      refreshAllBtn: document.querySelector("#refreshAllBtn"),
+      regenAllBtn: document.querySelector("#regenAllBtn"),
+      exportBtn: document.querySelector("#exportBtn"),
+      importBtn: document.querySelector("#importBtn"),
+      importFile: document.querySelector("#importFile"),
+      clearBtn: document.querySelector("#clearBtn"),
+      githubPat: document.querySelector("#githubPat"),
+      gistId: document.querySelector("#gistId"),
+      syncNowBtn: document.querySelector("#syncNowBtn"),
+      statusText: document.querySelector("#statusText"),
+      dot: document.querySelector(".dot"),
+      toastArea: document.querySelector("#toastArea"),
+      exploreModal: document.querySelector("#exploreModal"),
+      exploreModalTitle: document.querySelector("#exploreModalTitle"),
+      exploreModalBody: document.querySelector("#exploreModalBody"),
+      closeExploreBtn: document.querySelector("#closeExploreBtn")
+    };
+
+    const emptyCopy = {
+      found: "No matching releases found yet.",
+      watching: "All caught up.",
+      downloaded: "Library is empty."
+    };
+
+    function makeDefaultState() {
+      return {
+        schemaVersion: SCHEMA_VERSION,
+        shows: [],
+        groups: [],
+        groupOrder: {},
+        order: makeDefaultOrder(),
+        ui: makeDefaultUi(),
+        localSearch: ""
+      };
+    }
+
+    function makeDefaultOrder() {
+      return { found: [], watching: [], downloaded: [] };
+    }
+
+    function makeDefaultUi() {
+      return { filterComplete: false, filterIncomplete: false, openNotes: {}, sortMode: false, addMode: "search" };
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+    const escapeAttr = escapeHtml;
+
+    function uniqueId(prefix = "id") {
+      return `${prefix}_${crypto.randomUUID()}`;
+    }
+
+    function timeoutSignal(ms) {
+      if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), ms);
+      return controller.signal;
+    }
+
+    function getShowById(id) {
+      return state.shows.find(show => show.id === id) || null;
+    }
+
+    function getGroupById(id) {
+      return state.groups.find(group => group.id === id) || null;
+    }
+
+    function getAniListId(show) {
+      return Number(show?.externalIds?.anilist || show?.anilistId || 0) || null;
+    }
+
+    function getMalId(show) {
+      return Number(show?.externalIds?.mal || show?.malId || 0) || null;
+    }
+
+    function getShowBoard(show) {
+      if (!show) return "watching";
+      if (show.downloaded || show.board === "downloaded") return "downloaded";
+      return show.board === "found" ? "found" : "watching";
+    }
+
+    function getShowSortTitle(show) {
+      return String(show?.titleEnglish || show?.titleRomaji || show?.title || "").trim();
+    }
+
+    function getSortName(id) {
+      const show = getShowById(id);
+      if (show) return getShowSortTitle(show);
+      const group = getGroupById(id);
+      return group?.name || "";
+    }
+
+    function compareShowsAZ(a, b) {
+      return getShowSortTitle(a).localeCompare(getShowSortTitle(b), undefined, { sensitivity: "base", numeric: true });
+    }
+
+    function setStatus(text, mode = "ready") {
+      els.statusText.textContent = text;
+      if (mode === "sync") {
+        els.dot.className = "dot syncing";
+        els.statusText.style.color = "var(--brand)";
+      } else if (mode === "error") {
+        els.dot.className = "dot error";
+        els.statusText.style.color = "var(--danger)";
+      } else {
+        els.dot.className = "dot";
+        els.statusText.style.color = "var(--muted)";
+      }
+    }
+
+    function toast(msg, type = "") {
+      const t = document.createElement("div");
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      els.toastArea.append(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    async function safeAniListRequest(query, variables, retries = 2) {
+      if (Date.now() < aniListCooldownUntil) {
+        await sleep(aniListCooldownUntil - Date.now());
+      }
+      const response = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ query, variables }),
+        signal: timeoutSignal(15000)
+      });
+      const json = await response.json().catch(() => ({}));
+      if (response.status === 429) {
+        const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+        aniListCooldownUntil = Date.now() + retryAfter * 1000;
+        if (retries > 0) {
+          await sleep(retryAfter * 1000);
+          return safeAniListRequest(query, variables, retries - 1);
+        }
+        throw new Error("AniList rate limit reached.");
+      }
+      if (!response.ok || json.errors) throw new Error("AniList error");
+      return json;
+    }
+
+    async function safeJikanFetch(path) {
+      if (Date.now() < jikanCooldownUntil) {
+        await sleep(jikanCooldownUntil - Date.now());
+      }
+      const response = await fetch(`${JIKAN_ENDPOINT}${path}`, { signal: timeoutSignal(15000) });
+      if (response.status === 429) {
+        jikanCooldownUntil = Date.now() + 2500;
+        await sleep(2500);
+        return safeJikanFetch(path);
+      }
+      if (!response.ok) throw new Error(`Jikan HTTP ${response.status}`);
+      jikanCooldownUntil = Date.now() + 550;
+      return response.json();
+    }
+
+    const ANILIST_MEDIA_FIELDS = `
+      id idMal
+      title { romaji english native }
+      coverImage { medium large extraLarge }
+      format seasonYear episodes siteUrl
+    `;
+
+    async function searchAniList(search) {
+      const query = `query($search: String){ Page(perPage: 8){ media(search: $search, type: ANIME, sort: SEARCH_MATCH){ ${ANILIST_MEDIA_FIELDS} } } }`;
+      const json = await safeAniListRequest(query, { search });
+      return (json?.data?.Page?.media ?? []).map(normalizeAniListMedia);
+    }
+
+    async function getAniListMediaById(id) {
+      const query = `query($id: Int){ Media(id: $id, type: ANIME){ ${ANILIST_MEDIA_FIELDS} } }`;
+      const json = await safeAniListRequest(query, { id: Number(id) });
+      return json?.data?.Media ? normalizeAniListMedia(json.data.Media) : null;
+    }
+
+    async function getAniListMediaByMalId(idMal) {
+      const query = `query($idMal: Int){ Media(idMal: $idMal, type: ANIME){ ${ANILIST_MEDIA_FIELDS} } }`;
+      const json = await safeAniListRequest(query, { idMal: Number(idMal) });
+      return json?.data?.Media ? normalizeAniListMedia(json.data.Media) : null;
+    }
+
+    async function searchJikan(search) {
+      const json = await safeJikanFetch(`/anime?q=${encodeURIComponent(search)}&limit=8`);
+      return (json?.data || []).map(normalizeJikanMedia);
+    }
+
+    async function getJikanMediaById(id) {
+      const json = await safeJikanFetch(`/anime/${Number(id)}`);
+      return json?.data ? normalizeJikanMedia(json.data) : null;
+    }
+
+    function normalizeAniListMedia(media) {
+      return {
+        source: "anilist",
+        needsAniList: false,
+        externalIds: { anilist: Number(media.id) || null, mal: Number(media.idMal) || null },
+        title: media.title?.english || media.title?.romaji || media.title?.native || "Untitled",
+        titleEnglish: media.title?.english || "",
+        titleRomaji: media.title?.romaji || "",
+        titleNative: media.title?.native || "",
+        coverImage: media.coverImage?.large || media.coverImage?.medium || media.coverImage?.extraLarge || "",
+        format: media.format || "",
+        seasonYear: media.seasonYear || null,
+        episodes: media.episodes || null,
+        siteUrl: media.siteUrl || (media.id ? `https://anilist.co/anime/${media.id}` : ""),
+        links: {
+          anilist: media.siteUrl || (media.id ? `https://anilist.co/anime/${media.id}` : ""),
+          mal: media.idMal ? `https://myanimelist.net/anime/${media.idMal}` : ""
+        }
+      };
+    }
+
+    function normalizeJikanMedia(media) {
+      const image = media.images?.jpg?.large_image_url || media.images?.webp?.large_image_url || media.images?.jpg?.image_url || "";
+      return {
+        source: "jikan-fallback",
+        needsAniList: true,
+        externalIds: { anilist: null, mal: Number(media.mal_id) || null },
+        title: media.title_english || media.title || media.title_japanese || "Untitled",
+        titleEnglish: media.title_english || "",
+        titleRomaji: media.title || "",
+        titleNative: media.title_japanese || "",
+        coverImage: image,
+        format: normalizeFormat(media.type || ""),
+        seasonYear: media.year || getYearFromText(media.aired?.from) || null,
+        episodes: media.episodes || null,
+        siteUrl: media.url || (media.mal_id ? `https://myanimelist.net/anime/${media.mal_id}` : ""),
+        links: {
+          anilist: "",
+          mal: media.url || (media.mal_id ? `https://myanimelist.net/anime/${media.mal_id}` : "")
+        }
+      };
+    }
+
+    function normalizeFormat(format) {
+      const value = String(format || "").toUpperCase().replace(/\s+/g, "_");
+      if (value === "TV_SPECIAL") return "SPECIAL";
+      return value;
+    }
+
+    function getDefaultReleasesMoeState(existing = {}) {
+      return {
+        found: false,
+        recordId: null,
+        checkedAt: null,
+        libraryCheckedAt: null,
+        error: null,
+        updated: null,
+        updateAvailable: false,
+        latestUpdated: null,
+        releaseUrl: "",
+        nyaaUrl: "",
+        ...(existing || {})
+      };
+    }
+
+    function makeShowFromMedia(media, overrides = {}) {
+      const now = new Date().toISOString();
+      return {
+        id: uniqueId("show"),
+        source: media.source || "anilist",
+        needsAniList: !!media.needsAniList,
+        externalIds: {
+          anilist: media.externalIds?.anilist || null,
+          mal: media.externalIds?.mal || null
+        },
+        title: media.title || "Untitled",
+        titleEnglish: media.titleEnglish || "",
+        titleRomaji: media.titleRomaji || "",
+        titleNative: media.titleNative || "",
+        coverImage: media.coverImage || "",
+        format: media.format || "",
+        seasonYear: media.seasonYear || null,
+        episodes: media.episodes || null,
+        siteUrl: media.siteUrl || media.links?.anilist || media.links?.mal || "",
+        links: {
+          anilist: media.links?.anilist || "",
+          mal: media.links?.mal || "",
+          manual: media.links?.manual || ""
+        },
+        board: "watching",
+        downloaded: false,
+        allAvailableDownloaded: false,
+        comments: "",
+        groupId: null,
+        relations: [],
+        relationsFetched: false,
+        releasesMoe: getDefaultReleasesMoeState(),
+        createdAt: now,
+        updatedAt: now,
+        ...overrides
+      };
+    }
+
+    function makeManualMedia() {
+      const title = els.manualTitle.value.trim();
+      const year = Number(els.manualYear.value);
+      const format = els.manualFormat.value.trim();
+      const imageUrl = els.manualImageUrl.value.trim();
+      const anilist = Number(els.manualAnilistId.value) || null;
+      const mal = Number(els.manualMalId.value) || null;
+
+      if (!title || !year || !format || !imageUrl) {
+        throw new Error("Title, year, format, and image URL are required.");
+      }
+      try { new URL(imageUrl); } catch { throw new Error("Image URL is not valid."); }
+
+      return {
+        source: anilist ? "anilist" : "manual",
+        needsAniList: !anilist,
+        externalIds: { anilist, mal },
+        title,
+        titleEnglish: "",
+        titleRomaji: title,
+        titleNative: "",
+        coverImage: imageUrl,
+        format,
+        seasonYear: year,
+        episodes: null,
+        siteUrl: anilist ? `https://anilist.co/anime/${anilist}` : (mal ? `https://myanimelist.net/anime/${mal}` : ""),
+        links: {
+          anilist: anilist ? `https://anilist.co/anime/${anilist}` : "",
+          mal: mal ? `https://myanimelist.net/anime/${mal}` : "",
+          manual: ""
+        }
+      };
+    }
+
+    function isMediaOnBoard(media) {
+      const al = media?.externalIds?.anilist;
+      const mal = media?.externalIds?.mal;
+      return state.shows.some(show => {
+        const showAl = getAniListId(show);
+        const showMal = getMalId(show);
+        return (al && showAl === Number(al)) || (mal && showMal === Number(mal));
+      });
+    }
+
+    function isShowDuplicate(show) {
+      return state.shows.some(other => other.id !== show.id && (
+        (getAniListId(show) && getAniListId(other) === getAniListId(show)) ||
+        (getMalId(show) && getMalId(other) === getMalId(show))
+      ));
+    }
+
+    async function resolveMediaToAniList(media) {
+      if (!media?.needsAniList && media?.externalIds?.anilist) return media;
+      if (media?.externalIds?.mal) {
+        try {
+          const found = await getAniListMediaByMalId(media.externalIds.mal);
+          if (found) return found;
+        } catch (e) {
+          console.warn("AniList by MAL ID failed", e);
+        }
+      }
+      try {
+        const candidates = await searchAniList(media.title);
+        const best = selectBestAniListCandidate(media, candidates);
+        if (best) return best;
+      } catch (e) {
+        console.warn("AniList regeneration search failed", e);
+      }
+      return media;
+    }
+
+    function selectBestAniListCandidate(inputMedia, candidates) {
+      if (!candidates?.length) return null;
+      let best = null;
+      let bestScore = 0;
+      candidates.forEach(candidate => {
+        const score = getCandidateScore(inputMedia, candidate);
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      });
+      return bestScore >= 0.55 ? best : null;
+    }
+
+    function getCandidateScore(a, b) {
+      const titlesA = [a.title, a.titleEnglish, a.titleRomaji, a.titleNative].map(normalizeTitle).filter(Boolean);
+      const titlesB = [b.title, b.titleEnglish, b.titleRomaji, b.titleNative].map(normalizeTitle).filter(Boolean);
+      let score = 0;
+      for (const ta of titlesA) {
+        for (const tb of titlesB) {
+          if (ta === tb) score = Math.max(score, 1);
+          if (ta && tb && (ta.includes(tb) || tb.includes(ta))) score = Math.max(score, 0.74);
+          score = Math.max(score, tokenSimilarity(ta, tb));
+        }
+      }
+      if (a.seasonYear && b.seasonYear && Number(a.seasonYear) === Number(b.seasonYear)) score += 0.12;
+      return Math.min(score, 1);
+    }
+
+    async function addShowFromMedia(media, { skipRefresh = false } = {}) {
+      let resolved = media;
+      if (media.needsAniList || media.source === "jikan-fallback") {
+        resolved = await resolveMediaToAniList(media);
+      }
+      if (isMediaOnBoard(resolved)) {
+        toast("Already on board.");
+        return null;
+      }
+      const notes = media.source === "manual" ? els.manualNotes.value.trim() : "";
+      const show = makeShowFromMedia(resolved, { comments: notes });
+      state.shows.unshift(show);
+      if (!skipRefresh) await refreshShowStatus(show, { forceMove: true });
+      insertIntoUngroupedAZ(state.order[getShowBoard(show)], show.id);
+      render();
+      saveState();
+      toast(show.needsAniList ? "Added as pending AniList entry." : "Added to board.");
+      return show;
+    }
+
+    async function addShowFromSearchResult(media) {
+      setStatus(media.needsAniList ? "Adding via Jikan fallback..." : "Adding show...", "sync");
+      try {
+        const show = await addShowFromMedia(media);
+        if (show) {
+          closeResults();
+          els.searchInput.value = "";
+        }
+      } catch (e) {
+        toast(e.message || "Failed to add show.", "error");
+      } finally {
+        setStatus("System Ready");
+      }
+    }
+
+    async function refreshShowStatus(show, { forceMove = false } = {}) {
+      const anilistId = getAniListId(show);
+      const previousBoard = getShowBoard(show);
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+
+      if (!anilistId) {
+        show.releasesMoe.error = "Needs AniList link";
+        show.releasesMoe.checkedAt = new Date().toISOString();
+        show.updatedAt = new Date().toISOString();
+        return;
+      }
+
+      try {
+        const url = `${RELEASES_ENDPOINT}?perPage=1&filter=alID=${encodeURIComponent(anilistId)}&expand=trs`;
+        const res = await fetch(url, { signal: timeoutSignal(15000) });
+        if (!res.ok) throw new Error(`SeaDex HTTP ${res.status}`);
+        const json = await res.json();
+        const match = json.items?.[0] || null;
+        const apiUpdated = match?.updated || null;
+        const isLibrary = show.downloaded || show.board === "downloaded";
+
+        show.releasesMoe.found = !!match;
+        show.releasesMoe.recordId = match?.id || null;
+        show.releasesMoe.releaseUrl = match ? `https://releases.moe/${anilistId}/` : "";
+        show.releasesMoe.nyaaUrl = match ? extractNyaaUrl(match) : "";
+        show.releasesMoe.checkedAt = new Date().toISOString();
+        show.releasesMoe.error = null;
+
+        if (match && apiUpdated) {
+          const previousUpdated = show.releasesMoe.updated ? Date.parse(show.releasesMoe.updated) : 0;
+          const nextUpdated = Date.parse(apiUpdated);
+          if (!show.releasesMoe.updated) {
+            show.releasesMoe.updated = apiUpdated;
+            show.releasesMoe.latestUpdated = null;
+            show.releasesMoe.updateAvailable = false;
+          } else if (apiUpdated !== show.releasesMoe.updated && Number.isFinite(nextUpdated) && nextUpdated > previousUpdated) {
+            if (isLibrary) {
+              show.releasesMoe.updateAvailable = true;
+              show.releasesMoe.latestUpdated = apiUpdated;
+            } else {
+              show.releasesMoe.updated = apiUpdated;
+              show.releasesMoe.latestUpdated = null;
+              show.releasesMoe.updateAvailable = false;
+            }
+          }
+        }
+
+        if (!isLibrary && forceMove) show.board = match ? "found" : "watching";
+        const nextBoard = getShowBoard(show);
+        if (forceMove && previousBoard !== nextBoard) moveShowToBoardOrder(show.id, previousBoard, nextBoard);
+        show.updatedAt = new Date().toISOString();
+      } catch (e) {
+        show.releasesMoe.error = e.message || "Refresh failed";
+        show.releasesMoe.checkedAt = new Date().toISOString();
+      }
+    }
+
+    function extractNyaaUrl(record) {
+      const seen = new Set();
+      const candidates = [];
+      const visit = (value) => {
+        if (!value || candidates.length) return;
+        if (typeof value === "string") {
+          const direct = value.match(/https?:\/\/(?:www\.)?nyaa\.(?:si|land)\/view\/\d+/i)?.[0];
+          if (direct) candidates.push(direct);
+          return;
+        }
+        if (typeof value !== "object" || seen.has(value)) return;
+        seen.add(value);
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+        } else {
+          Object.values(value).forEach(visit);
+        }
+      };
+      visit(record);
+      return candidates[0] || "";
+    }
+
+    async function checkWatchingStatuses() {
+      const now = Date.now();
+      const watchingToCheck = state.shows.filter(s => {
+        if (getShowBoard(s) !== "watching" || s.downloaded) return false;
+        if (!getAniListId(s)) return false;
+        const lastChecked = Date.parse(s.releasesMoe?.checkedAt || null) || 0;
+        return (now - lastChecked) > 12 * 60 * 60 * 1000;
+      });
+      if (!watchingToCheck.length) return;
+      setStatus(`Checking ${watchingToCheck.length} watching entries...`, "sync");
+      for (const s of watchingToCheck) {
+        await refreshShowStatus(s, { forceMove: true });
+        await sleep(400);
+      }
+      render();
+      saveState();
+      setStatus("System Ready");
+    }
+
+    async function checkLibraryUpdates(limit = 10) {
+      const libraryShows = state.shows
+        .filter(s => (s.downloaded || s.board === "downloaded") && getAniListId(s))
+        .sort((a, b) => {
+          const aTime = Date.parse(a.releasesMoe?.libraryCheckedAt || a.releasesMoe?.checkedAt || a.createdAt || null) || 0;
+          const bTime = Date.parse(b.releasesMoe?.libraryCheckedAt || b.releasesMoe?.checkedAt || b.createdAt || null) || 0;
+          return aTime - bTime;
+        })
+        .slice(0, limit);
+      if (!libraryShows.length) return;
+      setStatus(`Checking ${libraryShows.length} library entries...`, "sync");
+      for (const show of libraryShows) {
+        await refreshShowStatus(show, { forceMove: false });
+        show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+        show.releasesMoe.libraryCheckedAt = new Date().toISOString();
+        await sleep(400);
+      }
+      render();
+      saveState();
+      setStatus("System Ready");
+    }
+
+    async function runSearch() {
+      const search = els.searchInput.value.trim();
+      if (!search) {
+        closeResults();
+        return;
+      }
+      const requestId = ++searchRequestId;
+      setStatus("Searching AniList...", "sync");
+      els.results.classList.add("open");
+      els.results.innerHTML = '<div class="empty">Searching AniList...</div>';
+      pendingSearchResults = [];
+
+      try {
+        let sourceLabel = "AniList";
+        let results = [];
+        try {
+          results = await searchAniList(search);
+        } catch (aniListError) {
+          sourceLabel = "Jikan fallback";
+          setStatus("AniList unavailable; searching Jikan...", "sync");
+          results = await searchJikan(search);
+        }
+        if (requestId !== searchRequestId) return;
+        pendingSearchResults = results;
+        renderSearchResults(results, sourceLabel);
+        setStatus("System Ready");
+      } catch (e) {
+        if (requestId !== searchRequestId) return;
+        els.results.innerHTML = '<div class="empty">Search failed.</div>';
+        setStatus("Search failed", "error");
+      }
+    }
+
+    function renderSearchResults(results, sourceLabel) {
+      if (!results.length) {
+        els.results.innerHTML = '<div class="empty">No results found.</div>';
+        return;
+      }
+      els.results.innerHTML = `
+        <div class="hint" style="padding: 8px 10px;">Source: ${escapeHtml(sourceLabel)}</div>
+        ${results.map((m, i) => `
+          <button class="result-item" data-result-index="${i}" type="button">
+            <img class="result-poster" src="${escapeAttr(m.coverImage || "")}" alt="${escapeAttr(m.title)}" loading="lazy" />
+            <div class="result-info">
+              <span class="result-title">${escapeHtml(m.title)}</span>
+              <span class="result-meta">${escapeHtml([m.format, m.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>
+            </div>
+            <span class="badge ${isMediaOnBoard(m) ? "downloaded" : m.needsAniList ? "pending" : "found"}">${isMediaOnBoard(m) ? "Added" : m.needsAniList ? "Fallback" : "Add"}</span>
+          </button>
+        `).join("")}
+      `;
+    }
+
+    async function importPastedItems() {
+      const items = parsePasteItems(els.pasteInput.value);
+      if (!items.length) {
+        toast("Paste at least one item.", "error");
+        return;
+      }
+      els.pasteImportBtn.disabled = true;
+      els.pasteResults.classList.add("open");
+      els.pasteResults.innerHTML = '<div class="empty">Importing...</div>';
+      let added = 0;
+      const lines = [];
+      try {
+        for (let i = 0; i < items.length; i++) {
+          const input = items[i];
+          setStatus(`Importing ${i + 1}/${items.length}...`, "sync");
+          try {
+            const media = await mediaFromPastedInput(input);
+            if (!media) throw new Error("No match");
+            const before = state.shows.length;
+            await addShowFromMedia(media);
+            if (state.shows.length > before) added++;
+            lines.push(`<div class="result-item"><div class="result-info"><span class="result-title">${escapeHtml(input)}</span><span class="result-meta">Imported ${escapeHtml(media.title)}</span></div><span class="badge found">OK</span></div>`);
+          } catch (e) {
+            lines.push(`<div class="result-item"><div class="result-info"><span class="result-title">${escapeHtml(input)}</span><span class="result-meta">${escapeHtml(e.message || "Failed")}</span></div><span class="badge watching">Skipped</span></div>`);
+          }
+          els.pasteResults.innerHTML = lines.join("");
+          await sleep(250);
+        }
+        toast(`Imported ${added} item${added === 1 ? "" : "s"}.`);
+      } finally {
+        els.pasteImportBtn.disabled = false;
+        setStatus("System Ready");
+      }
+    }
+
+    function parsePasteItems(value) {
+      const seen = new Set();
+      return String(value || "")
+        .split(/[\n;]+/)
+        .map(v => v.trim())
+        .filter(Boolean)
+        .filter(v => {
+          const key = v.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+    }
+
+    async function mediaFromPastedInput(input) {
+      const anilistId = getAniListIdFromInput(input) || getReleasesMoeAniListIdFromInput(input);
+      if (anilistId) return getAniListMediaById(anilistId);
+
+      const malId = getMalIdFromInput(input);
+      if (malId) {
+        const byMal = await getAniListMediaByMalId(malId).catch(() => null);
+        if (byMal) return byMal;
+        return getJikanMediaById(malId);
+      }
+
+      const directLabel = String(input || "").match(/\b(?:anilist|alid|al)[:=#\s-]*(\d{2,})\b/i);
+      if (directLabel) return getAniListMediaById(Number(directLabel[1]));
+
+      const malLabel = String(input || "").match(/\b(?:myanimelist|mal)[:=#\s-]*(\d{2,})\b/i);
+      if (malLabel) return mediaFromPastedInput(`https://myanimelist.net/anime/${malLabel[1]}`);
+
+      const results = await searchAniList(input).catch(() => []);
+      if (results.length) return selectBestAniListCandidate({ title: input, seasonYear: getYearFromText(input) }, results) || results[0];
+      const fallback = await searchJikan(input);
+      return fallback[0] || null;
+    }
+
+    function getAniListIdFromInput(input) {
+      const val = String(input || "").trim();
+      const urlMatch = val.match(/anilist\.co\/anime\/(\d+)/i);
+      return urlMatch ? Number(urlMatch[1]) : null;
+    }
+
+    function getMalIdFromInput(input) {
+      const val = String(input || "").trim();
+      const urlMatch = val.match(/myanimelist\.net\/anime\/(\d+)/i);
+      return urlMatch ? Number(urlMatch[1]) : null;
+    }
+
+    function getReleasesMoeAniListIdFromInput(input) {
+      const val = String(input || "").trim();
+      const match = val.match(/releases\.moe\/(\d+)/i);
+      return match ? Number(match[1]) : null;
+    }
+
+    async function addManualShow() {
+      try {
+        const manualMedia = makeManualMedia();
+        setStatus("Adding manual show...", "sync");
+        let media = manualMedia;
+        if (manualMedia.externalIds.anilist) {
+          media = await getAniListMediaById(manualMedia.externalIds.anilist).catch(() => manualMedia);
+        } else if (manualMedia.externalIds.mal) {
+          media = await getAniListMediaByMalId(manualMedia.externalIds.mal).catch(() => manualMedia);
+        } else {
+          media = await resolveMediaToAniList(manualMedia);
+        }
+        await addShowFromMedia(media, { skipRefresh: false });
+        clearManualForm();
+      } catch (e) {
+        toast(e.message || "Manual add failed.", "error");
+      } finally {
+        setStatus("System Ready");
+      }
+    }
+
+    function clearManualForm() {
+      [els.manualTitle, els.manualYear, els.manualImageUrl, els.manualAnilistId, els.manualMalId, els.manualNotes].forEach(el => el.value = "");
+      els.manualFormat.value = "";
+    }
+
+    function normalizeTitle(val) {
+      return String(val || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function getYearFromText(val) {
+      const match = String(val || "").match(/\b((?:19|20)\d{2})\b/);
+      return match ? Number(match[1]) : null;
+    }
+
+    function tokenSimilarity(a, b) {
+      const aTokens = new Set(String(a || "").split(" ").filter(Boolean));
+      const bTokens = new Set(String(b || "").split(" ").filter(Boolean));
+      if (!aTokens.size || !bTokens.size) return 0;
+      let overlap = 0;
+      for (const token of aTokens) if (bTokens.has(token)) overlap++;
+      return overlap / Math.max(aTokens.size, bTokens.size);
+    }
+
+    async function regenerateShowToAniList(show, { silent = false } = {}) {
+      if (!show || getAniListId(show)) return false;
+      const previous = { ...show, externalIds: { ...(show.externalIds || {}) }, links: { ...(show.links || {}) } };
+      const resolved = await resolveMediaToAniList(show);
+      if (!resolved || !resolved.externalIds?.anilist) return false;
+
+      show.source = "anilist";
+      show.needsAniList = false;
+      show.externalIds = { anilist: resolved.externalIds.anilist, mal: resolved.externalIds.mal || previous.externalIds.mal || null };
+      show.title = resolved.title;
+      show.titleEnglish = resolved.titleEnglish;
+      show.titleRomaji = resolved.titleRomaji;
+      show.titleNative = resolved.titleNative;
+      show.coverImage = resolved.coverImage || previous.coverImage;
+      show.format = resolved.format || previous.format;
+      show.seasonYear = resolved.seasonYear || previous.seasonYear;
+      show.episodes = resolved.episodes || previous.episodes;
+      show.siteUrl = resolved.siteUrl;
+      show.links = { ...previous.links, ...resolved.links };
+      show.updatedAt = new Date().toISOString();
+      await refreshShowStatus(show, { forceMove: true });
+      if (!silent) toast(`Regenerated ${show.title}.`);
+      return true;
+    }
+
+    async function regenerateAllPending() {
+      const pending = state.shows.filter(show => !getAniListId(show));
+      if (!pending.length) {
+        toast("No pending AniList entries.");
+        return;
+      }
+      els.regenAllBtn.disabled = true;
+      let regenerated = 0;
+      try {
+        for (let i = 0; i < pending.length; i++) {
+          setStatus(`Regenerating ${i + 1}/${pending.length}...`, "sync");
+          if (await regenerateShowToAniList(pending[i], { silent: true })) regenerated++;
+          await sleep(500);
+        }
+        render();
+        saveState();
+        toast(`Regenerated ${regenerated}/${pending.length} entries.`);
+      } finally {
+        els.regenAllBtn.disabled = false;
+        setStatus("System Ready");
+      }
+    }
+
+    async function refreshAllReleases() {
+      const shows = state.shows.filter(show => getAniListId(show));
+      if (!shows.length) {
+        toast("No AniList-backed shows to refresh.");
+        return;
+      }
+      els.refreshAllBtn.disabled = true;
+      try {
+        for (let i = 0; i < shows.length; i++) {
+          setStatus(`Refreshing ${i + 1}/${shows.length}...`, "sync");
+          await refreshShowStatus(shows[i], { forceMove: true });
+          await sleep(350);
+        }
+        render();
+        saveState();
+        toast("Release statuses refreshed.");
+      } finally {
+        els.refreshAllBtn.disabled = false;
+        setStatus("System Ready");
+      }
+    }
+
+    function ensureOrderState() {
+      if (!state.order || typeof state.order !== "object") state.order = makeDefaultOrder();
+      BOARDS.forEach(board => {
+        if (!Array.isArray(state.order[board])) state.order[board] = [];
+      });
+    }
+
+    function migrateStateIfNeeded() {
+      state.schemaVersion = SCHEMA_VERSION;
+      if (!Array.isArray(state.shows)) state.shows = [];
+      if (!Array.isArray(state.groups)) state.groups = [];
+      if (!state.groupOrder || typeof state.groupOrder !== "object") state.groupOrder = {};
+      if (!state.ui || typeof state.ui !== "object") state.ui = makeDefaultUi();
+      state.ui = { ...makeDefaultUi(), ...state.ui };
+      ensureOrderState();
+
+      state.shows.forEach(show => {
+        const legacyAniList = Number(show.anilistId) || null;
+        const legacyMal = Number(show.malId) || null;
+        show.externalIds = {
+          anilist: Number(show.externalIds?.anilist || legacyAniList) || null,
+          mal: Number(show.externalIds?.mal || legacyMal) || null
+        };
+        show.source = show.source || (show.externalIds.anilist ? "anilist" : "manual");
+        show.needsAniList = !show.externalIds.anilist;
+        show.title = show.title || show.titleEnglish || show.titleRomaji || "Untitled";
+        show.titleEnglish = show.titleEnglish || "";
+        show.titleRomaji = show.titleRomaji || show.title || "";
+        show.titleNative = show.titleNative || "";
+        show.coverImage = show.coverImage || "";
+        show.format = show.format || "";
+        show.seasonYear = show.seasonYear || null;
+        show.episodes = show.episodes || null;
+        show.links = {
+          anilist: show.links?.anilist || (show.externalIds.anilist ? `https://anilist.co/anime/${show.externalIds.anilist}` : ""),
+          mal: show.links?.mal || (show.externalIds.mal ? `https://myanimelist.net/anime/${show.externalIds.mal}` : ""),
+          manual: show.links?.manual || ""
+        };
+        show.siteUrl = show.siteUrl || show.links.anilist || show.links.mal || show.links.manual || "";
+        show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+        show.board = show.board || (show.downloaded ? "downloaded" : "watching");
+        show.downloaded = !!show.downloaded || show.board === "downloaded";
+        show.allAvailableDownloaded = !!show.allAvailableDownloaded;
+        show.comments = show.comments || "";
+        show.groupId = show.groupId || null;
+        show.relations = Array.isArray(show.relations) ? show.relations : [];
+        show.createdAt = show.createdAt || new Date().toISOString();
+        show.updatedAt = show.updatedAt || show.createdAt;
+      });
+      migrateLegacyDividers();
+      reconcileOrders();
+      updateLibraryFilterButtons();
+      updateSortModeButton();
+      updateAddMode();
+    }
+
+    function migrateLegacyDividers() {
+      BOARDS.forEach(board => {
+        const oldOrder = state.order[board] || [];
+        const hasLegacyDividers = oldOrder.some(item => typeof item === "object" && item.type === "divider");
+        if (!hasLegacyDividers) return;
+        const newBoardOrder = [];
+        let currentGroupId = null;
+        oldOrder.forEach(item => {
+          if (typeof item === "object" && item.type === "divider") {
+            const newGroupId = item.id || uniqueId("grp");
+            if (!getGroupById(newGroupId)) {
+              state.groups.push({ id: newGroupId, name: item.name || "Folder", collapsed: !!item.collapsed, board });
+            }
+            state.groupOrder[newGroupId] = state.groupOrder[newGroupId] || [];
+            newBoardOrder.push(newGroupId);
+            currentGroupId = newGroupId;
+          } else if (typeof item === "string") {
+            const show = getShowById(item);
+            if (!show) return;
+            if (currentGroupId) {
+              show.groupId = currentGroupId;
+              state.groupOrder[currentGroupId].push(item);
+            } else {
+              show.groupId = null;
+              newBoardOrder.push(item);
+            }
+          }
+        });
+        state.order[board] = newBoardOrder;
+      });
+    }
+
+    function reconcileOrders() {
+      ensureOrderState();
+      const seenShows = new Set();
+
+      state.groups = state.groups.filter(group => BOARDS.includes(group.board));
+      state.shows.forEach(show => {
+        const board = getShowBoard(show);
+        if (show.groupId) {
+          const group = getGroupById(show.groupId);
+          if (!group || group.board !== board) show.groupId = null;
+        }
+      });
+
+      Object.keys(state.groupOrder).forEach(groupId => {
+        const group = getGroupById(groupId);
+        if (!group) {
+          delete state.groupOrder[groupId];
+          return;
+        }
+        if (!Array.isArray(state.groupOrder[groupId])) state.groupOrder[groupId] = [];
+        state.groupOrder[groupId] = state.groupOrder[groupId].filter(showId => {
+          const show = getShowById(showId);
+          return show && show.groupId === groupId && getShowBoard(show) === group.board;
+        });
+        state.groupOrder[groupId].forEach(showId => seenShows.add(showId));
+      });
+
+      BOARDS.forEach(board => {
+        const nextOrder = [];
+        state.order[board].forEach(id => {
+          const show = getShowById(id);
+          if (show) {
+            if (getShowBoard(show) === board && !show.groupId && !seenShows.has(id)) {
+              nextOrder.push(id);
+              seenShows.add(id);
+            }
+            return;
+          }
+          const group = getGroupById(id);
+          if (group && group.board === board) nextOrder.push(id);
+        });
+        state.shows.forEach(show => {
+          if (getShowBoard(show) === board && !show.groupId && !seenShows.has(show.id)) {
+            insertIntoUngroupedAZ(nextOrder, show.id);
+            seenShows.add(show.id);
+          }
+        });
+        state.order[board] = nextOrder;
+      });
+    }
+
+    function insertIntoUngroupedAZ(arr, showId) {
+      const show = getShowById(showId);
+      if (!show || arr.includes(showId)) return;
+      const firstGroupIndex = arr.findIndex(id => !!getGroupById(id));
+      const ungroupedEnd = firstGroupIndex !== -1 ? firstGroupIndex : arr.length;
+      let insertAt = -1;
+      for (let i = 0; i < ungroupedEnd; i++) {
+        const other = getShowById(arr[i]);
+        if (other && compareShowsAZ(show, other) < 0) {
+          insertAt = i;
+          break;
+        }
+      }
+      arr.splice(insertAt === -1 ? ungroupedEnd : insertAt, 0, showId);
+    }
+
+    function moveShowToBoardOrder(showId, previousBoard, nextBoard) {
+      ensureOrderState();
+      if (!BOARDS.includes(nextBoard)) return;
+      const show = getShowById(showId);
+      if (!show || previousBoard === nextBoard) return;
+      const sourceArr = show.groupId ? state.groupOrder[show.groupId] : state.order[previousBoard];
+      const idx = sourceArr?.indexOf(showId) ?? -1;
+      if (idx > -1) sourceArr.splice(idx, 1);
+      show.groupId = null;
+      insertIntoUngroupedAZ(state.order[nextBoard], showId);
+    }
+
+    function saveState() {
+      reconcileOrders();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      queueCloudSync(state);
+    }
+
+    function loadState() {
+      let parsed = null;
+      const raw = localStorage.getItem(STORAGE_KEY) || LEGACY_STORAGE_KEYS.map(k => localStorage.getItem(k)).find(Boolean);
+      if (raw) {
+        try { parsed = JSON.parse(raw); } catch (e) { console.error("Corrupted local storage.", e); }
+      }
+      if (parsed) Object.assign(state, Array.isArray(parsed) ? { shows: parsed } : parsed);
+      migrateStateIfNeeded();
+    }
+
+    function applyLoadedState(data) {
+      const normalized = Array.isArray(data) ? { shows: data } : data;
+      const next = makeDefaultState();
+      Object.assign(next, normalized || {});
+      Object.keys(state).forEach(key => delete state[key]);
+      Object.assign(state, next);
+      migrateStateIfNeeded();
+    }
+
+    function updateLibraryFilterButtons() {
+      els.filterAllBtn.classList.toggle("active", !state.ui.filterComplete && !state.ui.filterIncomplete);
+      els.filterCompleteBtn.classList.toggle("active", !!state.ui.filterComplete);
+      els.filterIncompleteBtn.classList.toggle("active", !!state.ui.filterIncomplete);
+    }
+
+    function updateSortModeButton() {
+      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode);
+      els.editOrderBtn.textContent = state.ui.sortMode ? "Done Ordering" : "Edit Order";
+    }
+
+    function updateAddMode() {
+      const mode = state.ui.addMode || "search";
+      els.addModeTabs.querySelectorAll("[data-add-mode]").forEach(btn => btn.classList.toggle("active", btn.dataset.addMode === mode));
+      els.addPanels.forEach(panel => panel.classList.toggle("active", panel.id === `add-${mode}-panel`));
+    }
+
+    function libraryFilterAllows(show) {
+      if (state.ui.filterComplete) return !!show.allAvailableDownloaded;
+      if (state.ui.filterIncomplete) return !show.allAvailableDownloaded;
+      return true;
+    }
+
+    function render() {
+      reconcileOrders();
+      let visible = state.shows;
+      if (state.localSearch) {
+        const q = state.localSearch.toLowerCase();
+        visible = visible.filter(s => [s.title, s.titleEnglish, s.titleRomaji, s.titleNative, s.format, s.seasonYear, s.comments].some(v => String(v || "").toLowerCase().includes(q)));
+      }
+      const found = visible.filter(s => getShowBoard(s) === "found");
+      const watching = visible.filter(s => getShowBoard(s) === "watching");
+      const downloaded = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
+      updateSortModeButton();
+      updateLibraryFilterButtons();
+      renderBoard("found", found, els.foundList, els.foundCount);
+      renderBoard("watching", watching, els.watchingList, els.watchingCount);
+      renderBoard("downloaded", downloaded, els.downloadedList, els.downloadedCount);
+    }
+
+    function renderBoard(type, shows, listEl, countEl) {
+      countEl.textContent = shows.length;
+      listEl.dataset.board = type;
+      const hasGroups = state.groups.some(g => g.board === type);
+      if (!shows.length && (!hasGroups || state.localSearch)) {
+        listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
+        return;
+      }
+      if (state.localSearch) {
+        listEl.innerHTML = shows.map(renderCard).join("");
+        return;
+      }
+      const html = [];
+      if (type === "downloaded" && state.ui.sortMode) {
+        html.push(`<div class="mini-actions"><button class="btn compact" type="button" data-sort-az-board="downloaded">A-Z Root</button><button class="btn compact" type="button" data-add-group-board="downloaded">+ Folder</button></div>`);
+      }
+      state.order[type].forEach(id => {
+        const group = getGroupById(id);
+        if (group) {
+          html.push(renderGroup(group, shows.filter(s => s.groupId === group.id)));
+        } else {
+          const show = getShowById(id);
+          if (show && shows.includes(show)) html.push(renderCard(show));
+        }
+      });
+      listEl.innerHTML = html.join("");
+    }
+
+    function renderGroup(group, groupShows) {
+      const canEdit = state.ui.sortMode && !state.localSearch;
+      const isCollapsed = !!group.collapsed;
+      const orderedIds = state.groupOrder[group.id] || [];
+      const firstShow = orderedIds.length ? getShowById(orderedIds[0]) : null;
+      const cover = firstShow ? escapeAttr(firstShow.coverImage) : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76'%3E%3Crect width='56' height='76' fill='%23252c3d'/%3E%3C/svg%3E";
+      const itemsHtml = orderedIds.map(id => groupShows.find(s => s.id === id)).filter(Boolean).map(renderCard).join("");
+      const actions = canEdit ? `
+        <div class="menu">
+          <summary style="display:none"></summary>
+          <div class="mini-actions">
+            <button class="btn compact" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="up" type="button" ${!canMoveItem(group.id, "group", "up") ? "disabled" : ""}>Up</button>
+            <button class="btn compact" data-move-id="${escapeAttr(group.id)}" data-item-type="group" data-direction="down" type="button" ${!canMoveItem(group.id, "group", "down") ? "disabled" : ""}>Down</button>
+            <button class="btn compact danger" data-remove-group="${escapeAttr(group.id)}" type="button">Delete</button>
+          </div>
+        </div>
+      ` : "";
+      return `
+        <article class="show-card group-container" data-order-item-id="${escapeAttr(group.id)}" data-order-item-type="group" data-board="${escapeAttr(group.board)}">
+          <div class="card-main group-header" data-collapse-group="${escapeAttr(group.id)}">
+            <button class="divider-collapse-btn ${isCollapsed ? "is-collapsed" : ""}" type="button">▼</button>
+            <img src="${cover}" class="thumb" alt="Group Cover" loading="lazy" />
+            <div class="card-content">
+              <input type="text" class="divider-name-input" data-group-name-id="${escapeAttr(group.id)}" value="${escapeAttr(group.name)}" placeholder="New Folder" ${!canEdit ? "readonly tabindex='-1'" : ""} />
+              <div class="card-meta"><span class="badge downloaded">Folder</span><span>${groupShows.length} Shows</span></div>
+            </div>
+          </div>
+          ${actions ? `<div style="padding: 0 14px 12px 104px;">${actions}</div>` : ""}
+          <div class="group-list ${isCollapsed ? "is-collapsed" : ""}" data-group-list-id="${escapeAttr(group.id)}" data-board="${escapeAttr(group.board)}">${itemsHtml}</div>
+        </article>
+      `;
+    }
+
+    function renderCard(show) {
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+      const board = getShowBoard(show);
+      const isDownloaded = board === "downloaded";
+      const isNotes = !!state.ui.openNotes[show.id];
+      const sortMode = !!state.ui.sortMode && isDownloaded;
+      const titleUrl = show.releasesMoe.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "";
+      const titleHtml = titleUrl ? `<a href="${escapeAttr(titleUrl)}" target="_blank" rel="noreferrer">${escapeHtml(show.title)}</a>` : escapeHtml(show.title);
+      const badges = [];
+      if (show.needsAniList || !getAniListId(show)) badges.push('<span class="badge pending">Needs AniList</span>');
+      if (show.source === "manual") badges.push('<span class="badge manual">Manual</span>');
+      if (isDownloaded) {
+        if (show.releasesMoe.updateAvailable) badges.push('<span class="badge update">Updated</span>');
+        if (show.allAvailableDownloaded) badges.push('<span class="badge downloaded">Complete</span>');
+      } else {
+        badges.push(show.releasesMoe.found ? '<span class="badge found">Found</span>' : '<span class="badge watching">Watching</span>');
+      }
+      const releaseLink = show.releasesMoe.releaseUrl || (getAniListId(show) && show.releasesMoe.found ? `https://releases.moe/${getAniListId(show)}/` : "");
+      const nyaaLink = show.releasesMoe.nyaaUrl || "";
+      const quickLinks = `
+        ${releaseLink ? `<a class="quick-link primary" href="${escapeAttr(releaseLink)}" target="_blank" rel="noreferrer">releases.moe</a>` : ""}
+        ${nyaaLink ? `<a class="quick-link" href="${escapeAttr(nyaaLink)}" target="_blank" rel="noreferrer">Nyaa</a>` : ""}
+        ${!releaseLink && !nyaaLink ? `<span class="quick-link disabled">No release link</span>` : ""}
+      `;
+      const orderActions = sortMode ? `
+        <button data-send-top-id="${escapeAttr(show.id)}" type="button">Send to root</button>
+        <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="up" type="button" ${!canMoveItem(show.id, "show", "up") ? "disabled" : ""}>Move up</button>
+        <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="down" type="button" ${!canMoveItem(show.id, "show", "down") ? "disabled" : ""}>Move down</button>
+      ` : "";
+      const normalActions = `
+        ${show.needsAniList || !getAniListId(show) ? `<button data-regen-id="${escapeAttr(show.id)}" type="button">Regenerate AniList</button>` : ""}
+        <button data-refresh-id="${escapeAttr(show.id)}" type="button">Refresh release</button>
+        <button data-explore-id="${escapeAttr(show.id)}" type="button" ${!getAniListId(show) ? "disabled" : ""}>Find related</button>
+        ${show.releasesMoe.updateAvailable ? `<button data-ack-id="${escapeAttr(show.id)}" type="button">Acknowledge update</button>` : ""}
+        ${isDownloaded ? `<button data-complete-id="${escapeAttr(show.id)}" type="button">${show.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}
+        <button data-notes-id="${escapeAttr(show.id)}" type="button">${isNotes ? "Close notes" : "Edit notes"}</button>
+        <button class="danger" data-remove-id="${escapeAttr(show.id)}" type="button">Remove</button>
+      `;
+      return `
+        <article class="show-card ${isNotes ? "notes-open" : ""}" data-show-id="${escapeAttr(show.id)}" data-order-item-id="${escapeAttr(show.id)}" data-order-item-type="show" data-board="${escapeAttr(board)}" data-group-id="${escapeAttr(show.groupId || "")}">
+          <div class="card-main">
+            <input type="checkbox" class="download-check" data-download-id="${escapeAttr(show.id)}" ${isDownloaded ? "checked" : ""} title="Mark downloaded" />
+            <img src="${escapeAttr(show.coverImage)}" class="thumb" alt="${escapeAttr(show.title)}" loading="lazy" />
+            <div class="card-content">
+              <div class="card-title">${titleHtml}</div>
+              <div class="card-meta"><span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badges.join("")}</div>
+              <div class="card-checked-time">Checked: ${formatTimeAgo(show.releasesMoe.checkedAt)}${show.releasesMoe.error ? ` · ${escapeHtml(show.releasesMoe.error)}` : ""}</div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="links-row">${quickLinks}</div>
+            <details class="menu">
+              <summary aria-label="Show actions">⋯</summary>
+              <div class="menu-panel">
+                ${show.links?.anilist ? `<a href="${escapeAttr(show.links.anilist)}" target="_blank" rel="noreferrer">AniList</a>` : ""}
+                ${show.links?.mal ? `<a href="${escapeAttr(show.links.mal)}" target="_blank" rel="noreferrer">MyAnimeList</a>` : ""}
+                ${orderActions || normalActions}
+              </div>
+            </details>
+          </div>
+          <div class="notes-panel"><textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea></div>
+        </article>
+      `;
+    }
+
+    function formatTimeAgo(value) {
+      if (!value) return "Never";
+      const diff = (Date.now() - new Date(value).getTime()) / 1000;
+      if (!Number.isFinite(diff)) return "Never";
+      if (diff < 60) return "Just now";
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    function toggleDownloadedStatus(id, checked) {
+      const show = getShowById(id);
+      if (!show) return;
+      const previousBoard = getShowBoard(show);
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+      show.downloaded = checked;
+      if (checked) {
+        show.board = "downloaded";
+        show.releasesMoe.updateAvailable = false;
+        if (show.releasesMoe.latestUpdated) {
+          show.releasesMoe.updated = show.releasesMoe.latestUpdated;
+          show.releasesMoe.latestUpdated = null;
+        }
+        show.releasesMoe.libraryCheckedAt = show.releasesMoe.libraryCheckedAt || new Date().toISOString();
+      } else {
+        show.board = show.releasesMoe.found ? "found" : "watching";
+        show.allAvailableDownloaded = false;
+        show.releasesMoe.updateAvailable = false;
+        show.releasesMoe.latestUpdated = null;
+      }
+      const nextBoard = getShowBoard(show);
+      moveShowToBoardOrder(show.id, previousBoard, nextBoard);
+      show.updatedAt = new Date().toISOString();
+      render();
+      saveState();
+      toast(checked ? "Moved to Library" : "Moved back to Active");
+    }
+
+    function toggleAllAvailableDownloaded(id) {
+      const show = getShowById(id);
+      if (!show) return;
+      show.allAvailableDownloaded = !show.allAvailableDownloaded;
+      show.updatedAt = new Date().toISOString();
+      render();
+      saveState();
+    }
+
+    function acknowledgeUpdate(id) {
+      const show = getShowById(id);
+      if (!show) return;
+      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
+      if (show.releasesMoe.latestUpdated) {
+        show.releasesMoe.updated = show.releasesMoe.latestUpdated;
+        show.releasesMoe.latestUpdated = null;
+      }
+      show.releasesMoe.updateAvailable = false;
+      show.updatedAt = new Date().toISOString();
+      render();
+      saveState();
+      toast("Update acknowledged.");
+    }
+
+    function removeShow(id) {
+      if (!confirm("Remove this show entirely?")) return;
+      const show = getShowById(id);
+      if (!show) return;
+      const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
+      const idx = arr?.indexOf(id) ?? -1;
+      if (idx > -1) arr.splice(idx, 1);
+      state.shows = state.shows.filter(s => s.id !== id);
+      render();
+      saveState();
+      toast("Removed.");
+    }
+
+    function queueCommentUpdate(id, value) {
+      const show = getShowById(id);
+      if (show) show.comments = value;
+      clearTimeout(commentSaveTimers.get(id));
+      commentSaveTimers.set(id, setTimeout(saveState, 500));
+    }
+
+    function addGroup(board) {
+      if (state.localSearch || !state.ui.sortMode || !BOARDS.includes(board)) return;
+      const id = uniqueId("grp");
+      state.groups.push({ id, name: "New Folder", collapsed: false, board });
+      state.groupOrder[id] = [];
+      state.order[board].unshift(id);
+      render();
+      saveState();
+    }
+
+    function removeGroup(groupId) {
+      if (!state.ui.sortMode) return;
+      const group = getGroupById(groupId);
+      if (!group) return;
+      state.shows.forEach(show => {
+        if (show.groupId === groupId) show.groupId = null;
+      });
+      state.groups = state.groups.filter(g => g.id !== groupId);
+      delete state.groupOrder[groupId];
+      render();
+      saveState();
+      toast("Folder deleted. Shows moved to root.");
+    }
+
+    function toggleCollapseGroup(groupId) {
+      const group = getGroupById(groupId);
+      if (!group) return;
+      group.collapsed = !group.collapsed;
+      render();
+      saveState();
+    }
+
+    function sortBoardAZ(board) {
+      if (!BOARDS.includes(board)) return;
+      state.order[board].sort((aId, bId) => getSortName(aId).localeCompare(getSortName(bId), undefined, { sensitivity: "base", numeric: true }));
+      render();
+      saveState();
+    }
+
+    function swap(arr, id, dir) {
+      const idx = arr.indexOf(id);
+      if (idx < 0) return;
+      const target = dir === "up" ? idx - 1 : idx + 1;
+      if (target < 0 || target >= arr.length) return;
+      [arr[idx], arr[target]] = [arr[target], arr[idx]];
+    }
+
+    function canMoveItem(id, type, dir) {
+      if (type === "group") {
+        const group = getGroupById(id);
+        if (!group) return false;
+        const arr = state.order[group.board];
+        const idx = arr.indexOf(id);
+        return dir === "up" ? idx > 0 : idx < arr.length - 1;
+      }
+      const show = getShowById(id);
+      if (!show) return false;
+      const arr = show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)];
+      const idx = arr.indexOf(id);
+      return dir === "up" ? idx > 0 : idx < arr.length - 1;
+    }
+
+    function moveItemUI(itemId, itemType, direction) {
+      if (state.localSearch || !state.ui.sortMode) return;
+      if (itemType === "group") {
+        const group = getGroupById(itemId);
+        if (group) swap(state.order[group.board], itemId, direction);
+      } else {
+        const show = getShowById(itemId);
+        if (show) swap(show.groupId ? state.groupOrder[show.groupId] : state.order[getShowBoard(show)], itemId, direction);
+      }
+      render();
+      saveState();
+    }
+
+    function sendShowToTop(showId) {
+      const show = getShowById(showId);
+      if (!show) return;
+      const board = getShowBoard(show);
+      const source = show.groupId ? state.groupOrder[show.groupId] : state.order[board];
+      const idx = source.indexOf(showId);
+      if (idx > -1) source.splice(idx, 1);
+      show.groupId = null;
+      state.order[board].unshift(showId);
+      render();
+      saveState();
+      toast("Sent to root.");
+    }
+
+    async function runSmartGrouping() {
+      reconcileOrders();
+      const idsToSync = state.shows.filter(s => getShowBoard(s) === "downloaded" && getAniListId(s) && !s.relationsFetched).map(s => getAniListId(s));
+      if (idsToSync.length) {
+        setStatus(`Analyzing ${idsToSync.length} shows...`, "sync");
+        for (let i = 0; i < idsToSync.length; i += 50) {
+          const chunk = idsToSync.slice(i, i + 50);
+          try {
+            const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{node{id}relationType}}}}}`;
+            const json = await safeAniListRequest(query, { ids: chunk });
+            json.data.Page.media.forEach(m => {
+              const show = state.shows.find(s => getAniListId(s) === m.id);
+              if (!show) return;
+              const strongTypes = ["PREQUEL", "SEQUEL", "SUMMARY"];
+              show.relations = m.relations.edges.filter(e => strongTypes.includes(e.relationType)).map(e => Number(e.node.id));
+              show.relationsFetched = true;
+            });
+            await sleep(500);
+          } catch (e) {
+            toast("Smart group sync interrupted.", "error");
+            break;
+          }
+        }
+      }
+      performLocalClustering();
+    }
+
+    function performLocalClustering() {
+      setStatus("Organizing folders...", "sync");
+      const families = [];
+      state.shows.filter(s => getShowBoard(s) === "downloaded" && getAniListId(s)).forEach(show => {
+        const ids = new Set([getAniListId(show), ...(show.relations || []).map(Number)]);
+        const matches = [];
+        families.forEach((family, index) => {
+          if ([...ids].some(id => family.has(id))) matches.push(index);
+        });
+        if (matches.length) {
+          const first = matches[0];
+          ids.forEach(id => families[first].add(id));
+          matches.slice(1).reverse().forEach(idx => {
+            families[idx].forEach(id => families[first].add(id));
+            families.splice(idx, 1);
+          });
+        } else {
+          families.push(ids);
+        }
+      });
+
+      families.forEach(familyIds => {
+        const shows = state.shows.filter(s => familyIds.has(getAniListId(s)) && getShowBoard(s) === "downloaded");
+        const grouped = shows.filter(s => s.groupId);
+        const ungrouped = shows.filter(s => !s.groupId);
+        if (!ungrouped.length) return;
+        let targetGroupId = grouped[0]?.groupId || null;
+        if (!targetGroupId && ungrouped.length > 1) {
+          const oldest = [...ungrouped].sort((a, b) => (a.seasonYear || 0) - (b.seasonYear || 0))[0];
+          targetGroupId = uniqueId("grp");
+          state.groups.push({ id: targetGroupId, name: oldest.title.split(/[:\-(]/)[0].trim() || "Franchise", collapsed: true, board: "downloaded" });
+          state.groupOrder[targetGroupId] = [];
+          state.order.downloaded.unshift(targetGroupId);
+        }
+        if (!targetGroupId) return;
+        ungrouped.forEach(show => {
+          show.groupId = targetGroupId;
+          const idx = state.order.downloaded.indexOf(show.id);
+          if (idx > -1) state.order.downloaded.splice(idx, 1);
+          if (!state.groupOrder[targetGroupId].includes(show.id)) state.groupOrder[targetGroupId].push(show.id);
+        });
+        state.groupOrder[targetGroupId].sort((aId, bId) => {
+          const a = getShowById(aId);
+          const b = getShowById(bId);
+          return (a.seasonYear || 0) - (b.seasonYear || 0) || ((getAniListId(a) || 0) - (getAniListId(b) || 0));
+        });
+      });
+      sortBoardAZ("downloaded");
+      setStatus("System Ready");
+      toast("Dashboard organized.");
+    }
+
+    async function openExplorer(showId) {
+      const show = getShowById(showId);
+      const anilistId = getAniListId(show);
+      if (!show || !anilistId) return;
+      els.exploreModal.classList.add("open");
+      els.exploreModalTitle.textContent = `Franchise: ${show.title}`;
+      els.exploreModalBody.innerHTML = '<div class="empty">Scanning franchise tree...</div>';
+      try {
+        let queue = [anilistId];
+        const visited = new Set(queue);
+        const foundMedia = new Map();
+        for (let pass = 0; pass < 3; pass++) {
+          if (!queue.length) break;
+          const nextQueue = [];
+          for (let i = 0; i < queue.length; i += 50) {
+            const chunk = queue.slice(i, i + 50);
+            const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{relationType node{${ANILIST_MEDIA_FIELDS}}}}}}}`;
+            const json = await safeAniListRequest(query, { ids: chunk });
+            const mediaNodes = json?.data?.Page?.media || [];
+            mediaNodes.forEach(m => {
+              (m.relations?.edges || []).forEach(edge => {
+                const node = edge.node;
+                if (!node || visited.has(node.id)) return;
+                visited.add(node.id);
+                const normalized = normalizeAniListMedia(node);
+                if (!["MANGA", "NOVEL", "ONE_SHOT", "MUSIC"].includes(normalized.format)) {
+                  foundMedia.set(node.id, { ...normalized, relationType: edge.relationType });
+                  nextQueue.push(node.id);
+                }
+              });
+            });
+          }
+          queue = nextQueue;
+        }
+        const addable = Array.from(foundMedia.values()).filter(m => !isMediaOnBoard(m));
+        window._exploreCache = addable;
+        els.exploreModalBody.innerHTML = addable.length ? addable.map((m, index) => `
+          <div class="relation-item">
+            <img class="result-poster" src="${escapeAttr(m.coverImage || "")}" alt="${escapeAttr(m.title)}" loading="lazy" />
+            <div class="result-info">
+              <span class="relation-type">${escapeHtml(String(m.relationType || "Related").replace(/_/g, " "))}</span>
+              <span class="result-title">${escapeHtml(m.title)}</span>
+              <span class="result-meta">${escapeHtml([m.format, m.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>
+            </div>
+            <button class="btn primary compact" data-add-explore-index="${index}" type="button">Add</button>
+          </div>
+        `).join("") : '<div class="empty">All related anime are already on your board.</div>';
+      } catch (e) {
+        els.exploreModalBody.innerHTML = '<div class="empty" style="color: var(--danger);">Failed to load relations.</div>';
+      }
+    }
+
+    function exportJson() {
+      reconcileOrders();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
+      link.download = "anime-releases-board-v3.json";
+      link.click();
+      toast("Exported.");
+    }
+
+    async function importJson(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        applyLoadedState(JSON.parse(text));
+        render();
+        saveState();
+        toast("Imported successfully.");
+      } catch (err) {
+        toast("Import failed.", "error");
+      } finally {
+        e.target.value = "";
+      }
+    }
+
+    function clearBoard() {
+      if (!confirm("Nuke everything?")) return;
+      applyLoadedState(makeDefaultState());
+      render();
+      saveState();
+      toast("Board cleared.");
+    }
+
+    function loadSyncSettings() {
+      try {
+        const raw = localStorage.getItem(SYNC_SETTINGS_KEY);
+        if (!raw) return;
+        const settings = JSON.parse(raw);
+        els.githubPat.value = settings.githubPat || "";
+        els.gistId.value = settings.gistId || "";
+      } catch (e) {
+        console.error("Failed to load sync settings", e);
+      }
+    }
+
+    function saveSyncSettings() {
+      localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify({
+        githubPat: els.githubPat.value.trim(),
+        gistId: els.gistId.value.trim()
+      }));
+    }
+
+    async function pullFromCloud() {
+      const pat = els.githubPat.value.trim();
+      const gistId = els.gistId.value.trim();
+      if (!pat || !gistId) return null;
+      setStatus("Pulling from cloud...", "sync");
+      try {
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+          method: "GET",
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}` },
+          signal: timeoutSignal(10000)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const content = data.files?.["state.json"]?.content;
+        return content ? JSON.parse(content) : null;
+      } catch (e) {
+        setStatus("Cloud pull failed", "error");
+        return null;
+      }
+    }
+
+    async function pushToCloud(stateObject) {
+      const pat = els.githubPat.value.trim();
+      const gistId = els.gistId.value.trim();
+      if (!pat || !gistId) return;
+      setStatus("Pushing to cloud...", "sync");
+      try {
+        await fetch(`https://api.github.com/gists/${gistId}`, {
+          method: "PATCH",
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${pat}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ files: { "state.json": { content: JSON.stringify(stateObject, null, 2) } } })
+        });
+        setStatus("System Ready");
+      } catch (e) {
+        setStatus("Sync Failed", "error");
+      }
+    }
+
+    function queueCloudSync(stateObject) {
+      clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = setTimeout(() => pushToCloud(stateObject), 2500);
+    }
+
+    async function forceSync() {
+      try {
+        els.syncNowBtn.disabled = true;
+        els.syncNowBtn.textContent = "Syncing...";
+        saveSyncSettings();
+        const cloudState = await pullFromCloud();
+        if (cloudState && Array.isArray(cloudState.shows) && cloudState.shows.length > 0) {
+          applyLoadedState(cloudState);
+          saveState();
+          render();
+          toast("Force pull complete.");
+        } else if (state.shows.length > 0) {
+          await pushToCloud(state);
+          toast("Force push complete.");
+        } else {
+          toast("Both cloud and local are empty.", "error");
+          setStatus("System Ready");
+        }
+      } finally {
+        els.syncNowBtn.disabled = false;
+        els.syncNowBtn.textContent = "Pull & Sync";
+      }
+    }
+
+    function bindEvents() {
+      els.tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+          els.tabs.forEach(t => t.classList.remove("active"));
+          els.tabViews.forEach(v => v.classList.remove("active"));
+          tab.classList.add("active");
+          document.getElementById(tab.dataset.target).classList.add("active");
+          els.boardSearchInput.placeholder = tab.dataset.target === "view-downloaded" ? "Search library..." : "Filter active shows...";
+        });
+      });
+
+      els.addModeTabs.addEventListener("click", e => {
+        const btn = e.target.closest("[data-add-mode]");
+        if (!btn) return;
+        state.ui.addMode = btn.dataset.addMode;
+        updateAddMode();
+        saveState();
+      });
+
+      els.searchBtn.addEventListener("click", runSearch);
+      els.searchInput.addEventListener("input", debounce(runSearch, 350));
+      els.searchInput.addEventListener("keydown", e => {
+        if (e.key === "Escape") closeResults();
+        if (e.key === "Enter") runSearch();
+      });
+      els.results.addEventListener("click", e => {
+        const btn = e.target.closest("[data-result-index]");
+        if (!btn) return;
+        const media = pendingSearchResults[Number(btn.dataset.resultIndex)];
+        if (media) addShowFromSearchResult(media);
+      });
+      document.addEventListener("click", e => {
+        if (!e.target.closest("#add-search-panel")) closeResults();
+      });
+
+      els.pasteImportBtn.addEventListener("click", importPastedItems);
+      els.pasteClearBtn.addEventListener("click", () => {
+        els.pasteInput.value = "";
+        els.pasteResults.innerHTML = "";
+        els.pasteResults.classList.remove("open");
+      });
+      els.manualAddBtn.addEventListener("click", addManualShow);
+      els.manualClearBtn.addEventListener("click", clearManualForm);
+
+      els.boardSearchInput.addEventListener("input", e => {
+        state.localSearch = e.target.value.toLowerCase();
+        render();
+      });
+      els.boards.addEventListener("click", handleBoardClick);
+      els.boards.addEventListener("change", e => {
+        const checkbox = e.target.closest("[data-download-id]");
+        if (checkbox) toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked);
+      });
+      els.boards.addEventListener("input", handleBoardInput);
+
+      els.filterAllBtn.addEventListener("click", () => {
+        state.ui.filterComplete = false;
+        state.ui.filterIncomplete = false;
+        render();
+        saveState();
+      });
+      els.filterCompleteBtn.addEventListener("click", () => {
+        state.ui.filterComplete = true;
+        state.ui.filterIncomplete = false;
+        render();
+        saveState();
+      });
+      els.filterIncompleteBtn.addEventListener("click", () => {
+        state.ui.filterComplete = false;
+        state.ui.filterIncomplete = true;
+        render();
+        saveState();
+      });
+      els.editOrderBtn.addEventListener("click", () => {
+        state.ui.sortMode = !state.ui.sortMode;
+        render();
+        saveState();
+      });
+
+      els.smartGroupBtn.addEventListener("click", runSmartGrouping);
+      els.refreshAllBtn.addEventListener("click", refreshAllReleases);
+      els.regenAllBtn.addEventListener("click", regenerateAllPending);
+      els.exportBtn.addEventListener("click", exportJson);
+      els.importBtn.addEventListener("click", () => els.importFile.click());
+      els.importFile.addEventListener("change", importJson);
+      els.clearBtn.addEventListener("click", clearBoard);
+      [els.githubPat, els.gistId].forEach(el => {
+        el.addEventListener("change", saveSyncSettings);
+        el.addEventListener("blur", saveSyncSettings);
+      });
+      els.syncNowBtn.addEventListener("click", forceSync);
+
+      els.closeExploreBtn.addEventListener("click", () => els.exploreModal.classList.remove("open"));
+      els.exploreModal.addEventListener("click", e => {
+        if (e.target === els.exploreModal) els.exploreModal.classList.remove("open");
+      });
+      els.exploreModalBody.addEventListener("click", async e => {
+        const btn = e.target.closest("[data-add-explore-index]");
+        if (!btn) return;
+        const media = window._exploreCache?.[Number(btn.dataset.addExploreIndex)];
+        if (!media) return;
+        btn.disabled = true;
+        btn.textContent = "Added";
+        await addShowFromMedia(media);
+      });
+    }
+
+    async function handleBoardClick(e) {
+      const details = e.target.closest("details.menu");
+      if (details && e.target.closest("button, a")) {
+        setTimeout(() => { details.open = false; }, 80);
+      }
+
+      const refreshBtn = e.target.closest("[data-refresh-id]");
+      if (refreshBtn) {
+        const show = getShowById(refreshBtn.dataset.refreshId);
+        if (!show) return;
+        refreshBtn.disabled = true;
+        setStatus("Refreshing show...", "sync");
+        await refreshShowStatus(show, { forceMove: true });
+        render();
+        saveState();
+        setStatus("System Ready");
+        toast(`Refreshed ${show.title}.`);
+        return;
+      }
+      const regenBtn = e.target.closest("[data-regen-id]");
+      if (regenBtn) {
+        const show = getShowById(regenBtn.dataset.regenId);
+        if (!show) return;
+        regenBtn.disabled = true;
+        setStatus("Regenerating AniList link...", "sync");
+        const ok = await regenerateShowToAniList(show);
+        render();
+        saveState();
+        setStatus("System Ready");
+        if (!ok) toast("Could not regenerate yet.", "error");
+        return;
+      }
+      const exploreBtn = e.target.closest("[data-explore-id]");
+      if (exploreBtn) { openExplorer(exploreBtn.dataset.exploreId); return; }
+      const notesBtn = e.target.closest("[data-notes-id]");
+      if (notesBtn) {
+        state.ui.openNotes[notesBtn.dataset.notesId] = !state.ui.openNotes[notesBtn.dataset.notesId];
+        render();
+        saveState();
+        return;
+      }
+      const completeBtn = e.target.closest("[data-complete-id]");
+      if (completeBtn) { toggleAllAvailableDownloaded(completeBtn.dataset.completeId); return; }
+      const ackBtn = e.target.closest("[data-ack-id]");
+      if (ackBtn) { acknowledgeUpdate(ackBtn.dataset.ackId); return; }
+      const removeBtn = e.target.closest("[data-remove-id]");
+      if (removeBtn) { removeShow(removeBtn.dataset.removeId); return; }
+      const sortAzBtn = e.target.closest("[data-sort-az-board]");
+      if (sortAzBtn) { sortBoardAZ(sortAzBtn.dataset.sortAzBoard); return; }
+      const addGroupBtn = e.target.closest("[data-add-group-board]");
+      if (addGroupBtn) { addGroup(addGroupBtn.dataset.addGroupBoard); return; }
+      const removeGroupBtn = e.target.closest("[data-remove-group]");
+      if (removeGroupBtn) { removeGroup(removeGroupBtn.dataset.removeGroup); return; }
+      const moveBtn = e.target.closest("[data-move-id]");
+      if (moveBtn) { moveItemUI(moveBtn.dataset.moveId, moveBtn.dataset.itemType, moveBtn.dataset.direction); return; }
+      const topBtn = e.target.closest("[data-send-top-id]");
+      if (topBtn) { sendShowToTop(topBtn.dataset.sendTopId); return; }
+      const groupHeader = e.target.closest(".group-header");
+      if (groupHeader && !e.target.closest(".divider-name-input")) {
+        toggleCollapseGroup(groupHeader.dataset.collapseGroup);
+      }
+    }
+
+    function handleBoardInput(e) {
+      const comment = e.target.closest("[data-comment-id]");
+      if (comment) {
+        queueCommentUpdate(comment.dataset.commentId, comment.value);
+        return;
+      }
+      const groupName = e.target.closest("[data-group-name-id]");
+      if (groupName) {
+        const group = getGroupById(groupName.dataset.groupNameId);
+        if (group) {
+          group.name = groupName.value;
+          clearTimeout(dividerSaveTimers.get(group.id));
+          dividerSaveTimers.set(group.id, setTimeout(saveState, 500));
+        }
+      }
+    }
+
+    function closeResults() {
+      els.results.classList.remove("open");
+    }
+
+    function debounce(fn, ms) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    async function init() {
+      try {
+        loadSyncSettings();
+        if (els.githubPat.value.trim() && els.gistId.value.trim()) {
+          const cloudState = await pullFromCloud();
+          const localRaw = localStorage.getItem(STORAGE_KEY);
+          let localState = null;
+          try { localState = localRaw ? JSON.parse(localRaw) : null; } catch {}
+          if (cloudState && Array.isArray(cloudState.shows) && cloudState.shows.length > 0) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
+            toast("Cloud sync complete.");
+          } else if (localState && Array.isArray(localState.shows) && localState.shows.length > 0) {
+            pushToCloud(localState);
+            toast("Pushed local board to empty cloud.");
+          }
+        }
+        loadState();
+        bindEvents();
+        render();
+        setStatus("System Ready");
+        await checkWatchingStatuses();
+        await checkLibraryUpdates(10);
+      } catch (error) {
+        console.error("Dashboard Boot Crash:", error);
+        setStatus("System Ready");
+        toast("Recovered from background error.", "error");
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
