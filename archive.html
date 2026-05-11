@@ -2925,19 +2925,46 @@
     }
 
     async function init() {
+      // Bind UI events first. Storage/cloud failures should never make Import,
+      // Pull & Sync, or other recovery buttons unusable.
       try {
         loadSyncSettings();
-        await loadState();
         bindEvents();
-        render();
-        setStatus("System Ready");
+      } catch (error) {
+        console.error("Initial UI binding failed:", error);
+        setStatus("System Ready", "error");
+        toast("Startup controls failed to bind. Export/import may not work.", "error");
+        return;
+      }
+
+      try {
+        await loadState();
+      } catch (error) {
+        console.error("Local board load failed:", error);
+        // Keep the default empty board alive so the user can still import JSON
+        // or pull from cloud instead of being stuck on a half-booted page.
+        applyLoadedState(makeDefaultState());
+        toast("Local board load failed. Import a JSON backup or pull from cloud.", "error");
+      }
+
+      render();
+      setStatus("System Ready");
+
+      try {
         await initialCloudSync();
+      } catch (error) {
+        console.error("Initial cloud sync failed:", error);
+        setStatus("System Ready");
+        toast("Cloud sync skipped. You can use Pull & Sync manually.", "error");
+      }
+
+      try {
         await checkWatchingStatuses();
         await checkLibraryUpdates(10);
       } catch (error) {
-        console.error("Dashboard Boot Crash:", error);
+        console.error("Background release checks failed:", error);
         setStatus("System Ready");
-        toast("Recovered from background error.", "error");
+        toast("Background checks skipped.", "error");
       }
     }
 
