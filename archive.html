@@ -104,10 +104,12 @@
     .board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
     .board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 800; }
     .count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: 0.75rem; font-weight: 800; padding: 0 8px; }
+    .board, .active-boards, .board-list { overflow: visible; }
     .board-list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
 
     .show-card {
       position: relative;
+      z-index: 1;
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -116,7 +118,8 @@
       display: flex;
       flex-direction: column;
     }
-    .show-card:hover, .show-card:focus-within { transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0,0,0,0.4); border-color: rgba(139,150,255,0.3); }
+    .show-card:hover, .show-card:focus-within { z-index: 20; transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0,0,0,0.4); border-color: rgba(139,150,255,0.3); }
+    .show-card.menu-open, .show-card:has(.menu[open]), .show-card:has(.release-menu[open]) { z-index: 100; }
     .card-main { display: grid; grid-template-columns: auto 56px minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
     .download-check { appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all 0.2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
     .download-check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69,212,155,0.4); }
@@ -139,16 +142,32 @@
     .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 14px 12px 106px; }
     .quick-link { min-height: 30px; padding: 0 11px; border-radius: 99px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 900; }
     .quick-link:hover { color: var(--text); background: rgba(255,255,255,0.08); }
-    .quick-link.primary { color: #000; background: var(--brand); border-color: transparent; }
-    .quick-link.primary:hover { background: var(--brand-strong); }
     .quick-link.disabled { opacity: 0.45; pointer-events: none; }
+    .release-split { position: relative; z-index: 1; display: inline-flex; align-items: stretch; min-height: 30px; }
+    .release-main,
+    .release-arrow { min-height: 30px; border: 1px solid transparent; background: var(--brand); color: #000; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 900; text-decoration: none; }
+    .release-main { padding: 0 13px; border-radius: 99px 0 0 99px; }
+    .release-main.release-single { border-radius: 99px; }
+    .release-main:hover,
+    .release-menu[open] .release-arrow,
+    .release-arrow:hover { background: var(--brand-strong); color: #000; }
+    .release-menu { position: relative; }
+    .release-menu summary { list-style: none; }
+    .release-menu summary::-webkit-details-marker { display: none; }
+    .release-arrow { width: 30px; border-left: 1px solid rgba(0,0,0,0.18); border-radius: 0 99px 99px 0; cursor: pointer; }
+    .release-arrow span { display: inline-block; transition: transform 0.2s ease; transform: translateY(-1px); }
+    .release-menu[open] .release-arrow span { transform: translateY(-1px) rotate(180deg); }
+    .release-panel { position: absolute; left: 0; top: calc(100% + 8px); z-index: 140; min-width: 132px; background: #111520; border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); display: grid; gap: 4px; }
+    .release-panel a { min-height: 34px; border-radius: 10px; color: var(--text); text-decoration: none; display: flex; align-items: center; padding: 0 10px; font-weight: 800; font-size: 0.85rem; white-space: nowrap; }
+    .release-panel a:hover { background: var(--surface-softer); }
 
-    .menu { position: relative; margin-left: auto; }
+    .menu { position: relative; z-index: 1; margin-left: auto; }
+    .menu[open], .release-menu[open] { z-index: 120; }
     .menu summary { list-style: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); font-weight: 900; cursor: pointer; }
     .menu summary::-webkit-details-marker { display: none; }
     .menu summary:hover { color: var(--text); background: rgba(255,255,255,0.08); }
     .menu[open] summary { color: var(--brand); border-color: rgba(139,150,255,0.4); }
-    .menu-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; z-index: 30; background: #111520; border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); display: grid; gap: 4px; }
+    .menu-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; z-index: 130; background: #111520; border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); display: grid; gap: 4px; }
     .menu-panel a, .menu-panel button { width: 100%; min-height: 34px; border-radius: 10px; background: transparent; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-weight: 750; font-size: 0.85rem; text-align: left; }
     .menu-panel a:hover, .menu-panel button:hover { background: var(--surface-softer); }
     .menu-panel .danger { color: var(--danger); }
@@ -171,6 +190,18 @@
     .section-card { background: rgba(20,24,34,0.74); border: 1px solid var(--line); border-radius: 24px; padding: 20px; display: grid; gap: 16px; }
     .section-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     .section-title { margin: 0; font-size: 1rem; font-weight: 900; color: var(--text); }
+    .collapsible-card { padding: 0; gap: 0; overflow: visible; }
+    .collapsible-summary { list-style: none; cursor: pointer; padding: 20px; border-radius: 24px; transition: background 0.2s, border-color 0.2s; }
+    .collapsible-summary::-webkit-details-marker { display: none; }
+    .collapsible-summary:hover { background: rgba(255,255,255,0.03); }
+    .collapsible-card[open] > .collapsible-summary { border-bottom: 1px solid var(--line); border-radius: 24px 24px 0 0; }
+    .summary-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .collapse-chip { min-height: 34px; padding: 0 13px; border-radius: 99px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 850; }
+    .collapse-label::before { content: "Show"; }
+    .collapsible-card[open] .collapse-label::before { content: "Hide"; }
+    .collapse-arrow { display: inline-block; transition: transform 0.2s ease; }
+    .collapsible-card[open] .collapse-arrow { transform: rotate(180deg); }
+    .collapsible-card > .maintenance-grid { padding: 20px; }
     .hint { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
     .add-panel { display: none; gap: 14px; }
     .add-panel.active { display: grid; }
@@ -235,11 +266,15 @@
       .card-footer { padding-left: 14px; align-items: flex-start; flex-direction: column; }
       .menu { margin-left: 0; align-self: flex-end; }
       .menu-panel { right: 0; }
+      .release-panel { left: 0; }
       .notes-panel { padding-left: 14px; }
       .group-header { grid-template-columns: 28px 48px minmax(0, 1fr); }
       .group-list { padding-left: 14px; }
       .toolbar-actions { width: 100%; align-items: stretch; }
       .toolbar-actions .btn { flex: 1; }
+      .summary-actions { width: 100%; justify-content: space-between; }
+      .collapse-chip { min-height: 38px; }
+      .collapsible-card > .maintenance-grid { padding: 16px; }
     }
   </style>
 </head>
@@ -353,16 +388,19 @@
           </div>
         </article>
 
-        <article class="section-card">
-          <div class="section-header">
+        <details class="section-card collapsible-card" id="settingsDetails">
+          <summary class="section-header collapsible-summary">
             <div>
-              <h3 class="section-title">Maintenance</h3>
-              <p class="hint">Data, sync, grouping, and cleanup tools live here so the main board stays uncluttered.</p>
+              <h3 class="section-title">Settings & Maintenance</h3>
+              <p class="hint">Data, sync, grouping, and cleanup tools are tucked away here.</p>
             </div>
-            <div class="status-indicator">
-              <span class="dot"></span> <span id="statusText">System Ready</span>
+            <div class="summary-actions">
+              <div class="status-indicator">
+                <span class="dot"></span> <span id="statusText">System Ready</span>
+              </div>
+              <span class="collapse-chip" aria-hidden="true"><span class="collapse-label"></span><span class="collapse-arrow">⌄</span></span>
             </div>
-          </div>
+          </summary>
 
           <div class="maintenance-grid">
             <div class="maintenance-box">
@@ -390,7 +428,7 @@
               <button class="btn primary" id="syncNowBtn" type="button">Pull & Sync</button>
             </div>
           </div>
-        </article>
+        </details>
       </section>
     </section>
   </main>
@@ -1595,11 +1633,19 @@
       }
       const releaseLink = show.releasesMoe.releaseUrl || (getAniListId(show) && show.releasesMoe.found ? `https://releases.moe/${getAniListId(show)}/` : "");
       const nyaaLink = show.releasesMoe.nyaaUrl || "";
-      const quickLinks = `
-        ${releaseLink ? `<a class="quick-link primary" href="${escapeAttr(releaseLink)}" target="_blank" rel="noreferrer">releases.moe</a>` : ""}
-        ${nyaaLink ? `<a class="quick-link" href="${escapeAttr(nyaaLink)}" target="_blank" rel="noreferrer">Nyaa</a>` : ""}
-        ${!releaseLink && !nyaaLink ? `<span class="quick-link disabled">No release link</span>` : ""}
-      `;
+      const quickLinks = releaseLink ? `
+        <div class="release-split">
+          <a class="release-main ${nyaaLink ? "" : "release-single"}" href="${escapeAttr(releaseLink)}" target="_blank" rel="noreferrer">Releases</a>
+          ${nyaaLink ? `
+            <details class="release-menu">
+              <summary class="release-arrow" aria-label="More release links"><span>▾</span></summary>
+              <div class="release-panel">
+                <a href="${escapeAttr(nyaaLink)}" target="_blank" rel="noreferrer">Nyaa</a>
+              </div>
+            </details>
+          ` : ""}
+        </div>
+      ` : (nyaaLink ? `<a class="quick-link" href="${escapeAttr(nyaaLink)}" target="_blank" rel="noreferrer">Nyaa</a>` : `<span class="quick-link disabled">No release link</span>`);
       const orderActions = sortMode ? `
         <button data-send-top-id="${escapeAttr(show.id)}" type="button">Send to root</button>
         <button data-move-id="${escapeAttr(show.id)}" data-item-type="show" data-direction="up" type="button" ${!canMoveItem(show.id, "show", "up") ? "disabled" : ""}>Move up</button>
@@ -2111,6 +2157,7 @@
         render();
       });
       els.boards.addEventListener("click", handleBoardClick);
+      els.boards.addEventListener("toggle", handleBoardMenuToggle, true);
       els.boards.addEventListener("change", e => {
         const checkbox = e.target.closest("[data-download-id]");
         if (checkbox) toggleDownloadedStatus(checkbox.dataset.downloadId, checkbox.checked);
@@ -2169,10 +2216,28 @@
       });
     }
 
+    function handleBoardMenuToggle(e) {
+      const menu = e.target.closest?.("details.menu, details.release-menu");
+      if (!menu) return;
+
+      document.querySelectorAll("details.menu[open], details.release-menu[open]").forEach(other => {
+        if (other !== menu) {
+          other.open = false;
+          other.closest(".show-card")?.classList.remove("menu-open");
+        }
+      });
+
+      const card = menu.closest(".show-card");
+      if (card) card.classList.toggle("menu-open", menu.open);
+    }
+
     async function handleBoardClick(e) {
-      const details = e.target.closest("details.menu");
+      const details = e.target.closest("details.menu, details.release-menu");
       if (details && e.target.closest("button, a")) {
-        setTimeout(() => { details.open = false; }, 80);
+        setTimeout(() => {
+          details.open = false;
+          details.closest(".show-card")?.classList.remove("menu-open");
+        }, 80);
       }
 
       const refreshBtn = e.target.closest("[data-refresh-id]");
