@@ -268,29 +268,6 @@
     .relation-type { font-size: 0.7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
 
 
-
-    .wall-grid {
-      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-      gap: 16px;
-      align-items: stretch;
-    }
-    .cover-tile {
-      position: relative;
-      min-width: 0;
-      border-radius: 18px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      overflow: hidden;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.22);
-      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    }
-    .cover-tile:hover { transform: translateY(-3px); border-color: rgba(139,150,255,0.35); background: var(--surface-soft); }
-    .cover-tile a { display: grid; gap: 10px; text-decoration: none; color: inherit; padding: 10px; }
-    .cover-poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; border-radius: 12px; background: var(--surface-softer); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
-    .cover-title { font-size: 0.86rem; font-weight: 850; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2em; }
-    .cover-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 0.72rem; font-weight: 800; }
-    .cover-tile .badge { font-size: 0.58rem; padding: 3px 6px; }
-
     .timeline-list { display: grid; gap: 12px; position: relative; }
     .timeline-list::before { content: ""; position: absolute; left: 25px; top: 14px; bottom: 14px; width: 2px; background: var(--line); }
     .timeline-item { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,0.03); }
@@ -322,7 +299,6 @@
       .summary-actions { width: 100%; justify-content: space-between; }
       .collapse-chip { min-height: 38px; }
       .collapsible-card > .maintenance-grid { padding: 16px; }
-      .wall-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
       .timeline-item { grid-template-columns: 42px minmax(0, 1fr); }
       .timeline-link { grid-column: 2; justify-self: start; }
       .timeline-list::before { left: 21px; }
@@ -373,10 +349,6 @@
                 <button class="segment active" id="filterAllBtn" type="button">All</button>
                 <button class="segment" id="filterCompleteBtn" type="button">Complete</button>
                 <button class="segment" id="filterIncompleteBtn" type="button">Incomplete</button>
-              </div>
-              <div class="segmented" aria-label="Library view">
-                <button class="segment active" id="viewCardsBtn" type="button">Cards</button>
-                <button class="segment" id="viewWallBtn" type="button">Wall</button>
               </div>
               <button class="btn compact" id="editOrderBtn" type="button">Edit Order</button>
             </div>
@@ -474,6 +446,7 @@
               <div class="mini-actions">
                 <button class="btn" id="exportBtn" type="button">Export JSON</button>
                 <button class="btn" id="exportPortableBtn" type="button">Export Portable Archive</button>
+                <button class="btn" id="clearEmbeddedCoversBtn" type="button">Clear Embedded Covers</button>
                 <input class="file-input" id="importFile" type="file" accept=".json,application/json" />
                 <button class="btn" id="importBtn" type="button">Import JSON / Portable</button>
                 <select class="input" id="importMode" aria-label="Import mode" style="min-width: 170px; width: auto;">
@@ -566,14 +539,13 @@
       filterAllBtn: document.querySelector("#filterAllBtn"),
       filterCompleteBtn: document.querySelector("#filterCompleteBtn"),
       filterIncompleteBtn: document.querySelector("#filterIncompleteBtn"),
-      viewCardsBtn: document.querySelector("#viewCardsBtn"),
-      viewWallBtn: document.querySelector("#viewWallBtn"),
       editOrderBtn: document.querySelector("#editOrderBtn"),
       smartGroupBtn: document.querySelector("#smartGroupBtn"),
       refreshAllBtn: document.querySelector("#refreshAllBtn"),
       regenAllBtn: document.querySelector("#regenAllBtn"),
       exportBtn: document.querySelector("#exportBtn"),
       exportPortableBtn: document.querySelector("#exportPortableBtn"),
+      clearEmbeddedCoversBtn: document.querySelector("#clearEmbeddedCoversBtn"),
       importBtn: document.querySelector("#importBtn"),
       importFile: document.querySelector("#importFile"),
       importMode: document.querySelector("#importMode"),
@@ -613,7 +585,7 @@
     }
 
     function makeDefaultUi() {
-      return { filterComplete: false, filterIncomplete: false, openNotes: {}, sortMode: false, addMode: "search", libraryView: "cards" };
+      return { filterComplete: false, filterIncomplete: false, openNotes: {}, sortMode: false, addMode: "search" };
     }
 
     function escapeHtml(value) {
@@ -1623,7 +1595,6 @@
       migrateLegacyDividers();
       reconcileOrders();
       updateLibraryFilterButtons();
-      updateLibraryViewButtons();
       updateSortModeButton();
       updateAddMode();
     }
@@ -1777,18 +1748,10 @@
       els.filterIncompleteBtn.classList.toggle("active", !!state.ui.filterIncomplete);
     }
 
-    function updateLibraryViewButtons() {
-      const view = state.ui.libraryView === "wall" ? "wall" : "cards";
-      if (els.viewCardsBtn) els.viewCardsBtn.classList.toggle("active", view === "cards");
-      if (els.viewWallBtn) els.viewWallBtn.classList.toggle("active", view === "wall");
-      if (els.editOrderBtn) els.editOrderBtn.disabled = view === "wall";
-    }
-
     function updateSortModeButton() {
-      const wallMode = state.ui.libraryView === "wall";
-      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode && !wallMode);
-      els.editOrderBtn.disabled = wallMode;
-      els.editOrderBtn.textContent = state.ui.sortMode && !wallMode ? "Done Ordering" : "Edit Order";
+      els.editOrderBtn.classList.toggle("active", !!state.ui.sortMode);
+      els.editOrderBtn.disabled = false;
+      els.editOrderBtn.textContent = state.ui.sortMode ? "Done Ordering" : "Edit Order";
     }
 
     function updateAddMode() {
@@ -1815,7 +1778,6 @@
       const downloaded = visible.filter(s => getShowBoard(s) === "downloaded" && libraryFilterAllows(s));
       updateSortModeButton();
       updateLibraryFilterButtons();
-      updateLibraryViewButtons();
       renderBoard("found", found, els.foundList, els.foundCount);
       renderBoard("watching", watching, els.watchingList, els.watchingCount);
       renderBoard("downloaded", downloaded, els.downloadedList, els.downloadedCount);
@@ -1824,16 +1786,6 @@
     function renderBoard(type, shows, listEl, countEl) {
       countEl.textContent = shows.length;
       listEl.dataset.board = type;
-      listEl.classList.toggle("wall-grid", type === "downloaded" && state.ui.libraryView === "wall");
-
-      if (type === "downloaded" && state.ui.libraryView === "wall") {
-        if (!shows.length) {
-          listEl.innerHTML = `<div class="empty">${emptyCopy[type]}</div>`;
-          return;
-        }
-        listEl.innerHTML = shows.slice().sort(compareShowsAZ).map(renderCoverTile).join("");
-        return;
-      }
 
       if (state.localSearch) {
         listEl.innerHTML = shows.length ? shows.map(renderCard).join("") : `<div class="empty">${emptyCopy[type]}</div>`;
@@ -1986,24 +1938,6 @@
             </details>
           </div>
           <div class="notes-panel"><textarea data-comment-id="${escapeAttr(show.id)}" placeholder="Notes...">${escapeHtml(show.comments || "")}</textarea></div>
-        </article>
-      `;
-    }
-
-    function renderCoverTile(show) {
-      show.releasesMoe = getDefaultReleasesMoeState(show.releasesMoe);
-      const url = show.releasesMoe.releaseUrl || show.links?.anilist || show.links?.mal || show.siteUrl || "#";
-      const badges = [];
-      if (show.releasesMoe.updateAvailable) badges.push('<span class="badge update">Updated</span>');
-      if (show.allAvailableDownloaded) badges.push('<span class="badge downloaded">Complete</span>');
-      if (show.needsAniList || !getAniListId(show)) badges.push('<span class="badge pending">Needs AniList</span>');
-      return `
-        <article class="cover-tile" data-show-id="${escapeAttr(show.id)}">
-          <a href="${escapeAttr(url)}" target="_blank" rel="noreferrer">
-            <img class="cover-poster" src="${escapeAttr(getDisplayCoverUrl(show))}" alt="${escapeAttr(show.title)}" loading="lazy" decoding="async" sizes="(max-width: 800px) 33vw, 160px" />
-            <span class="cover-title">${escapeHtml(show.title)}</span>
-            <span class="cover-meta"><span>${escapeHtml([show.format, show.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badges.join("")}</span>
-          </a>
         </article>
       `;
     }
@@ -2589,6 +2523,19 @@
       toast("Board cleared.");
     }
 
+    function clearEmbeddedCovers() {
+      const count = state.shows.filter(show => !!show.coverImageData).length;
+      if (!count) {
+        toast("No embedded covers to clear.");
+        return;
+      }
+      if (!confirm(`Remove embedded cover data from ${count} show${count === 1 ? "" : "s"}? Remote cover URLs stay intact, but offline images from the working database will be removed.`)) return;
+      state.shows.forEach(show => { delete show.coverImageData; });
+      render();
+      saveState();
+      toast(`Cleared embedded covers from ${count} show${count === 1 ? "" : "s"}.`);
+    }
+
     function loadSyncSettings() {
       try {
         const raw = localStorage.getItem(SYNC_SETTINGS_KEY);
@@ -2765,19 +2712,7 @@
         render();
         saveState();
       });
-      els.viewCardsBtn.addEventListener("click", () => {
-        state.ui.libraryView = "cards";
-        render();
-        saveState();
-      });
-      els.viewWallBtn.addEventListener("click", () => {
-        state.ui.libraryView = "wall";
-        state.ui.sortMode = false;
-        render();
-        saveState();
-      });
       els.editOrderBtn.addEventListener("click", () => {
-        if (state.ui.libraryView === "wall") return;
         state.ui.sortMode = !state.ui.sortMode;
         render();
         saveState();
@@ -2788,6 +2723,7 @@
       els.regenAllBtn.addEventListener("click", regenerateAllPending);
       els.exportBtn.addEventListener("click", exportJson);
       els.exportPortableBtn.addEventListener("click", exportPortableArchive);
+      els.clearEmbeddedCoversBtn.addEventListener("click", clearEmbeddedCovers);
       els.importBtn.addEventListener("click", () => els.importFile.click());
       els.importFile.addEventListener("change", importJson);
       els.clearBtn.addEventListener("click", clearBoard);
