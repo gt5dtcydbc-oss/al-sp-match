@@ -106,13 +106,15 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .card.notes-open .notes { display: block; padding-top: 14px; animation: slideDownPanel .2s ease-out; }
 @keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 .folder { padding: 0; display: flex; flex-direction: column; gap: 0; }
-.folder .card-main { cursor: pointer; grid-template-columns: 28px 56px minmax(0,1fr) auto; padding-left: 12px; min-height: 104px; }
-.folder .card-main.no-folder-menu { grid-template-columns: 28px 56px minmax(0,1fr); }
-.folder-list { display: grid; gap: 12px; padding: 16px 16px 16px 104px; background: rgba(0,0,0,.15); border-top: 1px solid var(--line); min-height: 24px; }
+.folder .card-main { cursor: pointer; grid-template-columns: 56px minmax(0,1fr) auto; padding-left: 14px; min-height: 104px; }
+.folder .card-main.has-folder-menu { grid-template-columns: 56px minmax(0,1fr) auto auto; }
+.folder .card-main.no-folder-menu { grid-template-columns: 56px minmax(0,1fr) auto; }
+.folder .menu { justify-self: end; }
+.folder-list { display: grid; gap: 12px; padding: 14px; background: rgba(0,0,0,.15); border-top: 1px solid var(--line); min-height: 24px; }
 .folder-list.collapsed { display: none; }
-.folder-toggle { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border: none; border-radius: 6px; pointer-events: none; font-size: .75rem; transition: all .2s ease; }
+.folder-toggle { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--surface-softer); color: var(--muted); border: 1px solid var(--line); border-radius: 9px; pointer-events: none; font-size: .75rem; transition: all .2s ease; justify-self: end; }
 .folder-toggle.collapsed { transform: rotate(-90deg); }
-.folder-name { background: transparent; border: none; color: var(--text); font-weight: 900; font-size: 1rem; padding: 4px 8px; border-radius: 6px; outline: none; width: auto; min-width: 120px; margin-left: -8px; box-shadow: none !important; }
+.folder-name { background: transparent; border: none; color: var(--text); font-weight: 900; font-size: 1rem; padding: 4px 8px; border-radius: 6px; outline: none; width: 100%; min-width: 0; max-width: 100%; margin-left: -8px; box-shadow: none !important; }
 .folder-name:focus, .folder-name:not([readonly]):hover { background: var(--surface-soft); }
 .folder-name[readonly] { pointer-events: none; }
 .bottom-section, .bottom { margin-top: 48px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 42px; }
@@ -177,7 +179,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
 .relation-type { font-size: .7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
 .compact-select { min-width: 170px; width: auto; height: 42px; border-radius: 99px; }
-@media (max-width: 800px) { .app { width: min(100% - 28px, 1200px); } .active-boards { grid-template-columns: 1fr; } .hero { flex-direction: column; align-items: flex-start; } .board-controls { width: 100%; } .pill-input { width: 100%; } .search-row, .form-row { grid-template-columns: 1fr; } .manual-grid { grid-template-columns: 1fr; } .card-main { grid-template-columns: auto 52px minmax(0,1fr) auto; gap: 12px; } .card-main.no-download { grid-template-columns: 52px minmax(0,1fr) auto; } .thumb { width: 52px; height: 72px; } .notes { padding-left: 14px; } .folder .card-main { grid-template-columns: 28px 48px minmax(0,1fr) auto; } .folder .card-main.no-folder-menu { grid-template-columns: 28px 48px minmax(0,1fr); } .folder-list { padding-left: 14px; } .toolbar-actions { width: 100%; align-items: stretch; } .toolbar-actions .btn { flex: 1; } .settings-toggle { min-height: 68px; padding: 16px; } .settings-toggle-copy small { font-size: .8rem; } .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); } .review-item { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .app { width: min(100% - 28px, 1200px); } .active-boards { grid-template-columns: 1fr; } .hero { flex-direction: column; align-items: flex-start; } .board-controls { width: 100%; } .pill-input { width: 100%; } .search-row, .form-row { grid-template-columns: 1fr; } .manual-grid { grid-template-columns: 1fr; } .card-main { grid-template-columns: auto 52px minmax(0,1fr) auto; gap: 12px; } .card-main.no-download { grid-template-columns: 52px minmax(0,1fr) auto; } .thumb { width: 52px; height: 72px; } .notes { padding-left: 14px; } .folder .card-main { grid-template-columns: 52px minmax(0,1fr) auto; } .folder .card-main.has-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto auto; } .folder .card-main.no-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto; } .folder-list { padding: 14px; } .toolbar-actions { width: 100%; align-items: stretch; } .toolbar-actions .btn { flex: 1; } .settings-toggle { min-height: 68px; padding: 16px; } .settings-toggle-copy small { font-size: .8rem; } .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); } .review-item { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -1973,7 +1975,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const complete = ordered.filter((s) => s.allAvailableDownloaded).length;
         const canEdit = state.ui.sortMode && !state.localSearch;
         const menuHtml = canEdit ? `<details class="menu folder-menu"><summary class="icon-btn" aria-label="Folder actions">⋯</summary><div class="menu-panel"><button class="menu-action" type="button" data-move-group="${escapeAttr(g.id)}" data-dir="up">▲ Move folder up</button><button class="menu-action" type="button" data-move-group="${escapeAttr(g.id)}" data-dir="down">▼ Move folder down</button><button class="menu-action danger" type="button" data-remove-group="${escapeAttr(g.id)}">× Delete folder</button></div></details>` : "";
-        return `<article class="card folder" data-item-id="${escapeAttr(g.id)}" data-type="group"><div class="card-main ${canEdit ? "" : "no-folder-menu"}" data-collapse-group="${escapeAttr(g.id)}"><button class="folder-toggle ${g.collapsed ? "collapsed" : ""}" type="button" aria-label="${g.collapsed ? "Expand folder" : "Collapse folder"}">▼</button><img class="thumb" src="${escapeAttr(cover)}" alt="" loading="lazy"><div class="content"><input class="folder-name" data-group-name="${escapeAttr(g.id)}" value="${escapeAttr(g.name)}" ${canEdit ? "" : "readonly tabindex='-1'"}><div class="meta"><span class="badge done">Folder</span><span class="folder-completion">${complete}/${ordered.length}</span></div></div>${menuHtml}</div><div class="folder-list ${g.collapsed ? "collapsed" : ""}">${ordered.map(renderCard).join("")}</div></article>`;
+        return `<article class="card folder" data-item-id="${escapeAttr(g.id)}" data-type="group"><div class="card-main ${canEdit ? "has-folder-menu" : "no-folder-menu"}" data-collapse-group="${escapeAttr(g.id)}"><img class="thumb" src="${escapeAttr(cover)}" alt="" loading="lazy"><div class="content"><input class="folder-name" data-group-name="${escapeAttr(g.id)}" value="${escapeAttr(g.name)}" ${canEdit ? "" : "readonly tabindex='-1'"}><div class="meta"><span class="badge done">Folder</span><span class="folder-completion">${complete}/${ordered.length}</span></div></div><button class="folder-toggle ${g.collapsed ? "collapsed" : ""}" type="button" aria-label="${g.collapsed ? "Expand folder" : "Collapse folder"}">▼</button>${menuHtml}</div><div class="folder-list ${g.collapsed ? "collapsed" : ""}">${ordered.map(renderCard).join("")}</div></article>`;
       }
       function renderCard(s) {
         s.releasesMoe = defaultRelease(s.releasesMoe);
@@ -2052,12 +2054,16 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           t.closest("[data-collapse-group]") &&
           !t.closest("input,button,textarea,select,a,.menu")
         ) {
-          const g = groupById(
-            t.closest("[data-collapse-group]").dataset.collapseGroup,
-          );
+          const header = t.closest("[data-collapse-group]");
+          const g = groupById(header.dataset.collapseGroup);
           if (g) {
             g.collapsed = !g.collapsed;
-            render();
+            const folder = header.closest(".folder");
+            const list = folder?.querySelector(".folder-list");
+            const toggle = header.querySelector(".folder-toggle");
+            list?.classList.toggle("collapsed", g.collapsed);
+            toggle?.classList.toggle("collapsed", g.collapsed);
+            toggle?.setAttribute("aria-label", g.collapsed ? "Expand folder" : "Collapse folder");
             save();
           }
           return;
