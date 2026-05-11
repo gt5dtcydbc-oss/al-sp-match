@@ -1167,7 +1167,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               body: JSON.stringify({
                 files: { "state.json": { content: payload } },
               }),
-              signal: timeoutSignal(timeoutMs),
+              signal: timeoutSignal(10000),
             },
           );
           setStatus("System Ready");
