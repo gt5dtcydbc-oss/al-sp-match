@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Releases" />
+  <meta name="apple-mobile-web-app-title" content="Archive" />
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
   <title>Anime Releases Dashboard</title>
   <style>
@@ -283,7 +283,7 @@
     <section class="shell">
       <header class="hero">
         <div class="hero-text">
-          <p class="eyebrow">AniList × Jikan fallback × SeaDex</p>
+          <p class="eyebrow">Archive</p>
           <h1>Releases Dashboard</h1>
         </div>
         <div class="board-controls">
@@ -659,7 +659,7 @@
         return safeJikanFetch(path);
       }
       if (!response.ok) throw new Error(`Jikan HTTP ${response.status}`);
-      jikanCooldownUntil = Date.now() + 550;
+      jikanCooldownUntil = Date.now() + 1100;
       return response.json();
     }
 
