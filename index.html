@@ -1379,24 +1379,11 @@
             const token = distinctiveOverlap[0];
             const longEnough = token.length >= 6;
 
-            const cDistinctiveCount = (c.distinctiveList || []).length;
-            const vDistinctiveCount = (v.distinctiveList || []).length;
-
-            const bothShort = Math.max(cDistinctiveCount, vDistinctiveCount) <= 3;
-            const oneVeryShort = Math.min(cDistinctiveCount, vDistinctiveCount) === 1;
-
-            const tokenIsWholeShortTitle =
-              oneVeryShort &&
-              (
-                c.normalized === token ||
-                v.normalized === token ||
-                c.compact === token ||
-                v.compact === token
-              );
-
-            if (longEnough && (bothShort || tokenIsWholeShortTitle)) {
-              best = Math.max(best, 74 - seasonPenalty);
-            }
+            // Use Math.max to ensure BOTH titles are relatively short (3 distinctive words or fewer)
+            const shortTitle = Math.max(c.distinctiveList.length, v.distinctiveList.length) <= 3;
+            
+            // No more compactNear. If they share 1 word, they MUST be short titles.
+            if (longEnough && shortTitle) best = Math.max(best, 74 - seasonPenalty);
           }
         }
       }
@@ -1740,24 +1727,37 @@
           if (primary?.time) {
             const rssMinutes = toMinutes(primary.time);
             let diff = rssMinutes - aniMinutes;
-            if (diff > 720) diff -= 1440;
-            if (diff < -720) diff += 1440;
+            
+            // Keep track of if the time crossed midnight
+            let expectedDayShift = 0;
+            if (diff > 720) { diff -= 1440; expectedDayShift = -1; }
+            if (diff < -720) { diff += 1440; expectedDayShift = 1; }
 
+            // Keep your symmetrical 3.5 hour window
             if (Math.abs(diff) <= 210) {
-              return {
-                day: aniDay,
-                time: primary.time,
-                source: "rss",
-                sampleCount: primary.sampleCount || 1,
-                matchedTitle: primary.matchedTitle || "",
-                matchedEpisode: primary.matchedEpisode || null,
-                latestReleaseDay: primary.latestReleaseDay || null,
-                latestReleaseTime: primary.latestReleaseTime || null,
-                latestReleaseDate: primary.latestReleaseDate || null
-              };
-            } else {
-              return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
+              
+              // PROTECTION: Ensure the day is actually correct
+              const aniDayIdx = WEEKDAYS.indexOf(aniDay);
+              const rssDayIdx = WEEKDAYS.indexOf(primary.day);
+              const expectedRssDayIdx = (aniDayIdx + expectedDayShift + 7) % 7;
+
+              if (rssDayIdx === expectedRssDayIdx) {
+                return {
+                  day: aniDay,
+                  time: primary.time,
+                  source: "rss",
+                  sampleCount: primary.sampleCount || 1,
+                  matchedTitle: primary.matchedTitle || "",
+                  matchedEpisode: primary.matchedEpisode || null,
+                  latestReleaseDay: primary.latestReleaseDay || null,
+                  latestReleaseTime: primary.latestReleaseTime || null,
+                  latestReleaseDate: primary.latestReleaseDate || null
+                };
+              }
             }
+            
+            // Out of bounds or wrong day. Reject and use fallback.
+            return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
           }
 
           return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
