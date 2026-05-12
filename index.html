@@ -437,6 +437,46 @@
       background: var(--panel-2); border: 1px solid var(--line); color: var(--text-muted);
     }
 
+    .history-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .history-copy {
+      min-width: 0;
+      line-height: 1.35;
+    }
+
+    .history-label {
+      color: var(--text);
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .history-value {
+      overflow-wrap: anywhere;
+    }
+
+    .history-drop-btn {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      .history-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .history-drop-btn {
+        width: 100%;
+      }
+    }
+
     .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
     @keyframes modalScaleIn {
@@ -1261,9 +1301,25 @@
           } else if (distinctiveOverlap.length === 1) {
             const token = distinctiveOverlap[0];
             const longEnough = token.length >= 6;
-            const compactNear = c.compact.includes(token) && v.compact.includes(token);
-            const shortTitle = Math.min(c.distinctiveList.length, v.distinctiveList.length) <= 2;
-            if (longEnough && (compactNear || shortTitle)) best = Math.max(best, 74 - seasonPenalty);
+
+            const cDistinctiveCount = (c.distinctiveList || []).length;
+            const vDistinctiveCount = (v.distinctiveList || []).length;
+
+            const bothShort = Math.max(cDistinctiveCount, vDistinctiveCount) <= 3;
+            const oneVeryShort = Math.min(cDistinctiveCount, vDistinctiveCount) === 1;
+
+            const tokenIsWholeShortTitle =
+              oneVeryShort &&
+              (
+                c.normalized === token ||
+                v.normalized === token ||
+                c.compact === token ||
+                v.compact === token
+              );
+
+            if (longEnough && (bothShort || tokenIsWholeShortTitle)) {
+              best = Math.max(best, 74 - seasonPenalty);
+            }
           }
         }
       }
@@ -2194,9 +2250,20 @@
 
       const activeItem = itemMap().get(id);
       if (activeItem && activeItem.historyLog) {
-        els.modalHistorySlot.textContent = `History: ${activeItem.historyLog}`;
+        els.modalHistorySlot.innerHTML = `
+          <div class="history-actions">
+            <div class="history-copy">
+              <div class="history-label">RSS samples</div>
+              <div class="history-value">${escapeHtml(activeItem.historyLog)}</div>
+            </div>
+            <button class="secondary history-drop-btn" type="button" data-action="drop-latest-rss-sample">
+              Drop latest
+            </button>
+          </div>
+        `;
         els.modalHistorySlot.style.display = "block";
       } else {
+        els.modalHistorySlot.innerHTML = "";
         els.modalHistorySlot.style.display = "none";
       }
 
@@ -2291,6 +2358,50 @@
       await persistState();
       await refreshBoardFromState();
       closeSettingsModal();
+    }
+
+    async function dropLatestRssSampleForActiveShow() {
+      const id = String(state.activeSettingsId || "");
+      if (!id || !state.userName) return;
+
+      const cache = await loadSlotCache(state.userName);
+      const entry = cache[id];
+
+      if (!entry || !Array.isArray(entry.history) || !entry.history.length) {
+        populateShowSettingsModal();
+        return;
+      }
+
+      const history = entry.history.slice();
+      const removedSample = history.pop();
+
+      if (history.length) {
+        entry.history = history;
+        entry.sampleCount = history.length;
+
+        const validMinutes = history
+          .map(sample => Number(sample?.mins))
+          .filter(value => Number.isFinite(value));
+
+        if (validMinutes.length) {
+          entry.time = minutesToHHMM(medianTime(validMinutes));
+        }
+
+        entry.updatedAt = new Date().toISOString();
+        cache[id] = entry;
+      } else {
+        delete cache[id];
+      }
+
+      await saveSlotCache(state.userName, cache);
+      await refreshBoardFromState();
+
+      if (String(state.activeSettingsId) === id) {
+        populateShowSettingsModal();
+      }
+
+      const removedLabel = removedSample?.episode ? `EP ${removedSample.episode}` : "latest RSS sample";
+      showMessage("info", `Dropped ${removedLabel}. Future RSS samples can still be added.`);
     }
 
     async function addShowFromSearch(media) {
@@ -2600,6 +2711,11 @@
     els.modalSaveBtn.addEventListener("click", async () => await saveSettingsFromModal());
     els.modalUseDetectedBtn.addEventListener("click", async () => await useDetectedForActiveShow());
     els.modalClearOrRemoveBtn.addEventListener("click", async () => await clearOrRemoveActiveShow());
+    els.showSettingsModal.addEventListener("click", async event => {
+      const button = event.target.closest("button[data-action='drop-latest-rss-sample']");
+      if (!button) return;
+      await dropLatestRssSampleForActiveShow();
+    });
     els.loadBtn.addEventListener("click", async () => await loadBoard());
 
     if (els.clearMemoryBtn) {
