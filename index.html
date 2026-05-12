@@ -551,6 +551,21 @@
     }
     .toggle input[type="checkbox"]:checked { background: var(--text); border-color: var(--text); }
     .toggle input[type="checkbox"]:checked::after { transform: translateX(20px); background: var(--bg); }
+    /* ---------- Final mobile modal guardrails ---------- */
+    @media (max-width: 720px) {
+      #showSettingsModal .modal-grid {
+        grid-template-columns: 1fr !important;
+        gap: 14px;
+      }
+
+      #showSettingsModal .modal-grid .field,
+      #showSettingsModal .modal-grid select,
+      #showSettingsModal .modal-grid input[type="time"] {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+    }
   </style>
 </head>
 <body>
