@@ -554,16 +554,37 @@
     /* ---------- Final mobile modal guardrails ---------- */
     @media (max-width: 720px) {
       #showSettingsModal .modal-grid {
+        width: 100%;
+        max-width: 100%;
         grid-template-columns: 1fr !important;
         gap: 14px;
+        overflow: hidden;
       }
 
-      #showSettingsModal .modal-grid .field,
-      #showSettingsModal .modal-grid select,
-      #showSettingsModal .modal-grid input[type="time"] {
+      #showSettingsModal .modal-grid .field {
         width: 100%;
         max-width: 100%;
         min-width: 0;
+        overflow: hidden;
+      }
+
+      #showSettingsModal .modal-grid select,
+      #showSettingsModal .modal-grid input[type="time"],
+      #modalDay,
+      #modalTime {
+        display: block;
+        width: 100% !important;
+        inline-size: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
+      }
+
+      #modalTime {
+        -webkit-appearance: none;
+        appearance: none;
+        text-align: left;
+        padding-right: 16px;
       }
     }
   </style>
