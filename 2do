@@ -1,0 +1,21 @@
+} else if (distinctiveOverlap.length === 1) {
+  const token = distinctiveOverlap[0];
+  const longEnough = token.length >= 6;
+  const compactNear = c.compact.includes(token) && v.compact.includes(token);
+  const shortTitle = Math.min(c.distinctiveList.length, v.distinctiveList.length) <= 2;
+  
+  if (longEnough && (compactNear || shortTitle)) best = Math.max(best, 74 - seasonPenalty);
+}
+
+
+
+} else if (distinctiveOverlap.length === 1) {
+  const token = distinctiveOverlap[0];
+  const longEnough = token.length >= 6;
+  
+  // Use Math.max to ensure BOTH titles are relatively short (3 distinctive words or fewer)
+  const shortTitle = Math.max(c.distinctiveList.length, v.distinctiveList.length) <= 3;
+  
+  // No more compactNear. If they share 1 word, they MUST be short titles.
+  if (longEnough && shortTitle) best = Math.max(best, 74 - seasonPenalty);
+}
