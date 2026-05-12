@@ -136,11 +136,12 @@
       .config-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    .field { display: grid; gap: 8px; }
+    .field { display: grid; gap: 8px; min-width: 0; }
     .field label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 
     input[type="text"], input[type="time"], select, textarea {
       width: 100%;
+      min-width: 0;
       background: var(--bg);
       color: var(--text);
       padding: 14px 16px;
@@ -479,14 +480,16 @@
       .history-actions {
         align-items: stretch;
         flex-direction: column;
+        gap: 10px;
       }
 
       .history-drop-btn {
         width: 100%;
+        padding: 7px 10px;
       }
     }
 
-    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .modal-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 
     @keyframes modalScaleIn {
       from { transform: scale(0.95) translateY(10px); opacity: 0; }
@@ -498,7 +501,22 @@
       .modal { align-items: flex-end; padding: 0; }
       .modal-dialog { width: 100%; max-width: 100%; max-height: 90vh; border-radius: 24px 24px 0 0; border: none; }
       .modal.open .modal-dialog { animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-      .modal-sheet-handle { width: 40px; height: 4px; border-radius: 999px; background: var(--line); margin: 12px auto 4px; }
+      .modal-sheet-handle { width: 40px; height: 4px; border-radius: 999px; background: var(--line); margin: 10px auto 2px; }
+      .modal-head { padding: 16px 20px; }
+      .modal-body { padding: 18px 20px; gap: 16px; }
+      .modal-footer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        padding: 16px 20px max(18px, env(safe-area-inset-bottom));
+      }
+      .modal-footer button {
+        width: 100%;
+        padding: 13px 14px;
+      }
+      #modalSaveBtn {
+        grid-column: 1 / -1;
+      }
       @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     }
     
