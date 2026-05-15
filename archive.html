@@ -2006,7 +2006,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
           : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
         const downloadControl = isDl ? "" : `<input class="check" type="checkbox" data-download-id="${escapeAttr(s.id)}">`;
-        return `<article class="card ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show"><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea></div></article>`;
+        return `<article class="card ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea></div></article>`;
       }
       function moveWithin(arr, id, dir) {
         const i = arr.indexOf(id),
@@ -2301,7 +2301,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
                 if (s) {
                   s.relations = (m.relations?.edges || [])
                     .filter((e) =>
-                      ["PREQUEL", "SEQUEL", "SUMMARY"].includes(e.relationType),
+                      ["PREQUEL", "SEQUEL", "SUMMARY", "SPIN_OFF", "ALTERNATIVE", "FRANCHISE"].includes(e.relationType),
                     )
                     .map((e) => Number(e.node.id));
                   s.relationsFetched = true;
@@ -2783,11 +2783,66 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           t = setTimeout(() => fn(...a), ms);
         };
       }
+
+      function initDragAndDrop() {
+        document.addEventListener('dragstart', (e) => {
+          const card = e.target.closest('.card[data-type="show"]');
+          if (!card || !state.ui.sortMode) return;
+          e.dataTransfer.setData('text/plain', card.dataset.itemId);
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => card.style.opacity = '0.4', 0); // Dim while dragging
+        });
+
+        document.addEventListener('dragend', (e) => {
+          const card = e.target.closest('.card[data-type="show"]');
+          if (card) card.style.opacity = '1';
+          document.querySelectorAll('.folder').forEach(f => f.style.borderColor = 'var(--line)');
+        });
+
+        document.addEventListener('dragover', (e) => {
+          const folder = e.target.closest('.folder');
+          if (folder && state.ui.sortMode) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+            folder.style.borderColor = 'var(--brand)'; // Highlight folder
+          }
+        });
+
+        document.addEventListener('dragleave', (e) => {
+          const folder = e.target.closest('.folder');
+          if (folder) folder.style.borderColor = 'var(--line)';
+        });
+
+        document.addEventListener('drop', (e) => {
+          const folder = e.target.closest('.folder');
+          if (!folder || !state.ui.sortMode) return;
+          e.preventDefault();
+          folder.style.borderColor = 'var(--line)';
+
+          const showId = e.dataTransfer.getData('text/plain');
+          const show = byId(showId);
+          const targetGroupId = folder.dataset.itemId;
+
+          // If the show exists and isn't already in this folder
+          if (show && targetGroupId && show.groupId !== targetGroupId) {
+            removeFromOrders(show.id); // Remove from root board
+            show.groupId = targetGroupId; // Assign to new folder
+            if (!state.groupOrder[targetGroupId]) state.groupOrder[targetGroupId] = [];
+            state.groupOrder[targetGroupId].unshift(show.id); // Put at the top of the folder
+            
+            render();
+            save();
+            toast("Moved show into folder");
+          }
+        });
+      }
+
       function init() {
         try {
           loadSyncSettings();
           load();
           bind();
+          initDragAndDrop();
           render();
           updateAddMode();
           setStatus("System Ready");
