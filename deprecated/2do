@@ -32,3 +32,4 @@
     best = Math.max(best, 74 - seasonPenalty);
   }
 }
+ 
