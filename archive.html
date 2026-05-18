@@ -73,7 +73,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .card:has(.menu[open]), .card.menu-open { z-index: 100; }
 .card-main { display: grid; grid-template-columns: auto 56px minmax(0,1fr) auto; align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
 .card-main.no-download { grid-template-columns: 56px minmax(0,1fr) auto; }
-.check { appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all .2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
+.check { position: relative; appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all .2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
+.check::before { content: ""; position: absolute; inset: -14px; }
 .check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69,212,155,.4); }
 .check:checked::after { content: "✓"; color: #000; font-size: 14px; font-weight: 900; }
 .thumb { width: 56px; height: 76px; border-radius: 8px; object-fit: cover; background-color: var(--surface-softer); color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.2); flex-shrink: 0; transition: transform .2s ease; }
@@ -164,7 +165,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .settings-toggle-state { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 99px; background: var(--surface-softer); color: var(--muted); transition: transform .2s ease, color .2s ease; flex-shrink: 0; }
 .settings-toggle.active .settings-toggle-state { transform: rotate(180deg); color: var(--brand); }
 .settings-panel { margin-top: -12px; border-top-left-radius: 16px; border-top-right-radius: 16px; background: rgba(20,24,34,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-.toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 100; display: grid; gap: 12px; }
+.toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 1100; display: grid; gap: 12px; }
 .toast { background: var(--surface); border: 1px solid var(--line); padding: 14px 18px; border-radius: 99px; box-shadow: var(--shadow); font-weight: 750; font-size: .92rem; animation: toastSlideIn .3s cubic-bezier(.175,.885,.32,1.275); }
 .toast.error { border-color: rgba(255,123,115,.4); color: var(--danger); }
 @keyframes toastSlideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
@@ -396,6 +397,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           filterIncomplete: false,
           openNotes: {},
           sortMode: false,
+          addMode: "search",
         },
         localSearch: "",
       };
@@ -1128,7 +1130,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
                 Authorization: `Bearer ${pat}`,
               },
               signal: timeoutSignal(10000),
-            },
+            }
           );
           if (!r.ok) throw new Error("HTTP " + r.status);
           const j = await r.json();
@@ -1168,7 +1170,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
                 files: { "state.json": { content: payload } },
               }),
               signal: timeoutSignal(10000),
-            },
+            }
           );
           setStatus("System Ready");
         } catch (e) {
@@ -2006,7 +2008,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
           : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
         const downloadControl = isDl ? "" : `<input class="check" type="checkbox" data-download-id="${escapeAttr(s.id)}">`;
-        return `<article class="card ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea></div></article>`;
+        return `<article class="card ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
       }
       function moveWithin(arr, id, dir) {
         const i = arr.indexOf(id),
@@ -2028,6 +2030,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         state.order.downloaded.unshift(id);
         render();
         save();
+        
+        setTimeout(() => {
+          const input = document.querySelector(`input[data-group-name="${id}"]`);
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 50);
       }
       function sortLibraryAZ() {
         state.order.downloaded.sort((a, b) => {
@@ -2051,6 +2061,11 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         qa(".menu[open]").forEach((m) => {
           if (m !== menu && !m.contains(t)) m.removeAttribute("open");
         });
+        
+        if (t.closest(".menu-action") && menu) {
+          menu.removeAttribute("open");
+        }
+
         const id = (sel) => t.closest(sel)?.dataset;
         if (
           t.closest("[data-collapse-group]") &&
@@ -2186,6 +2201,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         save();
       }
       function removeGroup(id) {
+        if (!confirm("Delete this folder? (Shows will be safely moved back to the root)")) return;
         const g = groupById(id);
         if (!g) return;
         state.shows.forEach((s) => {
@@ -2664,6 +2680,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       }
 
       function bind() {
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            els.exploreModal?.classList.remove("open");
+            els.results?.classList.remove("open");
+            qa(".menu[open]").forEach((m) => m.removeAttribute("open"));
+          }
+        });
+        
         els.tabs.forEach((tab) =>
           on(tab, "click", () => {
             els.tabs.forEach((t) => t.classList.remove("active"));
@@ -2674,6 +2698,13 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               tab.dataset.target === "view-downloaded"
                 ? "Search library..."
                 : "Filter active shows...";
+                
+            // Clear the local search filter when switching tabs
+            if (els.boardSearchInput.value) {
+              els.boardSearchInput.value = "";
+              state.localSearch = "";
+              render();
+            }
           }),
         );
         on(els.toggleSettingsBtn, "click", () => {
@@ -2688,6 +2719,13 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           state.ui.addMode = btn.dataset.addMode;
           updateAddMode();
           save();
+          
+          // Auto-focus the relevant input for the active tab
+          setTimeout(() => {
+            if (state.ui.addMode === "search" && els.searchInput) els.searchInput.focus();
+            if (state.ui.addMode === "paste" && els.batchInput) els.batchInput.focus();
+            if (state.ui.addMode === "manual" && els.manualTitle) els.manualTitle.focus();
+          }, 50);
         });
         on(els.searchBtn, "click", runSearch);
         on(els.searchInput, "input", debounce(runSearch, 350));
@@ -2695,13 +2733,29 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           if (e.key === "Escape") els.results.classList.remove("open");
           if (e.key === "Enter") runSearch();
         });
+        
+        // Allow the Enter key to submit the Manual Add form
+        const manualInputs = [els.manualTitle, els.manualYear, els.manualFormat, els.manualImageUrl, els.manualAniListId, els.manualMalId];
+        manualInputs.forEach(input => {
+          if (input) {
+            on(input, "keydown", (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addManual();
+              }
+            });
+          }
+        });
+        
         on(els.boardSearchInput, "input", (e) => {
           state.localSearch = e.target.value.toLowerCase();
           render();
         });
         document.addEventListener("click", (e) => {
-          if (!e.target.closest(".search-card"))
+          // Changed .search-card to #add-search-panel so clicking outside actually closes it
+          if (!e.target.closest("#add-search-panel"))
             els.results.classList.remove("open");
+            
           if (!e.target.closest(".menu"))
             qa(".menu[open]").forEach((m) => m.removeAttribute("open"));
         });
@@ -2773,7 +2827,12 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           const m = window._exploreCache?.find(
             (x) => mediaKey(x) === b.dataset.addExplore,
           );
-          if (m) addShow(m);
+          if (m) {
+            addShow(m);
+            b.textContent = "Added ✓";
+            b.classList.remove("primary");
+            b.disabled = true;
+          }
         });
       }
       function debounce(fn, ms) {
@@ -2800,11 +2859,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         });
 
         document.addEventListener('dragover', (e) => {
+          if (!state.ui.sortMode) return;
           const folder = e.target.closest('.folder');
-          if (folder && state.ui.sortMode) {
+          const boardArea = e.target.closest('.board-list') || e.target.closest('.active-boards');
+          
+          if (folder || boardArea) {
             e.preventDefault(); // Necessary to allow dropping
             e.dataTransfer.dropEffect = 'move';
-            folder.style.borderColor = 'var(--brand)'; // Highlight folder
+            if (folder) folder.style.borderColor = 'var(--brand)'; // Highlight folder
           }
         });
 
@@ -2814,25 +2876,39 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         });
 
         document.addEventListener('drop', (e) => {
-          const folder = e.target.closest('.folder');
-          if (!folder || !state.ui.sortMode) return;
+          if (!state.ui.sortMode) return;
           e.preventDefault();
-          folder.style.borderColor = 'var(--line)';
+          
+          const folder = e.target.closest('.folder');
+          if (folder) folder.style.borderColor = 'var(--line)';
 
           const showId = e.dataTransfer.getData('text/plain');
           const show = byId(showId);
-          const targetGroupId = folder.dataset.itemId;
+          if (!show) return;
 
-          // If the show exists and isn't already in this folder
-          if (show && targetGroupId && show.groupId !== targetGroupId) {
-            removeFromOrders(show.id); // Remove from root board
-            show.groupId = targetGroupId; // Assign to new folder
-            if (!state.groupOrder[targetGroupId]) state.groupOrder[targetGroupId] = [];
-            state.groupOrder[targetGroupId].unshift(show.id); // Put at the top of the folder
-            
-            render();
-            save();
-            toast("Moved show into folder");
+          // Dropping INTO a folder
+          if (folder) {
+            const targetGroupId = folder.dataset.itemId;
+            if (targetGroupId && show.groupId !== targetGroupId) {
+              removeFromOrders(show.id); 
+              show.groupId = targetGroupId; 
+              if (!state.groupOrder[targetGroupId]) state.groupOrder[targetGroupId] = [];
+              state.groupOrder[targetGroupId].unshift(show.id); 
+              render();
+              save();
+              toast("Moved show into folder");
+            }
+          } 
+          // Dropping OUT to the root board
+          else if (e.target.closest('.board-list') || e.target.closest('.active-boards')) {
+            if (show.groupId) {
+              removeFromOrders(show.id);
+              show.groupId = null;
+              state.order[getBoard(show)].unshift(show.id);
+              render();
+              save();
+              toast("Moved show to root");
+            }
           }
         });
       }
@@ -2883,7 +2959,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         }, 0);
       }
       init();
-    
+      
 </script>
 </body>
 </html>
