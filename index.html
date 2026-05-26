@@ -1099,16 +1099,25 @@
     }
 
     async function fetchAniListWatching(userName) {
-      const data = await graphQLRequest(CURRENT_QUERY, { userName });
-      const lists = data?.MediaListCollection?.lists || [];
-      const entries = [];
-      for (const list of lists) {
-        for (const entry of list.entries || []) {
-          if (entry?.media) entries.push(entry);
-        }
-      }
-      return entries;
+  const data = await graphQLRequest(CURRENT_QUERY, { userName });
+  const lists = data?.MediaListCollection?.lists || [];
+  const entries = [];
+
+  for (const list of lists) {
+    for (const entry of list.entries || []) {
+      const media = entry?.media;
+      if (!media) continue;
+
+      // AniList list status is already CURRENT from CURRENT_QUERY.
+      // This additionally requires the anime itself to be currently airing.
+      if (media.status !== "RELEASING") continue;
+
+      entries.push(entry);
     }
+  }
+
+  return entries;
+}
 
     async function searchAniListShows(search) {
       const data = await graphQLRequest(SEARCH_QUERY, { search });
@@ -2556,7 +2565,7 @@
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
-        state.searchResults = (Array.isArray(results) ? results : []).filter(media => media?.status === "RELEASING");
+        state.searchResults = (Array.isArray(results) ? results : []).filter(media => media?.status === "");
         renderSearchResults();
       } catch (error) {
         if (token !== state.searchToken) return;
