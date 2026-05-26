@@ -64,16 +64,12 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .active-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; align-items: start; }
 .board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-.activity-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 0 0 24px; }
-.overview-card { min-height: 104px; padding: 16px; border-radius: 20px; background: rgba(20,24,34,.74); border: 1px solid var(--line); color: var(--text); display: grid; align-content: center; gap: 8px; text-align: left; box-shadow: 0 1px 0 rgba(255,255,255,.02) inset; }
-button.overview-card { cursor: pointer; }
-button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35,49,.84); border-color: rgba(139,150,255,.35); }
-.overview-card.has-update { background: rgba(139,150,255,.12); border-color: rgba(139,150,255,.5); box-shadow: 0 0 24px rgba(139,150,255,.08); }
-.overview-label { color: var(--muted); font-weight: 900; font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; }
-.overview-card strong { font-size: clamp(1.9rem, 4vw, 2.65rem); line-height: .92; letter-spacing: -.04em; }
-.overview-card small { color: var(--muted); font-weight: 700; line-height: 1.35; }
 .board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 800; }
 .count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: .75rem; font-weight: 800; padding: 0 8px; }
+.count.update-count { display: none; min-width: auto; color: var(--brand-strong); background: rgba(139,150,255,.12); border: 1px solid rgba(139,150,255,.35); padding: 0 9px; box-shadow: none; }
+.count.update-count.visible { display: inline-flex; }
+button.count.update-count { cursor: pointer; }
+button.count.update-count:hover { color: var(--text); background: rgba(139,150,255,.2); }
 .board, .active-boards, .board-list, .list { overflow: visible; }
 .board-list, .list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
 .card { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); transition: transform .2s cubic-bezier(.2,0,0,1), box-shadow .2s ease, border-color .2s ease, background .2s ease; overflow: visible; display: flex; flex-direction: column; }
@@ -212,23 +208,6 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
 
     <section class="boards" id="boards">
       <div class="tab-view active" id="view-active">
-        <div class="activity-overview" id="activityOverview" aria-label="Activity overview">
-          <button class="overview-card" id="updatedShowsCard" type="button">
-            <span class="overview-label">Library updates</span>
-            <strong id="updatedShowsCount">0</strong>
-            <small id="updatedShowsHint">No archived shows have pending updates.</small>
-          </button>
-          <div class="overview-card">
-            <span class="overview-label">Found releases</span>
-            <strong id="overviewFoundCount">0</strong>
-            <small>Ready to move into the library.</small>
-          </div>
-          <div class="overview-card">
-            <span class="overview-label">Watching</span>
-            <strong id="overviewWatchingCount">0</strong>
-            <small>Still waiting for a releases.moe match.</small>
-          </div>
-        </div>
         <div class="active-boards">
           <article class="board" data-board="found">
             <header class="board-header">
@@ -247,7 +226,7 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
 
       <div class="tab-view" id="view-downloaded">
         <header class="board-header" style="margin-bottom: 24px;">
-          <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
+          <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span><button class="count update-count" id="updatedShowsPill" type="button" hidden aria-live="polite">0 updates</button></h2>
           <div class="toolbar-actions">
             <div class="segmented" aria-label="Library filter">
               <button class="segment active" id="filterAllBtn" type="button">All</button>
@@ -439,6 +418,7 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
         releaseCooldownUntil = 0,
         dbPromise = null,
         idbAvailable = null,
+        lastLibraryUpdateToastCount = null,
         suppressCloudSync = false;
       const commentTimers = new Map(),
         groupNameTimers = new Map();
@@ -453,11 +433,7 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
         searchBtn: q("#searchBtn"),
         results: q("#results"),
         boardSearchInput: q("#boardSearchInput"),
-        updatedShowsCard: q("#updatedShowsCard"),
-        updatedShowsCount: q("#updatedShowsCount"),
-        updatedShowsHint: q("#updatedShowsHint"),
-        overviewFoundCount: q("#overviewFoundCount"),
-        overviewWatchingCount: q("#overviewWatchingCount"),
+        updatedShowsPill: q("#updatedShowsPill"),
         addModeTabs: q("#addModeTabs"),
         addPanels: qa(".add-panel"),
         toggleSettingsBtn: q("#toggleSettingsBtn"),
@@ -1487,16 +1463,22 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
               !s.downloaded &&
               now - (Date.parse(s.releasesMoe?.checkedAt || 0) || 0) >
                 12 * 60 * 60 * 1000,
-          );
-        if (!arr.length) return;
+          ),
+          summary = { checked: arr.length, found: 0, errors: 0 };
+        if (!arr.length) return summary;
         setStatus(`Checking ${arr.length} watching entries...`, "sync");
         for (const s of arr) {
+          const beforeBoard = getBoard(s);
           await refreshShow(s, { forceMove: true });
+          if (s.releasesMoe?.error) summary.errors++;
+          if (beforeBoard === "watching" && getBoard(s) === "found")
+            summary.found++;
           await sleep(RELEASES_REQUEST_DELAY_MS);
         }
         render();
         save();
         setStatus("System Ready");
+        return summary;
       }
       async function checkLibrary(limit = AUTO_LIBRARY_RELEASE_CHECK_LIMIT) {
         const now = Date.now();
@@ -1527,16 +1509,34 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
               ) || 0),
           )
           .slice(0, limit);
-        if (!arr.length) return;
+        const summary = {
+          checked: arr.length,
+          updatesFound: 0,
+          errors: 0,
+          pendingUpdates: updateLibraryUpdateIndicator(),
+        };
+        if (!arr.length) return summary;
         setStatus(`Checking ${arr.length} library entries...`, "sync");
         for (const s of arr) {
+          const before = defaultRelease(s.releasesMoe),
+            hadUpdate = !!before.updateAvailable,
+            previousLatest = before.latestUpdated || "";
           await refreshShow(s, { forceMove: false });
+          const after = defaultRelease(s.releasesMoe);
+          if (s.releasesMoe?.error) summary.errors++;
+          if (
+            after.updateAvailable &&
+            (!hadUpdate || (after.latestUpdated || "") !== previousLatest)
+          )
+            summary.updatesFound++;
           s.releasesMoe.libraryCheckedAt = new Date().toISOString();
           await sleep(RELEASES_REQUEST_DELAY_MS);
         }
         render();
         save();
+        summary.pendingUpdates = updateLibraryUpdateIndicator();
         setStatus("System Ready");
+        return summary;
       }
       async function refreshAllReleases() {
         const arr = state.shows.filter((s) => s.anilistId);
@@ -1552,7 +1552,13 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
           }
           render();
           save();
-          toast("Release refresh complete.");
+          const updates = updateLibraryUpdateIndicator();
+          lastLibraryUpdateToastCount = updates;
+          toast(
+            updates
+              ? `Release refresh complete. ${updates} library ${updates === 1 ? "update" : "updates"} available.`
+              : "Release refresh complete.",
+          );
         } finally {
           els.refreshReleasesBtn.disabled = false;
           els.refreshReleasesBtn.textContent = "Refresh Releases";
@@ -2007,19 +2013,69 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
             defaultRelease(s.releasesMoe).updateAvailable,
         );
       }
-      function updateActivityOverview() {
+      function updateLibraryUpdateIndicator() {
         const updates = updatedLibraryShows().length;
-        const found = state.shows.filter((s) => getBoard(s) === "found").length;
-        const watching = state.shows.filter((s) => getBoard(s) === "watching").length;
-        if (els.updatedShowsCount) els.updatedShowsCount.textContent = updates;
-        if (els.updatedShowsHint)
-          els.updatedShowsHint.textContent = updates
-            ? `${updates} archived ${updates === 1 ? "show has" : "shows have"} pending release updates.`
-            : "No archived shows have pending updates.";
-        els.updatedShowsCard?.classList.toggle("has-update", updates > 0);
-        if (els.overviewFoundCount) els.overviewFoundCount.textContent = found;
-        if (els.overviewWatchingCount)
-          els.overviewWatchingCount.textContent = watching;
+        if (!els.updatedShowsPill) return updates;
+        els.updatedShowsPill.textContent =
+          updates === 1 ? "1 update" : `${updates} updates`;
+        els.updatedShowsPill.hidden = updates < 1;
+        els.updatedShowsPill.classList.toggle("visible", updates > 0);
+        els.updatedShowsPill.setAttribute(
+          "aria-label",
+          updates === 1
+            ? "1 archived show has a pending update"
+            : `${updates} archived shows have pending updates`,
+        );
+        return updates;
+      }
+      function toastLibraryUpdates({ force = false } = {}) {
+        const updates = updateLibraryUpdateIndicator();
+        if (!updates) {
+          lastLibraryUpdateToastCount = 0;
+          return 0;
+        }
+        if (force || lastLibraryUpdateToastCount !== updates) {
+          toast(
+            `${updates} library ${updates === 1 ? "update" : "updates"} available.`,
+          );
+          lastLibraryUpdateToastCount = updates;
+        }
+        return updates;
+      }
+      function pluralCount(count, singular, plural = singular + "s") {
+        return `${count} ${count === 1 ? singular : plural}`;
+      }
+      function autoReleaseSummaryMessage({ watching, library } = {}) {
+        const libraryChecked = Number(library?.checked) || 0,
+          libraryUpdates = Number(library?.updatesFound) || 0,
+          activeFound = Number(watching?.found) || 0,
+          errors = (Number(watching?.errors) || 0) + (Number(library?.errors) || 0),
+          parts = [];
+        if (libraryUpdates > 0) {
+          parts.push(
+            libraryChecked > 0
+              ? `Checked ${pluralCount(libraryChecked, "library show", "library shows")} · ${pluralCount(libraryUpdates, "update")} found`
+              : `${pluralCount(libraryUpdates, "library update")} found`,
+          );
+        }
+        if (activeFound > 0)
+          parts.push(`${pluralCount(activeFound, "active release")} found`);
+        if (errors > 0 && parts.length)
+          parts.push(`${pluralCount(errors, "check")} failed`);
+        if (!parts.length && errors > 0)
+          return `Automatic release check had ${pluralCount(errors, "error")}.`;
+        return parts.join(" · ");
+      }
+      function toastAutoReleaseSummary(summary) {
+        const msg = autoReleaseSummaryMessage(summary);
+        if (!msg) return;
+        const errors =
+            (Number(summary?.watching?.errors) || 0) +
+            (Number(summary?.library?.errors) || 0),
+          findings =
+            (Number(summary?.watching?.found) || 0) +
+            (Number(summary?.library?.updatesFound) || 0);
+        toast(msg, errors && !findings ? "error" : "");
       }
       function libraryAllows(s) {
         if (state.ui.filterComplete) return !!s.allAvailableDownloaded;
@@ -2060,7 +2116,7 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
             ),
           );
         }
-        updateActivityOverview();
+        updateLibraryUpdateIndicator();
         renderBoard(
           "found",
           visible.filter((s) => getBoard(s) === "found"),
@@ -2923,7 +2979,7 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
           state.localSearch = e.target.value.toLowerCase();
           render();
         });
-        on(els.updatedShowsCard, "click", () => {
+        on(els.updatedShowsPill, "click", () => {
           const libraryTab = els.tabs.find(
             (tab) => tab.dataset.target === "view-downloaded",
           );
@@ -2932,6 +2988,7 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
           state.ui.filterIncomplete = false;
           updateButtons();
           render();
+          toastLibraryUpdates({ force: true });
         });
         document.addEventListener("click", (e) => {
           // Changed .search-card to #add-search-panel so clicking outside actually closes it
@@ -3135,11 +3192,16 @@ button.overview-card:hover { transform: translateY(-1px); background: rgba(29,35
           }
           try {
             suppressCloudSync = true;
-            await checkWatching();
-            await checkLibrary();
+            const watchingSummary = await checkWatching();
+            const librarySummary = await checkLibrary();
+            toastAutoReleaseSummary({
+              watching: watchingSummary,
+              library: librarySummary,
+            });
           } catch (e) {
             console.warn(e);
             setStatus("System Ready");
+            toast("Automatic release check failed.", "error");
           } finally {
             suppressCloudSync = false;
           }
