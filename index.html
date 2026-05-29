@@ -2279,7 +2279,7 @@
       for (const value of Object.values(state.addedShows || {})) {
         if (value?.id) map.set(String(value.id), value);
       }
-      for (const media of state.searchResults || []) {
+      for (const media of Results || []) {
         if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
       }
       return map.get(String(id)) || null;
@@ -2518,7 +2518,7 @@
       const currentIds = new Set((state.currentEntries || []).map(entry => String(entry?.media?.id)).filter(Boolean));
       const addedIds = new Set(Object.keys(state.addedShows || {}).map(String));
 
-      if (!state.searchResults.length) {
+      if (!Results.length) {
         const text = els.addShowSearch.value.trim().length >= SEARCH_MIN_LENGTH
           ? "No currently airing matches found."
           : `Type at least ${SEARCH_MIN_LENGTH} characters to search currently airing shows.`;
@@ -2526,7 +2526,7 @@
         return;
       }
 
-      els.addShowResults.innerHTML = state.searchResults.map(media => {
+      els.addShowResults.innerHTML = Results.map(media => {
         const id = String(media.id);
         const current = currentIds.has(id);
         const added = addedIds.has(id);
@@ -2555,7 +2555,7 @@
 
     async function handleSearchInput() {
       const query = els.addShowSearch.value.trim();
-      const token = ++state.searchToken;
+      const token = ++Token;
       if (query.length < SEARCH_MIN_LENGTH) {
         state.searchResults = [];
         renderSearchResults();
@@ -2565,7 +2565,7 @@
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
-        state.searchResults = (Array.isArray(results) ? results : []).filter(media => media?.status === "");
+        state.searchResults = Array.isArray(results) ? results : [];
         renderSearchResults();
       } catch (error) {
         if (token !== state.searchToken) return;
