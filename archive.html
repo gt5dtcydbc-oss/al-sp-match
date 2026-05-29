@@ -446,6 +446,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         startupTasksStarted = false,
         releaseCheckRunning = false,
         lastAutoReleaseCheckAt = 0,
+        lastCloudPullFailed = false,
         aniListCooldownUntil = 0,
         releaseCooldownUntil = 0,
         dbPromise = null,
@@ -558,13 +559,19 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         els.statusDot.className =
           mode === "sync" ? "dot sync" : mode === "error" ? "dot err" : "dot";
       }
-      function toast(msg, type = "") {
-        if (!els.toastArea) return;
+      function toast(msg, type = "", options = {}) {
+        if (!els.toastArea) return null;
+        const opts = typeof options === "number" ? { duration: options } : options || {};
+        const duration = opts.duration ?? 3000;
         const t = document.createElement("div");
         t.className = "toast " + type;
         t.textContent = msg;
         els.toastArea.append(t);
-        setTimeout(() => t.remove(), 3000);
+        if (duration > 0) setTimeout(() => t.remove(), duration);
+        return t;
+      }
+      function dismissToast(t) {
+        if (t?.isConnected) t.remove();
       }
       function timeoutSignal(ms) {
         if (AbortSignal.timeout) return AbortSignal.timeout(ms);
@@ -1184,8 +1191,9 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       async function pullFromCloud() {
         const pat = els.githubPat?.value.trim() || "",
           gid = els.gistId?.value.trim() || "";
+        lastCloudPullFailed = false;
         if (!pat || !gid) return null;
-        setStatus("Pulling from cloud...", "sync");
+        setStatus("Checking cloud...", "sync");
         try {
           const r = await fetch(
             `https://api.github.com/gists/${encodeURIComponent(gid)}`,
@@ -1203,6 +1211,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           return content ? JSON.parse(content) : null;
         } catch (e) {
           console.warn("cloud pull", e);
+          lastCloudPullFailed = true;
           setStatus("System Ready");
           return null;
         }
@@ -1243,41 +1252,61 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           setStatus("Sync Failed", "error");
         }
       }
-      async function autoCloud() {
+      async function autoCloud({ announce = false } = {}) {
         if (!els.githubPat?.value.trim() || !els.gistId?.value.trim()) return;
-        const cloud = await pullFromCloud();
-        const cloudShows = savedShows(cloud),
-          localShows = state.shows || [];
-        if (!cloud || !cloudShows.length) {
+        let progressToast = announce
+          ? toast("Checking cloud...", "", { duration: 0 })
+          : null;
+        try {
+          const cloud = await pullFromCloud();
+          const cloudShows = savedShows(cloud),
+            localShows = state.shows || [];
+          if (!cloud || !cloudShows.length) {
+            dismissToast(progressToast);
+            progressToast = null;
+            if (announce)
+              toast(lastCloudPullFailed ? "Cloud unavailable" : "Cloud checked", lastCloudPullFailed ? "error" : "");
+            return;
+          }
+          if (!localShows.length) {
+            applyState(preserveLocalEmbeddedCovers(cloud));
+            await persistState(clonePlain(state));
+            render();
+            dismissToast(progressToast);
+            progressToast = null;
+            toast("Cloud loaded");
+            return;
+          }
+          const cloudTime = getStateTimestamp(cloud),
+            localTime = getStateTimestamp(state),
+            skew = 2000;
+          if (cloudTime > localTime + skew) {
+            applyState(preserveLocalEmbeddedCovers(cloud));
+            await persistState(clonePlain(state));
+            render();
+            dismissToast(progressToast);
+            progressToast = null;
+            toast("Cloud updated");
+          } else {
+            dismissToast(progressToast);
+            progressToast = null;
+            toast("Cloud checked");
+          }
+        } finally {
+          dismissToast(progressToast);
           setStatus("System Ready");
-          return;
         }
-        if (!localShows.length) {
-          applyState(preserveLocalEmbeddedCovers(cloud));
-          await persistState(clonePlain(state));
-          render();
-          toast("Cloud loaded");
-          setStatus("System Ready");
-          return;
-        }
-        const cloudTime = getStateTimestamp(cloud),
-          localTime = getStateTimestamp(state),
-          skew = 2000;
-        if (cloudTime > localTime + skew) {
-          applyState(preserveLocalEmbeddedCovers(cloud));
-          await persistState(clonePlain(state));
-          render();
-          toast("Cloud updated");
-        } else {
-          toast("Local current");
-        }
-        setStatus("System Ready");
       }
       async function pullAndSync() {
         try {
           els.syncNowBtn.disabled = true;
           els.syncNowBtn.textContent = "Syncing...";
           const cloud = await pullFromCloud();
+          if (lastCloudPullFailed) {
+            toast("Cloud unavailable", "error");
+            setStatus("Sync Failed", "error");
+            return;
+          }
           const cloudShows = savedShows(cloud),
             localShows = state.shows || [];
           if (cloud && cloudShows.length && !localShows.length) {
@@ -1298,7 +1327,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               await pushToCloud(state);
               toast("Cloud pushed");
             } else {
-              toast("Local current");
+              toast("Cloud checked");
               setStatus("System Ready");
             }
           } else if (localShows.length) {
@@ -2137,14 +2166,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             (Number(library?.notListed) || 0),
           errors =
             (Number(watching?.errors) || 0) +
-            (Number(library?.errors) || 0),
-          parts = [`${totalChecked} checked`];
+            (Number(library?.errors) || 0);
+        if (totalChecked < 1) return "Nothing to check";
+        const parts = [`${totalChecked} checked`];
         if (updates > 0) parts.push(`${updates} updates`);
         if (found > 0) parts.push(`${found} new`);
         if (notListed > 0) parts.push(`${notListed} not listed`);
         if (errors > 0) parts.push(`${errors} failed`);
-        if (totalChecked > 0 && !updates && !found && !notListed && !errors)
-          parts.push("no changes");
+        if (!updates && !found && !notListed && !errors) parts.push("no changes");
         return parts.join(" · ");
       }
       function toastAutoReleaseSummary(summary) {
@@ -2167,8 +2196,9 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         releaseCheckRunning = true;
         lastAutoReleaseCheckAt = now;
 
+        let progressToast = null;
         if (announce) {
-          toast("Checking releases...");
+          progressToast = toast("Checking releases...", "", { duration: 0 });
           setStatus("Checking releases...", "sync");
         }
 
@@ -2176,15 +2206,20 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           suppressCloudSync = true;
           const watchingSummary = await checkWatching();
           const librarySummary = await checkLibrary();
+          dismissToast(progressToast);
+          progressToast = null;
           toastAutoReleaseSummary({
             watching: watchingSummary,
             library: librarySummary,
           });
         } catch (e) {
           console.warn(e);
+          dismissToast(progressToast);
+          progressToast = null;
           setStatus("System Ready");
           toast("Release check failed", "error");
         } finally {
+          dismissToast(progressToast);
           suppressCloudSync = false;
           releaseCheckRunning = false;
         }
@@ -3313,7 +3348,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             setStatus("System Ready");
           }
           try {
-            await autoCloud();
+            await autoCloud({ announce: true });
           } catch (e) {
             console.warn(e);
             setStatus("System Ready");
