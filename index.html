@@ -2565,7 +2565,8 @@
       try {
         const results = await searchAniListShows(query);
         if (token !== state.searchToken) return;
-        state.searchResults = (Array.isArray(results) ? results : []).filter(media => media?.status === "");
+        state.searchResults = (Array.isArray(results) ? results : [])
+        .filter(media => media?.status === "RELEASING");
         renderSearchResults();
       } catch (error) {
         if (token !== state.searchToken) return;
