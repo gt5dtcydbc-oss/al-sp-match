@@ -66,10 +66,6 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 800; }
 .count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: .75rem; font-weight: 800; padding: 0 8px; }
-.count.update-count { display: none; min-width: auto; color: var(--brand-strong); background: rgba(139,150,255,.12); border: 1px solid rgba(139,150,255,.35); padding: 0 9px; box-shadow: none; }
-.count.update-count.visible { display: inline-flex; }
-button.count.update-count { cursor: pointer; }
-button.count.update-count:hover { color: var(--text); background: rgba(139,150,255,.2); }
 .board, .active-boards, .board-list, .list { overflow: visible; }
 .board-list, .list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
 .card { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); transition: transform .2s cubic-bezier(.2,0,0,1), box-shadow .2s ease, border-color .2s ease, background .2s ease; overflow: visible; display: flex; flex-direction: column; }
@@ -95,6 +91,9 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
 .badge.done { color: var(--muted); background: var(--surface-softer); }
 .badge.need { color: var(--warn); background: rgba(242,195,107,.12); }
 .badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,.4); }
+.card.has-update { border-color: rgba(139,150,255,.6); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
+.card.has-update:hover, .card.has-update:focus-within { border-color: rgba(168,176,255,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(139,150,255,.3), 0 0 28px rgba(139,150,255,.18); }
+.card.has-update > .card-main .thumb { box-shadow: 0 0 0 2px rgba(139,150,255,.65), 0 8px 20px rgba(0,0,0,.28); }
 .time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
 .menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
 .menu[open] { z-index: 120; }
@@ -226,12 +225,13 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
 
       <div class="tab-view" id="view-downloaded">
         <header class="board-header" style="margin-bottom: 24px;">
-          <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span><button class="count update-count" id="updatedShowsPill" type="button" hidden aria-live="polite">0 updates</button></h2>
+          <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
           <div class="toolbar-actions">
             <div class="segmented" aria-label="Library filter">
               <button class="segment active" id="filterAllBtn" type="button">All</button>
               <button class="segment" id="filterCompleteBtn" type="button">Complete</button>
               <button class="segment" id="filterIncompleteBtn" type="button">Incomplete</button>
+              <button class="segment" id="filterUpdatedBtn" type="button" hidden>Updated</button>
             </div>
             <button class="btn compact" id="editOrderBtn" type="button">Edit Order</button>
             <button class="btn compact" id="addFolderBtn" type="button">+ Folder</button>
@@ -404,6 +404,7 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         ui: {
           filterComplete: false,
           filterIncomplete: false,
+          filterUpdated: false,
           openNotes: {},
           sortMode: false,
           addMode: "search",
@@ -433,7 +434,7 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         searchBtn: q("#searchBtn"),
         results: q("#results"),
         boardSearchInput: q("#boardSearchInput"),
-        updatedShowsPill: q("#updatedShowsPill"),
+        filterUpdatedBtn: q("#filterUpdatedBtn"),
         addModeTabs: q("#addModeTabs"),
         addPanels: qa(".add-panel"),
         toggleSettingsBtn: q("#toggleSettingsBtn"),
@@ -513,6 +514,7 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         return {
           filterComplete: false,
           filterIncomplete: false,
+          filterUpdated: false,
           openNotes: {},
           sortMode: false,
           addMode: "search",
@@ -1981,9 +1983,15 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
             (s) => !!s.allAvailableDownloaded,
           );
       }
+      function folderHasUpdate(g) {
+        return folderChildren(g?.id).some((s) =>
+          defaultRelease(s.releasesMoe).updateAvailable,
+        );
+      }
       function folderAllows(g) {
         if (!g || g.board !== "downloaded") return true;
         const complete = isFolderComplete(g);
+        if (state.ui.filterUpdated) return folderHasUpdate(g);
         if (state.ui.filterComplete) return complete;
         if (state.ui.filterIncomplete) return !complete;
         return true;
@@ -2015,17 +2023,16 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
       }
       function updateLibraryUpdateIndicator() {
         const updates = updatedLibraryShows().length;
-        if (!els.updatedShowsPill) return updates;
-        els.updatedShowsPill.textContent =
-          updates === 1 ? "1 update" : `${updates} updates`;
-        els.updatedShowsPill.hidden = updates < 1;
-        els.updatedShowsPill.classList.toggle("visible", updates > 0);
-        els.updatedShowsPill.setAttribute(
-          "aria-label",
-          updates === 1
-            ? "1 archived show has a pending update"
-            : `${updates} archived shows have pending updates`,
-        );
+        if (els.filterUpdatedBtn) {
+          els.filterUpdatedBtn.hidden = updates < 1;
+          els.filterUpdatedBtn.setAttribute(
+            "aria-label",
+            updates === 1
+              ? "Show the 1 archived show with a pending update"
+              : `Show the ${updates} archived shows with pending updates`,
+          );
+        }
+        if (!updates && state.ui.filterUpdated) state.ui.filterUpdated = false;
         return updates;
       }
       function toastLibraryUpdates({ force = false } = {}) {
@@ -2046,25 +2053,26 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         return `${count} ${count === 1 ? singular : plural}`;
       }
       function autoReleaseSummaryMessage({ watching, library } = {}) {
-        const libraryChecked = Number(library?.checked) || 0,
+        const watchingChecked = Number(watching?.checked) || 0,
+          libraryChecked = Number(library?.checked) || 0,
+          totalChecked = watchingChecked + libraryChecked,
           libraryUpdates = Number(library?.updatesFound) || 0,
           activeFound = Number(watching?.found) || 0,
           errors = (Number(watching?.errors) || 0) + (Number(library?.errors) || 0),
           parts = [];
-        if (libraryUpdates > 0) {
-          parts.push(
-            libraryChecked > 0
-              ? `Checked ${pluralCount(libraryChecked, "library show", "library shows")} · ${pluralCount(libraryUpdates, "update")} found`
-              : `${pluralCount(libraryUpdates, "library update")} found`,
-          );
-        }
+        if (totalChecked > 0)
+          parts.push(`Checked ${pluralCount(totalChecked, "show")}`);
+        if (libraryUpdates > 0)
+          parts.push(`${pluralCount(libraryUpdates, "library update")} found`);
         if (activeFound > 0)
           parts.push(`${pluralCount(activeFound, "active release")} found`);
-        if (errors > 0 && parts.length)
+        if (totalChecked > 0 && !libraryUpdates && !activeFound)
+          parts.push("no updates");
+        if (errors > 0)
           parts.push(`${pluralCount(errors, "check")} failed`);
         if (!parts.length && errors > 0)
           return `Automatic release check had ${pluralCount(errors, "error")}.`;
-        return parts.join(" · ");
+        return parts.length ? parts.join(" · ") : "Checked 0 shows · no updates";
       }
       function toastAutoReleaseSummary(summary) {
         const msg = autoReleaseSummaryMessage(summary);
@@ -2078,13 +2086,19 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         toast(msg, errors && !findings ? "error" : "");
       }
       function libraryAllows(s) {
+        if (state.ui.filterUpdated)
+          return !!defaultRelease(s.releasesMoe).updateAvailable;
         if (state.ui.filterComplete) return !!s.allAvailableDownloaded;
         if (state.ui.filterIncomplete) return !s.allAvailableDownloaded;
         return true;
       }
       function updateButtons() {
+        const filtering =
+          !!state.ui.filterComplete ||
+          !!state.ui.filterIncomplete ||
+          !!state.ui.filterUpdated;
         els.editOrderBtn?.classList.toggle("active", !!state.ui.sortMode);
-        els.filterAllBtn?.classList.toggle("active", !state.ui.filterComplete && !state.ui.filterIncomplete);
+        els.filterAllBtn?.classList.toggle("active", !filtering);
         els.filterCompleteBtn?.classList.toggle(
           "active",
           !!state.ui.filterComplete,
@@ -2092,6 +2106,10 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         els.filterIncompleteBtn?.classList.toggle(
           "active",
           !!state.ui.filterIncomplete,
+        );
+        els.filterUpdatedBtn?.classList.toggle(
+          "active",
+          !!state.ui.filterUpdated,
         );
       }
       function render() {
@@ -2198,6 +2216,7 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         const board = getBoard(s),
           isDl = board === "downloaded",
           notes = !!state.ui.openNotes[s.id],
+          hasUpdate = isDl && !!s.releasesMoe.updateAvailable,
           sort = state.ui.sortMode && isDl,
           link = releaseLink(s),
           poster = link
@@ -2220,7 +2239,7 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
           ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
           : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
         const downloadControl = isDl ? "" : `<input class="check" type="checkbox" data-download-id="${escapeAttr(s.id)}">`;
-        return `<article class="card ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
+        return `<article class="card ${hasUpdate ? "has-update" : ""} ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
       }
       function moveWithin(arr, id, dir) {
         const i = arr.indexOf(id),
@@ -2464,6 +2483,8 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
           s.releasesMoe.latestUpdated = null;
         }
         s.releasesMoe.updateAvailable = false;
+        if (!updatedLibraryShows().some((show) => show.id !== s.id))
+          state.ui.filterUpdated = false;
         render();
         save();
         toast("Update acknowledged.");
@@ -2979,17 +3000,6 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
           state.localSearch = e.target.value.toLowerCase();
           render();
         });
-        on(els.updatedShowsPill, "click", () => {
-          const libraryTab = els.tabs.find(
-            (tab) => tab.dataset.target === "view-downloaded",
-          );
-          if (libraryTab) libraryTab.click();
-          state.ui.filterComplete = false;
-          state.ui.filterIncomplete = false;
-          updateButtons();
-          render();
-          toastLibraryUpdates({ force: true });
-        });
         document.addEventListener("click", (e) => {
           // Changed .search-card to #add-search-panel so clicking outside actually closes it
           if (!e.target.closest("#add-search-panel"))
@@ -3011,18 +3021,29 @@ button.count.update-count:hover { color: var(--text); background: rgba(139,150,2
         on(els.filterAllBtn, "click", () => {
           state.ui.filterComplete = false;
           state.ui.filterIncomplete = false;
+          state.ui.filterUpdated = false;
           render();
           save();
         });
         on(els.filterCompleteBtn, "click", () => {
           state.ui.filterComplete = true;
-          if (state.ui.filterComplete) state.ui.filterIncomplete = false;
+          state.ui.filterIncomplete = false;
+          state.ui.filterUpdated = false;
           render();
           save();
         });
         on(els.filterIncompleteBtn, "click", () => {
+          state.ui.filterComplete = false;
           state.ui.filterIncomplete = true;
-          if (state.ui.filterIncomplete) state.ui.filterComplete = false;
+          state.ui.filterUpdated = false;
+          render();
+          save();
+        });
+        on(els.filterUpdatedBtn, "click", () => {
+          if (!updatedLibraryShows().length) return;
+          state.ui.filterComplete = false;
+          state.ui.filterIncomplete = false;
+          state.ui.filterUpdated = true;
           render();
           save();
         });
