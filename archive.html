@@ -93,6 +93,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,.4); }
 .card.has-update { border-color: rgba(139,150,255,.6); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
 .card.has-update:hover, .card.has-update:focus-within { border-color: rgba(168,176,255,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(139,150,255,.3), 0 0 28px rgba(139,150,255,.18); }
+.folder.is-complete.has-update { border-color: rgba(139,150,255,.68); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
 .card.has-update > .card-main .thumb { box-shadow: 0 0 0 2px rgba(139,150,255,.65), 0 8px 20px rgba(0,0,0,.28); }
 .time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
 .menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
@@ -185,7 +186,38 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
 .relation-type { font-size: .7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
 .compact-select { min-width: 170px; width: auto; height: 42px; border-radius: 99px; }
-@media (max-width: 800px) { .app { width: min(100% - 28px, 1200px); } .active-boards { grid-template-columns: 1fr; } .hero { flex-direction: column; align-items: flex-start; } .board-controls { width: 100%; } .pill-input { width: 100%; } .search-row, .form-row { grid-template-columns: 1fr; } .manual-grid { grid-template-columns: 1fr; } .card-main { grid-template-columns: auto 52px minmax(0,1fr) auto; gap: 12px; } .card-main.no-download { grid-template-columns: 52px minmax(0,1fr) auto; } .thumb { width: 52px; height: 72px; } .notes { padding-left: 14px; } .folder .card-main { grid-template-columns: 52px minmax(0,1fr) auto; } .folder .card-main.has-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto auto; } .folder .card-main.no-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto; } .folder-list { padding: 14px; } .toolbar-actions { width: 100%; align-items: stretch; } .toolbar-actions .btn { flex: 1; } .settings-toggle { min-height: 68px; padding: 16px; } .settings-toggle-copy small { font-size: .8rem; } .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); } .review-item { grid-template-columns: 1fr; } }
+@media (max-width: 800px) {
+  .app { width: min(100% - 28px, 1200px); }
+  .active-boards { grid-template-columns: 1fr; }
+  .hero { flex-direction: column; align-items: flex-start; }
+  .board-controls { width: 100%; }
+  .pill-input { width: 100%; }
+  .search-row, .form-row { grid-template-columns: 1fr; }
+  .manual-grid { grid-template-columns: 1fr; }
+  .card-main { grid-template-columns: auto 52px minmax(0,1fr) auto; gap: 12px; }
+  .card-main.no-download { grid-template-columns: 52px minmax(0,1fr) auto; }
+  .thumb { width: 52px; height: 72px; }
+  .notes { padding-left: 14px; }
+  .folder .card-main { grid-template-columns: 52px minmax(0,1fr) auto; }
+  .folder .card-main.has-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto auto; }
+  .folder .card-main.no-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto; }
+  .folder-list { padding: 14px; }
+  #view-downloaded .board-header { gap: 14px; }
+  #view-downloaded .toolbar-actions { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+  #view-downloaded .toolbar-actions .segmented { grid-column: 1 / -1; width: 100%; display: flex; flex-wrap: nowrap; gap: 4px; padding: 5px; border-radius: 18px; overflow: hidden; }
+  #view-downloaded .toolbar-actions .segment { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: .78rem; text-align: center; white-space: nowrap; }
+  #view-downloaded .toolbar-actions .btn { width: 100%; min-width: 0; padding: 0 10px; }
+  .folder .meta { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+  .folder .folder-completion { flex-shrink: 0; }
+  .folder .badge.update { font-size: .62rem; padding: 3px 7px; }
+  .settings-toggle { min-height: 68px; padding: 16px; }
+  .settings-toggle-copy small { font-size: .8rem; }
+  .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); }
+  .review-item { grid-template-columns: 1fr; }
+}
+@media (max-width: 390px) {
+  #view-downloaded .toolbar-actions .segment { font-size: .7rem; padding-inline: 4px; }
+}
 </style>
 </head>
 <body>
