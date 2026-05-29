@@ -766,6 +766,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           updated: null,
           latestUpdated: null,
           updateAvailable: false,
+          notListed: false,
+          notListedAt: null,
           ...(o || {}),
         };
       }
@@ -1447,10 +1449,17 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             match = j.items?.[0],
             apiUpdated = match?.updated || null,
             isLib = getBoard(s) === "downloaded";
+          const checkedAt = new Date().toISOString();
           s.releasesMoe.found = !!match;
           s.releasesMoe.recordId = match?.id || null;
-          s.releasesMoe.checkedAt = new Date().toISOString();
+          s.releasesMoe.checkedAt = checkedAt;
           s.releasesMoe.error = null;
+          s.releasesMoe.notListed = !match;
+          s.releasesMoe.notListedAt = match ? null : checkedAt;
+          if (!match) {
+            s.releasesMoe.updateAvailable = false;
+            s.releasesMoe.latestUpdated = null;
+          }
           if (match && apiUpdated) {
             const old = s.releasesMoe.updated
                 ? Date.parse(s.releasesMoe.updated)
@@ -1495,13 +1504,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               now - (Date.parse(s.releasesMoe?.checkedAt || 0) || 0) >
                 12 * 60 * 60 * 1000,
           ),
-          summary = { checked: arr.length, found: 0, errors: 0 };
+          summary = { checked: arr.length, found: 0, errors: 0, notListed: 0 };
         if (!arr.length) return summary;
         setStatus(`Checking ${arr.length} watching entries...`, "sync");
         for (const s of arr) {
           const beforeBoard = getBoard(s);
           await refreshShow(s, { forceMove: true });
           if (s.releasesMoe?.error) summary.errors++;
+          else if (s.releasesMoe?.notListed) summary.notListed++;
           if (beforeBoard === "watching" && getBoard(s) === "found")
             summary.found++;
           await sleep(RELEASES_REQUEST_DELAY_MS);
@@ -1544,6 +1554,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           checked: arr.length,
           updatesFound: 0,
           errors: 0,
+          notListed: 0,
           pendingUpdates: updateLibraryUpdateIndicator(),
         };
         if (!arr.length) return summary;
@@ -1555,6 +1566,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           await refreshShow(s, { forceMove: false });
           const after = defaultRelease(s.releasesMoe);
           if (s.releasesMoe?.error) summary.errors++;
+          else if (after.notListed) summary.notListed++;
           if (
             after.updateAvailable &&
             (!hadUpdate || (after.latestUpdated || "") !== previousLatest)
@@ -1573,23 +1585,53 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const arr = state.shows.filter((s) => s.anilistId);
         if (!arr.length)
           return toast("No AniList-backed entries to refresh.", "error");
+        const summary = {
+          checked: arr.length,
+          updatesFound: 0,
+          activeFound: 0,
+          notListed: 0,
+          errors: 0,
+        };
         els.refreshReleasesBtn.disabled = true;
         els.refreshReleasesBtn.textContent = "Refreshing...";
         try {
           for (let i = 0; i < arr.length; i++) {
+            const s = arr[i],
+              beforeBoard = getBoard(s),
+              before = defaultRelease(s.releasesMoe),
+              hadUpdate = !!before.updateAvailable,
+              previousLatest = before.latestUpdated || "";
             setStatus(`Refreshing ${i + 1}/${arr.length}...`, "sync");
-            await refreshShow(arr[i], { forceMove: true });
+            await refreshShow(s, { forceMove: true });
+            const after = defaultRelease(s.releasesMoe);
+            if (after.error) summary.errors++;
+            else if (after.notListed) summary.notListed++;
+            if (
+              after.updateAvailable &&
+              (!hadUpdate || (after.latestUpdated || "") !== previousLatest)
+            )
+              summary.updatesFound++;
+            if (beforeBoard === "watching" && getBoard(s) === "found")
+              summary.activeFound++;
             await sleep(RELEASES_REQUEST_DELAY_MS);
           }
           render();
           save();
-          const updates = updateLibraryUpdateIndicator();
-          lastLibraryUpdateToastCount = updates;
-          toast(
-            updates
-              ? `Release refresh complete. ${updates} library ${updates === 1 ? "update" : "updates"} available.`
-              : "Release refresh complete.",
-          );
+          lastLibraryUpdateToastCount = updateLibraryUpdateIndicator();
+          toastAutoReleaseSummary({
+            watching: {
+              checked: summary.checked,
+              found: summary.activeFound,
+              errors: summary.errors,
+              notListed: summary.notListed,
+            },
+            library: {
+              checked: 0,
+              updatesFound: summary.updatesFound,
+              errors: 0,
+              notListed: 0,
+            },
+          });
         } finally {
           els.refreshReleasesBtn.disabled = false;
           els.refreshReleasesBtn.textContent = "Refresh Releases";
@@ -2085,23 +2127,22 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const watchingChecked = Number(watching?.checked) || 0,
           libraryChecked = Number(library?.checked) || 0,
           totalChecked = watchingChecked + libraryChecked,
-          libraryUpdates = Number(library?.updatesFound) || 0,
-          activeFound = Number(watching?.found) || 0,
-          errors = (Number(watching?.errors) || 0) + (Number(library?.errors) || 0),
-          parts = [];
-        if (totalChecked > 0)
-          parts.push(`Checked ${pluralCount(totalChecked, "show")}`);
-        if (libraryUpdates > 0)
-          parts.push(`${pluralCount(libraryUpdates, "library update")} found`);
-        if (activeFound > 0)
-          parts.push(`${pluralCount(activeFound, "active release")} found`);
-        if (totalChecked > 0 && !libraryUpdates && !activeFound)
-          parts.push("no updates");
-        if (errors > 0)
-          parts.push(`${pluralCount(errors, "check")} failed`);
-        if (!parts.length && errors > 0)
-          return `Automatic release check had ${pluralCount(errors, "error")}.`;
-        return parts.length ? parts.join(" · ") : "Checked 0 shows · no updates";
+          updates = Number(library?.updatesFound) || 0,
+          found = Number(watching?.found) || 0,
+          notListed =
+            (Number(watching?.notListed) || 0) +
+            (Number(library?.notListed) || 0),
+          errors =
+            (Number(watching?.errors) || 0) +
+            (Number(library?.errors) || 0),
+          parts = [`${totalChecked} checked`];
+        if (updates > 0) parts.push(`${updates} updates`);
+        if (found > 0) parts.push(`${found} found`);
+        if (notListed > 0) parts.push(`${notListed} not listed`);
+        if (errors > 0) parts.push(`${errors} failed`);
+        if (totalChecked > 0 && !updates && !found && !notListed && !errors)
+          parts.push("no changes");
+        return parts.join(" · ");
       }
       function toastAutoReleaseSummary(summary) {
         const msg = autoReleaseSummaryMessage(summary);
