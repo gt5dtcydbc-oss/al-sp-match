@@ -444,12 +444,15 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         pendingBatchMatches = [],
         cloudSyncTimer = null,
         startupTasksStarted = false,
+        releaseCheckRunning = false,
+        lastAutoReleaseCheckAt = 0,
         aniListCooldownUntil = 0,
         releaseCooldownUntil = 0,
         dbPromise = null,
         idbAvailable = null,
         lastLibraryUpdateToastCount = null,
         suppressCloudSync = false;
+      const RESUME_RELEASE_CHECK_STALE_MS = 15 * 60 * 1000;
       const commentTimers = new Map(),
         groupNameTimers = new Map();
 
@@ -1253,7 +1256,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           applyState(preserveLocalEmbeddedCovers(cloud));
           await persistState(clonePlain(state));
           render();
-          toast("Cloud sync complete.");
+          toast("Cloud loaded");
           setStatus("System Ready");
           return;
         }
@@ -1264,9 +1267,9 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           applyState(preserveLocalEmbeddedCovers(cloud));
           await persistState(clonePlain(state));
           render();
-          toast("Pulled newer cloud board.");
+          toast("Cloud updated");
         } else {
-          toast("Startup cloud check complete; local board kept.");
+          toast("Local current");
         }
         setStatus("System Ready");
       }
@@ -1281,7 +1284,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             applyState(preserveLocalEmbeddedCovers(cloud));
             save();
             render();
-            toast("Pulled cloud board.");
+            toast("Cloud loaded");
           } else if (cloud && cloudShows.length && localShows.length) {
             const cloudTime = getStateTimestamp(cloud),
               localTime = getStateTimestamp(state),
@@ -1290,17 +1293,17 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               applyState(preserveLocalEmbeddedCovers(cloud));
               save();
               render();
-              toast("Pulled newer cloud board.");
+              toast("Cloud updated");
             } else if (localTime > cloudTime + skew) {
               await pushToCloud(state);
-              toast("Pushed newer local board to cloud.");
+              toast("Cloud pushed");
             } else {
-              toast("Cloud sync checked; no newer board found.");
+              toast("Local current");
               setStatus("System Ready");
             }
           } else if (localShows.length) {
             await pushToCloud(state);
-            toast("Pushed local board to cloud.");
+            toast("Cloud pushed");
           } else {
             toast("Both cloud and local are empty.", "error");
             setStatus("System Ready");
@@ -2137,7 +2140,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             (Number(library?.errors) || 0),
           parts = [`${totalChecked} checked`];
         if (updates > 0) parts.push(`${updates} updates`);
-        if (found > 0) parts.push(`${found} found`);
+        if (found > 0) parts.push(`${found} new`);
         if (notListed > 0) parts.push(`${notListed} not listed`);
         if (errors > 0) parts.push(`${errors} failed`);
         if (totalChecked > 0 && !updates && !found && !notListed && !errors)
@@ -2154,6 +2157,37 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             (Number(summary?.watching?.found) || 0) +
             (Number(summary?.library?.updatesFound) || 0);
         toast(msg, errors && !findings ? "error" : "");
+      }
+      async function runAutoReleaseCheck({ announce = false, force = false } = {}) {
+        if (releaseCheckRunning) return;
+        const now = Date.now();
+        if (!force && now - lastAutoReleaseCheckAt < RESUME_RELEASE_CHECK_STALE_MS)
+          return;
+
+        releaseCheckRunning = true;
+        lastAutoReleaseCheckAt = now;
+
+        if (announce) {
+          toast("Checking releases...");
+          setStatus("Checking releases...", "sync");
+        }
+
+        try {
+          suppressCloudSync = true;
+          const watchingSummary = await checkWatching();
+          const librarySummary = await checkLibrary();
+          toastAutoReleaseSummary({
+            watching: watchingSummary,
+            library: librarySummary,
+          });
+        } catch (e) {
+          console.warn(e);
+          setStatus("System Ready");
+          toast("Release check failed", "error");
+        } finally {
+          suppressCloudSync = false;
+          releaseCheckRunning = false;
+        }
       }
       function libraryAllows(s) {
         if (state.ui.filterUpdated)
@@ -3001,6 +3035,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             qa(".menu[open]").forEach((m) => m.removeAttribute("open"));
           }
         });
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible")
+            runAutoReleaseCheck({ announce: true });
+        });
+        window.addEventListener("pageshow", (e) => {
+          if (e.persisted) runAutoReleaseCheck({ announce: true });
+        });
         
         els.tabs.forEach((tab) =>
           on(tab, "click", () => {
@@ -3276,21 +3318,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             console.warn(e);
             setStatus("System Ready");
           }
-          try {
-            suppressCloudSync = true;
-            const watchingSummary = await checkWatching();
-            const librarySummary = await checkLibrary();
-            toastAutoReleaseSummary({
-              watching: watchingSummary,
-              library: librarySummary,
-            });
-          } catch (e) {
-            console.warn(e);
-            setStatus("System Ready");
-            toast("Automatic release check failed.", "error");
-          } finally {
-            suppressCloudSync = false;
-          }
+          await runAutoReleaseCheck({ announce: true, force: true });
         }, 0);
       }
       init();
