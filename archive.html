@@ -1188,6 +1188,9 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           );
         } catch (e) {}
       }
+      function hasCloudCredentials() {
+        return !!(els.githubPat?.value.trim() && els.gistId?.value.trim());
+      }
       async function pullFromCloud() {
         const pat = els.githubPat?.value.trim() || "",
           gid = els.gistId?.value.trim() || "";
@@ -1216,10 +1219,10 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           return null;
         }
       }
-      async function pushToCloud(obj) {
+      async function pushToCloud(obj, { toastOnError = false } = {}) {
         const pat = els.githubPat?.value.trim() || "",
           gid = els.gistId?.value.trim() || "";
-        if (!pat || !gid) return;
+        if (!pat || !gid) return false;
         const payload = JSON.stringify(stripEmbedded(obj), null, 2);
         if (byteSize(payload) > MAX_CLOUD_SYNC_BYTES) {
           setStatus("Cloud sync skipped: JSON too large", "error");
@@ -1227,11 +1230,11 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             "Cloud sync skipped because the lightweight JSON is too large.",
             "error",
           );
-          return;
+          return false;
         }
         setStatus("Pushing to cloud...", "sync");
         try {
-          await fetch(
+          const r = await fetch(
             `https://api.github.com/gists/${encodeURIComponent(gid)}`,
             {
               method: "PATCH",
@@ -1246,10 +1249,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               signal: timeoutSignal(10000),
             }
           );
+          if (!r.ok) throw new Error("HTTP " + r.status);
           setStatus("System Ready");
+          return true;
         } catch (e) {
           console.warn("cloud push", e);
           setStatus("Sync Failed", "error");
+          if (toastOnError) toast("Cloud save failed", "error");
+          return false;
         }
       }
       async function autoCloud({ announce = false } = {}) {
@@ -1324,15 +1331,15 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               render();
               toast("Cloud updated");
             } else if (localTime > cloudTime + skew) {
-              await pushToCloud(state);
-              toast("Cloud pushed");
+              if (await pushToCloud(state)) toast("Cloud pushed");
+              else toast("Cloud save failed", "error");
             } else {
               toast("Cloud checked");
               setStatus("System Ready");
             }
           } else if (localShows.length) {
-            await pushToCloud(state);
-            toast("Cloud pushed");
+            if (await pushToCloud(state)) toast("Cloud pushed");
+            else toast("Cloud save failed", "error");
           } else {
             toast("Both cloud and local are empty.", "error");
             setStatus("System Ready");
@@ -2206,12 +2213,22 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           suppressCloudSync = true;
           const watchingSummary = await checkWatching();
           const librarySummary = await checkLibrary();
+          const checked =
+            (Number(watchingSummary?.checked) || 0) +
+            (Number(librarySummary?.checked) || 0);
+
           dismissToast(progressToast);
           progressToast = null;
           toastAutoReleaseSummary({
             watching: watchingSummary,
             library: librarySummary,
           });
+
+          suppressCloudSync = false;
+          if (checked > 0 && hasCloudCredentials()) {
+            clearTimeout(cloudSyncTimer);
+            await pushToCloud(clonePlain(state), { toastOnError: true });
+          }
         } catch (e) {
           console.warn(e);
           dismissToast(progressToast);
