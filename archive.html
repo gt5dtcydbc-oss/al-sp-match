@@ -93,7 +93,6 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,.4); }
 .card.has-update { border-color: rgba(139,150,255,.6); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
 .card.has-update:hover, .card.has-update:focus-within { border-color: rgba(168,176,255,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(139,150,255,.3), 0 0 28px rgba(139,150,255,.18); }
-.folder.is-complete.has-update { border-color: rgba(139,150,255,.68); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
 .card.has-update > .card-main .thumb { box-shadow: 0 0 0 2px rgba(139,150,255,.65), 0 8px 20px rgba(0,0,0,.28); }
 .time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
 .menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
@@ -111,8 +110,6 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .card.notes-open .notes { display: block; padding-top: 14px; animation: slideDownPanel .2s ease-out; }
 @keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 .folder { padding: 0; display: flex; flex-direction: column; gap: 0; }
-.folder.is-complete { border-color: rgba(69,212,155,.28); }
-.folder.is-complete .folder-toggle { color: var(--ok); }
 .folder .card-main { cursor: pointer; grid-template-columns: 56px minmax(0,1fr) auto; padding-left: 14px; min-height: 104px; }
 .folder .card-main.has-folder-menu { grid-template-columns: 56px minmax(0,1fr) auto auto; }
 .folder .card-main.no-folder-menu { grid-template-columns: 56px minmax(0,1fr) auto; }
@@ -2227,21 +2224,16 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const folderComplete = isFolderComplete(g, allKids);
         const hasUpdate = allKids.some((s) => defaultRelease(s.releasesMoe).updateAvailable);
         const updateBadge = hasUpdate ? '<span class="badge update">Updated</span>' : "";
-        const statusBadge = folderComplete
-          ? '<span class="badge found">Complete</span>'
-          : '<span class="badge need">Incomplete</span>';
-        const completionText = allKids.length
-          ? `${complete}/${allKids.length}`
-          : folderComplete
-            ? "Complete"
-            : "Empty";
+        const folderCountText = allKids.length
+          ? `${allKids.length} ${allKids.length === 1 ? "show" : "shows"}`
+          : "Empty";
         const canEdit = state.ui.sortMode && !state.localSearch;
         const completeAction = `<button class="menu-action ${folderComplete ? "active" : ""}" type="button" data-complete-group="${escapeAttr(g.id)}">✓ ${folderComplete ? "Mark folder incomplete" : "Mark folder complete"}</button>`;
         const editActions = canEdit
           ? `<button class="menu-action" type="button" data-move-group="${escapeAttr(g.id)}" data-dir="up">▲ Move folder up</button><button class="menu-action" type="button" data-move-group="${escapeAttr(g.id)}" data-dir="down">▼ Move folder down</button><button class="menu-action danger" type="button" data-remove-group="${escapeAttr(g.id)}">× Delete folder</button>`
           : "";
         const menuHtml = `<details class="menu folder-menu"><summary class="icon-btn" aria-label="Folder actions">⋯</summary><div class="menu-panel">${completeAction}${editActions}</div></details>`;
-        return `<article class="card folder ${hasUpdate ? "has-update" : ""} ${folderComplete ? "is-complete" : ""}" data-item-id="${escapeAttr(g.id)}" data-type="group"><div class="card-main has-folder-menu" data-collapse-group="${escapeAttr(g.id)}"><img class="thumb" src="${escapeAttr(cover)}" alt="" loading="lazy"><div class="content"><input class="folder-name" data-group-name="${escapeAttr(g.id)}" value="${escapeAttr(g.name)}" ${canEdit ? "" : "readonly tabindex='-1'"}><div class="meta"><span class="badge done">Folder</span>${statusBadge}<span class="folder-completion">${completionText}</span>${updateBadge}</div></div><button class="folder-toggle ${g.collapsed ? "collapsed" : ""}" type="button" aria-label="${g.collapsed ? "Expand folder" : "Collapse folder"}">▼</button>${menuHtml}</div><div class="folder-list ${g.collapsed ? "collapsed" : ""}">${ordered.map(renderCard).join("")}</div></article>`;
+        return `<article class="card folder ${hasUpdate ? "has-update" : ""}" data-item-id="${escapeAttr(g.id)}" data-type="group"><div class="card-main has-folder-menu" data-collapse-group="${escapeAttr(g.id)}"><img class="thumb" src="${escapeAttr(cover)}" alt="" loading="lazy"><div class="content"><input class="folder-name" data-group-name="${escapeAttr(g.id)}" value="${escapeAttr(g.name)}" ${canEdit ? "" : "readonly tabindex='-1'"}><div class="meta"><span class="badge done">Folder</span><span class="folder-completion">${folderCountText}</span>${updateBadge}</div></div><button class="folder-toggle ${g.collapsed ? "collapsed" : ""}" type="button" aria-label="${g.collapsed ? "Expand folder" : "Collapse folder"}">▼</button>${menuHtml}</div><div class="folder-list ${g.collapsed ? "collapsed" : ""}">${ordered.map(renderCard).join("")}</div></article>`;
       }
       function renderCard(s) {
         s.releasesMoe = defaultRelease(s.releasesMoe);
