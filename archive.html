@@ -183,6 +183,48 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
 .relation-type { font-size: .7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
 .compact-select { min-width: 170px; width: auto; height: 42px; border-radius: 99px; }
+
+.downloaded-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 1fr));
+}
+
+/* Folder metadata polish */
+.folder .meta {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  gap: 6px;
+  align-items: center;
+}
+
+.folder .meta > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.folder .meta span:first-child {
+  min-width: auto;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.folder .folder-completion {
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.folder .badge.update {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 @media (max-width: 800px) {
   .app { width: min(100% - 28px, 1200px); }
   .active-boards { grid-template-columns: 1fr; }
@@ -267,7 +309,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             <button class="btn compact" id="sortLibraryBtn" type="button">A-Z</button>
           </div>
         </header>
-        <div class="active-boards" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));" id="downloadedList"></div>
+        <div class="active-boards downloaded-grid" id="downloadedList"></div>
       </div>
     </section>
 
