@@ -1323,7 +1323,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             render();
             dismissToast(progressToast);
             progressToast = null;
-            toast("Cloud loaded");
+            toast("Hydrated from Cloud");
             return;
           }
           const cloudTime = getStateTimestamp(cloud),
@@ -1335,11 +1335,11 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             render();
             dismissToast(progressToast);
             progressToast = null;
-            toast("Cloud updated");
+            toast("Pulled new Cloud Version");
           } else {
             dismissToast(progressToast);
             progressToast = null;
-            toast("Cloud checked");
+            toast("Cloud is up to date");
           }
         } finally {
           dismissToast(progressToast);
@@ -1362,7 +1362,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             applyState(preserveLocalEmbeddedCovers(cloud));
             save();
             render();
-            toast("Cloud loaded");
+            toast("Hydrated from Cloud");
           } else if (cloud && cloudShows.length && localShows.length) {
             const cloudTime = getStateTimestamp(cloud),
               localTime = getStateTimestamp(state),
@@ -1371,16 +1371,16 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               applyState(preserveLocalEmbeddedCovers(cloud));
               save();
               render();
-              toast("Cloud updated");
+              toast("Pulled new Cloud Version");
             } else if (localTime > cloudTime + skew) {
-              if (await pushToCloud(state)) toast("Cloud pushed");
+              if (await pushToCloud(state)) toast("Updated Cloud Version");
               else toast("Cloud save failed", "error");
             } else {
-              toast("Cloud checked");
+              toast("Cloud is up to date");
               setStatus("System Ready");
             }
           } else if (localShows.length) {
-            if (await pushToCloud(state)) toast("Cloud pushed");
+            if (await pushToCloud(state)) toast("Updated Cloud Version");
             else toast("Cloud save failed", "error");
           } else {
             toast("Both cloud and local are empty.", "error");
