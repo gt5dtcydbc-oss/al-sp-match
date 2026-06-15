@@ -232,6 +232,7 @@
 
     .anime-card.highlight-next { border: 2px solid var(--text); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
     .anime-card.on-break .anime-card-bg img { opacity: 0.4; filter: grayscale(100%); }
+    .anime-card.final-holdover .anime-card-bg img { opacity: 0.72; }
     
 
     .anime-card-bg { position: absolute; inset: 0; background: var(--panel-2); z-index: 1; }
@@ -329,6 +330,32 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    @keyframes pulse-finale {
+      0% {
+        box-shadow: 0 0 2px 0 rgba(251, 191, 36, 0.2);
+        background-color: rgba(251, 191, 36, 0.45);
+      }
+      50% {
+        box-shadow: 0 0 9px 2px rgba(251, 191, 36, 0.75);
+        background-color: rgba(251, 191, 36, 1);
+      }
+      100% {
+        box-shadow: 0 0 2px 0 rgba(251, 191, 36, 0.2);
+        background-color: rgba(251, 191, 36, 0.45);
+      }
+    }
+
+    .final-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      animation: pulse-finale 2.4s infinite ease-in-out;
     }
 
     /* ---------- Accordions & Settings ---------- */
@@ -728,6 +755,7 @@
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
+    const FINAL_HOLDOVERS_KEY = "airing-board-final-holdovers-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const SELECTED_DAY_KEY = "airing-board-selected-day-v1";
     
@@ -1003,6 +1031,7 @@
       mergedEntries: [],
       overrides: {},
       addedShows: {},
+      finalHoldovers: {},
       primaryCandidates: [],
       items: [],
       notes: [],
@@ -1604,6 +1633,7 @@
         savedAt: Date.now(),
         userName: state.userName,
         currentEntries: state.currentEntries,
+        finalHoldovers: state.finalHoldovers,
         primaryCandidates: state.primaryCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
@@ -1627,6 +1657,11 @@
       
       state.overrides = await loadOverrides(state.userName);
       state.addedShows = await loadAddedShows(state.userName);
+      state.finalHoldovers = await loadFinalHoldovers(state.userName);
+      if (!Object.keys(state.finalHoldovers || {}).length && snapshot.finalHoldovers && typeof snapshot.finalHoldovers === "object") {
+        state.finalHoldovers = snapshot.finalHoldovers;
+        await saveFinalHoldovers(state.userName, state.finalHoldovers);
+      }
       state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
       state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
@@ -1658,8 +1693,37 @@
     
     async function loadAddedShows(userName) { return await loadStateDB(scopedKey(ADDED_SHOWS_KEY, userName), {}); }
     async function saveAddedShows(userName, addedShows) { await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
+
+    async function loadFinalHoldovers(userName) { return await loadStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), {}); }
+    async function saveFinalHoldovers(userName, finalHoldovers) { await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers); }
     
     function makeEntryFromMedia(media) { return { media }; }
+
+    function localDateKeyFromMs(timestampMs, timeZone = DEFAULT_TIMEZONE) {
+      const safeTimestamp = Number(timestampMs);
+      const safeDate = Number.isFinite(safeTimestamp) ? new Date(safeTimestamp) : new Date();
+      if (!Number.isFinite(safeDate.getTime())) return "";
+      return safeDate.toLocaleDateString("en-CA", { timeZone });
+    }
+
+    function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
+      const airDateKey = String(holdover?.airDateKey || "");
+      if (!airDateKey) return true;
+      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+      return todayKey > airDateKey;
+    }
+
+    function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
+      const airDateKey = String(holdover?.airDateKey || "");
+      if (!airDateKey) return false;
+      return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
+    }
+
+    function finalHoldoverIds() {
+      return Object.entries(state.finalHoldovers || {})
+        .filter(([, holdover]) => !isFinalHoldoverExpired(holdover, DEFAULT_TIMEZONE))
+        .map(([id]) => id);
+    }
 
     async function clearCachedSlotForShow(showId) {
       const cache = await loadSlotCache(state.userName);
@@ -1797,8 +1861,10 @@
         const nextEpisodeNumber = Number(media?.nextAiringEpisode?.episode);
         const nextAiringAt = Number(media?.nextAiringEpisode?.airingAt);
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
-        const totalEpisodes = media.episodes || "?";
+        const totalEpisodeNumber = Number(media.episodes);
+        const totalEpisodes = Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0 ? totalEpisodeNumber : "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        const isFinalEpisode = hasNextAiring && Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0 && nextEpisodeNumber === totalEpisodeNumber;
 
         let isScheduleMoved = false;
         let diffDays = 0;
@@ -1816,7 +1882,8 @@
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
             format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
             isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes,
-            displayEpisode, isScheduleMoved, diffDays
+            displayEpisode, isScheduleMoved, diffDays, isFinalEpisode, isFinalHoldover: false,
+            nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
           });
           continue;
         }
@@ -1834,7 +1901,9 @@
             latestReleaseDate: primary.latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved, diffDays
+            hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved, diffDays,
+            isFinalEpisode, isFinalHoldover: false,
+            nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
           });
         }
       }
@@ -2194,13 +2263,18 @@
       const coverUrl = item.cover || "";
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
+      const isFinal = Boolean(item.isFinalEpisode || item.isFinalHoldover);
+      const shouldShowEpisode = item.hasNextAiring || isFinal || item.displayEpisode !== "?";
+      const episodeHTML = shouldShowEpisode
+        ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${isFinal ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
+        : '';
 
       const imageHTML = coverUrl 
         ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
@@ -2211,7 +2285,7 @@
             </div>
             <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
               <div class="anime-card-title">${title}</div>
-              ${item.hasNextAiring ? `<div class="anime-card-episode">EP ${item.displayEpisode}/${item.totalEpisodes}</div>` : ''}
+              ${episodeHTML}
             </div>
           </div>
         </div>
@@ -2245,19 +2319,105 @@
       return map;
     }
 
+    async function rememberFinalEpisodes(items) {
+      if (!state.userName) return;
+      const finalHoldovers = state.finalHoldovers && typeof state.finalHoldovers === "object" ? { ...state.finalHoldovers } : {};
+      let changed = false;
+
+      for (const item of items || []) {
+        if (!item?.isFinalEpisode || !Number.isFinite(Number(item.nextAiringAt))) continue;
+
+        const id = String(item.id);
+        const media = mediaById(id);
+        const airingAtMs = Number(item.nextAiringAt) * 1000;
+        const airDateKey = localDateKeyFromMs(airingAtMs, DEFAULT_TIMEZONE);
+        if (!airDateKey) continue;
+
+        finalHoldovers[id] = {
+          item: {
+            ...item,
+            isFinalEpisode: true,
+            isFinalHoldover: false
+          },
+          media,
+          airingAtMs,
+          airDateKey,
+          savedAt: Date.now()
+        };
+        changed = true;
+      }
+
+      if (changed) {
+        state.finalHoldovers = finalHoldovers;
+        await saveFinalHoldovers(state.userName, state.finalHoldovers);
+      }
+    }
+
+    async function pruneExpiredFinalHoldovers() {
+      if (!state.userName) return;
+      const finalHoldovers = state.finalHoldovers && typeof state.finalHoldovers === "object" ? { ...state.finalHoldovers } : {};
+      let changed = false;
+
+      for (const [id, holdover] of Object.entries(finalHoldovers)) {
+        if (isFinalHoldoverExpired(holdover, DEFAULT_TIMEZONE)) {
+          delete finalHoldovers[id];
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        state.finalHoldovers = finalHoldovers;
+        await saveFinalHoldovers(state.userName, state.finalHoldovers);
+      }
+    }
+
+    function getVisibleFinalHoldoverItems(existingIds) {
+      const output = [];
+      const seenIds = existingIds || new Set();
+
+      for (const [id, holdover] of Object.entries(state.finalHoldovers || {})) {
+        if (seenIds.has(String(id))) continue;
+        if (!isFinalHoldoverVisibleToday(holdover, DEFAULT_TIMEZONE)) continue;
+        const item = holdover?.item;
+        if (!item?.id) continue;
+
+        output.push({
+          ...item,
+          isFinalEpisode: true,
+          isFinalHoldover: true,
+          hasNextAiring: false,
+          displayEpisode: item.displayEpisode || item.totalEpisodes || "?",
+          source: item.source || "final-holdover",
+          isFreshRss: false
+        });
+      }
+
+      return output;
+    }
+
     async function refreshBoardFromState() {
+      await pruneExpiredFinalHoldovers();
+
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
       await pruneOrphanedStoredState(
         state.userName,
-        state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean)
+        [
+          ...state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean),
+          ...finalHoldoverIds()
+        ]
       );
 
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       const cached = await applyCache(built);
-      state.items = cached.sort((a, b) =>
+      await rememberFinalEpisodes(cached);
+
+      const existingIds = new Set(cached.map(item => String(item.id)));
+      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(existingIds);
+
+      state.items = [...cached, ...visibleFinalHoldovers].sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
       renderSummary(state.items, state.primaryCandidates.length);
@@ -2269,6 +2429,7 @@
     async function persistState() {
       await saveOverrides(state.userName, state.overrides);
       await saveAddedShows(state.userName, state.addedShows);
+      await saveFinalHoldovers(state.userName, state.finalHoldovers);
     }
 
     function mediaById(id) {
@@ -2278,6 +2439,10 @@
       }
       for (const value of Object.values(state.addedShows || {})) {
         if (value?.id) map.set(String(value.id), value);
+      }
+      for (const value of Object.values(state.finalHoldovers || {})) {
+        const media = value?.media;
+        if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
       }
       for (const media of state.searchResults || []) {
         if (media?.id && !map.has(String(media.id))) map.set(String(media.id), media);
@@ -2594,6 +2759,7 @@
       const loadingText = options.reason === "refresh" ? "Syncing..." : "Loading...";
       const nextOverrides = await loadOverrides(userName);
       const nextAddedShows = await loadAddedShows(userName);
+      const nextFinalHoldovers = await loadFinalHoldovers(userName);
       const rssUrls = getRssUrls();
 
       els.loadBtn.disabled = true;
@@ -2678,6 +2844,7 @@
         state.userName = userName;
         state.overrides = nextOverrides;
         state.addedShows = nextAddedShows;
+        state.finalHoldovers = nextFinalHoldovers;
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
