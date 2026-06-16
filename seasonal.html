@@ -1,0 +1,1509 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Season Picker" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b0d13" />
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Season Picker","short_name":"Season","start_url":".","display":"standalone","background_color":"#0b0d13","theme_color":"#0b0d13","orientation":"portrait-primary","icons":[{"src":"https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}' />
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
+  <title>Season Picker</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0d13;
+  --surface: #141822;
+  --surface-soft: #1d2331;
+  --surface-softer: #252c3d;
+  --soft: #1d2331;
+  --softer: #252c3d;
+  --text: #edf1f8;
+  --muted: #a1abc0;
+  --muted-2: #6b768e;
+  --line: rgba(255,255,255,.08);
+  --brand: #8b96ff;
+  --brand-strong: #a8b0ff;
+  --ok: #45d49b;
+  --warn: #f2c36b;
+  --danger: #ff7b73;
+  --shadow: 0 12px 40px rgba(0,0,0,.3);
+  --radius: 16px;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { min-height: 100%; background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at 15% 0%, rgba(139,150,255,.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+body.modal-open { overflow: hidden; }
+button, input, textarea, select { font: inherit; }
+button { border: 0; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+a { color: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139,150,255,.4);
+  border-color: var(--brand);
+}
+.app {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: calc(24px + env(safe-area-inset-top)) 0 calc(64px + env(safe-area-inset-bottom));
+}
+.shell { display: grid; gap: 28px; }
+.hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.hero-text { max-width: 720px; }
+.eyebrow { margin: 0 0 8px; font-size: .75rem; letter-spacing: .15em; text-transform: uppercase; color: var(--brand); font-weight: 900; }
+h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-height: 1; font-weight: 900; }
+.subtitle { margin: 12px 0 0; color: var(--muted); line-height: 1.45; font-weight: 650; max-width: 680px; }
+.board-controls, .toolbar-actions, .mini-actions, .segmented, .links-row, .actions, .stat-grid { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tabs, .segmented {
+  background: rgba(20,24,34,.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 6px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+}
+.tab, .segment {
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 18px;
+  border-radius: 99px;
+  font-weight: 850;
+  font-size: .9rem;
+  transition: all .2s ease;
+  white-space: nowrap;
+}
+.tab:hover, .segment:hover { color: var(--text); }
+.tab.active, .segment.active { background: var(--surface-softer); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.input, .search-input, textarea, select {
+  width: 100%;
+  background: rgba(20,24,34,.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.input:focus, .search-input:focus, textarea:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,.15); }
+.pill-input { min-width: 240px; height: 42px; border-radius: 99px; padding: 0 18px; font-size: .9rem; }
+.section-card {
+  background: rgba(20,24,34,.74);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.02) inset;
+}
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.section-title { margin: 0; font-size: 1rem; font-weight: 950; }
+.hint { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.45; }
+.btn {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 99px;
+  background: var(--surface-softer);
+  color: var(--text);
+  font-weight: 850;
+  border: 1px solid var(--line);
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:hover { background: rgba(255,255,255,.08); }
+.btn.primary { background: var(--brand); color: #000; border-color: transparent; }
+.btn.primary:hover { background: var(--brand-strong); }
+.btn.danger { color: var(--danger); }
+.btn.compact { min-height: 34px; padding: 0 13px; font-size: .82rem; }
+.btn.active, .segment.active { background: var(--brand); color: #000; border-color: transparent; }
+.status { display: flex; align-items: center; gap: 8px; font-weight: 750; color: var(--muted); font-size: .9rem; transition: color .3s; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,.15); transition: all .3s ease; }
+.dot.sync { background: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,.3); animation: pulseSync 1.5s infinite ease-in-out; }
+.dot.err { background: var(--danger); box-shadow: 0 0 0 3px rgba(255,123,115,.3); }
+@keyframes pulseSync { 0% { box-shadow: 0 0 0 0 rgba(139,150,255,.4); } 70% { box-shadow: 0 0 0 6px rgba(139,150,255,0); } 100% { box-shadow: 0 0 0 0 rgba(139,150,255,0); } }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.stat-card { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.14); }
+.stat-label { color: var(--muted); font-size: .74rem; font-weight: 850; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+.stat-value { font-size: 1.55rem; line-height: 1; font-weight: 950; }
+.controls-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.field label { color: var(--muted); font-size: .74rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tab-view { display: none; animation: fadeIn .22s ease; }
+.tab-view.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(166px, 1fr)); gap: 18px; align-items: stretch; }
+.pick-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255,255,255,.02) inset;
+  transition: transform .2s cubic-bezier(.2,0,0,1), box-shadow .2s ease, border-color .2s ease, background .2s ease;
+}
+.pick-card:hover, .pick-card:focus-within { transform: translateY(-3px); background: var(--surface-soft); box-shadow: 0 10px 28px rgba(0,0,0,.4); border-color: rgba(139,150,255,.35); }
+.pick-card.picked { border-color: rgba(69,212,155,.58); box-shadow: 0 0 0 1px rgba(69,212,155,.18), 0 10px 28px rgba(0,0,0,.25); }
+.pick-card.ignored { opacity: .58; }
+.poster-wrap { position: relative; aspect-ratio: 2/3; background: var(--surface-softer); overflow: hidden; }
+.poster { width: 100%; height: 100%; display: block; object-fit: cover; color: transparent; }
+.poster-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; text-align: center; color: var(--muted); font-weight: 900; }
+.poster-shade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0) 36%, rgba(0,0,0,.92)); pointer-events: none; }
+.poster-badges { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.badge-stack { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: .66rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  background: rgba(0,0,0,.58);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.badge.score { color: #000; background: var(--brand-strong); border-color: transparent; }
+.badge.ok { color: #000; background: var(--ok); border-color: transparent; }
+.badge.warn { color: #000; background: var(--warn); border-color: transparent; }
+.badge.dim { color: var(--muted); background: rgba(20,24,34,.72); }
+.card-body { display: flex; flex-direction: column; gap: 9px; padding: 12px; min-height: 176px; }
+.card-title { font-size: .96rem; line-height: 1.25; font-weight: 950; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-title a { text-decoration: none; }
+.card-title a:hover { color: var(--brand); }
+.meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: .75rem; font-weight: 750; }
+.meta-pill { display: inline-flex; align-items: center; min-height: 21px; padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.055); color: var(--muted); font-size: .72rem; font-weight: 850; line-height: 1; white-space: nowrap; }
+.reason { min-height: 36px; color: var(--muted); font-size: .78rem; line-height: 1.35; font-weight: 650; }
+.card-actions { margin-top: auto; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.empty { padding: 34px 20px; text-align: center; color: var(--muted-2); background: rgba(255,255,255,.02); border-radius: 18px; font-weight: 700; border: 1px solid rgba(255,255,255,.05); }
+.settings-toggle { width: 100%; min-height: 78px; border-radius: 24px; justify-content: space-between; text-align: left; padding: 18px 20px; background: rgba(20,24,34,.55); border: 1px dashed var(--line); color: var(--text); }
+.settings-toggle:hover { border-color: var(--brand); background: rgba(139,150,255,.06); }
+.settings-toggle.active { border-style: solid; border-color: rgba(139,150,255,.45); background: rgba(139,150,255,.1); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+.settings-toggle-copy { display: grid; gap: 4px; min-width: 0; }
+.settings-toggle-copy strong { font-size: 1rem; font-weight: 950; }
+.settings-toggle-copy small { color: var(--muted); font-weight: 700; line-height: 1.35; }
+.settings-toggle-state { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 99px; background: var(--surface-softer); color: var(--muted); transition: transform .2s ease, color .2s ease; flex-shrink: 0; }
+.settings-toggle.active .settings-toggle-state { transform: rotate(180deg); color: var(--brand); }
+.settings-panel { margin-top: -12px; border-top-left-radius: 16px; border-top-right-radius: 16px; }
+.maintenance-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.maintenance-box { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.14); }
+.file { display: none; }
+.toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 1100; display: grid; gap: 12px; }
+.toast { background: var(--surface); border: 1px solid var(--line); padding: 14px 18px; border-radius: 99px; box-shadow: var(--shadow); font-weight: 800; font-size: .92rem; animation: toastSlideIn .3s cubic-bezier(.175,.885,.32,1.275); max-width: min(420px, calc(100vw - 48px)); }
+.toast.error { border-color: rgba(255,123,115,.4); color: var(--danger); }
+@keyframes toastSlideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; padding: 24px; }
+.modal.open { opacity: 1; pointer-events: auto; }
+.modal-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; width: min(760px, 100%); max-height: 86vh; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.5); transform: translateY(20px); transition: transform .3s cubic-bezier(.175,.885,.32,1.275); overflow: hidden; }
+.modal.open .modal-card { transform: translateY(0); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+.modal-head h3 { margin: 0; font-size: 1.2rem; line-height: 1.2; }
+.modal-body { padding: 24px; overflow-y: auto; display: grid; gap: 16px; }
+.modal-grid { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; }
+.modal-poster { width: 160px; border-radius: 14px; aspect-ratio: 2/3; object-fit: cover; background: var(--surface-softer); }
+.modal-description { color: var(--muted); line-height: 1.5; font-size: .92rem; }
+.relation-list { display: grid; gap: 8px; }
+.relation-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-softer); }
+.relation-type { color: var(--brand); font-size: .68rem; font-weight: 950; text-transform: uppercase; letter-spacing: .06em; }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); font-weight: 950; cursor: pointer; text-decoration: none; }
+.icon-btn:hover { color: var(--brand); border-color: rgba(139,150,255,.4); background: rgba(255,255,255,.08); }
+.footer { color: var(--muted-2); font-size: .8rem; text-align: center; display: grid; gap: 10px; }
+.footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 900px) {
+  .controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pick-grid { grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 14px; }
+}
+@media (max-width: 800px) {
+  .app { width: min(100% - 28px, 1200px); }
+  .hero { flex-direction: column; align-items: flex-start; }
+  .board-controls, .toolbar, .filter-row { width: 100%; }
+  .pill-input { width: 100%; min-width: 0; }
+  .segmented { width: 100%; display: flex; flex-wrap: nowrap; overflow-x: auto; border-radius: 18px; }
+  .segment, .tab { flex: 1 0 auto; text-align: center; padding-inline: 12px; }
+  .controls-grid { grid-template-columns: 1fr; }
+  .modal { align-items: flex-end; padding: 0; }
+  .modal-card { width: 100%; max-height: 90vh; border-radius: 24px 24px 0 0; border-bottom: 0; }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-poster { width: 120px; }
+  .toast-area { right: 14px; left: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .toast { border-radius: 18px; max-width: none; }
+}
+@media (max-width: 420px) {
+  .pick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card-body { padding: 10px; min-height: 178px; }
+  .btn.compact { padding-inline: 10px; }
+  .section-card { padding: 16px; }
+}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="shell">
+      <header class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">AniList discovery</p>
+          <h1>Season Picker</h1>
+          <p class="subtitle">Preview a season, spot sequels and franchise links from your Library, then shortlist shows to paste into your archive workflow.</p>
+        </div>
+        <div class="board-controls">
+          <div class="tabs" id="mainTabs">
+            <button class="tab active" data-target="view-discover" type="button">Discover</button>
+            <button class="tab" data-target="view-shortlist" type="button">Shortlist</button>
+            <button class="tab" data-target="view-ignored" type="button">Ignored</button>
+          </div>
+          <input type="search" id="searchInput" class="input pill-input" placeholder="Filter season..." autocomplete="off" />
+        </div>
+      </header>
+
+      <section class="section-card">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title" id="seasonTitle">Current Season</h2>
+            <p class="hint" id="seasonSubtitle">Choose a season and sync from AniList.</p>
+          </div>
+          <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">System Ready</span></div>
+        </div>
+
+        <div class="segmented" id="seasonModeTabs" aria-label="Season mode">
+          <button class="segment" data-season-mode="previous" type="button">Previous</button>
+          <button class="segment active" data-season-mode="current" type="button">Current</button>
+          <button class="segment" data-season-mode="next" type="button">Next</button>
+          <button class="segment" data-season-mode="custom" type="button">Custom</button>
+        </div>
+
+        <div class="controls-grid">
+          <div class="field">
+            <label for="usernameInput">AniList Username</label>
+            <input class="input" id="usernameInput" type="text" value="zrr" spellcheck="false" autocomplete="off" placeholder="e.g. zrr" />
+          </div>
+          <div class="field">
+            <label for="seasonSelect">Season</label>
+            <select id="seasonSelect" class="input">
+              <option value="WINTER">Winter</option>
+              <option value="SPRING">Spring</option>
+              <option value="SUMMER">Summer</option>
+              <option value="FALL">Fall</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="yearInput">Year</label>
+            <input class="input" id="yearInput" type="number" min="1970" max="2100" step="1" />
+          </div>
+          <div class="field">
+            <label for="sortSelect">Sort</label>
+            <select id="sortSelect" class="input">
+              <option value="TRENDING_DESC">Trending</option>
+              <option value="POPULARITY_DESC">Popularity</option>
+              <option value="SCORE_DESC">Score</option>
+              <option value="START_DATE">Start date</option>
+              <option value="TITLE_ROMAJI">Title A-Z</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="filter-row">
+            <div class="segmented" id="formatTabs" aria-label="Format filter">
+              <button class="segment active" data-format="ALL" type="button">All</button>
+              <button class="segment" data-format="TV" type="button">TV</button>
+              <button class="segment" data-format="MOVIE" type="button">Movie</button>
+              <button class="segment" data-format="SPECIAL" type="button">Special</button>
+              <button class="segment" data-format="OVA_ONA" type="button">OVA/ONA</button>
+            </div>
+            <div class="segmented" id="signalTabs" aria-label="Signal filter">
+              <button class="segment active" data-signal="ALL" type="button">All</button>
+              <button class="segment" data-signal="RECOMMENDED" type="button">Recommended</button>
+              <button class="segment" data-signal="RELATED" type="button">Related</button>
+              <button class="segment" data-signal="NEW" type="button">Not tracked</button>
+            </div>
+          </div>
+          <div class="mini-actions">
+            <button class="btn primary" id="syncBtn" type="button">Sync Season</button>
+            <button class="btn" id="copyPicksBtn" type="button">Copy Picks</button>
+            <a class="btn" href="archive.html" target="_blank" rel="noopener">Open Library</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="stat-grid" id="statsGrid"></section>
+
+      <section class="tab-view active" id="view-discover">
+        <div class="pick-grid" id="discoverGrid"></div>
+      </section>
+
+      <section class="tab-view" id="view-shortlist">
+        <div class="pick-grid" id="shortlistGrid"></div>
+      </section>
+
+      <section class="tab-view" id="view-ignored">
+        <div class="pick-grid" id="ignoredGrid"></div>
+      </section>
+
+      <button id="toggleSettingsBtn" class="btn settings-toggle" type="button" aria-expanded="false">
+        <span class="settings-toggle-copy">
+          <strong>Settings & Maintenance</strong>
+          <small>Library import, shortlist export, local decisions, and same-origin archive detection</small>
+        </span>
+        <span class="settings-toggle-state" aria-hidden="true">⌄</span>
+      </button>
+
+      <div class="section-card settings-panel" id="settingsPanel" style="display:none">
+        <div class="maintenance-grid">
+          <div class="maintenance-box">
+            <strong>Library detection</strong>
+            <p class="hint">On the same GitHub Pages origin, this page reads the Library IndexedDB and local fallback so it can mark shows you already track.</p>
+            <div class="mini-actions">
+              <button class="btn" id="reloadLibraryBtn" type="button">Reload Library State</button>
+              <button class="btn" id="importLibraryBtn" type="button">Import Library JSON</button>
+              <input class="file" id="importLibraryFile" type="file" accept=".json,application/json" />
+            </div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Shortlist data</strong>
+            <p class="hint">Export the shortlist for backup, or copy AniList URLs and paste them into the Library paste importer.</p>
+            <div class="mini-actions">
+              <button class="btn" id="exportPicksBtn" type="button">Export Shortlist JSON</button>
+              <button class="btn danger" id="clearDecisionsBtn" type="button">Clear Picks & Ignores</button>
+            </div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Display</strong>
+            <label class="field">
+              <span class="hint">Cards per AniList request</span>
+              <select id="pageSizeSelect" class="input">
+                <option value="30">30</option>
+                <option value="50" selected>50</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="hint">Autoload on open</span>
+              <select id="autoloadSelect" class="input">
+                <option value="yes" selected>Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <div>Season Picker uses AniList public GraphQL in the browser. Decisions are saved locally in this origin only.</div>
+        <div class="links-row" style="justify-content:center">
+          <a href="index.html">Currently Airing</a>
+          <a href="archive.html">Library</a>
+          <a href="brr.html">BRR</a>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <div class="modal" id="detailModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="modalTitle">Show details</h3>
+          <p class="hint" id="modalMeta" style="margin-top:6px"></p>
+        </div>
+        <button class="icon-btn" id="closeModalBtn" type="button" aria-label="Close">x</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast-area" id="toastArea"></div>
+
+  <script>
+(() => {
+  "use strict";
+
+  const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+  const STORAGE_KEY = "season-picker-state-v1";
+  const LIBRARY_DB_NAME = "anilist-releases-board-db";
+  const LIBRARY_DB_STORE = "board";
+  const LIBRARY_DB_STATE_ID = "current";
+  const LIBRARY_FALLBACK_KEY = "anilist-releases-board:v2:fallback";
+  const LIBRARY_LEGACY_KEY = "anilist-releases-board:v2";
+  const SEASONS = ["WINTER", "SPRING", "SUMMER", "FALL"];
+  const DEFAULT_SETTINGS = {
+    userName: "zrr",
+    mode: "current",
+    season: null,
+    year: null,
+    sort: "TRENDING_DESC",
+    format: "ALL",
+    signal: "ALL",
+    pageSize: 50,
+    autoload: "yes"
+  };
+
+  const q = (s) => document.querySelector(s);
+  const qa = (s) => Array.from(document.querySelectorAll(s));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const els = {
+    mainTabs: q("#mainTabs"),
+    views: qa(".tab-view"),
+    searchInput: q("#searchInput"),
+    seasonTitle: q("#seasonTitle"),
+    seasonSubtitle: q("#seasonSubtitle"),
+    statusDot: q("#statusDot"),
+    statusText: q("#statusText"),
+    seasonModeTabs: q("#seasonModeTabs"),
+    usernameInput: q("#usernameInput"),
+    seasonSelect: q("#seasonSelect"),
+    yearInput: q("#yearInput"),
+    sortSelect: q("#sortSelect"),
+    formatTabs: q("#formatTabs"),
+    signalTabs: q("#signalTabs"),
+    syncBtn: q("#syncBtn"),
+    copyPicksBtn: q("#copyPicksBtn"),
+    statsGrid: q("#statsGrid"),
+    discoverGrid: q("#discoverGrid"),
+    shortlistGrid: q("#shortlistGrid"),
+    ignoredGrid: q("#ignoredGrid"),
+    toggleSettingsBtn: q("#toggleSettingsBtn"),
+    settingsPanel: q("#settingsPanel"),
+    reloadLibraryBtn: q("#reloadLibraryBtn"),
+    importLibraryBtn: q("#importLibraryBtn"),
+    importLibraryFile: q("#importLibraryFile"),
+    exportPicksBtn: q("#exportPicksBtn"),
+    clearDecisionsBtn: q("#clearDecisionsBtn"),
+    pageSizeSelect: q("#pageSizeSelect"),
+    autoloadSelect: q("#autoloadSelect"),
+    detailModal: q("#detailModal"),
+    modalTitle: q("#modalTitle"),
+    modalMeta: q("#modalMeta"),
+    modalBody: q("#modalBody"),
+    closeModalBtn: q("#closeModalBtn"),
+    toastArea: q("#toastArea")
+  };
+
+  let aniListCooldownUntil = 0;
+  let searchTimer = null;
+
+  const state = loadState();
+
+  function loadState() {
+    const base = {
+      settings: { ...DEFAULT_SETTINGS },
+      results: [],
+      userLists: {},
+      library: { items: [], updatedAt: null, source: "none" },
+      importedLibrary: [],
+      picks: {},
+      ignored: {},
+      lastLoadedAt: null,
+      search: "",
+      activeView: "view-discover"
+    };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return base;
+      const parsed = JSON.parse(raw);
+      return {
+        ...base,
+        ...parsed,
+        settings: { ...base.settings, ...(parsed.settings || {}) },
+        results: Array.isArray(parsed.results) ? parsed.results : [],
+        userLists: parsed.userLists && typeof parsed.userLists === "object" ? parsed.userLists : {},
+        library: parsed.library && typeof parsed.library === "object" ? parsed.library : base.library,
+        importedLibrary: Array.isArray(parsed.importedLibrary) ? parsed.importedLibrary : [],
+        picks: parsed.picks && typeof parsed.picks === "object" ? parsed.picks : {},
+        ignored: parsed.ignored && typeof parsed.ignored === "object" ? parsed.ignored : {}
+      };
+    } catch (e) {
+      return base;
+    }
+  }
+
+  function saveState() {
+    try {
+      const compact = {
+        ...state,
+        results: state.results.slice(0, 80),
+        library: {
+          ...state.library,
+          items: (state.library.items || []).slice(0, 3000)
+        }
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(compact));
+    } catch (e) {
+      toast("Could not save local state.", "error");
+    }
+  }
+
+  function escapeHtml(v) {
+    return String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function stripHtml(v) {
+    return String(v || "")
+      .replace(/<br\s*\/?\s*>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/\s+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function toast(msg, type = "", duration = 3200) {
+    const t = document.createElement("div");
+    t.className = "toast " + type;
+    t.textContent = msg;
+    els.toastArea.append(t);
+    if (duration > 0) setTimeout(() => t.remove(), duration);
+    return t;
+  }
+
+  function setStatus(text, mode = "ready") {
+    els.statusText.textContent = text;
+    els.statusDot.className = mode === "sync" ? "dot sync" : mode === "error" ? "dot err" : "dot";
+  }
+
+  function titleCaseSeason(season) {
+    return String(season || "").charAt(0) + String(season || "").slice(1).toLowerCase();
+  }
+
+  function currentSeasonObj(date = new Date()) {
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    if (month <= 3) return { season: "WINTER", year };
+    if (month <= 6) return { season: "SPRING", year };
+    if (month <= 9) return { season: "SUMMER", year };
+    return { season: "FALL", year };
+  }
+
+  function shiftSeason(input, offset) {
+    let idx = SEASONS.indexOf(input.season);
+    let year = Number(input.year);
+    if (idx < 0) idx = 0;
+    let next = idx + Number(offset || 0);
+    while (next < 0) { next += 4; year -= 1; }
+    while (next > 3) { next -= 4; year += 1; }
+    return { season: SEASONS[next], year };
+  }
+
+  function selectedSeasonFromSettings() {
+    const mode = state.settings.mode || "current";
+    const current = currentSeasonObj();
+    if (mode === "previous") return shiftSeason(current, -1);
+    if (mode === "next") return shiftSeason(current, 1);
+    if (mode === "custom") {
+      return {
+        season: state.settings.season || current.season,
+        year: Number(state.settings.year || current.year)
+      };
+    }
+    return current;
+  }
+
+  function formatDate(obj) {
+    if (!obj || !obj.year) return "TBA";
+    const y = obj.year;
+    const m = String(obj.month || 1).padStart(2, "0");
+    const d = String(obj.day || 1).padStart(2, "0");
+    if (!obj.month) return String(y);
+    if (!obj.day) return `${y}-${m}`;
+    return `${y}-${m}-${d}`;
+  }
+
+  function timeAgo(iso) {
+    const t = Date.parse(iso || "");
+    if (!Number.isFinite(t)) return "Never";
+    const mins = Math.floor((Date.now() - t) / 60000);
+    if (mins < 1) return "< 1 min";
+    if (mins < 60) return `${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ${mins % 60}m`;
+    return `${Math.floor(hrs / 24)}d ${hrs % 24}h`;
+  }
+
+  function timeoutSignal(ms) {
+    if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+    const c = new AbortController();
+    setTimeout(() => c.abort(), ms);
+    return c.signal;
+  }
+
+  async function aniRequest(query, variables, retries = 1) {
+    if (Date.now() < aniListCooldownUntil) {
+      await sleep(aniListCooldownUntil - Date.now());
+    }
+    const response = await fetch(ANILIST_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ query, variables }),
+      signal: timeoutSignal(18000)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 429) {
+      const wait = Number(response.headers.get("Retry-After")) || 60;
+      aniListCooldownUntil = Date.now() + wait * 1000;
+      if (retries > 0) {
+        await sleep(wait * 1000);
+        return aniRequest(query, variables, retries - 1);
+      }
+      throw new Error("AniList rate limit reached.");
+    }
+    if (!response.ok || data.errors) {
+      const message = data.errors?.map((err) => err.message).join(" | ") || `AniList request failed (${response.status})`;
+      throw new Error(message);
+    }
+    return data.data || {};
+  }
+
+  const SEASON_QUERY = `
+    query ($season: MediaSeason!, $seasonYear: Int!, $page: Int!, $perPage: Int!, $sort: [MediaSort]) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage currentPage lastPage }
+        media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: $sort) {
+          id
+          idMal
+          siteUrl
+          format
+          status
+          episodes
+          duration
+          averageScore
+          meanScore
+          popularity
+          trending
+          favourites
+          season
+          seasonYear
+          startDate { year month day }
+          endDate { year month day }
+          nextAiringEpisode { episode airingAt }
+          coverImage { large medium color }
+          bannerImage
+          title { userPreferred english romaji native }
+          synonyms
+          genres
+          description(asHtml: false)
+          studios(isMain: true) { nodes { name } }
+          relations { edges { relationType node { id type format status seasonYear title { userPreferred english romaji } } } }
+        }
+      }
+    }
+  `;
+
+  const USER_LIST_QUERY = `
+    query ($userName: String!) {
+      MediaListCollection(userName: $userName, type: ANIME, status_in: [CURRENT, PLANNING, COMPLETED, DROPPED, PAUSED]) {
+        lists {
+          status
+          entries {
+            mediaId
+            status
+            progress
+            score
+            media { id title { userPreferred english romaji } seasonYear format siteUrl }
+          }
+        }
+      }
+    }
+  `;
+
+  async function fetchSeason() {
+    const selected = selectedSeasonFromSettings();
+    const sort = state.settings.sort || "TRENDING_DESC";
+    const perPage = Number(state.settings.pageSize || 50);
+    const userName = String(state.settings.userName || "").trim();
+
+    setStatus("Syncing season...", "sync");
+    els.syncBtn.disabled = true;
+    els.syncBtn.textContent = "Syncing...";
+    try {
+      const seasonData = await aniRequest(SEASON_QUERY, {
+        season: selected.season,
+        seasonYear: selected.year,
+        page: 1,
+        perPage,
+        sort: [sort]
+      });
+      state.results = (seasonData?.Page?.media || []).filter(Boolean).map(compactMedia);
+
+      if (userName) {
+        try {
+          const userData = await aniRequest(USER_LIST_QUERY, { userName }, 0);
+          state.userLists = buildUserListIndex(userData);
+        } catch (e) {
+          state.userLists = {};
+          toast(`AniList user list skipped: ${e.message}`, "error", 4200);
+        }
+      } else {
+        state.userLists = {};
+      }
+
+      await loadLibraryState({ silent: true });
+      state.lastLoadedAt = new Date().toISOString();
+      saveState();
+      render();
+      setStatus("System Ready");
+      toast(`Loaded ${state.results.length} shows for ${titleCaseSeason(selected.season)} ${selected.year}.`);
+    } catch (e) {
+      setStatus("Sync Failed", "error");
+      toast(e.message || "Season sync failed.", "error", 5000);
+    } finally {
+      els.syncBtn.disabled = false;
+      els.syncBtn.textContent = "Sync Season";
+    }
+  }
+
+  function compactMedia(media) {
+    return {
+      id: media.id,
+      idMal: media.idMal || null,
+      siteUrl: media.siteUrl || (media.id ? `https://anilist.co/anime/${media.id}` : ""),
+      format: media.format || "UNKNOWN",
+      status: media.status || "UNKNOWN",
+      episodes: media.episodes || null,
+      duration: media.duration || null,
+      averageScore: media.averageScore || null,
+      meanScore: media.meanScore || null,
+      popularity: media.popularity || 0,
+      trending: media.trending || 0,
+      favourites: media.favourites || 0,
+      season: media.season || null,
+      seasonYear: media.seasonYear || null,
+      startDate: media.startDate || null,
+      endDate: media.endDate || null,
+      nextAiringEpisode: media.nextAiringEpisode || null,
+      coverImage: media.coverImage || {},
+      bannerImage: media.bannerImage || "",
+      title: media.title || {},
+      synonyms: Array.isArray(media.synonyms) ? media.synonyms.slice(0, 12) : [],
+      genres: Array.isArray(media.genres) ? media.genres.slice(0, 8) : [],
+      description: media.description || "",
+      studios: media.studios || { nodes: [] },
+      relations: media.relations || { edges: [] }
+    };
+  }
+
+  function buildUserListIndex(data) {
+    const index = {};
+    const lists = data?.MediaListCollection?.lists || [];
+    for (const list of lists) {
+      const listStatus = list?.status || "LIST";
+      for (const entry of list?.entries || []) {
+        const id = String(entry?.mediaId || entry?.media?.id || "");
+        if (!id) continue;
+        index[id] = {
+          status: entry.status || listStatus,
+          progress: entry.progress || 0,
+          score: entry.score || null,
+          title: entry.media?.title?.userPreferred || entry.media?.title?.english || entry.media?.title?.romaji || ""
+        };
+      }
+    }
+    return index;
+  }
+
+  async function loadLibraryState({ silent = false } = {}) {
+    let items = [];
+    let source = "none";
+    try {
+      const indexed = await readLibraryIndexedDb();
+      items = savedShows(indexed).map(compactLibraryShow).filter(Boolean);
+      if (items.length) source = "IndexedDB";
+    } catch (e) {}
+
+    if (!items.length) {
+      const fallback = parseMaybeJson(localStorage.getItem(LIBRARY_FALLBACK_KEY)) || parseMaybeJson(localStorage.getItem(LIBRARY_LEGACY_KEY));
+      items = savedShows(fallback).map(compactLibraryShow).filter(Boolean);
+      if (items.length) source = "localStorage";
+    }
+
+    if (Array.isArray(state.importedLibrary) && state.importedLibrary.length) {
+      const merged = new Map();
+      for (const item of items) merged.set(libraryKey(item), item);
+      for (const item of state.importedLibrary) merged.set(libraryKey(item), item);
+      items = Array.from(merged.values());
+      source = source === "none" ? "imported JSON" : `${source} + imported JSON`;
+    }
+
+    state.library = { items, updatedAt: new Date().toISOString(), source };
+    saveState();
+    if (!silent) {
+      render();
+      toast(items.length ? `Loaded ${items.length} Library entries from ${source}.` : "No Library state found on this origin.");
+    }
+  }
+
+  function readLibraryIndexedDb() {
+    return new Promise((resolve, reject) => {
+      if (!("indexedDB" in window)) {
+        reject(new Error("IndexedDB unavailable"));
+        return;
+      }
+      const req = indexedDB.open(LIBRARY_DB_NAME, 1);
+      req.onerror = () => reject(req.error || new Error("IndexedDB open failed"));
+      req.onblocked = () => reject(new Error("IndexedDB blocked"));
+      req.onsuccess = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(LIBRARY_DB_STORE)) {
+          resolve(null);
+          return;
+        }
+        const tx = db.transaction(LIBRARY_DB_STORE, "readonly");
+        const store = tx.objectStore(LIBRARY_DB_STORE);
+        const getReq = store.get(LIBRARY_DB_STATE_ID);
+        getReq.onsuccess = () => resolve(getReq.result?.value || null);
+        getReq.onerror = () => reject(getReq.error || new Error("IndexedDB read failed"));
+      };
+    });
+  }
+
+  function parseMaybeJson(raw) {
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+
+  function savedShows(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.shows)) return data.shows;
+    if (Array.isArray(data?.items)) return data.items;
+    return [];
+  }
+
+  function compactLibraryShow(s) {
+    if (!s) return null;
+    const title = s.title || s.titleEnglish || s.titleRomaji || s.name || "";
+    const anilistId = Number(s.anilistId || s.id || s.mediaId || 0) || null;
+    const malId = Number(s.malId || s.idMal || 0) || null;
+    if (!anilistId && !title) return null;
+    return {
+      anilistId,
+      malId,
+      title,
+      titleEnglish: s.titleEnglish || "",
+      titleRomaji: s.titleRomaji || "",
+      seasonYear: Number(s.seasonYear || s.year || 0) || null,
+      format: s.format || "",
+      board: s.downloaded || s.board === "downloaded" ? "downloaded" : s.board === "found" ? "found" : "watching",
+      downloaded: !!(s.downloaded || s.board === "downloaded")
+    };
+  }
+
+  function libraryKey(item) {
+    return item.anilistId ? `anilist:${item.anilistId}` : `${normalizeTitle(item.title)}:${item.seasonYear || ""}`;
+  }
+
+  function buildLibraryIndex() {
+    const byId = new Map();
+    const byTitleYear = new Map();
+    for (const item of state.library.items || []) {
+      if (item.anilistId) byId.set(String(item.anilistId), item);
+      const key = `${normalizeTitle(item.title || item.titleEnglish || item.titleRomaji)}:${item.seasonYear || ""}`;
+      if (key !== ":") byTitleYear.set(key, item);
+    }
+    return { byId, byTitleYear };
+  }
+
+  function normalizeTitle(v) {
+    return String(v || "")
+      .normalize("NFKD")
+      .toLowerCase()
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function mediaTitle(media) {
+    return media?.title?.userPreferred || media?.title?.english || media?.title?.romaji || media?.title?.native || "Untitled";
+  }
+
+  function mediaCover(media) {
+    return media?.coverImage?.large || media?.coverImage?.medium || "";
+  }
+
+  function mediaStudio(media) {
+    return media?.studios?.nodes?.[0]?.name || "Unknown studio";
+  }
+
+  function selectedItemsMap() {
+    const map = new Map();
+    for (const media of state.results || []) map.set(String(media.id), media);
+    for (const media of Object.values(state.picks || {})) map.set(String(media.id), media);
+    for (const media of Object.values(state.ignored || {})) map.set(String(media.id), media);
+    return map;
+  }
+
+  function analyzeMedia(media) {
+    const id = String(media.id);
+    const libraryIndex = buildLibraryIndex();
+    const titleKey = `${normalizeTitle(mediaTitle(media))}:${media.seasonYear || ""}`;
+    const libraryHit = libraryIndex.byId.get(id) || libraryIndex.byTitleYear.get(titleKey) || null;
+    const userHit = state.userLists?.[id] || null;
+    const relationEdges = media?.relations?.edges || [];
+    const relationHits = [];
+    for (const edge of relationEdges) {
+      const node = edge?.node;
+      if (!node?.id) continue;
+      const lib = libraryIndex.byId.get(String(node.id));
+      const user = state.userLists?.[String(node.id)] || null;
+      if (lib || user) {
+        relationHits.push({
+          relationType: edge.relationType || "RELATED",
+          title: node.title?.userPreferred || node.title?.english || node.title?.romaji || "Related show",
+          id: node.id,
+          source: lib ? "Library" : `AniList ${user.status || "list"}`
+        });
+      }
+    }
+
+    const score = Number(media.averageScore || media.meanScore || 0);
+    const popularity = Number(media.popularity || 0);
+    const trending = Number(media.trending || 0);
+    const hasStrongScore = score >= 75;
+    const hasStrongTrend = trending >= 35 || popularity >= 40000;
+    const isNotTracked = !libraryHit && !userHit;
+    const isRelated = relationHits.length > 0;
+    const isRecommended = isRelated || (isNotTracked && (hasStrongScore || hasStrongTrend));
+
+    let priority = 0;
+    if (isRelated) priority += 70;
+    if (isNotTracked) priority += 18;
+    priority += Math.min(32, Math.floor((score || 0) / 3));
+    priority += Math.min(22, Math.floor(Math.log10(Math.max(1, popularity)) * 5));
+    priority += Math.min(22, Math.floor(trending / 8));
+    if (libraryHit || userHit?.status === "COMPLETED") priority -= 8;
+    if (state.picks[id]) priority += 1000;
+    if (state.ignored[id]) priority -= 1000;
+
+    const reasons = [];
+    if (isRelated) reasons.push(`${relationHits[0].relationType}: ${relationHits[0].title}`);
+    if (libraryHit) reasons.push(`Already in ${libraryHit.board === "downloaded" ? "Library" : libraryHit.board}`);
+    if (userHit) reasons.push(`AniList: ${userHit.status}`);
+    if (!libraryHit && !userHit) reasons.push("Not in your detected lists");
+    if (hasStrongScore) reasons.push(`Score ${score}%`);
+    else if (hasStrongTrend) reasons.push("High activity signal");
+    if (!reasons.length) reasons.push("Season candidate");
+
+    return { libraryHit, userHit, relationHits, isRelated, isRecommended, isNotTracked, priority, reasons };
+  }
+
+  function applyFilters(items) {
+    const term = normalizeTitle(state.search);
+    const format = state.settings.format || "ALL";
+    const signal = state.settings.signal || "ALL";
+    let output = items.slice();
+
+    if (term) {
+      output = output.filter((media) => {
+        const hay = [mediaTitle(media), media.title?.english, media.title?.romaji, media.title?.native, ...(media.synonyms || []), ...(media.genres || []), mediaStudio(media)]
+          .map(normalizeTitle)
+          .join(" ");
+        return hay.includes(term);
+      });
+    }
+
+    if (format !== "ALL") {
+      output = output.filter((media) => {
+        if (format === "OVA_ONA") return ["OVA", "ONA"].includes(media.format);
+        return media.format === format;
+      });
+    }
+
+    if (signal !== "ALL") {
+      output = output.filter((media) => {
+        const analysis = analyzeMedia(media);
+        if (signal === "RECOMMENDED") return analysis.isRecommended;
+        if (signal === "RELATED") return analysis.isRelated;
+        if (signal === "NEW") return analysis.isNotTracked;
+        return true;
+      });
+    }
+
+    return output.sort((a, b) => analyzeMedia(b).priority - analyzeMedia(a).priority);
+  }
+
+  function render() {
+    syncInputsFromState();
+    renderHeader();
+    renderStats();
+    renderCards();
+    saveState();
+  }
+
+  function syncInputsFromState() {
+    els.usernameInput.value = state.settings.userName || "";
+    const selected = selectedSeasonFromSettings();
+    els.seasonSelect.value = selected.season;
+    els.yearInput.value = selected.year;
+    els.sortSelect.value = state.settings.sort || "TRENDING_DESC";
+    els.pageSizeSelect.value = String(state.settings.pageSize || 50);
+    els.autoloadSelect.value = state.settings.autoload || "yes";
+
+    qa("#seasonModeTabs .segment").forEach((btn) => btn.classList.toggle("active", btn.dataset.seasonMode === state.settings.mode));
+    qa("#formatTabs .segment").forEach((btn) => btn.classList.toggle("active", btn.dataset.format === state.settings.format));
+    qa("#signalTabs .segment").forEach((btn) => btn.classList.toggle("active", btn.dataset.signal === state.settings.signal));
+    qa("#mainTabs .tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.target === state.activeView));
+    els.views.forEach((view) => view.classList.toggle("active", view.id === state.activeView));
+  }
+
+  function renderHeader() {
+    const selected = selectedSeasonFromSettings();
+    const label = `${titleCaseSeason(selected.season)} ${selected.year}`;
+    els.seasonTitle.textContent = label;
+    const count = state.results.length;
+    const libraryCount = state.library.items?.length || 0;
+    const loaded = state.lastLoadedAt ? `Updated ${timeAgo(state.lastLoadedAt)} ago` : "Not synced yet";
+    const library = libraryCount ? `${libraryCount} Library entries detected via ${state.library.source}` : "No Library state detected yet";
+    els.seasonSubtitle.textContent = `${count} season entries - ${loaded} - ${library}`;
+  }
+
+  function renderStats() {
+    const items = state.results || [];
+    let related = 0, recommended = 0, newItems = 0, already = 0;
+    for (const media of items) {
+      const a = analyzeMedia(media);
+      if (a.isRelated) related++;
+      if (a.isRecommended) recommended++;
+      if (a.isNotTracked) newItems++;
+      if (a.libraryHit || a.userHit) already++;
+    }
+    const stats = [
+      ["Season", items.length],
+      ["Recommended", recommended],
+      ["Related", related],
+      ["Not tracked", newItems],
+      ["Already known", already],
+      ["Shortlist", Object.keys(state.picks || {}).length]
+    ];
+    els.statsGrid.innerHTML = stats.map(([label, value]) => `
+      <div class="stat-card">
+        <div class="stat-label">${escapeHtml(label)}</div>
+        <div class="stat-value">${escapeHtml(value)}</div>
+      </div>
+    `).join("");
+  }
+
+  function renderCards() {
+    const all = selectedItemsMap();
+    const discover = applyFilters((state.results || []).filter((m) => !state.ignored[String(m.id)]));
+    const shortlist = applyFilters(Object.values(state.picks || {}).map((m) => all.get(String(m.id)) || m));
+    const ignored = applyFilters(Object.values(state.ignored || {}).map((m) => all.get(String(m.id)) || m));
+
+    els.discoverGrid.innerHTML = discover.length ? discover.map(cardHtml).join("") : emptyHtml("No season entries match the current filters.");
+    els.shortlistGrid.innerHTML = shortlist.length ? shortlist.map(cardHtml).join("") : emptyHtml("Nothing shortlisted yet. Pick shows from Discover, then copy the AniList URLs into Library paste import.");
+    els.ignoredGrid.innerHTML = ignored.length ? ignored.map(cardHtml).join("") : emptyHtml("No ignored shows yet.");
+  }
+
+  function emptyHtml(text) {
+    return `<div class="empty" style="grid-column:1/-1">${escapeHtml(text)}</div>`;
+  }
+
+  function cardHtml(media) {
+    const id = String(media.id);
+    const analysis = analyzeMedia(media);
+    const picked = !!state.picks[id];
+    const ignored = !!state.ignored[id];
+    const score = media.averageScore || media.meanScore || null;
+    const cover = mediaCover(media);
+    const title = mediaTitle(media);
+    const start = formatDate(media.startDate);
+    const genres = (media.genres || []).slice(0, 2).join(" / ");
+    const firstReason = analysis.reasons.slice(0, 2).join(" - ");
+    const statusBadge = analysis.libraryHit
+      ? `<span class="badge ok">${analysis.libraryHit.board === "downloaded" ? "Library" : escapeHtml(analysis.libraryHit.board)}</span>`
+      : analysis.userHit
+        ? `<span class="badge warn">${escapeHtml(analysis.userHit.status)}</span>`
+        : `<span class="badge dim">New</span>`;
+    const relatedBadge = analysis.isRelated ? `<span class="badge">Related</span>` : "";
+    const pickBadge = picked ? `<span class="badge ok">Picked</span>` : ignored ? `<span class="badge dim">Hidden</span>` : "";
+    return `
+      <article class="pick-card ${picked ? "picked" : ""} ${ignored ? "ignored" : ""}" data-id="${escapeHtml(id)}">
+        <div class="poster-wrap">
+          ${cover ? `<img class="poster" loading="lazy" src="${escapeHtml(cover)}" alt="${escapeHtml(title)} cover" />` : `<div class="poster-fallback">${escapeHtml(title)}</div>`}
+          <div class="poster-shade"></div>
+          <div class="poster-badges">
+            <div class="badge-stack">
+              ${score ? `<span class="badge score">${escapeHtml(score)}%</span>` : `<span class="badge dim">TBA</span>`}
+              ${statusBadge}
+            </div>
+            <div class="badge-stack" style="align-items:flex-end">
+              ${media.format ? `<span class="badge">${escapeHtml(media.format)}</span>` : ""}
+              ${relatedBadge}
+              ${pickBadge}
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-title"><a href="${escapeHtml(media.siteUrl || "#")}" target="_blank" rel="noopener">${escapeHtml(title)}</a></div>
+          <div class="meta">
+            <span class="meta-pill">${escapeHtml(start)}</span>
+            ${media.episodes ? `<span class="meta-pill">${escapeHtml(media.episodes)} eps</span>` : ""}
+            ${genres ? `<span class="meta-pill">${escapeHtml(genres)}</span>` : ""}
+          </div>
+          <div class="reason">${escapeHtml(firstReason)}</div>
+          <div class="card-actions">
+            <button class="btn primary compact" type="button" data-action="toggle-pick" data-id="${escapeHtml(id)}">${picked ? "Remove" : "Pick"}</button>
+            <button class="btn compact" type="button" data-action="details" data-id="${escapeHtml(id)}">Details</button>
+            <button class="btn compact danger" type="button" data-action="toggle-ignore" data-id="${escapeHtml(id)}">${ignored ? "Unhide" : "Hide"}</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function snapshotMedia(media) {
+    return compactMedia(media);
+  }
+
+  function getMediaById(id) {
+    const all = selectedItemsMap();
+    return all.get(String(id)) || null;
+  }
+
+  function togglePick(id) {
+    const media = getMediaById(id);
+    if (!media) return;
+    if (state.picks[id]) {
+      delete state.picks[id];
+      toast("Removed from shortlist.");
+    } else {
+      state.picks[id] = snapshotMedia(media);
+      delete state.ignored[id];
+      toast("Added to shortlist.");
+    }
+    render();
+  }
+
+  function toggleIgnore(id) {
+    const media = getMediaById(id);
+    if (!media) return;
+    if (state.ignored[id]) {
+      delete state.ignored[id];
+      toast("Restored to Discover.");
+    } else {
+      state.ignored[id] = snapshotMedia(media);
+      delete state.picks[id];
+      toast("Hidden from Discover.");
+    }
+    render();
+  }
+
+  function showDetails(id) {
+    const media = getMediaById(id);
+    if (!media) return;
+    const analysis = analyzeMedia(media);
+    const title = mediaTitle(media);
+    els.modalTitle.textContent = title;
+    els.modalMeta.textContent = [media.format, media.status, mediaStudio(media), formatDate(media.startDate)].filter(Boolean).join(" - ");
+    const cover = mediaCover(media);
+    const relationHtml = analysis.relationHits.length
+      ? `<div class="relation-list">${analysis.relationHits.map((r) => `
+          <div class="relation-item">
+            <div>
+              <span class="relation-type">${escapeHtml(r.relationType)} via ${escapeHtml(r.source)}</span>
+              <div style="font-weight:850;margin-top:3px">${escapeHtml(r.title)}</div>
+            </div>
+            <a class="icon-btn" href="https://anilist.co/anime/${escapeHtml(r.id)}" target="_blank" rel="noopener">↗</a>
+          </div>
+        `).join("")}</div>`
+      : `<p class="hint">No direct Library or AniList-list relation detected for this entry.</p>`;
+    const links = [
+      media.siteUrl ? `<a class="btn primary" href="${escapeHtml(media.siteUrl)}" target="_blank" rel="noopener">Open AniList</a>` : "",
+      media.idMal ? `<a class="btn" href="https://myanimelist.net/anime/${escapeHtml(media.idMal)}" target="_blank" rel="noopener">Open MAL</a>` : "",
+      `<button class="btn" type="button" data-action="copy-one" data-id="${escapeHtml(media.id)}">Copy URL</button>`,
+      `<button class="btn" type="button" data-action="toggle-pick" data-id="${escapeHtml(media.id)}">${state.picks[String(media.id)] ? "Remove Pick" : "Add Pick"}</button>`
+    ].join("");
+    els.modalBody.innerHTML = `
+      <div class="modal-grid">
+        <div>${cover ? `<img class="modal-poster" src="${escapeHtml(cover)}" alt="${escapeHtml(title)} cover" />` : `<div class="modal-poster" style="display:grid;place-items:center;color:var(--muted);padding:10px;text-align:center">${escapeHtml(title)}</div>`}</div>
+        <div style="display:grid;gap:14px;align-content:start">
+          <div class="meta">
+            ${media.averageScore ? `<span class="meta-pill">Score ${escapeHtml(media.averageScore)}%</span>` : ""}
+            ${media.popularity ? `<span class="meta-pill">Popularity ${escapeHtml(media.popularity)}</span>` : ""}
+            ${media.trending ? `<span class="meta-pill">Trending ${escapeHtml(media.trending)}</span>` : ""}
+            ${media.episodes ? `<span class="meta-pill">${escapeHtml(media.episodes)} episodes</span>` : ""}
+          </div>
+          <div class="modal-description">${escapeHtml(stripHtml(media.description || "No description available.")).slice(0, 900)}</div>
+          <div class="mini-actions">${links}</div>
+        </div>
+      </div>
+      <div>
+        <h4 class="section-title" style="margin-bottom:10px">Why it surfaced</h4>
+        <p class="hint">${escapeHtml(analysis.reasons.join(" - "))}</p>
+      </div>
+      <div>
+        <h4 class="section-title" style="margin-bottom:10px">Detected relations</h4>
+        ${relationHtml}
+      </div>
+    `;
+    els.detailModal.classList.add("open");
+    els.detailModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  }
+
+  function closeModal() {
+    els.detailModal.classList.remove("open");
+    els.detailModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+  }
+
+  async function copyText(text, successMsg = "Copied.") {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(successMsg);
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.append(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      toast(successMsg);
+    }
+  }
+
+  async function copyPicks() {
+    const picks = Object.values(state.picks || {});
+    if (!picks.length) {
+      toast("Shortlist is empty.", "error");
+      return;
+    }
+    const lines = picks
+      .sort((a, b) => mediaTitle(a).localeCompare(mediaTitle(b), undefined, { sensitivity: "base" }))
+      .map((media) => media.siteUrl || `https://anilist.co/anime/${media.id}`)
+      .join("\n");
+    await copyText(lines, `Copied ${picks.length} AniList URLs.`);
+  }
+
+  function exportPicks() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      app: "Season Picker",
+      picks: Object.values(state.picks || {}).map((media) => ({
+        id: media.id,
+        idMal: media.idMal || null,
+        title: mediaTitle(media),
+        siteUrl: media.siteUrl || `https://anilist.co/anime/${media.id}`,
+        format: media.format,
+        season: media.season,
+        seasonYear: media.seasonYear,
+        startDate: media.startDate,
+        score: media.averageScore || media.meanScore || null
+      }))
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `season-picker-shortlist-${Date.now()}.json`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast("Shortlist exported.");
+  }
+
+  async function importLibraryJson(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const items = savedShows(data).map(compactLibraryShow).filter(Boolean);
+      if (!items.length) throw new Error("No Library-style shows found in that JSON.");
+      state.importedLibrary = items;
+      await loadLibraryState({ silent: true });
+      render();
+      toast(`Imported ${items.length} Library entries.`);
+    } catch (e) {
+      toast(e.message || "Import failed.", "error", 5000);
+    } finally {
+      els.importLibraryFile.value = "";
+    }
+  }
+
+  function clearDecisions() {
+    state.picks = {};
+    state.ignored = {};
+    render();
+    toast("Cleared picks and ignores.");
+  }
+
+  function bindEvents() {
+    els.mainTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn) return;
+      state.activeView = btn.dataset.target;
+      render();
+    });
+
+    els.seasonModeTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".segment");
+      if (!btn) return;
+      state.settings.mode = btn.dataset.seasonMode;
+      const selected = selectedSeasonFromSettings();
+      state.settings.season = selected.season;
+      state.settings.year = selected.year;
+      render();
+    });
+
+    els.formatTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".segment");
+      if (!btn) return;
+      state.settings.format = btn.dataset.format;
+      render();
+    });
+
+    els.signalTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".segment");
+      if (!btn) return;
+      state.settings.signal = btn.dataset.signal;
+      render();
+    });
+
+    els.usernameInput.addEventListener("input", () => {
+      state.settings.userName = els.usernameInput.value.trim();
+      saveState();
+    });
+
+    els.seasonSelect.addEventListener("change", () => {
+      state.settings.mode = "custom";
+      state.settings.season = els.seasonSelect.value;
+      state.settings.year = Number(els.yearInput.value || currentSeasonObj().year);
+      render();
+    });
+
+    els.yearInput.addEventListener("change", () => {
+      state.settings.mode = "custom";
+      state.settings.year = Number(els.yearInput.value || currentSeasonObj().year);
+      state.settings.season = els.seasonSelect.value;
+      render();
+    });
+
+    els.sortSelect.addEventListener("change", () => {
+      state.settings.sort = els.sortSelect.value;
+      render();
+    });
+
+    els.pageSizeSelect.addEventListener("change", () => {
+      state.settings.pageSize = Number(els.pageSizeSelect.value || 50);
+      saveState();
+    });
+
+    els.autoloadSelect.addEventListener("change", () => {
+      state.settings.autoload = els.autoloadSelect.value;
+      saveState();
+    });
+
+    els.searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = els.searchInput.value.trim();
+        render();
+      }, 120);
+    });
+
+    els.syncBtn.addEventListener("click", fetchSeason);
+    els.copyPicksBtn.addEventListener("click", copyPicks);
+    els.exportPicksBtn.addEventListener("click", exportPicks);
+    els.clearDecisionsBtn.addEventListener("click", clearDecisions);
+    els.reloadLibraryBtn.addEventListener("click", () => loadLibraryState());
+    els.importLibraryBtn.addEventListener("click", () => els.importLibraryFile.click());
+    els.importLibraryFile.addEventListener("change", () => {
+      const file = els.importLibraryFile.files?.[0];
+      if (file) importLibraryJson(file);
+    });
+
+    els.toggleSettingsBtn.addEventListener("click", () => {
+      const open = els.settingsPanel.style.display !== "none";
+      els.settingsPanel.style.display = open ? "none" : "grid";
+      els.toggleSettingsBtn.classList.toggle("active", !open);
+      els.toggleSettingsBtn.setAttribute("aria-expanded", String(!open));
+    });
+
+    document.addEventListener("click", (e) => {
+      const actionEl = e.target.closest("[data-action]");
+      if (!actionEl) return;
+      const action = actionEl.dataset.action;
+      const id = actionEl.dataset.id;
+      if (action === "toggle-pick") togglePick(id);
+      if (action === "toggle-ignore") toggleIgnore(id);
+      if (action === "details") showDetails(id);
+      if (action === "copy-one") {
+        const media = getMediaById(id);
+        if (media) copyText(media.siteUrl || `https://anilist.co/anime/${media.id}`, "AniList URL copied.");
+      }
+    });
+
+    els.closeModalBtn.addEventListener("click", closeModal);
+    els.detailModal.addEventListener("click", (e) => {
+      if (e.target === els.detailModal) closeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+  }
+
+  async function init() {
+    const current = currentSeasonObj();
+    if (!state.settings.season) state.settings.season = current.season;
+    if (!state.settings.year) state.settings.year = current.year;
+    state.search = state.search || "";
+    els.searchInput.value = state.search;
+    bindEvents();
+    render();
+    await loadLibraryState({ silent: true });
+    render();
+    if ((state.settings.autoload || "yes") === "yes" && !state.results.length) {
+      fetchSeason();
+    }
+  }
+
+  init();
+})();
+  </script>
+</body>
+</html>
