@@ -255,7 +255,17 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      gap: 8px;
       width: 100%;
+    }
+
+    .anime-card-status-chips {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      min-width: 0;
+      max-width: calc(100% - 52px);
     }
 
     .anime-card-time-chip {
@@ -270,6 +280,7 @@
       font-weight: 700;
       letter-spacing: 0.02em;
       transition: box-shadow 0.3s, border-color 0.3s;
+      flex: 0 0 auto;
     }
 
     /* Premium Breathing White Outline Animation */
@@ -303,8 +314,13 @@
       font-size: 0.65rem;
       font-weight: 700;
       border: 1px solid rgba(255,255,255,0.1);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .badge-chip.added { color: #000; background: var(--text); border: none; }
+    .badge-chip.break { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.22); }
 
     .anime-card-bottom {
       pointer-events: auto;
@@ -1847,6 +1863,50 @@
       return Boolean(item?.isScheduleMoved && !hasReleasedTodayGrace(item, timeZone));
     }
 
+    function calendarDaysUntilTimestamp(timestampMs, timeZone = DEFAULT_TIMEZONE) {
+      const safeTimestamp = Number(timestampMs);
+      if (!Number.isFinite(safeTimestamp) || safeTimestamp <= 0) return null;
+
+      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+      const targetKey = localDateKeyFromMs(safeTimestamp, timeZone);
+      if (!todayKey || !targetKey) return null;
+
+      const todayDate = new Date(`${todayKey}T00:00:00`);
+      const targetDate = new Date(`${targetKey}T00:00:00`);
+      if (!Number.isFinite(todayDate.getTime()) || !Number.isFinite(targetDate.getTime())) return null;
+
+      const days = Math.round((targetDate.getTime() - todayDate.getTime()) / DAY_MS);
+      return Number.isFinite(days) ? Math.max(0, days) : null;
+    }
+
+    function breakCountdownInfo(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!isItemVisuallyOnBreak(item, timeZone)) return null;
+
+      const nextAiringMs = nextAiringTimestampMs(item);
+      const days = calendarDaysUntilTimestamp(nextAiringMs, timeZone);
+
+      if (!Number.isFinite(days)) {
+        return { label: "On break", title: "No next episode date found." };
+      }
+
+      if (days <= 0) {
+        return { label: "Back <1d", title: "Next episode in less than 1 day." };
+      }
+
+      if (days < 30) {
+        return {
+          label: `Back ${days}d`,
+          title: `Next episode in ${days} ${days === 1 ? "day" : "days"}.`
+        };
+      }
+
+      const weeks = Math.ceil(days / 7);
+      return {
+        label: `Back ${weeks}w`,
+        title: `Next episode in about ${weeks} ${weeks === 1 ? "week" : "weeks"}.`
+      };
+    }
+
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
       const airDateKey = String(holdover?.airDateKey || "");
       if (!airDateKey) return true;
@@ -2441,6 +2501,12 @@
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
       const isFinal = Boolean(item.isFinalEpisode || item.isFinalHoldover);
+      const visualBreak = isItemVisuallyOnBreak(item);
+      const breakInfo = visualBreak ? breakCountdownInfo(item) : null;
+      const topLeftBadges = [
+        item.isAdded ? `<span class="badge-chip added">Added</span>` : "",
+        breakInfo ? `<span class="badge-chip break" title="${escapeHtml(breakInfo.title)}" aria-label="${escapeHtml(breakInfo.title)}">${escapeHtml(breakInfo.label)}</span>` : ""
+      ].filter(Boolean).join("");
       const shouldShowEpisode = item.hasNextAiring || isFinal || item.displayEpisode !== "?";
       const episodeHTML = shouldShowEpisode
         ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${isFinal ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
@@ -2451,13 +2517,13 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${isItemVisuallyOnBreak(item) ? 'on-break' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${visualBreak ? 'on-break' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
           <div class="anime-card-overlay">
             <div class="anime-card-top">
-              ${item.isAdded ? `<span class="badge-chip added">Added</span>` : '<div></div>'}
+              <div class="anime-card-status-chips">${topLeftBadges}</div>
               <div class="anime-card-time-chip ${item.isFreshRss ? 'fresh' : ''}">${escapeHtml(displayTime)}</div>
             </div>
             <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
