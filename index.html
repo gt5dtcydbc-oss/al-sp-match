@@ -772,6 +772,8 @@
     const SEARCH_DEBOUNCE_MS = 650;
     const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const BREAK_DELAY_AFTER_EXPECTED_SLOT_DAYS = 6.5;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
     const TITLE_STOPWORDS = new Set([
@@ -1046,7 +1048,8 @@
       lastNextSlotKey: null,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
       expandedDays: new Set(),
-      selectedDay: loadSelectedDay()
+      selectedDay: loadSelectedDay(),
+      lastRenderedDateKey: ""
     };
 
     showMessage("info", "Ready.");
@@ -1706,6 +1709,144 @@
       return safeDate.toLocaleDateString("en-CA", { timeZone });
     }
 
+    function firstValidTimestampMs(...values) {
+      for (const value of values) {
+        const timestamp = Number(value);
+        if (Number.isFinite(timestamp) && timestamp > 0) return timestamp;
+      }
+      return null;
+    }
+
+    function nextAiringTimestampMs(item) {
+      const nextAiringAtSeconds = Number(item?.nextAiringAt);
+      if (!Number.isFinite(nextAiringAtSeconds) || nextAiringAtSeconds <= 0) return null;
+      return nextAiringAtSeconds * 1000;
+    }
+
+    function expectedSlotTimestampMs(day, time, timeZone = DEFAULT_TIMEZONE) {
+      if (!WEEKDAYS.includes(day) || !isValidTime(time)) return null;
+
+      const now = getNowContext(timeZone);
+      const targetDayIndex = WEEKDAYS.indexOf(day);
+      const targetMinutes = toMinutes(time);
+      let dayOffset = (targetDayIndex - now.dayIndex + 7) % 7;
+
+      // If today's configured slot already passed, the next expected weekly slot is next week.
+      if (dayOffset === 0 && now.totalMinutes >= targetMinutes) {
+        dayOffset = 7;
+      }
+
+      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+      if (!todayKey) return null;
+
+      const expectedDate = new Date(`${todayKey}T00:00:00`);
+      if (!Number.isFinite(expectedDate.getTime())) return null;
+
+      return expectedDate.getTime() + (dayOffset * DAY_MS) + (targetMinutes * 60 * 1000);
+    }
+
+    function expectedSlotTimestampMsFromItem(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item) return null;
+      return expectedSlotTimestampMs(item.day, item.time, timeZone);
+    }
+
+    function expectedSlotTimestampMsFromKnownSchedule(item, cacheEntry = null, timeZone = DEFAULT_TIMEZONE) {
+      // Prefer the previously known slot when available. This prevents a one-day move
+      // such as Monday -> Tuesday next week from looking like a full skipped Tuesday.
+      const cachedDay = WEEKDAYS.includes(cacheEntry?.day) ? cacheEntry.day : null;
+      const cachedTime = isValidTime(cacheEntry?.time) ? cacheEntry.time : null;
+      return expectedSlotTimestampMs(cachedDay, cachedTime, timeZone) || expectedSlotTimestampMsFromItem(item, timeZone);
+    }
+
+    function scheduleDelayAfterExpectedSlotDays(item, cacheEntry = null, timeZone = DEFAULT_TIMEZONE) {
+      const nextAiringMs = nextAiringTimestampMs(item);
+      if (!nextAiringMs) return null;
+
+      const latestReleaseMs = firstValidTimestampMs(item?.latestReleaseDate, cacheEntry?.latestReleaseDate);
+      if (latestReleaseMs && nextAiringMs > latestReleaseMs) {
+        const expectedNextWeeklySlotMs = latestReleaseMs + (7 * DAY_MS);
+        return (nextAiringMs - expectedNextWeeklySlotMs) / DAY_MS;
+      }
+
+      const expectedSlotMs = expectedSlotTimestampMsFromKnownSchedule(item, cacheEntry, timeZone);
+      if (expectedSlotMs && nextAiringMs > expectedSlotMs) {
+        return (nextAiringMs - expectedSlotMs) / DAY_MS;
+      }
+
+      return null;
+    }
+
+    function isNextAiringOutsideUpcomingWeek(item, cacheEntry = null) {
+      const diffDays = Number(item?.diffDays);
+      return diffDays > 7 || (diffDays === 7 && cacheEntry?.wasDelayed === true);
+    }
+
+    function shouldTreatAsScheduleBreak(item, cacheEntry = null, timeZone = DEFAULT_TIMEZONE) {
+      const delayAfterExpected = scheduleDelayAfterExpectedSlotDays(item, cacheEntry, timeZone);
+      const isWeekBoundaryBreak = Number(item?.diffDays) === 7 &&
+        Number.isFinite(delayAfterExpected) &&
+        delayAfterExpected >= BREAK_DELAY_AFTER_EXPECTED_SLOT_DAYS;
+
+      if (!isNextAiringOutsideUpcomingWeek(item, cacheEntry) && !isWeekBoundaryBreak) return false;
+
+      if (Number.isFinite(delayAfterExpected)) {
+        return delayAfterExpected >= BREAK_DELAY_AFTER_EXPECTED_SLOT_DAYS;
+      }
+
+      return Boolean(
+        item?.isScheduleMoved ||
+        (Number(item?.diffDays) === 7 && cacheEntry?.wasDelayed === true)
+      );
+    }
+
+    function normalizeScheduleMoveState(item, cacheEntry = null, timeZone = DEFAULT_TIMEZONE) {
+      const delayAfterExpected = scheduleDelayAfterExpectedSlotDays(item, cacheEntry, timeZone);
+      const isWeekBoundaryBreak = Number(item?.diffDays) === 7 &&
+        Number.isFinite(delayAfterExpected) &&
+        delayAfterExpected >= BREAK_DELAY_AFTER_EXPECTED_SLOT_DAYS;
+      const isOutsideUpcomingWeek = isNextAiringOutsideUpcomingWeek(item, cacheEntry) || isWeekBoundaryBreak;
+      const isScheduleMoved = shouldTreatAsScheduleBreak(item, cacheEntry, timeZone);
+
+      return {
+        ...item,
+        isScheduleMoved,
+        isOutsideUpcomingWeek,
+        scheduleDelayAfterExpected: Number.isFinite(delayAfterExpected) ? delayAfterExpected : null,
+        isMinorScheduleMove: Boolean(
+          isOutsideUpcomingWeek &&
+          Number.isFinite(delayAfterExpected) &&
+          delayAfterExpected > 0 &&
+          delayAfterExpected < BREAK_DELAY_AFTER_EXPECTED_SLOT_DAYS
+        )
+      };
+    }
+
+    function hasReleasedTodayGrace(item, timeZone = DEFAULT_TIMEZONE) {
+      const releaseDateMs = firstValidTimestampMs(item?.latestReleaseDate);
+      if (!item?.isScheduleMoved || !releaseDateMs) return false;
+
+      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+      const releaseDateKey = localDateKeyFromMs(releaseDateMs, timeZone);
+      return Boolean(releaseDateKey && releaseDateKey === todayKey);
+    }
+
+    function addReleasedTodayGrace(item, cacheEntry = null, timeZone = DEFAULT_TIMEZONE) {
+      const releaseDateMs = firstValidTimestampMs(item?.latestReleaseDate, cacheEntry?.latestReleaseDate);
+      const nextItem = {
+        ...item,
+        latestReleaseDate: releaseDateMs || item?.latestReleaseDate || null
+      };
+
+      return {
+        ...nextItem,
+        isReleasedTodayGrace: hasReleasedTodayGrace(nextItem, timeZone)
+      };
+    }
+
+    function isItemVisuallyOnBreak(item, timeZone = DEFAULT_TIMEZONE) {
+      return Boolean(item?.isScheduleMoved && !hasReleasedTodayGrace(item, timeZone));
+    }
+
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
       const airDateKey = String(holdover?.airDateKey || "");
       if (!airDateKey) return true;
@@ -1876,11 +2017,22 @@
           isScheduleMoved = diffDays > 7;
         }
 
+        const releaseMatch = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+        const releaseDateForSchedule = firstValidTimestampMs(releaseMatch?.latestReleaseDate);
+
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
+          const latestReleaseDate = releaseDateForSchedule || null;
+          const isFreshRss = latestReleaseDate && (Date.now() - latestReleaseDate) <= 36 * 60 * 60 * 1000;
+
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
-            format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
+            format: media.format || "", source: "manual", sampleCount: 1,
+            matchedTitle: releaseMatch?.matchedTitle || "", matchedEpisode: releaseMatch?.matchedEpisode || null,
+            latestReleaseDay: releaseMatch?.latestReleaseDay || null,
+            latestReleaseTime: releaseMatch?.latestReleaseTime || null,
+            latestReleaseDate,
+            isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes,
             displayEpisode, isScheduleMoved, diffDays, isFinalEpisode, isFinalHoldover: false,
             nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
@@ -1890,15 +2042,19 @@
 
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
-          const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          // Keep the RSS release metadata even when the display slot falls back to AniList.
+          // Example: Monday release -> next episode Tuesday next week is 8 calendar days away,
+          // but only about 1 day later than the expected weekly slot, so it should not go grey.
+          const latestReleaseDate = firstValidTimestampMs(primary.latestReleaseDate, releaseDateForSchedule);
+          const isFreshRss = latestReleaseDate && (Date.now() - latestReleaseDate) <= 36 * 60 * 60 * 1000;
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
             format: media.format || "", source: primary.source,
             sampleCount: Math.min(primary.sampleCount || 1, 3),
-            matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
-            latestReleaseDay: primary.latestReleaseDay || null,
-            latestReleaseTime: primary.latestReleaseTime || null,
-            latestReleaseDate: primary.latestReleaseDate || null,
+            matchedTitle: primary.matchedTitle || releaseMatch?.matchedTitle || "", matchedEpisode: primary.matchedEpisode || releaseMatch?.matchedEpisode || null,
+            latestReleaseDay: primary.latestReleaseDay || releaseMatch?.latestReleaseDay || null,
+            latestReleaseTime: primary.latestReleaseTime || releaseMatch?.latestReleaseTime || null,
+            latestReleaseDate: latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
             hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved, diffDays,
@@ -1914,21 +2070,17 @@
       const cache = await loadSlotCache(state.userName);
       const output = [];
 
-      for (const item of items) {
+      for (let item of items) {
         const key = String(item.id);
 
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
 
-        if (item.diffDays > 7) {
+        item = normalizeScheduleMoveState(item, entry, DEFAULT_TIMEZONE);
+
+        if (item.isScheduleMoved) {
           entry.wasDelayed = true;
-        }
-        
-        if (item.diffDays === 7 && entry.wasDelayed === true) {
-          item.isScheduleMoved = true; 
-        }
-        
-        if (item.diffDays < 7) {
+        } else if (item.isMinorScheduleMove || !item.isOutsideUpcomingWeek || item.diffDays < 7) {
           entry.wasDelayed = false;
         }
 
@@ -1963,30 +2115,53 @@
             matchedTitle: item.matchedTitle || "", latestReleaseDate: item.latestReleaseDate || null,
             origin: "rss", updatedAt: new Date().toISOString() 
           };
-          output.push({ ...item, historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ") });
+          output.push(addReleasedTodayGrace({
+            ...item,
+            latestReleaseDate: item.latestReleaseDate || entry.latestReleaseDate || null,
+            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
+          }, entry));
           continue;
         }
 
         if (item.source === "manual") {
-          cache[key] = { ...entry, day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
-          output.push(item);
+          const latestReleaseDate = firstValidTimestampMs(item.latestReleaseDate, entry.latestReleaseDate);
+          cache[key] = {
+            ...entry,
+            day: item.day,
+            time: item.time,
+            sampleCount: 1,
+            origin: "manual",
+            latestReleaseDate: latestReleaseDate || null,
+            updatedAt: new Date().toISOString()
+          };
+          output.push(addReleasedTodayGrace({ ...item, latestReleaseDate: latestReleaseDate || item.latestReleaseDate || null }, cache[key]));
         } else if (entry.origin && (isValidTime(entry.time) || Array.isArray(entry.history))) {
           const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
           const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
+          const latestReleaseDate = firstValidTimestampMs(item.latestReleaseDate, entry.latestReleaseDate);
           
-          const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          const isFreshRss = latestReleaseDate && (Date.now() - latestReleaseDate) <= 36 * 60 * 60 * 1000;
           
-          output.push({
+          output.push(addReleasedTodayGrace({
             ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
             matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
+            latestReleaseDate: latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
-          });
+          }, entry));
 
           cache[key] = { ...entry }; 
         } else {
-          cache[key] = { ...entry };
-          output.push(item);
+          const latestReleaseDate = firstValidTimestampMs(item.latestReleaseDate, entry.latestReleaseDate);
+          cache[key] = {
+            ...entry,
+            latestReleaseDate: latestReleaseDate || entry.latestReleaseDate || null,
+            updatedAt: latestReleaseDate ? new Date().toISOString() : entry.updatedAt
+          };
+          output.push(addReleasedTodayGrace({
+            ...item,
+            latestReleaseDate: latestReleaseDate || item.latestReleaseDate || null
+          }, cache[key]));
         }
       }
 
@@ -2117,6 +2292,7 @@
         const slotKey = `${item.day}::${item.time}`;
         const isNext = (newNextSlotKey === slotKey) && !item.isScheduleMoved;
         card.classList.toggle('highlight-next', isNext);
+        card.classList.toggle('on-break', isItemVisuallyOnBreak(item));
       }
 
       const daySections = document.querySelectorAll('.day-section');
@@ -2125,7 +2301,7 @@
         if (!dayName) continue;
         const dayItems = state.items.filter(i => i.day === dayName);
         
-        const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+        const activeItems = dayItems.filter(i => !isItemVisuallyOnBreak(i));
         const totalCount = activeItems.length;
         let airedCount = 0;
         for (const item of activeItems) {
@@ -2147,6 +2323,7 @@
     }
 
     function renderBoard(items, isTick = false) {
+      state.lastRenderedDateKey = localDateKeyFromMs(Date.now(), DEFAULT_TIMEZONE);
       const grouped = groupForBoard(items);
       const nextSlot = getNextUpcomingSlot(grouped, DEFAULT_TIMEZONE);
       state.lastNextSlotKey = nextSlot?.key || null;
@@ -2202,7 +2379,7 @@
           const collapsed = state.collapsedDays.has(dayBlock.day) || isAutoCollapsed;
           const dayItems = items.filter(i => i.day === dayBlock.day);
           
-          const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+          const activeItems = dayItems.filter(i => !isItemVisuallyOnBreak(i));
           const totalCount = activeItems.length;
           let airedCount = 0;
           for (const item of activeItems) {
@@ -2274,7 +2451,7 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${isItemVisuallyOnBreak(item) ? 'on-break' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
@@ -2901,7 +3078,14 @@
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(() => { 
-        if (state.items.length) updateBoardHighlights(); 
+        if (state.items.length) {
+          const currentDateKey = localDateKeyFromMs(Date.now(), DEFAULT_TIMEZONE);
+          if (state.lastRenderedDateKey && state.lastRenderedDateKey !== currentDateKey) {
+            renderBoard(state.items);
+          } else {
+            updateBoardHighlights();
+          }
+        }
         renderFooterStatus(); 
       }, COUNTDOWN_TICK_MS);
     }
