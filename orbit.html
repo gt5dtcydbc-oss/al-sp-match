@@ -47,7 +47,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -227,6 +228,13 @@
       font-size: 13px;
     }
 
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
     button:hover,
     .file-button:hover .fake-button {
       transform: translateY(-1px);
@@ -313,6 +321,33 @@
       box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
     }
 
+    .select-wrap {
+      position: relative;
+    }
+
+    select {
+      width: 100%;
+      appearance: none;
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      padding: 12px 42px 12px 14px;
+      color: var(--text);
+      background: rgba(255,255,255,0.07);
+      outline: 0;
+      cursor: pointer;
+    }
+
+    .select-wrap::after {
+      content: "⌄";
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-52%);
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 18px;
+    }
+
     .button-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -329,6 +364,27 @@
     button.secondary:hover {
       background: rgba(255,255,255,0.13);
       box-shadow: none;
+    }
+
+    button.download {
+      grid-column: span 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+    }
+
+    .download-options {
+      padding: 0 16px 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .download-note {
+      color: var(--faint);
+      font-size: 11px;
+      line-height: 1.45;
+      margin: -2px 0 0;
     }
 
     .toggle-row {
@@ -689,6 +745,10 @@
         grid-template-columns: 1fr;
       }
 
+      button.download {
+        grid-column: span 1;
+      }
+
       .stage {
         min-height: 390px;
       }
@@ -791,6 +851,47 @@
 
         <section class="section">
           <div class="section-header">
+            <h2 class="section-title">Export</h2>
+            <span class="count">WebM video</span>
+          </div>
+
+          <div class="controls">
+            <label class="control">
+              <span class="control-row"><span>Video length</span></span>
+              <div class="select-wrap">
+                <select id="durationSelect">
+                  <option value="3">3 seconds</option>
+                  <option value="5" selected>5 seconds</option>
+                  <option value="8">8 seconds</option>
+                  <option value="12">12 seconds</option>
+                </select>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Resolution</span></span>
+              <div class="select-wrap">
+                <select id="resolutionSelect">
+                  <option value="720">720 × 720</option>
+                  <option value="1080" selected>1080 × 1080</option>
+                  <option value="1440">1440 × 1440</option>
+                </select>
+              </div>
+            </label>
+          </div>
+
+          <div class="download-options">
+            <button id="downloadVideo" class="download">
+              <span>Download rotation</span>
+            </button>
+            <p class="download-note">
+              Exports the current orbit as a square WebM video. Chrome, Edge, and Firefox support this best.
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
             <h2 class="section-title">Images</h2>
             <span class="count" id="imageCount">0 uploaded</span>
           </div>
@@ -869,6 +970,10 @@
     const framesToggle = document.getElementById("framesToggle");
     const depthToggle = document.getElementById("depthToggle");
 
+    const durationSelect = document.getElementById("durationSelect");
+    const resolutionSelect = document.getElementById("resolutionSelect");
+    const downloadVideoButton = document.getElementById("downloadVideo");
+
     const toggleButton = document.getElementById("toggle");
     const reverseButton = document.getElementById("reverse");
     const shuffleButton = document.getElementById("shuffle");
@@ -876,10 +981,13 @@
 
     let uploadedUrls = [];
     let uploadedFiles = [];
+    let loadedImages = [];
     let items = [];
     let running = true;
     let startTime = performance.now();
     let lastElapsed = 0;
+
+    const demoLabels = ["01", "02", "03", "04", "05", "06"];
 
     function setCssVars() {
       root.style.setProperty("--orbit-x", controls.orbitX.value + "px");
@@ -910,6 +1018,15 @@
       return img;
     }
 
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
     function makeOrbiter(content, index, total) {
       const el = document.createElement("div");
       el.className = "orbiter";
@@ -930,12 +1047,11 @@
     }
 
     function createDemoOrbiters() {
-      const labels = ["01", "02", "03", "04", "05", "06"];
-      items = labels.map((label, index) => {
+      items = demoLabels.map((label, index) => {
         const demo = document.createElement("div");
         demo.className = "demo-orbiter";
         demo.textContent = label;
-        return makeOrbiter(demo, index, labels.length);
+        return makeOrbiter(demo, index, demoLabels.length);
       });
 
       orbitCount.textContent = "Demo";
@@ -987,11 +1103,21 @@
       });
     }
 
+    async function prepareLoadedImages(urls) {
+      try {
+        loadedImages = await Promise.all(urls.map(url => loadImage(url)));
+      } catch (error) {
+        loadedImages = [];
+        console.warn("Could not preload one or more images for export.", error);
+      }
+    }
+
     function renderUploadedImages(files) {
       uploadedUrls.forEach(URL.revokeObjectURL);
 
       uploadedFiles = files;
       uploadedUrls = files.map(file => URL.createObjectURL(file));
+      prepareLoadedImages(uploadedUrls);
 
       orbiters.innerHTML = "";
       items = [];
@@ -1069,22 +1195,17 @@
       renderUploadedImages([]);
     });
 
-    function animate(now) {
-      if (running) lastElapsed = now - startTime;
-
+    function getOrbitState(elapsedMs) {
       const speed = Number(controls.speed.value);
       const orbitX = Number(controls.orbitX.value);
       const orbitY = Number(controls.orbitY.value);
       const depthEnabled = depthToggle.checked;
-      const t = lastElapsed * 0.001 * speed;
+      const t = elapsedMs * 0.001 * speed;
 
-      items.forEach(item => {
+      return items.map((item, index) => {
         const angle = t + item.phase;
-
         const x = Math.cos(angle) * orbitX * item.radiusOffset;
         const y = Math.sin(angle) * orbitY * item.radiusOffset;
-
-        // depth: back half is behind center, front half is in front of center.
         const depth = (Math.sin(angle) + 1) / 2;
 
         let scale = 1;
@@ -1097,16 +1218,289 @@
           blur = (1 - depth) * 0.9;
         }
 
-        item.el.style.transform =
-          `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
+        return { item, index, angle, x, y, depth, scale, opacity, blur };
+      });
+    }
 
-        item.el.style.zIndex = String(Math.round(1000 + depth * 2000));
-        item.el.style.opacity = String(opacity);
-        item.el.style.filter = `blur(${blur}px)`;
+    function animate(now) {
+      if (running) lastElapsed = now - startTime;
+
+      const states = getOrbitState(lastElapsed);
+
+      states.forEach(state => {
+        state.item.el.style.transform =
+          `translate(-50%, -50%) translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+
+        state.item.el.style.zIndex = String(Math.round(1000 + state.depth * 2000));
+        state.item.el.style.opacity = String(state.opacity);
+        state.item.el.style.filter = `blur(${state.blur}px)`;
       });
 
       requestAnimationFrame(animate);
     }
+
+    function drawImageContain(ctx, img, cx, cy, boxW, boxH, opacity = 1, blur = 0, shadow = true) {
+      if (!img || !img.naturalWidth || !img.naturalHeight) return;
+
+      const ratio = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+      const w = img.naturalWidth * ratio;
+      const h = img.naturalHeight * ratio;
+      const x = cx - w / 2;
+      const y = cy - h / 2;
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.filter = blur > 0 ? `blur(${blur}px)` : "none";
+
+      if (shadow) {
+        ctx.shadowColor = "rgba(0,0,0,0.52)";
+        ctx.shadowBlur = boxW * 0.16;
+        ctx.shadowOffsetY = boxW * 0.1;
+      }
+
+      ctx.drawImage(img, x, y, w, h);
+      ctx.restore();
+    }
+
+    function drawDemoOrbiter(ctx, label, cx, cy, size, opacity = 1, blur = 0) {
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.filter = blur > 0 ? `blur(${blur}px)` : "none";
+      ctx.shadowColor = "rgba(0,0,0,0.48)";
+      ctx.shadowBlur = size * 0.18;
+      ctx.shadowOffsetY = size * 0.08;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = "#050505";
+      ctx.font = `900 ${Math.round(size * 0.34)}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, cx, cy + 1);
+      ctx.restore();
+    }
+
+    function drawPlaceholderCenter(ctx, cx, cy, size) {
+      ctx.save();
+
+      ctx.shadowColor = "rgba(0,0,0,0.55)";
+      ctx.shadowBlur = size * 0.15;
+      ctx.shadowOffsetY = size * 0.12;
+
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath();
+      ctx.arc(cx, cy - size * 0.18, size * 0.085, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy + size * 0.34, size * 0.19, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function exportFrame(ctx, canvasSize, elapsedMs) {
+      const scale = canvasSize / 900;
+      const cx = canvasSize / 2;
+      const cy = canvasSize / 2;
+
+      const centerSize = Number(controls.centerSize.value) * scale;
+      const itemSize = Number(controls.itemSize.value) * scale;
+      const stageScale = Number(controls.stageScale.value);
+
+      ctx.clearRect(0, 0, canvasSize, canvasSize);
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+      // subtle center background, matching the clean preview without UI
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, canvasSize * 0.42);
+      gradient.addColorStop(0, "rgba(255,255,255,0.055)");
+      gradient.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(stageScale, stageScale);
+      ctx.translate(-cx, -cy);
+
+      const states = getOrbitState(elapsedMs).map(state => ({
+        ...state,
+        px: cx + state.x * scale,
+        py: cy + state.y * scale,
+        size: itemSize * state.scale,
+        blurPx: state.blur * scale
+      }));
+
+      const back = states.filter(state => state.depth < 0.5).sort((a, b) => a.depth - b.depth);
+      const front = states.filter(state => state.depth >= 0.5).sort((a, b) => a.depth - b.depth);
+
+      function drawOrbitItem(state) {
+        if (body.classList.contains("framed")) {
+          const pad = state.size * 0.1;
+          const r = state.size * 0.22;
+          ctx.save();
+          ctx.globalAlpha = state.opacity;
+          ctx.fillStyle = "rgba(255,255,255,0.08)";
+          ctx.strokeStyle = "rgba(255,255,255,0.14)";
+          ctx.lineWidth = 1.5;
+          roundRect(ctx, state.px - state.size / 2, state.py - state.size / 2, state.size, state.size, r);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          if (uploadedUrls.length && loadedImages[state.index + 1]) {
+            drawImageContain(ctx, loadedImages[state.index + 1], state.px, state.py, state.size - pad * 2, state.size - pad * 2, state.opacity, state.blurPx);
+          } else {
+            drawDemoOrbiter(ctx, demoLabels[state.index % demoLabels.length], state.px, state.py, state.size - pad * 2, state.opacity, state.blurPx);
+          }
+        } else {
+          if (uploadedUrls.length && loadedImages[state.index + 1]) {
+            drawImageContain(ctx, loadedImages[state.index + 1], state.px, state.py, state.size, state.size, state.opacity, state.blurPx);
+          } else {
+            drawDemoOrbiter(ctx, demoLabels[state.index % demoLabels.length], state.px, state.py, state.size, state.opacity, state.blurPx);
+          }
+        }
+      }
+
+      back.forEach(drawOrbitItem);
+
+      if (uploadedUrls.length && loadedImages[0]) {
+        drawImageContain(ctx, loadedImages[0], cx, cy, centerSize, centerSize, 1, 0, true);
+      } else {
+        drawPlaceholderCenter(ctx, cx, cy, centerSize);
+      }
+
+      front.forEach(drawOrbitItem);
+
+      ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + w, y, x + w, y + h, radius);
+      ctx.arcTo(x + w, y + h, x, y + h, radius);
+      ctx.arcTo(x, y + h, x, y, radius);
+      ctx.arcTo(x, y, x + w, y, radius);
+      ctx.closePath();
+    }
+
+    function getSupportedMimeType() {
+      const types = [
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm"
+      ];
+
+      return types.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+    }
+
+    async function downloadRotation() {
+      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+        alert("Video export is not supported in this browser. Try Chrome, Edge, or Firefox.");
+        return;
+      }
+
+      if (uploadedUrls.length && loadedImages.length !== uploadedUrls.length) {
+        await prepareLoadedImages(uploadedUrls);
+      }
+
+      const canvasSize = Number(resolutionSelect.value);
+      const duration = Number(durationSelect.value);
+      const fps = 60;
+      const totalFrames = Math.max(1, duration * fps);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+      const ctx = canvas.getContext("2d");
+
+      const stream = canvas.captureStream(fps);
+      const mimeType = getSupportedMimeType();
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: canvasSize >= 1440 ? 12000000 : canvasSize >= 1080 ? 8000000 : 5000000
+      });
+
+      const chunks = [];
+
+      recorder.ondataavailable = event => {
+        if (event.data && event.data.size) chunks.push(event.data);
+      };
+
+      const finished = new Promise(resolve => {
+        recorder.onstop = resolve;
+      });
+
+      downloadVideoButton.disabled = true;
+      const originalText = downloadVideoButton.textContent;
+      downloadVideoButton.textContent = "Rendering 0%";
+
+      const pausedBeforeExport = running;
+      running = false;
+      toggleButton.textContent = "Play";
+
+      recorder.start();
+
+      for (let frame = 0; frame < totalFrames; frame++) {
+        const progress = frame / totalFrames;
+        const elapsed = progress * duration * 1000;
+
+        exportFrame(ctx, canvasSize, elapsed);
+
+        if (frame % 6 === 0) {
+          downloadVideoButton.textContent = "Rendering " + Math.round(progress * 100) + "%";
+          await new Promise(requestAnimationFrame);
+        }
+      }
+
+      exportFrame(ctx, canvasSize, duration * 1000);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      recorder.stop();
+      await finished;
+
+      stream.getTracks().forEach(track => track.stop());
+
+      const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+      link.href = url;
+      link.download = "orbit-rotation-" + timestamp + ".webm";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      running = pausedBeforeExport;
+      if (running) startTime = performance.now() - lastElapsed;
+      toggleButton.textContent = running ? "Pause" : "Play";
+
+      downloadVideoButton.disabled = false;
+      downloadVideoButton.textContent = originalText;
+    }
+
+    downloadVideoButton.addEventListener("click", downloadRotation);
 
     createDemoOrbiters();
     requestAnimationFrame(animate);
