@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clean Orbit Uploader</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --panel: rgba(20, 20, 20, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.055);
+      --panel-3: rgba(255, 255, 255, 0.09);
+      --stroke: rgba(255, 255, 255, 0.12);
+      --stroke-strong: rgba(255, 255, 255, 0.2);
+      --text: rgba(255, 255, 255, 0.94);
+      --muted: rgba(255, 255, 255, 0.58);
+      --faint: rgba(255, 255, 255, 0.32);
+      --accent: #ffffff;
+
+      --orbit-x: 300px;
+      --orbit-y: 110px;
+      --center-size: 260px;
+      --item-size: 78px;
+      --stage-scale: 1;
+      --radius: 28px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.055), transparent 34%),
+        #050505;
+    }
+
+    .sidebar {
+      position: relative;
+      z-index: 20;
+      min-height: 100vh;
+      padding: 20px;
+      border-right: 1px solid var(--stroke);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)),
+        rgba(8, 8, 8, 0.88);
+      backdrop-filter: blur(24px);
+    }
+
+    .panel {
+      min-height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      color: #000;
+      font-weight: 900;
+      letter-spacing: -0.08em;
+      box-shadow: 0 14px 34px rgba(255, 255, 255, 0.12);
+      flex: 0 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .subtitle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .version {
+      padding: 7px 9px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 11px;
+      background: var(--panel-2);
+      white-space: nowrap;
+    }
+
+    .upload {
+      position: relative;
+      border: 1px dashed var(--stroke-strong);
+      border-radius: var(--radius);
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035));
+      transition: 180ms ease;
+      overflow: hidden;
+    }
+
+    .upload::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(255,255,255,0.12), transparent 34%);
+      opacity: 0;
+      transition: 180ms ease;
+      pointer-events: none;
+    }
+
+    .upload.drag {
+      border-color: rgba(255,255,255,0.78);
+      transform: translateY(-1px);
+    }
+
+    .upload.drag::before {
+      opacity: 1;
+    }
+
+    .upload-top {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      position: relative;
+    }
+
+    .upload-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      flex: 0 0 auto;
+    }
+
+    .upload strong {
+      display: block;
+      margin: 0 0 6px;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+    }
+
+    .upload p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .file-button {
+      margin-top: 16px;
+      position: relative;
+    }
+
+    .file-button input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .fake-button,
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 14px;
+      color: #0a0a0a;
+      background: #fff;
+      font-weight: 760;
+      cursor: pointer;
+      transition: 160ms ease;
+      user-select: none;
+    }
+
+    .fake-button {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    button:hover,
+    .file-button:hover .fake-button {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 34px rgba(255,255,255,0.12);
+    }
+
+    .section {
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 15px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: -0.01em;
+      font-weight: 760;
+    }
+
+    .count {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      padding: 15px 16px 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    label.control {
+      display: grid;
+      gap: 9px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .control-row output {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      appearance: none;
+      height: 4px;
+      border-radius: 999px;
+      outline: 0;
+      background: rgba(255,255,255,0.16);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 3px solid #050505;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #050505;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: var(--panel-3);
+      border: 1px solid var(--stroke);
+      box-shadow: none;
+    }
+
+    button.secondary:hover {
+      background: rgba(255,255,255,0.13);
+      box-shadow: none;
+    }
+
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 0 16px 16px;
+    }
+
+    .pill-toggle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 12px;
+      border-radius: 16px;
+      color: var(--muted);
+      background: var(--panel-2);
+      border: 1px solid var(--stroke);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .pill-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .switch {
+      width: 30px;
+      height: 18px;
+      padding: 2px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      transition: 160ms ease;
+      flex: 0 0 auto;
+    }
+
+    .switch::before {
+      content: "";
+      display: block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.62);
+      transition: 160ms ease;
+    }
+
+    .pill-toggle input:checked + .switch {
+      background: #fff;
+    }
+
+    .pill-toggle input:checked + .switch::before {
+      transform: translateX(12px);
+      background: #050505;
+    }
+
+    .thumbs {
+      padding: 14px 16px 16px;
+      display: grid;
+      gap: 10px;
+      max-height: 214px;
+      overflow: auto;
+    }
+
+    .thumb-row {
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      background: var(--panel-2);
+    }
+
+    .thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumb-meta {
+      min-width: 0;
+    }
+
+    .thumb-name {
+      margin: 0;
+      color: var(--text);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .thumb-role {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .role-badge {
+      padding: 5px 7px;
+      border-radius: 999px;
+      color: var(--muted);
+      border: 1px solid var(--stroke);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .empty-list {
+      padding: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .footer-note {
+      margin-top: auto;
+      color: var(--faint);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .stage-shell {
+      position: relative;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .stage-toolbar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      z-index: 10;
+      padding: 8px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      background: rgba(10,10,10,0.62);
+      backdrop-filter: blur(18px);
+    }
+
+    .toolbar-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      opacity: 0.8;
+    }
+
+    .toolbar-text {
+      font-size: 12px;
+      padding-right: 6px;
+    }
+
+    .stage {
+      position: relative;
+      width: min(82vw, 900px);
+      height: min(82vh, 900px);
+      min-width: 520px;
+      min-height: 520px;
+      transform: scale(var(--stage-scale));
+      transform-origin: center center;
+      transition: transform 160ms ease;
+    }
+
+    .center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: var(--center-size);
+      height: var(--center-size);
+      transform: translate(-50%, -50%);
+      display: grid;
+      place-items: center;
+      z-index: 2000;
+      pointer-events: none;
+    }
+
+    .center img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      filter: drop-shadow(0 30px 36px rgba(0,0,0,0.58));
+    }
+
+    .center-placeholder {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 33%, rgba(255,255,255,0.92) 0 17%, transparent 18%),
+        radial-gradient(circle at 50% 90%, rgba(255,255,255,0.88) 0 38%, transparent 39%),
+        rgba(255,255,255,0.05);
+      border: 1px solid var(--stroke);
+      box-shadow:
+        0 30px 60px rgba(0,0,0,0.48),
+        inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .orbiter {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: var(--item-size);
+      height: var(--item-size);
+      display: grid;
+      place-items: center;
+      transform-origin: center center;
+      will-change: transform, filter, opacity;
+      pointer-events: none;
+    }
+
+    .orbiter-inner {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      overflow: visible;
+      border-radius: 18px;
+      transition: background 160ms ease, border 160ms ease, padding 160ms ease;
+    }
+
+    body.framed .orbiter-inner {
+      padding: 8px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 38px rgba(0,0,0,0.32);
+    }
+
+    .orbiter img,
+    .demo-orbiter {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      filter: drop-shadow(0 18px 20px rgba(0,0,0,0.48));
+    }
+
+    .demo-orbiter {
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #050505;
+      background: #fff;
+      font-size: clamp(17px, 4vw, 28px);
+      font-weight: 900;
+      letter-spacing: -0.06em;
+    }
+
+    .status-card {
+      position: absolute;
+      left: 50%;
+      bottom: 32px;
+      transform: translateX(-50%);
+      width: min(520px, calc(100% - 48px));
+      padding: 14px 16px;
+      border: 1px solid var(--stroke);
+      border-radius: 20px;
+      background: rgba(10,10,10,0.58);
+      backdrop-filter: blur(20px);
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.45;
+      z-index: 10;
+    }
+
+    .status-card strong {
+      color: var(--text);
+      font-weight: 760;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        min-height: auto;
+        border-right: 0;
+        border-top: 1px solid var(--stroke);
+        order: 2;
+      }
+
+      .panel {
+        min-height: auto;
+      }
+
+      .stage-shell {
+        min-height: 68vh;
+      }
+
+      .stage {
+        width: 100vw;
+        height: 68vh;
+        min-width: 0;
+        min-height: 430px;
+      }
+
+      .stage-toolbar {
+        top: 14px;
+        right: 14px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      :root {
+        --center-size: 205px;
+        --item-size: 62px;
+        --orbit-x: 170px;
+        --orbit-y: 78px;
+      }
+
+      .sidebar {
+        padding: 14px;
+      }
+
+      .section,
+      .upload {
+        border-radius: 22px;
+      }
+
+      .brand {
+        align-items: flex-start;
+      }
+
+      .version {
+        display: none;
+      }
+
+      .button-grid,
+      .toggle-row {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        min-height: 390px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="panel">
+        <header class="brand">
+          <div class="brand-mark">
+            <div class="logo">O</div>
+            <div>
+              <h1>Orbit Studio</h1>
+              <p class="subtitle">Clean front-facing image orbit</p>
+            </div>
+          </div>
+          <div class="version">single file</div>
+        </header>
+
+        <section class="upload" id="dropZone">
+          <div class="upload-top">
+            <div class="upload-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 16V4m0 0 4.5 4.5M12 4 7.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M20 16.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Upload your images</strong>
+              <p>First image is the center cutout. Everything after that orbits around it.</p>
+            </div>
+          </div>
+
+          <div class="file-button">
+            <span class="fake-button">Choose images</span>
+            <input id="fileInput" type="file" accept="image/*" multiple />
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2 class="section-title">Orbit controls</h2>
+            <span class="count" id="orbitCount">Demo</span>
+          </div>
+
+          <div class="controls">
+            <label class="control">
+              <span class="control-row"><span>Width</span><output id="orbitXValue">300</output></span>
+              <input id="orbitX" type="range" min="90" max="460" value="300" />
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Depth</span><output id="orbitYValue">110</output></span>
+              <input id="orbitY" type="range" min="20" max="260" value="110" />
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Center size</span><output id="centerSizeValue">260</output></span>
+              <input id="centerSize" type="range" min="120" max="420" value="260" />
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Orbit image size</span><output id="itemSizeValue">78</output></span>
+              <input id="itemSize" type="range" min="34" max="180" value="78" />
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Speed</span><output id="speedValue">0.50</output></span>
+              <input id="speed" type="range" min="-2" max="2" step="0.01" value="0.5" />
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Stage scale</span><output id="stageScaleValue">1.00</output></span>
+              <input id="stageScale" type="range" min="0.7" max="1.3" step="0.01" value="1" />
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <label class="pill-toggle">
+              <span>Image frames</span>
+              <input id="framesToggle" type="checkbox" />
+              <span class="switch"></span>
+            </label>
+
+            <label class="pill-toggle">
+              <span>Soft depth</span>
+              <input id="depthToggle" type="checkbox" checked />
+              <span class="switch"></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2 class="section-title">Images</h2>
+            <span class="count" id="imageCount">0 uploaded</span>
+          </div>
+          <div class="thumbs" id="thumbs">
+            <div class="empty-list">
+              No uploads yet. The demo uses simple placeholders so you can tune the motion first.
+            </div>
+          </div>
+        </section>
+
+        <div class="button-grid">
+          <button id="toggle">Pause</button>
+          <button id="reverse" class="secondary">Reverse</button>
+          <button id="shuffle" class="secondary">Shuffle</button>
+          <button id="clear" class="secondary">Clear</button>
+        </div>
+
+        <p class="footer-note">
+          Best result: use a transparent PNG/WebP as the first image, especially if you want orbiting elements to pass behind the person.
+        </p>
+      </div>
+    </aside>
+
+    <main class="stage-shell">
+      <div class="stage-toolbar">
+        <span class="toolbar-dot"></span>
+        <span class="toolbar-text">clean canvas</span>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="center" id="center">
+          <div class="center-placeholder" aria-label="Center placeholder"></div>
+        </div>
+        <div id="orbiters"></div>
+      </div>
+
+      <div class="status-card" id="statusCard">
+        <strong>First upload = center.</strong> The rest orbit in a clean ellipse and stay front-facing.
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+    const body = document.body;
+
+    const fileInput = document.getElementById("fileInput");
+    const dropZone = document.getElementById("dropZone");
+    const stage = document.getElementById("stage");
+    const center = document.getElementById("center");
+    const orbiters = document.getElementById("orbiters");
+    const thumbs = document.getElementById("thumbs");
+    const statusCard = document.getElementById("statusCard");
+
+    const orbitCount = document.getElementById("orbitCount");
+    const imageCount = document.getElementById("imageCount");
+
+    const controls = {
+      orbitX: document.getElementById("orbitX"),
+      orbitY: document.getElementById("orbitY"),
+      centerSize: document.getElementById("centerSize"),
+      itemSize: document.getElementById("itemSize"),
+      speed: document.getElementById("speed"),
+      stageScale: document.getElementById("stageScale")
+    };
+
+    const valueLabels = {
+      orbitX: document.getElementById("orbitXValue"),
+      orbitY: document.getElementById("orbitYValue"),
+      centerSize: document.getElementById("centerSizeValue"),
+      itemSize: document.getElementById("itemSizeValue"),
+      speed: document.getElementById("speedValue"),
+      stageScale: document.getElementById("stageScaleValue")
+    };
+
+    const framesToggle = document.getElementById("framesToggle");
+    const depthToggle = document.getElementById("depthToggle");
+
+    const toggleButton = document.getElementById("toggle");
+    const reverseButton = document.getElementById("reverse");
+    const shuffleButton = document.getElementById("shuffle");
+    const clearButton = document.getElementById("clear");
+
+    let uploadedUrls = [];
+    let uploadedFiles = [];
+    let items = [];
+    let running = true;
+    let startTime = performance.now();
+    let lastElapsed = 0;
+
+    function setCssVars() {
+      root.style.setProperty("--orbit-x", controls.orbitX.value + "px");
+      root.style.setProperty("--orbit-y", controls.orbitY.value + "px");
+      root.style.setProperty("--center-size", controls.centerSize.value + "px");
+      root.style.setProperty("--item-size", controls.itemSize.value + "px");
+      root.style.setProperty("--stage-scale", controls.stageScale.value);
+
+      valueLabels.orbitX.textContent = controls.orbitX.value;
+      valueLabels.orbitY.textContent = controls.orbitY.value;
+      valueLabels.centerSize.textContent = controls.centerSize.value;
+      valueLabels.itemSize.textContent = controls.itemSize.value;
+      valueLabels.speed.textContent = Number(controls.speed.value).toFixed(2);
+      valueLabels.stageScale.textContent = Number(controls.stageScale.value).toFixed(2);
+    }
+
+    Object.values(controls).forEach(input => input.addEventListener("input", setCssVars));
+    setCssVars();
+
+    framesToggle.addEventListener("change", () => {
+      body.classList.toggle("framed", framesToggle.checked);
+    });
+
+    function makeImage(src, alt = "") {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = alt;
+      return img;
+    }
+
+    function makeOrbiter(content, index, total) {
+      const el = document.createElement("div");
+      el.className = "orbiter";
+
+      const inner = document.createElement("div");
+      inner.className = "orbiter-inner";
+      inner.appendChild(content);
+
+      el.appendChild(inner);
+      orbiters.appendChild(el);
+
+      return {
+        el,
+        inner,
+        phase: (index / Math.max(total, 1)) * Math.PI * 2,
+        radiusOffset: 0.96 + Math.random() * 0.08
+      };
+    }
+
+    function createDemoOrbiters() {
+      const labels = ["01", "02", "03", "04", "05", "06"];
+      items = labels.map((label, index) => {
+        const demo = document.createElement("div");
+        demo.className = "demo-orbiter";
+        demo.textContent = label;
+        return makeOrbiter(demo, index, labels.length);
+      });
+
+      orbitCount.textContent = "Demo";
+      imageCount.textContent = "0 uploaded";
+    }
+
+    function renderThumbs(files) {
+      thumbs.innerHTML = "";
+
+      if (!files.length) {
+        thumbs.innerHTML = `
+          <div class="empty-list">
+            No uploads yet. The demo uses simple placeholders so you can tune the motion first.
+          </div>
+        `;
+        return;
+      }
+
+      files.forEach((file, index) => {
+        const row = document.createElement("div");
+        row.className = "thumb-row";
+
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+        thumb.appendChild(makeImage(uploadedUrls[index], file.name));
+
+        const meta = document.createElement("div");
+        meta.className = "thumb-meta";
+
+        const name = document.createElement("p");
+        name.className = "thumb-name";
+        name.textContent = file.name;
+
+        const role = document.createElement("p");
+        role.className = "thumb-role";
+        role.textContent = index === 0 ? "Center image" : "Orbiting image";
+
+        meta.appendChild(name);
+        meta.appendChild(role);
+
+        const badge = document.createElement("span");
+        badge.className = "role-badge";
+        badge.textContent = index === 0 ? "center" : "orbit";
+
+        row.appendChild(thumb);
+        row.appendChild(meta);
+        row.appendChild(badge);
+        thumbs.appendChild(row);
+      });
+    }
+
+    function renderUploadedImages(files) {
+      uploadedUrls.forEach(URL.revokeObjectURL);
+
+      uploadedFiles = files;
+      uploadedUrls = files.map(file => URL.createObjectURL(file));
+
+      orbiters.innerHTML = "";
+      items = [];
+
+      if (!uploadedUrls.length) {
+        center.innerHTML = '<div class="center-placeholder" aria-label="Center placeholder"></div>';
+        createDemoOrbiters();
+        renderThumbs([]);
+        statusCard.innerHTML = '<strong>First upload = center.</strong> The rest orbit in a clean ellipse and stay front-facing.';
+        return;
+      }
+
+      center.innerHTML = "";
+      center.appendChild(makeImage(uploadedUrls[0], "Center image"));
+
+      const orbitUrls = uploadedUrls.slice(1);
+      orbitUrls.forEach((src, index) => {
+        const img = makeImage(src, "Orbiting image " + (index + 1));
+        items.push(makeOrbiter(img, index, orbitUrls.length));
+      });
+
+      orbitCount.textContent = orbitUrls.length + " orbiting";
+      imageCount.textContent = files.length + " uploaded";
+      statusCard.innerHTML = '<strong>Uploaded.</strong> First image is centered. ' + orbitUrls.length + ' image' + (orbitUrls.length === 1 ? '' : 's') + ' orbit around it.';
+      renderThumbs(files);
+    }
+
+    function handleFiles(fileList) {
+      const files = Array.from(fileList).filter(file => file.type.startsWith("image/"));
+      renderUploadedImages(files);
+    }
+
+    fileInput.addEventListener("change", event => handleFiles(event.target.files));
+
+    ["dragenter", "dragover"].forEach(type => {
+      dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        dropZone.classList.add("drag");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(type => {
+      dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        dropZone.classList.remove("drag");
+      });
+    });
+
+    dropZone.addEventListener("drop", event => {
+      event.preventDefault();
+      handleFiles(event.dataTransfer.files);
+    });
+
+    toggleButton.addEventListener("click", () => {
+      running = !running;
+      toggleButton.textContent = running ? "Pause" : "Play";
+      if (running) startTime = performance.now() - lastElapsed;
+    });
+
+    reverseButton.addEventListener("click", () => {
+      const current = Number(controls.speed.value);
+      controls.speed.value = String(current === 0 ? -0.5 : current * -1);
+      setCssVars();
+    });
+
+    shuffleButton.addEventListener("click", () => {
+      items.forEach(item => {
+        item.phase = Math.random() * Math.PI * 2;
+        item.radiusOffset = 0.96 + Math.random() * 0.08;
+      });
+    });
+
+    clearButton.addEventListener("click", () => {
+      fileInput.value = "";
+      renderUploadedImages([]);
+    });
+
+    function animate(now) {
+      if (running) lastElapsed = now - startTime;
+
+      const speed = Number(controls.speed.value);
+      const orbitX = Number(controls.orbitX.value);
+      const orbitY = Number(controls.orbitY.value);
+      const depthEnabled = depthToggle.checked;
+      const t = lastElapsed * 0.001 * speed;
+
+      items.forEach(item => {
+        const angle = t + item.phase;
+
+        const x = Math.cos(angle) * orbitX * item.radiusOffset;
+        const y = Math.sin(angle) * orbitY * item.radiusOffset;
+
+        // depth: back half is behind center, front half is in front of center.
+        const depth = (Math.sin(angle) + 1) / 2;
+
+        let scale = 1;
+        let opacity = 1;
+        let blur = 0;
+
+        if (depthEnabled) {
+          scale = 0.76 + depth * 0.34;
+          opacity = 0.52 + depth * 0.48;
+          blur = (1 - depth) * 0.9;
+        }
+
+        item.el.style.transform =
+          `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
+
+        item.el.style.zIndex = String(Math.round(1000 + depth * 2000));
+        item.el.style.opacity = String(opacity);
+        item.el.style.filter = `blur(${blur}px)`;
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    createDemoOrbiters();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
