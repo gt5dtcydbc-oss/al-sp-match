@@ -852,12 +852,23 @@
         <section class="section">
           <div class="section-header">
             <h2 class="section-title">Export</h2>
-            <span class="count">WebM video</span>
+            <span class="count">AE friendly</span>
           </div>
 
           <div class="controls">
             <label class="control">
-              <span class="control-row"><span>Video length</span></span>
+              <span class="control-row"><span>Format</span></span>
+              <div class="select-wrap">
+                <select id="formatSelect">
+                  <option value="mp4" selected>MP4 video, if browser supports it</option>
+                  <option value="png">PNG sequence ZIP, best for After Effects</option>
+                  <option value="webm">WebM video</option>
+                </select>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Length</span></span>
               <div class="select-wrap">
                 <select id="durationSelect">
                   <option value="3">3 seconds</option>
@@ -878,14 +889,25 @@
                 </select>
               </div>
             </label>
+
+            <label class="control">
+              <span class="control-row"><span>Frame rate</span></span>
+              <div class="select-wrap">
+                <select id="fpsSelect">
+                  <option value="24">24 fps</option>
+                  <option value="30" selected>30 fps</option>
+                  <option value="60">60 fps</option>
+                </select>
+              </div>
+            </label>
           </div>
 
           <div class="download-options">
             <button id="downloadVideo" class="download">
               <span>Download rotation</span>
             </button>
-            <p class="download-note">
-              Exports the current orbit as a square WebM video. Chrome, Edge, and Firefox support this best.
+            <p class="download-note" id="downloadNote">
+              MP4 is attempted when your browser exposes MP4 recording. If not, the app falls back to a PNG sequence ZIP for After Effects.
             </p>
           </div>
         </section>
@@ -970,9 +992,12 @@
     const framesToggle = document.getElementById("framesToggle");
     const depthToggle = document.getElementById("depthToggle");
 
+    const formatSelect = document.getElementById("formatSelect");
     const durationSelect = document.getElementById("durationSelect");
     const resolutionSelect = document.getElementById("resolutionSelect");
+    const fpsSelect = document.getElementById("fpsSelect");
     const downloadVideoButton = document.getElementById("downloadVideo");
+    const downloadNote = document.getElementById("downloadNote");
 
     const toggleButton = document.getElementById("toggle");
     const reverseButton = document.getElementById("reverse");
@@ -1403,20 +1428,39 @@
       ctx.closePath();
     }
 
-    function getSupportedMimeType() {
-      const types = [
+    function getSupportedVideoMimeType(format) {
+      const mp4Types = [
+        "video/mp4;codecs=avc1.42E01E",
+        "video/mp4;codecs=avc1.640028",
+        "video/mp4;codecs=h264",
+        "video/mp4"
+      ];
+
+      const webmTypes = [
         "video/webm;codecs=vp9",
         "video/webm;codecs=vp8",
         "video/webm"
       ];
 
+      const types = format === "mp4" ? mp4Types : webmTypes;
       return types.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
     }
 
-    async function downloadRotation() {
+    function extensionForMimeType(mimeType, format) {
+      if (format === "mp4" && mimeType.includes("mp4")) return "mp4";
+      return "webm";
+    }
+
+    async function exportVideo(format) {
       if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-        alert("Video export is not supported in this browser. Try Chrome, Edge, or Firefox.");
-        return;
+        alert("Video export is not supported in this browser. Try Chrome, Edge, or Firefox, or export a PNG sequence.");
+        return false;
+      }
+
+      const mimeType = getSupportedVideoMimeType(format);
+
+      if (!mimeType) {
+        return false;
       }
 
       if (uploadedUrls.length && loadedImages.length !== uploadedUrls.length) {
@@ -1425,7 +1469,7 @@
 
       const canvasSize = Number(resolutionSelect.value);
       const duration = Number(durationSelect.value);
-      const fps = 60;
+      const fps = Number(fpsSelect.value);
       const totalFrames = Math.max(1, duration * fps);
       const canvas = document.createElement("canvas");
       canvas.width = canvasSize;
@@ -1433,10 +1477,9 @@
       const ctx = canvas.getContext("2d");
 
       const stream = canvas.captureStream(fps);
-      const mimeType = getSupportedMimeType();
       const recorder = new MediaRecorder(stream, {
         mimeType,
-        videoBitsPerSecond: canvasSize >= 1440 ? 12000000 : canvasSize >= 1080 ? 8000000 : 5000000
+        videoBitsPerSecond: canvasSize >= 1440 ? 14000000 : canvasSize >= 1080 ? 10000000 : 6000000
       });
 
       const chunks = [];
@@ -1449,14 +1492,6 @@
         recorder.onstop = resolve;
       });
 
-      downloadVideoButton.disabled = true;
-      const originalText = downloadVideoButton.textContent;
-      downloadVideoButton.textContent = "Rendering 0%";
-
-      const pausedBeforeExport = running;
-      running = false;
-      toggleButton.textContent = "Play";
-
       recorder.start();
 
       for (let frame = 0; frame < totalFrames; frame++) {
@@ -1465,42 +1500,264 @@
 
         exportFrame(ctx, canvasSize, elapsed);
 
-        if (frame % 6 === 0) {
-          downloadVideoButton.textContent = "Rendering " + Math.round(progress * 100) + "%";
+        if (frame % 4 === 0) {
+          downloadVideoButton.textContent = "Rendering video " + Math.round(progress * 100) + "%";
           await new Promise(requestAnimationFrame);
         }
       }
 
       exportFrame(ctx, canvasSize, duration * 1000);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 120));
 
       recorder.stop();
       await finished;
 
       stream.getTracks().forEach(track => track.stop());
 
-      const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+      const blob = new Blob(chunks, { type: mimeType || (format === "mp4" ? "video/mp4" : "video/webm") });
+      const extension = extensionForMimeType(mimeType, format);
+      downloadBlob(blob, "orbit-rotation-" + getTimestamp() + "." + extension);
+
+      return true;
+    }
+
+    function getTimestamp() {
+      return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    }
+
+    function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
       link.href = url;
-      link.download = "orbit-rotation-" + timestamp + ".webm";
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
 
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setTimeout(() => URL.revokeObjectURL(url), 1200);
+    }
 
-      running = pausedBeforeExport;
-      if (running) startTime = performance.now() - lastElapsed;
-      toggleButton.textContent = running ? "Pause" : "Play";
+    function makeCrc32Table() {
+      const table = new Uint32Array(256);
 
-      downloadVideoButton.disabled = false;
-      downloadVideoButton.textContent = originalText;
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        }
+        table[i] = c >>> 0;
+      }
+
+      return table;
+    }
+
+    const crc32Table = makeCrc32Table();
+
+    function crc32(bytes) {
+      let c = 0xffffffff;
+
+      for (let i = 0; i < bytes.length; i++) {
+        c = crc32Table[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+      }
+
+      return (c ^ 0xffffffff) >>> 0;
+    }
+
+    function writeUint16(bytes, offset, value) {
+      bytes[offset] = value & 0xff;
+      bytes[offset + 1] = (value >>> 8) & 0xff;
+    }
+
+    function writeUint32(bytes, offset, value) {
+      bytes[offset] = value & 0xff;
+      bytes[offset + 1] = (value >>> 8) & 0xff;
+      bytes[offset + 2] = (value >>> 16) & 0xff;
+      bytes[offset + 3] = (value >>> 24) & 0xff;
+    }
+
+    function getDosDateTime(date = new Date()) {
+      const dosTime =
+        (date.getHours() << 11) |
+        (date.getMinutes() << 5) |
+        Math.floor(date.getSeconds() / 2);
+
+      const dosDate =
+        ((date.getFullYear() - 1980) << 9) |
+        ((date.getMonth() + 1) << 5) |
+        date.getDate();
+
+      return { dosTime, dosDate };
+    }
+
+    function createZip(files) {
+      const encoder = new TextEncoder();
+      const { dosTime, dosDate } = getDosDateTime();
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+
+      files.forEach(file => {
+        const nameBytes = encoder.encode(file.name);
+        const data = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
+        const checksum = crc32(data);
+
+        const local = new Uint8Array(30 + nameBytes.length);
+        writeUint32(local, 0, 0x04034b50);
+        writeUint16(local, 4, 20);
+        writeUint16(local, 6, 0);
+        writeUint16(local, 8, 0);
+        writeUint16(local, 10, dosTime);
+        writeUint16(local, 12, dosDate);
+        writeUint32(local, 14, checksum);
+        writeUint32(local, 18, data.length);
+        writeUint32(local, 22, data.length);
+        writeUint16(local, 26, nameBytes.length);
+        writeUint16(local, 28, 0);
+        local.set(nameBytes, 30);
+
+        localParts.push(local, data);
+
+        const central = new Uint8Array(46 + nameBytes.length);
+        writeUint32(central, 0, 0x02014b50);
+        writeUint16(central, 4, 20);
+        writeUint16(central, 6, 20);
+        writeUint16(central, 8, 0);
+        writeUint16(central, 10, 0);
+        writeUint16(central, 12, dosTime);
+        writeUint16(central, 14, dosDate);
+        writeUint32(central, 16, checksum);
+        writeUint32(central, 20, data.length);
+        writeUint32(central, 24, data.length);
+        writeUint16(central, 28, nameBytes.length);
+        writeUint16(central, 30, 0);
+        writeUint16(central, 32, 0);
+        writeUint16(central, 34, 0);
+        writeUint16(central, 36, 0);
+        writeUint32(central, 38, 0);
+        writeUint32(central, 42, offset);
+        central.set(nameBytes, 46);
+
+        centralParts.push(central);
+        offset += local.length + data.length;
+      });
+
+      const centralOffset = offset;
+      const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+
+      const end = new Uint8Array(22);
+      writeUint32(end, 0, 0x06054b50);
+      writeUint16(end, 4, 0);
+      writeUint16(end, 6, 0);
+      writeUint16(end, 8, files.length);
+      writeUint16(end, 10, files.length);
+      writeUint32(end, 12, centralSize);
+      writeUint32(end, 16, centralOffset);
+      writeUint16(end, 20, 0);
+
+      return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
+    }
+
+    function canvasToPngBytes(canvas) {
+      return new Promise(resolve => {
+        canvas.toBlob(async blob => {
+          const buffer = await blob.arrayBuffer();
+          resolve(new Uint8Array(buffer));
+        }, "image/png");
+      });
+    }
+
+    async function exportPngSequenceZip() {
+      if (uploadedUrls.length && loadedImages.length !== uploadedUrls.length) {
+        await prepareLoadedImages(uploadedUrls);
+      }
+
+      const canvasSize = Number(resolutionSelect.value);
+      const duration = Number(durationSelect.value);
+      const fps = Number(fpsSelect.value);
+      const totalFrames = Math.max(1, duration * fps);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+      const ctx = canvas.getContext("2d");
+      const files = [];
+
+      for (let frame = 0; frame < totalFrames; frame++) {
+        const progress = frame / totalFrames;
+        const elapsed = progress * duration * 1000;
+
+        exportFrame(ctx, canvasSize, elapsed);
+
+        const frameNumber = String(frame + 1).padStart(5, "0");
+        const data = await canvasToPngBytes(canvas);
+
+        files.push({
+          name: "orbit_sequence/orbit_" + frameNumber + ".png",
+          data
+        });
+
+        if (frame % 2 === 0) {
+          downloadVideoButton.textContent = "Rendering PNGs " + Math.round(progress * 100) + "%";
+          await new Promise(requestAnimationFrame);
+        }
+      }
+
+      const zipBlob = createZip(files);
+      downloadBlob(zipBlob, "orbit-png-sequence-" + getTimestamp() + ".zip");
+    }
+
+    async function downloadRotation() {
+      const format = formatSelect.value;
+
+      downloadVideoButton.disabled = true;
+      const originalText = downloadVideoButton.textContent;
+
+      const pausedBeforeExport = running;
+      running = false;
+      toggleButton.textContent = "Play";
+
+      try {
+        if (format === "png") {
+          await exportPngSequenceZip();
+        } else {
+          const exported = await exportVideo(format);
+
+          if (!exported && format === "mp4") {
+            const shouldFallback = confirm(
+              "This browser does not support MP4 recording from the page. Export a PNG sequence ZIP instead? After Effects can import it as an image sequence."
+            );
+
+            if (shouldFallback) {
+              await exportPngSequenceZip();
+            }
+          } else if (!exported) {
+            alert("This browser does not support that video format. Try the PNG sequence export.");
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Export failed. Try a lower resolution, shorter duration, or PNG sequence.");
+      } finally {
+        running = pausedBeforeExport;
+        if (running) startTime = performance.now() - lastElapsed;
+        toggleButton.textContent = running ? "Pause" : "Play";
+
+        downloadVideoButton.disabled = false;
+        downloadVideoButton.textContent = originalText;
+      }
     }
 
     downloadVideoButton.addEventListener("click", downloadRotation);
+
+    formatSelect.addEventListener("change", () => {
+      if (formatSelect.value === "mp4") {
+        downloadNote.textContent = "MP4 is attempted when your browser exposes MP4 recording. If not, the app can fall back to a PNG sequence ZIP for After Effects.";
+      } else if (formatSelect.value === "png") {
+        downloadNote.textContent = "Exports numbered PNG frames in a ZIP. In After Effects, import the first PNG and enable PNG Sequence.";
+      } else {
+        downloadNote.textContent = "Exports a WebM video. Useful for previewing, but MP4 or PNG sequence is usually better for After Effects.";
+      }
+    });
 
     createDemoOrbiters();
     requestAnimationFrame(animate);
