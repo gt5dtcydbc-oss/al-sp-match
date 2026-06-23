@@ -233,6 +233,7 @@
     .anime-card.highlight-next { border: 2px solid var(--text); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
     .anime-card.on-break .anime-card-bg img { opacity: 0.4; filter: grayscale(100%); }
     .anime-card.final-holdover .anime-card-bg img { opacity: 0.72; }
+    .anime-card.ended .anime-card-bg img { opacity: 0.35; filter: grayscale(100%); }
     
 
     .anime-card-bg { position: absolute; inset: 0; background: var(--panel-2); z-index: 1; }
@@ -305,6 +306,11 @@
       border: 1px solid rgba(255,255,255,0.1);
     }
     .badge-chip.added { color: #000; background: var(--text); border: none; }
+    .badge-chip.countdown {
+      background: rgba(0,0,0,0.72);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
 
     .anime-card-bottom {
       pointer-events: auto;
@@ -1127,26 +1133,33 @@
       return data.data || {};
     }
 
-    async function fetchAniListWatching(userName) {
-  const data = await graphQLRequest(CURRENT_QUERY, { userName });
-  const lists = data?.MediaListCollection?.lists || [];
-  const entries = [];
-
-  for (const list of lists) {
-    for (const entry of list.entries || []) {
-      const media = entry?.media;
-      if (!media) continue;
-
-      // AniList list status is already CURRENT from CURRENT_QUERY.
-      // This additionally requires the anime itself to be currently airing.
-      if (media.status !== "RELEASING") continue;
-
-      entries.push(entry);
+    function mediaHasFutureAiringDate(media) {
+      const airingAt = Number(media?.nextAiringEpisode?.airingAt);
+      return Number.isFinite(airingAt) && airingAt > Math.floor(Date.now() / 1000);
     }
-  }
 
-  return entries;
-}
+    function shouldIncludeWatchingMedia(media) {
+      if (!media) return false;
+      if (media.status === "RELEASING") return true;
+      return media.status === "NOT_YET_RELEASED" && mediaHasFutureAiringDate(media);
+    }
+
+    async function fetchAniListWatching(userName) {
+      const data = await graphQLRequest(CURRENT_QUERY, { userName });
+      const lists = data?.MediaListCollection?.lists || [];
+      const entries = [];
+
+      for (const list of lists) {
+        for (const entry of list.entries || []) {
+          const media = entry?.media;
+          if (!shouldIncludeWatchingMedia(media)) continue;
+
+          entries.push(entry);
+        }
+      }
+
+      return entries;
+    }
 
     async function searchAniListShows(search) {
       const data = await graphQLRequest(SEARCH_QUERY, { search });
@@ -1864,6 +1877,7 @@
         const totalEpisodeNumber = Number(media.episodes);
         const totalEpisodes = Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0 ? totalEpisodeNumber : "?";
         const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        const isUpcomingSeason = media.status === "NOT_YET_RELEASED";
         const isFinalEpisode = hasNextAiring && Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0 && nextEpisodeNumber === totalEpisodeNumber;
 
         let isScheduleMoved = false;
@@ -1872,17 +1886,20 @@
           const airingStr = getLocalDate(nextAiringAt);
           const t = new Date(todayStr + "T00:00:00");
           const a = new Date(airingStr + "T00:00:00");
-          diffDays = Math.round((a - t) / 86400000); 
-          isScheduleMoved = diffDays > 7;
+          diffDays = Math.round((a - t) / 86400000);
+          isScheduleMoved = !isUpcomingSeason && diffDays > 7;
         }
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
+          const isFinalAired = isFinalEpisode && hasAired(override.day, override.time, timeZone);
+          const isEnded = isFinalAired;
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
             format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
             isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes,
-            displayEpisode, isScheduleMoved, diffDays, isFinalEpisode, isFinalHoldover: false,
+            displayEpisode, isScheduleMoved, diffDays, isUpcomingSeason,
+            isFinalEpisode, isFinalAired, isEnded, isFinalHoldover: false,
             nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
           });
           continue;
@@ -1891,6 +1908,8 @@
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          const isFinalAired = isFinalEpisode && hasAired(primary.day, primary.time, timeZone);
+          const isEnded = isFinalAired;
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
             format: media.format || "", source: primary.source,
@@ -1902,7 +1921,7 @@
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
             hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved, diffDays,
-            isFinalEpisode, isFinalHoldover: false,
+            isUpcomingSeason, isFinalEpisode, isFinalAired, isEnded, isFinalHoldover: false,
             nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
           });
         }
@@ -1920,15 +1939,17 @@
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
 
-        if (item.diffDays > 7) {
+        if (item.isUpcomingSeason) {
+          entry.wasDelayed = false;
+        } else if (item.diffDays > 7) {
           entry.wasDelayed = true;
         }
         
-        if (item.diffDays === 7 && entry.wasDelayed === true) {
+        if (!item.isUpcomingSeason && item.diffDays === 7 && entry.wasDelayed === true) {
           item.isScheduleMoved = true; 
         }
         
-        if (item.diffDays < 7) {
+        if (!item.isUpcomingSeason && item.diffDays < 7) {
           entry.wasDelayed = false;
         }
 
@@ -2043,11 +2064,36 @@
       return false; 
     }
 
+    function dayOffsetFromToday(day, timeZone = DEFAULT_TIMEZONE) {
+      const now = getNowContext(timeZone);
+      const dayIndex = WEEKDAYS.indexOf(day);
+      if (dayIndex < 0) return null;
+      return (dayIndex - now.dayIndex + 7) % 7;
+    }
+
+    function isBoardActiveItem(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item || item.isEnded || item.isScheduleMoved) return false;
+      if (!item.isUpcomingSeason) return true;
+
+      const diffDays = Number(item.diffDays);
+      const dayOffset = dayOffsetFromToday(item.day, timeZone);
+      return Number.isFinite(diffDays) && diffDays >= 0 && diffDays === dayOffset;
+    }
+
+    function isBoardCountableItem(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item || item.isScheduleMoved) return false;
+      if (!item.isUpcomingSeason) return true;
+
+      const diffDays = Number(item.diffDays);
+      const dayOffset = dayOffsetFromToday(item.day, timeZone);
+      return Number.isFinite(diffDays) && diffDays >= 0 && diffDays === dayOffset;
+    }
+
     function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
       let best = null;
       for (const dayBlock of grouped) {
         for (const slot of dayBlock.slots) {
-          const hasActiveShow = slot.items.some(i => !i.isScheduleMoved);
+          const hasActiveShow = slot.items.some(i => isBoardActiveItem(i, timeZone));
           if (!hasActiveShow) continue;
 
           const status = getSlotStatus(dayBlock.day, slot.time, timeZone);
@@ -2115,7 +2161,7 @@
         const item = state.items.find(i => String(i.id) === id);
         if (!item) continue;
         const slotKey = `${item.day}::${item.time}`;
-        const isNext = (newNextSlotKey === slotKey) && !item.isScheduleMoved;
+        const isNext = (newNextSlotKey === slotKey) && isBoardActiveItem(item, DEFAULT_TIMEZONE);
         card.classList.toggle('highlight-next', isNext);
       }
 
@@ -2125,7 +2171,7 @@
         if (!dayName) continue;
         const dayItems = state.items.filter(i => i.day === dayName);
         
-        const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+        const activeItems = dayItems.filter(i => isBoardCountableItem(i, DEFAULT_TIMEZONE));
         const totalCount = activeItems.length;
         let airedCount = 0;
         for (const item of activeItems) {
@@ -2202,7 +2248,7 @@
           const collapsed = state.collapsedDays.has(dayBlock.day) || isAutoCollapsed;
           const dayItems = items.filter(i => i.day === dayBlock.day);
           
-          const activeItems = dayItems.filter(i => !i.isScheduleMoved);
+          const activeItems = dayItems.filter(i => isBoardCountableItem(i, DEFAULT_TIMEZONE));
           const totalCount = activeItems.length;
           let airedCount = 0;
           for (const item of activeItems) {
@@ -2219,7 +2265,7 @@
             for (const slot of dayBlock.slots) {
               for (const item of slot.items) {
                 const isNextSlot = nextSlot?.key === `${dayBlock.day}::${slot.time}`;
-                const isNext = isNextSlot && !item.isScheduleMoved;
+                const isNext = isNextSlot && isBoardActiveItem(item, DEFAULT_TIMEZONE);
                 html += cardHTML(item, slot.time, isNext);
               }
             }
@@ -2236,7 +2282,7 @@
         } else {
           for (const item of dayItems) {
             const slotKey = `${item.day}::${item.time}`;
-            const isNext = (nextSlot?.key === slotKey) && !item.isScheduleMoved;
+            const isNext = (nextSlot?.key === slotKey) && isBoardActiveItem(item, DEFAULT_TIMEZONE);
             html += cardHTML(item, item.time, isNext);
           }
         }
@@ -2258,13 +2304,23 @@
       }
     }
 
+    function topLeftBadgeHTML(item) {
+      const diffDays = Number(item?.diffDays);
+      const shouldShowCountdown = (item?.isScheduleMoved || item?.isUpcomingSeason) && Number.isFinite(diffDays) && diffDays > 0;
+      if (shouldShowCountdown) {
+        return `<span class="badge-chip countdown">${escapeHtml(diffDays)}d</span>`;
+      }
+      return '<div></div>';
+    }
+
     function cardHTML(item, displayTime, isNext) {
       const title = escapeHtml(item.title);
       const coverUrl = item.cover || "";
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
       const isFinal = Boolean(item.isFinalEpisode || item.isFinalHoldover);
-      const shouldShowEpisode = item.hasNextAiring || isFinal || item.displayEpisode !== "?";
+      const isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
+      const shouldShowEpisode = !isEnded && (item.hasNextAiring || isFinal || item.displayEpisode !== "?");
       const episodeHTML = shouldShowEpisode
         ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${isFinal ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
         : '';
@@ -2274,13 +2330,13 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${item.isUpcomingSeason ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
           <div class="anime-card-overlay">
             <div class="anime-card-top">
-              ${item.isAdded ? `<span class="badge-chip added">Added</span>` : '<div></div>'}
+              ${topLeftBadgeHTML(item)}
               <div class="anime-card-time-chip ${item.isFreshRss ? 'fresh' : ''}">${escapeHtml(displayTime)}</div>
             </div>
             <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
@@ -2384,9 +2440,14 @@
         output.push({
           ...item,
           isFinalEpisode: true,
+          isFinalAired: true,
+          isEnded: true,
           isFinalHoldover: true,
           hasNextAiring: false,
           displayEpisode: item.displayEpisode || item.totalEpisodes || "?",
+          isScheduleMoved: false,
+          isUpcomingSeason: false,
+          diffDays: 0,
           source: item.source || "final-holdover",
           isFreshRss: false
         });
@@ -2706,7 +2767,7 @@
                 ${current ? `<span class="chip rss">Current</span>` : ""}
                 ${added ? `<span class="chip added">Added</span>` : ""}
               </div>
-              <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : (media.status || "Unknown status"))}</div>
+              <div class="row-subtitle">${escapeHtml(media.status === "RELEASING" ? "Currently airing" : media.status === "NOT_YET_RELEASED" ? "Upcoming" : (media.status || "Unknown status"))}</div>
             </div>
             <div class="row-actions">
               ${manageable
