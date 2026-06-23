@@ -2,27 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Clean Orbit Uploader</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kinetic Canvas Studio v100000</title>
+
   <style>
     :root {
       --bg: #050505;
-      --panel: rgba(20, 20, 20, 0.84);
-      --panel-2: rgba(255, 255, 255, 0.055);
-      --panel-3: rgba(255, 255, 255, 0.09);
-      --stroke: rgba(255, 255, 255, 0.12);
-      --stroke-strong: rgba(255, 255, 255, 0.2);
-      --text: rgba(255, 255, 255, 0.94);
-      --muted: rgba(255, 255, 255, 0.58);
-      --faint: rgba(255, 255, 255, 0.32);
-      --accent: #ffffff;
-
-      --orbit-x: 300px;
-      --orbit-y: 110px;
-      --center-size: 260px;
-      --item-size: 78px;
-      --stage-scale: 1;
-      --radius: 28px;
+      --surface-0: #080808;
+      --surface-1: rgba(15, 15, 15, 0.92);
+      --surface-2: rgba(255, 255, 255, 0.055);
+      --surface-3: rgba(255, 255, 255, 0.095);
+      --surface-4: rgba(255, 255, 255, 0.135);
+      --line: rgba(255, 255, 255, 0.12);
+      --line-strong: rgba(255, 255, 255, 0.22);
+      --text: rgba(255, 255, 255, 0.95);
+      --muted: rgba(255, 255, 255, 0.62);
+      --faint: rgba(255, 255, 255, 0.36);
+      --white: #ffffff;
+      --black: #050505;
+      --danger: #ff5f57;
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --shadow-lg: 0 42px 150px rgba(0, 0, 0, 0.52);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * {
@@ -31,46 +34,48 @@
 
     html,
     body {
-      width: 100%;
-      min-height: 100%;
       margin: 0;
+      min-height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family:
-        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", sans-serif;
+      font-family: var(--font);
       overflow-x: hidden;
     }
 
     body {
       min-height: 100vh;
+      background:
+        radial-gradient(circle at 82% 8%, rgba(255, 255, 255, 0.085), transparent 30%),
+        radial-gradient(circle at 18% 86%, rgba(255, 255, 255, 0.045), transparent 30%),
+        linear-gradient(135deg, #050505, #080808 48%, #040404);
     }
 
     button,
     input,
-    select {
+    textarea {
       font: inherit;
+    }
+
+    button {
+      user-select: none;
     }
 
     .app {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 390px 1fr;
-      background:
-        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.055), transparent 34%),
-        #050505;
+      grid-template-columns: 460px minmax(0, 1fr);
     }
 
     .sidebar {
-      position: relative;
-      z-index: 20;
       min-height: 100vh;
       padding: 20px;
-      border-right: 1px solid var(--stroke);
+      border-right: 1px solid var(--line);
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)),
-        rgba(8, 8, 8, 0.88);
-      backdrop-filter: blur(24px);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+        rgba(8, 8, 8, 0.94);
+      backdrop-filter: blur(26px);
+      position: relative;
+      z-index: 10;
     }
 
     .panel {
@@ -87,31 +92,31 @@
       gap: 16px;
     }
 
-    .brand-mark {
+    .brand-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 13px;
       min-width: 0;
     }
 
     .logo {
-      width: 38px;
-      height: 38px;
-      border-radius: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      background: var(--white);
+      color: var(--black);
       display: grid;
       place-items: center;
-      background: #fff;
-      color: #000;
-      font-weight: 900;
-      letter-spacing: -0.08em;
-      box-shadow: 0 14px 34px rgba(255, 255, 255, 0.12);
+      font-weight: 950;
+      letter-spacing: -0.09em;
+      box-shadow: 0 18px 40px rgba(255, 255, 255, 0.12);
       flex: 0 0 auto;
     }
 
     h1 {
       margin: 0;
-      font-size: 17px;
-      letter-spacing: -0.04em;
+      font-size: 18px;
+      letter-spacing: -0.05em;
       line-height: 1;
     }
 
@@ -123,159 +128,104 @@
     }
 
     .version {
-      padding: 7px 9px;
-      border: 1px solid var(--stroke);
+      padding: 7px 10px;
       border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
       color: var(--muted);
       font-size: 11px;
-      background: var(--panel-2);
       white-space: nowrap;
     }
 
-    .upload {
-      position: relative;
-      border: 1px dashed var(--stroke-strong);
-      border-radius: var(--radius);
-      padding: 18px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035));
-      transition: 180ms ease;
-      overflow: hidden;
-    }
-
-    .upload::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 0%, rgba(255,255,255,0.12), transparent 34%);
-      opacity: 0;
-      transition: 180ms ease;
-      pointer-events: none;
-    }
-
-    .upload.drag {
-      border-color: rgba(255,255,255,0.78);
-      transform: translateY(-1px);
-    }
-
-    .upload.drag::before {
-      opacity: 1;
-    }
-
-    .upload-top {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      position: relative;
-    }
-
-    .upload-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 16px;
+    .tabs {
       display: grid;
-      place-items: center;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid var(--stroke);
-      color: var(--text);
-      flex: 0 0 auto;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
     }
 
-    .upload strong {
-      display: block;
-      margin: 0 0 6px;
-      font-size: 15px;
-      letter-spacing: -0.02em;
-    }
-
-    .upload p {
-      margin: 0;
+    .tab {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 13px 12px;
+      background: var(--surface-2);
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .file-button {
-      margin-top: 16px;
-      position: relative;
-    }
-
-    .file-button input {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
       cursor: pointer;
-    }
-
-    .fake-button,
-    button {
-      width: 100%;
-      border: 0;
-      border-radius: 16px;
-      padding: 12px 14px;
-      color: #0a0a0a;
-      background: #fff;
-      font-weight: 760;
-      cursor: pointer;
+      text-align: left;
       transition: 160ms ease;
-      user-select: none;
     }
 
-    .fake-button {
+    .tab strong {
       display: block;
-      text-align: center;
+      color: var(--text);
       font-size: 13px;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
     }
 
-    button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-      transform: none !important;
-      box-shadow: none !important;
+    .tab span {
+      display: block;
+      font-size: 11px;
+      line-height: 1.25;
     }
 
-    button:hover,
-    .file-button:hover .fake-button {
+    .tab:hover {
+      background: var(--surface-3);
       transform: translateY(-1px);
-      box-shadow: 0 14px 34px rgba(255,255,255,0.12);
     }
 
-    .section {
-      border: 1px solid var(--stroke);
-      border-radius: var(--radius);
-      background: var(--panel);
+    .tab.active {
+      background: var(--white);
+      border-color: var(--white);
+      color: rgba(0, 0, 0, 0.62);
+      box-shadow: 0 16px 38px rgba(255, 255, 255, 0.11);
+    }
+
+    .tab.active strong {
+      color: var(--black);
+    }
+
+    .card {
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      background: var(--surface-1);
       overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     }
 
-    .section-header {
-      padding: 15px 16px 12px;
+    .card.active {
+      display: block;
+    }
+
+    .card-header {
+      padding: 16px 17px 13px;
+      border-bottom: 1px solid var(--line);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      border-bottom: 1px solid var(--stroke);
     }
 
-    .section-title {
+    .card-title {
       margin: 0;
       font-size: 13px;
-      letter-spacing: -0.01em;
-      font-weight: 760;
+      letter-spacing: -0.015em;
+      font-weight: 830;
     }
 
-    .count {
-      color: var(--muted);
+    .card-meta {
       font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
     }
 
     .controls {
-      padding: 15px 16px 16px;
+      padding: 16px;
       display: grid;
       gap: 14px;
     }
 
-    label.control {
+    .control {
       display: grid;
       gap: 9px;
     }
@@ -283,6 +233,7 @@
     .control-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       gap: 12px;
       color: var(--muted);
       font-size: 12px;
@@ -293,12 +244,53 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .triple {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .color-input {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    input[type="color"] {
+      appearance: none;
+      width: 100%;
+      height: 42px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: transparent;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: 0;
+      border-radius: 13px;
+    }
+
     input[type="range"] {
       appearance: none;
+      width: 100%;
       height: 4px;
       border-radius: 999px;
-      outline: 0;
-      background: rgba(255,255,255,0.16);
+      outline: none;
+      background: rgba(255, 255, 255, 0.16);
       cursor: pointer;
     }
 
@@ -307,212 +299,175 @@
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      border: 3px solid #050505;
-      background: #fff;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
+      background: var(--white);
+      border: 3px solid #070707;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.33);
     }
 
     input[type="range"]::-moz-range-thumb {
       width: 18px;
       height: 18px;
-      border: 3px solid #050505;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.3);
+      background: var(--white);
+      border: 3px solid #070707;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.33);
     }
 
-    .select-wrap {
-      position: relative;
+    .segmented {
+      display: grid;
+      gap: 8px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
     }
 
-    select {
-      width: 100%;
-      appearance: none;
-      border: 1px solid var(--stroke);
+    .segmented.cols-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .segmented.cols-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .segmented.cols-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .segmented.auto {
+      grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+    }
+
+    .segmented button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 9px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+      cursor: pointer;
+      transition: 140ms ease;
+      box-shadow: none;
+    }
+
+    .segmented button:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .segmented button.active {
+      background: var(--white);
+      color: var(--black);
+      box-shadow: 0 12px 28px rgba(255, 255, 255, 0.1);
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 13px;
+      border: 1px solid var(--line);
       border-radius: 16px;
-      padding: 12px 42px 12px 14px;
-      color: var(--text);
-      background: rgba(255,255,255,0.07);
-      outline: 0;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 12px;
       cursor: pointer;
     }
 
-    .select-wrap::after {
-      content: "⌄";
+    .toggle input {
+      accent-color: var(--white);
+    }
+
+    .upload {
+      position: relative;
+      border: 1px dashed var(--line-strong);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      transition: 160ms ease;
+      overflow: hidden;
+    }
+
+    .upload.drag {
+      border-color: var(--white);
+      background: rgba(255, 255, 255, 0.085);
+      transform: translateY(-1px);
+    }
+
+    .upload input {
       position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-52%);
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .upload span {
+      display: block;
       color: var(--muted);
-      pointer-events: none;
-      font-size: 18px;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .button-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      padding: 0 16px 16px;
     }
 
+    .button,
+    button.action {
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: var(--white);
+      color: var(--black);
+      font-weight: 830;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .button:hover,
+    button.action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(255, 255, 255, 0.12);
+    }
+
+    .button.secondary,
     button.secondary {
       color: var(--text);
-      background: var(--panel-3);
-      border: 1px solid var(--stroke);
+      background: var(--surface-3);
+      border: 1px solid var(--line);
       box-shadow: none;
     }
 
+    .button.secondary:hover,
     button.secondary:hover {
-      background: rgba(255,255,255,0.13);
+      background: var(--surface-4);
       box-shadow: none;
     }
 
-    button.download {
+    .wide {
       grid-column: span 2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
     }
 
-    .download-options {
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .note {
       padding: 0 16px 16px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .download-note {
       color: var(--faint);
       font-size: 11px;
-      line-height: 1.45;
-      margin: -2px 0 0;
-    }
-
-    .toggle-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      padding: 0 16px 16px;
-    }
-
-    .pill-toggle {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 11px 12px;
-      border-radius: 16px;
-      color: var(--muted);
-      background: var(--panel-2);
-      border: 1px solid var(--stroke);
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .pill-toggle input {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .switch {
-      width: 30px;
-      height: 18px;
-      padding: 2px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.16);
-      transition: 160ms ease;
-      flex: 0 0 auto;
-    }
-
-    .switch::before {
-      content: "";
-      display: block;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.62);
-      transition: 160ms ease;
-    }
-
-    .pill-toggle input:checked + .switch {
-      background: #fff;
-    }
-
-    .pill-toggle input:checked + .switch::before {
-      transform: translateX(12px);
-      background: #050505;
-    }
-
-    .thumbs {
-      padding: 14px 16px 16px;
-      display: grid;
-      gap: 10px;
-      max-height: 214px;
-      overflow: auto;
-    }
-
-    .thumb-row {
-      display: grid;
-      grid-template-columns: 44px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      min-width: 0;
-      padding: 8px;
-      border: 1px solid var(--stroke);
-      border-radius: 16px;
-      background: var(--panel-2);
-    }
-
-    .thumb {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.08);
-      overflow: hidden;
-      display: grid;
-      place-items: center;
-    }
-
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .thumb-meta {
-      min-width: 0;
-    }
-
-    .thumb-name {
-      margin: 0;
-      color: var(--text);
-      font-size: 12px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .thumb-role {
-      margin: 3px 0 0;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .role-badge {
-      padding: 5px 7px;
-      border-radius: 999px;
-      color: var(--muted);
-      border: 1px solid var(--stroke);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .empty-list {
-      padding: 16px;
-      color: var(--muted);
-      font-size: 12px;
       line-height: 1.5;
     }
 
@@ -523,175 +478,199 @@
       line-height: 1.5;
     }
 
+    .orbit-list {
+      display: grid;
+      gap: 8px;
+      max-height: 230px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .orbit-item {
+      display: grid;
+      grid-template-columns: 50px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      cursor: grab;
+    }
+
+    .orbit-item.dragging {
+      opacity: 0.5;
+    }
+
+    .orbit-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .orbit-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .orbit-name {
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .orbit-badge {
+      display: inline-block;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      padding: 8px 9px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
     .stage-shell {
-      position: relative;
       min-height: 100vh;
       display: grid;
       place-items: center;
-      overflow: hidden;
+      padding: 72px 34px 64px;
+      position: relative;
     }
 
-    .stage-toolbar {
+    .topbar {
       position: absolute;
-      top: 20px;
-      right: 20px;
+      top: 22px;
+      left: 34px;
+      right: 34px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .topbar-left {
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      z-index: 10;
-      padding: 8px;
-      border: 1px solid var(--stroke);
-      border-radius: 999px;
-      background: rgba(10,10,10,0.62);
-      backdrop-filter: blur(18px);
+      gap: 9px;
     }
 
-    .toolbar-dot {
+    .live-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #fff;
-      opacity: 0.8;
+      background: var(--white);
     }
 
-    .toolbar-text {
-      font-size: 12px;
-      padding-right: 6px;
-    }
-
-    .stage {
-      position: relative;
-      width: min(82vw, 900px);
-      height: min(82vh, 900px);
-      min-width: 520px;
-      min-height: 520px;
-      transform: scale(var(--stage-scale));
-      transform-origin: center center;
-      transition: transform 160ms ease;
-    }
-
-    .center {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: var(--center-size);
-      height: var(--center-size);
-      transform: translate(-50%, -50%);
+    .canvas-shell {
       display: grid;
+      gap: 16px;
       place-items: center;
-      z-index: 2000;
-      pointer-events: none;
     }
 
-    .center img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
-      filter: drop-shadow(0 30px 36px rgba(0,0,0,0.58));
-    }
-
-    .center-placeholder {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
+    .canvas-frame {
+      width: min(82vh, 82vw, 880px);
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 36px;
+      overflow: hidden;
       background:
-        radial-gradient(circle at 50% 33%, rgba(255,255,255,0.92) 0 17%, transparent 18%),
-        radial-gradient(circle at 50% 90%, rgba(255,255,255,0.88) 0 38%, transparent 39%),
-        rgba(255,255,255,0.05);
-      border: 1px solid var(--stroke);
-      box-shadow:
-        0 30px 60px rgba(0,0,0,0.48),
-        inset 0 0 0 1px rgba(255,255,255,0.08);
-    }
-
-    .orbiter {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: var(--item-size);
-      height: var(--item-size);
+        linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+        #080808;
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
       display: grid;
       place-items: center;
-      transform-origin: center center;
-      will-change: transform, filter, opacity;
-      pointer-events: none;
     }
 
-    .orbiter-inner {
+    canvas {
       width: 100%;
       height: 100%;
-      display: grid;
-      place-items: center;
-      overflow: visible;
+      display: block;
+      background: transparent;
+    }
+
+    .help {
+      width: min(720px, calc(100% - 48px));
+      padding: 13px 14px;
       border-radius: 18px;
-      transition: background 160ms ease, border 160ms ease, padding 160ms ease;
-    }
-
-    body.framed .orbiter-inner {
-      padding: 8px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.14);
-      backdrop-filter: blur(16px);
-      box-shadow: 0 20px 38px rgba(0,0,0,0.32);
-    }
-
-    .orbiter img,
-    .demo-orbiter {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
-      filter: drop-shadow(0 18px 20px rgba(0,0,0,0.48));
-    }
-
-    .demo-orbiter {
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      color: #050505;
-      background: #fff;
-      font-size: clamp(17px, 4vw, 28px);
-      font-weight: 900;
-      letter-spacing: -0.06em;
-    }
-
-    .status-card {
-      position: absolute;
-      left: 50%;
-      bottom: 32px;
-      transform: translateX(-50%);
-      width: min(520px, calc(100% - 48px));
-      padding: 14px 16px;
-      border: 1px solid var(--stroke);
-      border-radius: 20px;
-      background: rgba(10,10,10,0.58);
-      backdrop-filter: blur(20px);
       color: var(--muted);
+      background: rgba(10, 10, 10, 0.58);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--line);
       text-align: center;
       font-size: 12px;
       line-height: 1.45;
-      z-index: 10;
     }
 
-    .status-card strong {
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 30;
+      max-width: min(420px, calc(100vw - 40px));
+      padding: 13px 15px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(12, 12, 12, 0.88);
+      backdrop-filter: blur(18px);
       color: var(--text);
-      font-weight: 760;
+      font-size: 12px;
+      line-height: 1.45;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: 180ms ease;
+      pointer-events: none;
     }
 
-    @media (max-width: 980px) {
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1080px) {
       .app {
         grid-template-columns: 1fr;
       }
 
       .sidebar {
         min-height: auto;
-        border-right: 0;
-        border-top: 1px solid var(--stroke);
         order: 2;
+        border-right: 0;
+        border-top: 1px solid var(--line);
       }
 
       .panel {
@@ -699,963 +678,1467 @@
       }
 
       .stage-shell {
-        min-height: 68vh;
+        min-height: 66vh;
+        padding: 70px 16px;
       }
 
-      .stage {
-        width: 100vw;
-        height: 68vh;
-        min-width: 0;
-        min-height: 430px;
-      }
-
-      .stage-toolbar {
-        top: 14px;
-        right: 14px;
+      .canvas-frame {
+        width: min(92vw, 62vh);
       }
     }
 
-    @media (max-width: 520px) {
-      :root {
-        --center-size: 205px;
-        --item-size: 62px;
-        --orbit-x: 170px;
-        --orbit-y: 78px;
-      }
-
+    @media (max-width: 680px) {
       .sidebar {
         padding: 14px;
       }
 
-      .section,
-      .upload {
-        border-radius: 22px;
+      .tabs,
+      .inline,
+      .triple,
+      .button-grid {
+        grid-template-columns: 1fr;
       }
 
-      .brand {
-        align-items: flex-start;
+      .wide {
+        grid-column: span 1;
       }
 
       .version {
         display: none;
       }
 
-      .button-grid,
-      .toggle-row {
-        grid-template-columns: 1fr;
+      .topbar {
+        left: 16px;
+        right: 16px;
       }
 
-      button.download {
-        grid-column: span 1;
+      .orbit-item {
+        grid-template-columns: 44px minmax(0, 1fr) auto;
       }
 
-      .stage {
-        min-height: 390px;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      * {
-        scroll-behavior: auto !important;
+      .orbit-thumb {
+        width: 44px;
+        height: 44px;
       }
     }
   </style>
 </head>
+
 <body>
   <div class="app">
     <aside class="sidebar">
       <div class="panel">
         <header class="brand">
-          <div class="brand-mark">
-            <div class="logo">O</div>
+          <div class="brand-left">
+            <div class="logo">KC</div>
             <div>
-              <h1>Orbit Studio</h1>
-              <p class="subtitle">Clean front-facing image orbit</p>
+              <h1>Kinetic Canvas Studio</h1>
+              <p class="subtitle">Gradient · Orbit · Dither</p>
             </div>
           </div>
-          <div class="version">single file</div>
+          <div class="version">v100000</div>
         </header>
 
-        <section class="upload" id="dropZone">
-          <div class="upload-top">
-            <div class="upload-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 16V4m0 0 4.5 4.5M12 4 7.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M20 16.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <div>
-              <strong>Upload your images</strong>
-              <p>First image is the center cutout. Everything after that orbits around it.</p>
-            </div>
-          </div>
+        <nav class="tabs" aria-label="Tool navigation">
+          <button class="tab active" data-tool="gradient">
+            <strong>Gradient</strong>
+            <span>Animated mesh backgrounds</span>
+          </button>
+          <button class="tab" data-tool="orbit">
+            <strong>Orbit</strong>
+            <span>Front-facing image carousel</span>
+          </button>
+          <button class="tab" data-tool="dither">
+            <strong>Dither</strong>
+            <span>Halftone, Bayer, ASCII</span>
+          </button>
+        </nav>
 
-          <div class="file-button">
-            <span class="fake-button">Choose images</span>
-            <input id="fileInput" type="file" accept="image/*" multiple />
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="section-header">
-            <h2 class="section-title">Orbit controls</h2>
-            <span class="count" id="orbitCount">Demo</span>
+        <section class="card active" data-panel="gradient">
+          <div class="card-header">
+            <h2 class="card-title">Gradient Studio</h2>
+            <span class="card-meta">PNG / sequence</span>
           </div>
 
           <div class="controls">
             <label class="control">
-              <span class="control-row"><span>Width</span><output id="orbitXValue">300</output></span>
-              <input id="orbitX" type="range" min="90" max="460" value="300" />
+              <span class="control-row"><span>Preset</span></span>
+              <div class="segmented auto" data-bind="gPreset">
+                <button type="button" data-value="cool">Cool</button>
+                <button type="button" data-value="warm">Warm</button>
+                <button type="button" data-value="mono">Mono</button>
+                <button type="button" data-value="neon">Neon</button>
+                <button type="button" data-value="glass">Glass</button>
+              </div>
+            </label>
+
+            <div class="triple">
+              <label class="color-input">Color 1<input id="gColor1" type="color" value="#7dd3fc"></label>
+              <label class="color-input">Color 2<input id="gColor2" type="color" value="#c084fc"></label>
+              <label class="color-input">Color 3<input id="gColor3" type="color" value="#34d399"></label>
+            </div>
+
+            <label class="control">
+              <span class="control-row"><span>Style</span></span>
+              <div class="segmented cols-4" data-bind="gStyle">
+                <button type="button" data-value="mesh">Mesh</button>
+                <button type="button" data-value="aurora">Aurora</button>
+                <button type="button" data-value="glow">Glow</button>
+                <button type="button" data-value="sunset">Sunset</button>
+              </div>
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Depth</span><output id="orbitYValue">110</output></span>
-              <input id="orbitY" type="range" min="20" max="260" value="110" />
+              <span class="control-row"><span>Blobs</span><output id="gBlobsOut"></output></span>
+              <input id="gBlobs" type="range" min="2" max="22" value="8">
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Center size</span><output id="centerSizeValue">260</output></span>
-              <input id="centerSize" type="range" min="120" max="420" value="260" />
+              <span class="control-row"><span>Softness</span><output id="gSoftOut"></output></span>
+              <input id="gSoft" type="range" min="25" max="130" value="74">
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Orbit image size</span><output id="itemSizeValue">78</output></span>
-              <input id="itemSize" type="range" min="34" max="180" value="78" />
+              <span class="control-row"><span>Grain</span><output id="gGrainOut"></output></span>
+              <input id="gGrain" type="range" min="0" max="70" value="12">
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Speed</span><output id="speedValue">0.50</output></span>
-              <input id="speed" type="range" min="-2" max="2" step="0.01" value="0.5" />
+              <span class="control-row"><span>Motion</span><output id="gMotionOut"></output></span>
+              <input id="gMotion" type="range" min="0" max="100" value="22">
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Stage scale</span><output id="stageScaleValue">1.00</output></span>
-              <input id="stageScale" type="range" min="0.7" max="1.3" step="0.01" value="1" />
+              <span class="control-row"><span>Seed</span><output id="gSeedOut"></output></span>
+              <input id="gSeed" type="range" min="1" max="999" value="38">
+            </label>
+
+            <label class="toggle">
+              <input id="gTransparent" type="checkbox">
+              Transparent background
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Export resolution</span></span>
+              <div class="segmented cols-3" data-bind="gResolution">
+                <button type="button" data-value="720">720</button>
+                <button type="button" data-value="1080">1080</button>
+                <button type="button" data-value="1440">1440</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Sequence duration</span></span>
+              <div class="segmented cols-3" data-bind="gDuration">
+                <button type="button" data-value="3">3s</button>
+                <button type="button" data-value="5">5s</button>
+                <button type="button" data-value="8">8s</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Sequence frame rate</span></span>
+              <div class="segmented cols-3" data-bind="gFps">
+                <button type="button" data-value="24">24fps</button>
+                <button type="button" data-value="30">30fps</button>
+                <button type="button" data-value="60">60fps</button>
+              </div>
             </label>
           </div>
 
-          <div class="toggle-row">
-            <label class="pill-toggle">
-              <span>Image frames</span>
-              <input id="framesToggle" type="checkbox" />
-              <span class="switch"></span>
-            </label>
-
-            <label class="pill-toggle">
-              <span>Soft depth</span>
-              <input id="depthToggle" type="checkbox" checked />
-              <span class="switch"></span>
-            </label>
+          <div class="button-grid">
+            <button class="action" id="gRandom">Randomize</button>
+            <button class="secondary" id="gPause">Pause</button>
+            <button class="secondary" data-export-still="gradient">PNG</button>
+            <button class="action" data-export-sequence="gradient">PNG Sequence</button>
           </div>
+
+          <p class="note">Exports are clean PNGs. Sequences are zipped as numbered frames for After Effects.</p>
         </section>
 
-        <section class="section">
-          <div class="section-header">
-            <h2 class="section-title">Export</h2>
-            <span class="count">AE friendly</span>
+        <section class="card" data-panel="orbit">
+          <div class="card-header">
+            <h2 class="card-title">Orbit Studio</h2>
+            <span class="card-meta">AE-friendly export</span>
           </div>
 
           <div class="controls">
             <label class="control">
-              <span class="control-row"><span>Format</span></span>
-              <div class="select-wrap">
-                <select id="formatSelect">
-                  <option value="mp4" selected>MP4 video, if browser supports it</option>
-                  <option value="png">PNG sequence ZIP, best for After Effects</option>
-                  <option value="webm">WebM video</option>
-                </select>
+              <span class="control-row"><span>Preset</span></span>
+              <div class="segmented cols-4" data-bind="oPreset">
+                <button type="button" data-value="classic">Classic</button>
+                <button type="button" data-value="tight">Tight</button>
+                <button type="button" data-value="wide">Wide</button>
+                <button type="button" data-value="deep">Deep</button>
               </div>
             </label>
 
-            <label class="control">
-              <span class="control-row"><span>Length</span></span>
-              <div class="select-wrap">
-                <select id="durationSelect">
-                  <option value="3">3 seconds</option>
-                  <option value="5" selected>5 seconds</option>
-                  <option value="8">8 seconds</option>
-                  <option value="12">12 seconds</option>
-                </select>
-              </div>
+            <label class="upload" id="orbitDrop">
+              <strong>Upload orbit images</strong>
+              <span id="orbitStatus">First image becomes the center. Drag items below to reorder.</span>
+              <input id="orbitFiles" type="file" accept="image/*" multiple>
             </label>
 
-            <label class="control">
-              <span class="control-row"><span>Resolution</span></span>
-              <div class="select-wrap">
-                <select id="resolutionSelect">
-                  <option value="720">720 × 720</option>
-                  <option value="1080" selected>1080 × 1080</option>
-                  <option value="1440">1440 × 1440</option>
-                </select>
-              </div>
-            </label>
+            <div class="orbit-list" id="orbitList"></div>
 
-            <label class="control">
-              <span class="control-row"><span>Frame rate</span></span>
-              <div class="select-wrap">
-                <select id="fpsSelect">
-                  <option value="24">24 fps</option>
-                  <option value="30" selected>30 fps</option>
-                  <option value="60">60 fps</option>
-                </select>
-              </div>
-            </label>
-          </div>
-
-          <div class="download-options">
-            <button id="downloadVideo" class="download">
-              <span>Download rotation</span>
-            </button>
-            <p class="download-note" id="downloadNote">
-              MP4 is attempted when your browser exposes MP4 recording. If not, the app falls back to a PNG sequence ZIP for After Effects.
-            </p>
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="section-header">
-            <h2 class="section-title">Images</h2>
-            <span class="count" id="imageCount">0 uploaded</span>
-          </div>
-          <div class="thumbs" id="thumbs">
-            <div class="empty-list">
-              No uploads yet. The demo uses simple placeholders so you can tune the motion first.
+            <div class="inline">
+              <label class="color-input">Background<input id="oBg" type="color" value="#050505"></label>
+              <label class="color-input">Shadow tint<input id="oShadow" type="color" value="#000000"></label>
             </div>
+
+            <label class="toggle">
+              <input id="oTransparent" type="checkbox">
+              Transparent background
+            </label>
+
+            <label class="toggle">
+              <input id="oRim" type="checkbox">
+              Subtle rim light
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Orbit width</span><output id="oWidthOut"></output></span>
+              <input id="oWidth" type="range" min="100" max="500" value="320">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Orbit depth</span><output id="oDepthOut"></output></span>
+              <input id="oDepth" type="range" min="30" max="300" value="118">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Center size</span><output id="oCenterOut"></output></span>
+              <input id="oCenter" type="range" min="120" max="460" value="270">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Orbit item size</span><output id="oItemOut"></output></span>
+              <input id="oItem" type="range" min="36" max="200" value="84">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Speed</span><output id="oSpeedOut"></output></span>
+              <input id="oSpeed" type="range" min="-2" max="2" step="0.01" value="0.5">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Depth feel</span><output id="oDepthFxOut"></output></span>
+              <input id="oDepthFx" type="range" min="0" max="100" value="72">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Export resolution</span></span>
+              <div class="segmented cols-3" data-bind="oResolution">
+                <button type="button" data-value="720">720</button>
+                <button type="button" data-value="1080">1080</button>
+                <button type="button" data-value="1440">1440</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Sequence duration</span></span>
+              <div class="segmented cols-3" data-bind="oDuration">
+                <button type="button" data-value="3">3s</button>
+                <button type="button" data-value="5">5s</button>
+                <button type="button" data-value="8">8s</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Sequence frame rate</span></span>
+              <div class="segmented cols-3" data-bind="oFps">
+                <button type="button" data-value="24">24fps</button>
+                <button type="button" data-value="30">30fps</button>
+                <button type="button" data-value="60">60fps</button>
+              </div>
+            </label>
           </div>
+
+          <div class="button-grid">
+            <button class="action" id="oShuffle">Shuffle</button>
+            <button class="secondary" id="oPause">Pause</button>
+            <button class="secondary" data-export-still="orbit">PNG</button>
+            <button class="action" data-export-sequence="orbit">PNG Sequence</button>
+          </div>
+
+          <p class="note">Drag thumbnails to reorder. The top image is the center image; all others orbit around it.</p>
         </section>
 
-        <div class="button-grid">
-          <button id="toggle">Pause</button>
-          <button id="reverse" class="secondary">Reverse</button>
-          <button id="shuffle" class="secondary">Shuffle</button>
-          <button id="clear" class="secondary">Clear</button>
-        </div>
+        <section class="card" data-panel="dither">
+          <div class="card-header">
+            <h2 class="card-title">Dither Studio</h2>
+            <span class="card-meta">Image texture tool</span>
+          </div>
 
-        <p class="footer-note">
-          Best result: use a transparent PNG/WebP as the first image, especially if you want orbiting elements to pass behind the person.
-        </p>
+          <div class="controls">
+            <label class="upload" id="ditherDrop">
+              <strong>Upload image</strong>
+              <span id="ditherStatus">Drop or choose an image to dither.</span>
+              <input id="ditherFile" type="file" accept="image/*">
+            </label>
+
+            <div class="inline">
+              <label class="color-input">Ink<input id="dInk" type="color" value="#ffffff"></label>
+              <label class="color-input">Paper<input id="dPaper" type="color" value="#050505"></label>
+            </div>
+
+            <label class="control">
+              <span class="control-row"><span>Mode</span></span>
+              <div class="segmented cols-4" data-bind="dMode">
+                <button type="button" data-value="bayer">Bayer</button>
+                <button type="button" data-value="threshold">Threshold</button>
+                <button type="button" data-value="halftone">Halftone</button>
+                <button type="button" data-value="ascii">ASCII</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Pixel size</span><output id="dPixelOut"></output></span>
+              <input id="dPixel" type="range" min="1" max="24" value="5">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Contrast</span><output id="dContrastOut"></output></span>
+              <input id="dContrast" type="range" min="50" max="240" value="120">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Threshold</span><output id="dThresholdOut"></output></span>
+              <input id="dThreshold" type="range" min="0" max="255" value="128">
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Motion</span><output id="dMotionOut"></output></span>
+              <input id="dMotion" type="range" min="0" max="100" value="20">
+            </label>
+
+            <label class="toggle">
+              <input id="dTransparent" type="checkbox">
+              Transparent paper
+            </label>
+
+            <label class="toggle">
+              <input id="dBeforeAfter" type="checkbox">
+              Before / after split preview
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Export resolution</span></span>
+              <div class="segmented cols-3" data-bind="dResolution">
+                <button type="button" data-value="720">720</button>
+                <button type="button" data-value="1080">1080</button>
+                <button type="button" data-value="1440">1440</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Sequence duration</span></span>
+              <div class="segmented cols-3" data-bind="dDuration">
+                <button type="button" data-value="3">3s</button>
+                <button type="button" data-value="5">5s</button>
+                <button type="button" data-value="8">8s</button>
+              </div>
+            </label>
+
+            <label class="control">
+              <span class="control-row"><span>Sequence frame rate</span></span>
+              <div class="segmented cols-3" data-bind="dFps">
+                <button type="button" data-value="24">24fps</button>
+                <button type="button" data-value="30">30fps</button>
+                <button type="button" data-value="60">60fps</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="button-grid">
+            <button class="action" id="dInvert">Invert</button>
+            <button class="secondary" id="dPause">Pause</button>
+            <button class="secondary" data-export-still="dither">PNG</button>
+            <button class="action" data-export-sequence="dither">PNG Sequence</button>
+          </div>
+
+          <p class="note">Dither sequences animate the threshold subtly for living texture plates.</p>
+        </section>
+
+        <p class="footer-note">Local only. No libraries. No uploads. Built for quick motion-design experiments.</p>
       </div>
     </aside>
 
     <main class="stage-shell">
-      <div class="stage-toolbar">
-        <span class="toolbar-dot"></span>
-        <span class="toolbar-text">clean canvas</span>
-      </div>
-
-      <div class="stage" id="stage">
-        <div class="center" id="center">
-          <div class="center-placeholder" aria-label="Center placeholder"></div>
+      <div class="topbar">
+        <div class="topbar-left">
+          <span class="live-dot"></span>
+          <span id="activeTitle">Gradient Studio</span>
         </div>
-        <div id="orbiters"></div>
+        <div id="metaText">1080 × 1080 live preview</div>
       </div>
 
-      <div class="status-card" id="statusCard">
-        <strong>First upload = center.</strong> The rest orbit in a clean ellipse and stay front-facing.
+      <div class="canvas-shell">
+        <div class="canvas-frame">
+          <canvas id="canvas" width="1080" height="1080"></canvas>
+        </div>
+        <div class="help" id="helpText">Polished animated gradients with transparent PNG and sequence export.</div>
       </div>
     </main>
   </div>
 
+  <div class="toast" id="toast"></div>
+
   <script>
-    const root = document.documentElement;
-    const body = document.body;
+    /**************************************************************************
+     * Kinetic Canvas Studio v100000
+     *
+     * Single-file local creative tool:
+     * - Gradient Studio
+     * - Orbit Studio
+     * - Dither Studio
+     *
+     * No external libraries. No network calls. Exports PNG stills and PNG
+     * sequences packed into ZIP files for After Effects.
+     **************************************************************************/
 
-    const fileInput = document.getElementById("fileInput");
-    const dropZone = document.getElementById("dropZone");
-    const stage = document.getElementById("stage");
-    const center = document.getElementById("center");
-    const orbiters = document.getElementById("orbiters");
-    const thumbs = document.getElementById("thumbs");
-    const statusCard = document.getElementById("statusCard");
+    const PREVIEW_SIZE = 1080;
+    const previewCanvas = document.getElementById("canvas");
+    const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
 
-    const orbitCount = document.getElementById("orbitCount");
-    const imageCount = document.getElementById("imageCount");
+    const state = {
+      activeTool: "gradient",
+      startTime: performance.now(),
 
-    const controls = {
-      orbitX: document.getElementById("orbitX"),
-      orbitY: document.getElementById("orbitY"),
-      centerSize: document.getElementById("centerSize"),
-      itemSize: document.getElementById("itemSize"),
-      speed: document.getElementById("speed"),
-      stageScale: document.getElementById("stageScale")
+      playing: {
+        gradient: true,
+        orbit: true,
+        dither: true
+      },
+
+      elapsed: {
+        gradient: 0,
+        orbit: 0,
+        dither: 0
+      },
+
+      options: {
+        gPreset: "cool",
+        gStyle: "mesh",
+        gResolution: "1080",
+        gDuration: "5",
+        gFps: "30",
+
+        oPreset: "classic",
+        oResolution: "1080",
+        oDuration: "5",
+        oFps: "30",
+
+        dMode: "bayer",
+        dResolution: "1080",
+        dDuration: "5",
+        dFps: "30"
+      },
+
+      orbitItems: [],
+      orbitDragIndex: null,
+      orbitPhases: [],
+
+      ditherSource: null
     };
 
-    const valueLabels = {
-      orbitX: document.getElementById("orbitXValue"),
-      orbitY: document.getElementById("orbitYValue"),
-      centerSize: document.getElementById("centerSizeValue"),
-      itemSize: document.getElementById("itemSizeValue"),
-      speed: document.getElementById("speedValue"),
-      stageScale: document.getElementById("stageScaleValue")
+    const gradientPresets = {
+      cool: {
+        color1: "#7dd3fc",
+        color2: "#c084fc",
+        color3: "#34d399",
+        style: "mesh",
+        blobs: 8,
+        softness: 74,
+        grain: 12,
+        motion: 22,
+        seed: 38,
+        transparent: false
+      },
+      warm: {
+        color1: "#ff8a65",
+        color2: "#ffca6a",
+        color3: "#ff6ec7",
+        style: "sunset",
+        blobs: 9,
+        softness: 82,
+        grain: 10,
+        motion: 18,
+        seed: 58,
+        transparent: false
+      },
+      mono: {
+        color1: "#ffffff",
+        color2: "#a1a1aa",
+        color3: "#27272a",
+        style: "glow",
+        blobs: 6,
+        softness: 78,
+        grain: 18,
+        motion: 16,
+        seed: 77,
+        transparent: false
+      },
+      neon: {
+        color1: "#00f5d4",
+        color2: "#9b5cff",
+        color3: "#ff006e",
+        style: "aurora",
+        blobs: 11,
+        softness: 92,
+        grain: 8,
+        motion: 34,
+        seed: 91,
+        transparent: false
+      },
+      glass: {
+        color1: "#ffffff",
+        color2: "#c7d2fe",
+        color3: "#67e8f9",
+        style: "mesh",
+        blobs: 12,
+        softness: 105,
+        grain: 4,
+        motion: 28,
+        seed: 14,
+        transparent: true
+      }
     };
 
-    const framesToggle = document.getElementById("framesToggle");
-    const depthToggle = document.getElementById("depthToggle");
+    const orbitPresets = {
+      classic: {
+        width: 320,
+        depth: 118,
+        center: 270,
+        item: 84,
+        speed: 0.5,
+        depthFx: 72
+      },
+      tight: {
+        width: 230,
+        depth: 82,
+        center: 300,
+        item: 72,
+        speed: 0.55,
+        depthFx: 60
+      },
+      wide: {
+        width: 390,
+        depth: 96,
+        center: 250,
+        item: 88,
+        speed: 0.4,
+        depthFx: 52
+      },
+      deep: {
+        width: 320,
+        depth: 170,
+        center: 255,
+        item: 90,
+        speed: 0.62,
+        depthFx: 92
+      }
+    };
 
-    const formatSelect = document.getElementById("formatSelect");
-    const durationSelect = document.getElementById("durationSelect");
-    const resolutionSelect = document.getElementById("resolutionSelect");
-    const fpsSelect = document.getElementById("fpsSelect");
-    const downloadVideoButton = document.getElementById("downloadVideo");
-    const downloadNote = document.getElementById("downloadNote");
+    const helpTextByTool = {
+      gradient: "Polished animated gradients with transparent PNG and sequence export.",
+      orbit: "Upload images, reorder them, and export a front-facing orbit as PNG frames.",
+      dither: "Turn an uploaded image into Bayer, threshold, halftone, or ASCII dither."
+    };
 
-    const toggleButton = document.getElementById("toggle");
-    const reverseButton = document.getElementById("reverse");
-    const shuffleButton = document.getElementById("shuffle");
-    const clearButton = document.getElementById("clear");
+    /**************************************************************************
+     * DOM utilities
+     **************************************************************************/
 
-    let uploadedUrls = [];
-    let uploadedFiles = [];
-    let loadedImages = [];
-    let items = [];
-    let running = true;
-    let startTime = performance.now();
-    let lastElapsed = 0;
-
-    const demoLabels = ["01", "02", "03", "04", "05", "06"];
-
-    function setCssVars() {
-      root.style.setProperty("--orbit-x", controls.orbitX.value + "px");
-      root.style.setProperty("--orbit-y", controls.orbitY.value + "px");
-      root.style.setProperty("--center-size", controls.centerSize.value + "px");
-      root.style.setProperty("--item-size", controls.itemSize.value + "px");
-      root.style.setProperty("--stage-scale", controls.stageScale.value);
-
-      valueLabels.orbitX.textContent = controls.orbitX.value;
-      valueLabels.orbitY.textContent = controls.orbitY.value;
-      valueLabels.centerSize.textContent = controls.centerSize.value;
-      valueLabels.itemSize.textContent = controls.itemSize.value;
-      valueLabels.speed.textContent = Number(controls.speed.value).toFixed(2);
-      valueLabels.stageScale.textContent = Number(controls.stageScale.value).toFixed(2);
+    function $(id) {
+      return document.getElementById(id);
     }
 
-    Object.values(controls).forEach(input => input.addEventListener("input", setCssVars));
-    setCssVars();
+    function showToast(message) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
 
-    framesToggle.addEventListener("change", () => {
-      body.classList.toggle("framed", framesToggle.checked);
-    });
-
-    function makeImage(src, alt = "") {
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = alt;
-      return img;
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2600);
     }
 
-    function loadImage(src) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
+    function setActiveTool(tool) {
+      state.activeTool = tool;
+
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.tool === tool);
+      });
+
+      document.querySelectorAll(".card").forEach(card => {
+        card.classList.toggle("active", card.dataset.panel === tool);
+      });
+
+      $("activeTitle").textContent =
+        tool === "gradient" ? "Gradient Studio" :
+        tool === "orbit" ? "Orbit Studio" :
+        "Dither Studio";
+
+      $("helpText").textContent = helpTextByTool[tool];
+      renderPreview();
+    }
+
+    function bindSegmentedControls() {
+      document.querySelectorAll(".segmented[data-bind]").forEach(group => {
+        const key = group.dataset.bind;
+
+        group.querySelectorAll("button[data-value]").forEach(button => {
+          button.addEventListener("click", () => {
+            state.options[key] = button.dataset.value;
+            syncSegmentedControls();
+
+            if (key === "gPreset") {
+              applyGradientPreset(button.dataset.value);
+            }
+
+            if (key === "oPreset") {
+              applyOrbitPreset(button.dataset.value);
+            }
+
+            renderPreview();
+          });
+        });
+      });
+
+      syncSegmentedControls();
+    }
+
+    function syncSegmentedControls() {
+      document.querySelectorAll(".segmented[data-bind]").forEach(group => {
+        const key = group.dataset.bind;
+        const value = state.options[key];
+
+        group.querySelectorAll("button[data-value]").forEach(button => {
+          button.classList.toggle("active", button.dataset.value === value);
+        });
       });
     }
 
-    function makeOrbiter(content, index, total) {
-      const el = document.createElement("div");
-      el.className = "orbiter";
+    function setOutputs() {
+      const pairs = [
+        ["gBlobs", "gBlobsOut"],
+        ["gSoft", "gSoftOut"],
+        ["gGrain", "gGrainOut"],
+        ["gMotion", "gMotionOut"],
+        ["gSeed", "gSeedOut"],
 
-      const inner = document.createElement("div");
-      inner.className = "orbiter-inner";
-      inner.appendChild(content);
+        ["oWidth", "oWidthOut"],
+        ["oDepth", "oDepthOut"],
+        ["oCenter", "oCenterOut"],
+        ["oItem", "oItemOut"],
+        ["oSpeed", "oSpeedOut"],
+        ["oDepthFx", "oDepthFxOut"],
 
-      el.appendChild(inner);
-      orbiters.appendChild(el);
+        ["dPixel", "dPixelOut"],
+        ["dContrast", "dContrastOut"],
+        ["dThreshold", "dThresholdOut"],
+        ["dMotion", "dMotionOut"]
+      ];
+
+      pairs.forEach(([inputId, outputId]) => {
+        const input = $(inputId);
+        const output = $(outputId);
+
+        if (!input || !output) return;
+
+        const decimals = input.step === "0.01" ? 2 : 0;
+        output.textContent = Number(input.value).toFixed(decimals);
+      });
+    }
+
+    /**************************************************************************
+     * Math and canvas helpers
+     **************************************************************************/
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace("#", "");
 
       return {
-        el,
-        inner,
-        phase: (index / Math.max(total, 1)) * Math.PI * 2,
-        radiusOffset: 0.96 + Math.random() * 0.08
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16)
       };
     }
 
-    function createDemoOrbiters() {
-      items = demoLabels.map((label, index) => {
-        const demo = document.createElement("div");
-        demo.className = "demo-orbiter";
-        demo.textContent = label;
-        return makeOrbiter(demo, index, demoLabels.length);
-      });
-
-      orbitCount.textContent = "Demo";
-      imageCount.textContent = "0 uploaded";
+    function rgba(rgb, alpha) {
+      return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
     }
 
-    function renderThumbs(files) {
-      thumbs.innerHTML = "";
+    function makeRng(seed) {
+      let s = seed >>> 0;
 
-      if (!files.length) {
-        thumbs.innerHTML = `
-          <div class="empty-list">
-            No uploads yet. The demo uses simple placeholders so you can tune the motion first.
-          </div>
-        `;
-        return;
-      }
-
-      files.forEach((file, index) => {
-        const row = document.createElement("div");
-        row.className = "thumb-row";
-
-        const thumb = document.createElement("div");
-        thumb.className = "thumb";
-        thumb.appendChild(makeImage(uploadedUrls[index], file.name));
-
-        const meta = document.createElement("div");
-        meta.className = "thumb-meta";
-
-        const name = document.createElement("p");
-        name.className = "thumb-name";
-        name.textContent = file.name;
-
-        const role = document.createElement("p");
-        role.className = "thumb-role";
-        role.textContent = index === 0 ? "Center image" : "Orbiting image";
-
-        meta.appendChild(name);
-        meta.appendChild(role);
-
-        const badge = document.createElement("span");
-        badge.className = "role-badge";
-        badge.textContent = index === 0 ? "center" : "orbit";
-
-        row.appendChild(thumb);
-        row.appendChild(meta);
-        row.appendChild(badge);
-        thumbs.appendChild(row);
-      });
+      return function random() {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
     }
 
-    async function prepareLoadedImages(urls) {
-      try {
-        loadedImages = await Promise.all(urls.map(url => loadImage(url)));
-      } catch (error) {
-        loadedImages = [];
-        console.warn("Could not preload one or more images for export.", error);
-      }
+    function createCanvas(size) {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      return canvas;
     }
 
-    function renderUploadedImages(files) {
-      uploadedUrls.forEach(URL.revokeObjectURL);
-
-      uploadedFiles = files;
-      uploadedUrls = files.map(file => URL.createObjectURL(file));
-      prepareLoadedImages(uploadedUrls);
-
-      orbiters.innerHTML = "";
-      items = [];
-
-      if (!uploadedUrls.length) {
-        center.innerHTML = '<div class="center-placeholder" aria-label="Center placeholder"></div>';
-        createDemoOrbiters();
-        renderThumbs([]);
-        statusCard.innerHTML = '<strong>First upload = center.</strong> The rest orbit in a clean ellipse and stay front-facing.';
-        return;
-      }
-
-      center.innerHTML = "";
-      center.appendChild(makeImage(uploadedUrls[0], "Center image"));
-
-      const orbitUrls = uploadedUrls.slice(1);
-      orbitUrls.forEach((src, index) => {
-        const img = makeImage(src, "Orbiting image " + (index + 1));
-        items.push(makeOrbiter(img, index, orbitUrls.length));
-      });
-
-      orbitCount.textContent = orbitUrls.length + " orbiting";
-      imageCount.textContent = files.length + " uploaded";
-      statusCard.innerHTML = '<strong>Uploaded.</strong> First image is centered. ' + orbitUrls.length + ' image' + (orbitUrls.length === 1 ? '' : 's') + ' orbit around it.';
-      renderThumbs(files);
-    }
-
-    function handleFiles(fileList) {
-      const files = Array.from(fileList).filter(file => file.type.startsWith("image/"));
-      renderUploadedImages(files);
-    }
-
-    fileInput.addEventListener("change", event => handleFiles(event.target.files));
-
-    ["dragenter", "dragover"].forEach(type => {
-      dropZone.addEventListener(type, event => {
-        event.preventDefault();
-        dropZone.classList.add("drag");
-      });
-    });
-
-    ["dragleave", "drop"].forEach(type => {
-      dropZone.addEventListener(type, event => {
-        event.preventDefault();
-        dropZone.classList.remove("drag");
-      });
-    });
-
-    dropZone.addEventListener("drop", event => {
-      event.preventDefault();
-      handleFiles(event.dataTransfer.files);
-    });
-
-    toggleButton.addEventListener("click", () => {
-      running = !running;
-      toggleButton.textContent = running ? "Pause" : "Play";
-      if (running) startTime = performance.now() - lastElapsed;
-    });
-
-    reverseButton.addEventListener("click", () => {
-      const current = Number(controls.speed.value);
-      controls.speed.value = String(current === 0 ? -0.5 : current * -1);
-      setCssVars();
-    });
-
-    shuffleButton.addEventListener("click", () => {
-      items.forEach(item => {
-        item.phase = Math.random() * Math.PI * 2;
-        item.radiusOffset = 0.96 + Math.random() * 0.08;
-      });
-    });
-
-    clearButton.addEventListener("click", () => {
-      fileInput.value = "";
-      renderUploadedImages([]);
-    });
-
-    function getOrbitState(elapsedMs) {
-      const speed = Number(controls.speed.value);
-      const orbitX = Number(controls.orbitX.value);
-      const orbitY = Number(controls.orbitY.value);
-      const depthEnabled = depthToggle.checked;
-      const t = elapsedMs * 0.001 * speed;
-
-      return items.map((item, index) => {
-        const angle = t + item.phase;
-        const x = Math.cos(angle) * orbitX * item.radiusOffset;
-        const y = Math.sin(angle) * orbitY * item.radiusOffset;
-        const depth = (Math.sin(angle) + 1) / 2;
-
-        let scale = 1;
-        let opacity = 1;
-        let blur = 0;
-
-        if (depthEnabled) {
-          scale = 0.76 + depth * 0.34;
-          opacity = 0.52 + depth * 0.48;
-          blur = (1 - depth) * 0.9;
-        }
-
-        return { item, index, angle, x, y, depth, scale, opacity, blur };
-      });
-    }
-
-    function animate(now) {
-      if (running) lastElapsed = now - startTime;
-
-      const states = getOrbitState(lastElapsed);
-
-      states.forEach(state => {
-        state.item.el.style.transform =
-          `translate(-50%, -50%) translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
-
-        state.item.el.style.zIndex = String(Math.round(1000 + state.depth * 2000));
-        state.item.el.style.opacity = String(state.opacity);
-        state.item.el.style.filter = `blur(${state.blur}px)`;
-      });
-
-      requestAnimationFrame(animate);
-    }
-
-    function drawImageContain(ctx, img, cx, cy, boxW, boxH, opacity = 1, blur = 0, shadow = true) {
-      if (!img || !img.naturalWidth || !img.naturalHeight) return;
-
-      const ratio = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
-      const w = img.naturalWidth * ratio;
-      const h = img.naturalHeight * ratio;
-      const x = cx - w / 2;
-      const y = cy - h / 2;
-
+    function clearCanvas(ctx, width, height, color, transparent) {
       ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.filter = blur > 0 ? `blur(${blur}px)` : "none";
+      ctx.globalAlpha = 1;
+      ctx.filter = "none";
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, width, height);
 
-      if (shadow) {
-        ctx.shadowColor = "rgba(0,0,0,0.52)";
-        ctx.shadowBlur = boxW * 0.16;
-        ctx.shadowOffsetY = boxW * 0.1;
+      if (!transparent) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, width, height);
       }
 
-      ctx.drawImage(img, x, y, w, h);
       ctx.restore();
     }
 
-    function drawDemoOrbiter(ctx, label, cx, cy, size, opacity = 1, blur = 0) {
+    function addGrain(ctx, width, height, amount, seed) {
+      if (amount <= 0) return;
+
+      const random = makeRng(seed * 9187 + 7);
+      const image = ctx.getImageData(0, 0, width, height);
+      const data = image.data;
+      const strength = amount * 1.85;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const noise = (random() - 0.5) * strength;
+
+        data[i] = clamp(data[i] + noise, 0, 255);
+        data[i + 1] = clamp(data[i + 1] + noise, 0, 255);
+        data[i + 2] = clamp(data[i + 2] + noise, 0, 255);
+      }
+
+      ctx.putImageData(image, 0, 0);
+    }
+
+    function drawImageContain(ctx, image, centerX, centerY, boxWidth, boxHeight, alpha = 1, blur = 0, shadow = "rgba(0,0,0,.55)") {
+      if (!image) return;
+
+      const ratio = Math.min(boxWidth / image.naturalWidth, boxHeight / image.naturalHeight);
+      const width = image.naturalWidth * ratio;
+      const height = image.naturalHeight * ratio;
+
       ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.filter = blur > 0 ? `blur(${blur}px)` : "none";
-      ctx.shadowColor = "rgba(0,0,0,0.48)";
-      ctx.shadowBlur = size * 0.18;
-      ctx.shadowOffsetY = size * 0.08;
-
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = "#050505";
-      ctx.font = `900 ${Math.round(size * 0.34)}px Inter, system-ui, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, cx, cy + 1);
+      ctx.globalAlpha = alpha;
+      ctx.filter = blur ? `blur(${blur}px)` : "none";
+      ctx.shadowColor = shadow;
+      ctx.shadowBlur = boxWidth * 0.13;
+      ctx.shadowOffsetY = boxWidth * 0.08;
+      ctx.drawImage(image, centerX - width / 2, centerY - height / 2, width, height);
       ctx.restore();
     }
 
-    function drawPlaceholderCenter(ctx, cx, cy, size) {
+    function drawCenterPlaceholder(ctx, size, elementSize) {
+      const center = size / 2;
+
       ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,.55)";
+      ctx.shadowBlur = elementSize * 0.14;
+      ctx.shadowOffsetY = elementSize * 0.08;
 
-      ctx.shadowColor = "rgba(0,0,0,0.55)";
-      ctx.shadowBlur = size * 0.15;
-      ctx.shadowOffsetY = size * 0.12;
-
-      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fillStyle = "rgba(255,255,255,.06)";
       ctx.beginPath();
-      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.arc(center, center, elementSize / 2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.shadowColor = "transparent";
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillStyle = "rgba(255,255,255,.92)";
+
       ctx.beginPath();
-      ctx.arc(cx, cy - size * 0.18, size * 0.085, 0, Math.PI * 2);
+      ctx.arc(center, center - elementSize * 0.17, elementSize * 0.085, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.beginPath();
-      ctx.arc(cx, cy + size * 0.34, size * 0.19, 0, Math.PI * 2);
+      ctx.arc(center, center + elementSize * 0.33, elementSize * 0.2, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,.12)";
+      ctx.lineWidth = Math.max(2, elementSize * 0.007);
       ctx.beginPath();
-      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.arc(center, center, elementSize / 2, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.restore();
     }
 
-    function exportFrame(ctx, canvasSize, elapsedMs) {
-      const scale = canvasSize / 900;
-      const cx = canvasSize / 2;
-      const cy = canvasSize / 2;
-
-      const centerSize = Number(controls.centerSize.value) * scale;
-      const itemSize = Number(controls.itemSize.value) * scale;
-      const stageScale = Number(controls.stageScale.value);
-
-      ctx.clearRect(0, 0, canvasSize, canvasSize);
-      ctx.fillStyle = "#050505";
-      ctx.fillRect(0, 0, canvasSize, canvasSize);
-
-      // subtle center background, matching the clean preview without UI
-      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, canvasSize * 0.42);
-      gradient.addColorStop(0, "rgba(255,255,255,0.055)");
-      gradient.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvasSize, canvasSize);
-
+    function drawDemoOrbiter(ctx, label, x, y, size, alpha = 1, blur = 0) {
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(stageScale, stageScale);
-      ctx.translate(-cx, -cy);
+      ctx.globalAlpha = alpha;
+      ctx.filter = blur ? `blur(${blur}px)` : "none";
+      ctx.shadowColor = "rgba(0,0,0,.5)";
+      ctx.shadowBlur = size * 0.16;
+      ctx.shadowOffsetY = size * 0.08;
 
-      const states = getOrbitState(elapsedMs).map(state => ({
-        ...state,
-        px: cx + state.x * scale,
-        py: cy + state.y * scale,
-        size: itemSize * state.scale,
-        blurPx: state.blur * scale
-      }));
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+      ctx.fill();
 
-      const back = states.filter(state => state.depth < 0.5).sort((a, b) => a.depth - b.depth);
-      const front = states.filter(state => state.depth >= 0.5).sort((a, b) => a.depth - b.depth);
-
-      function drawOrbitItem(state) {
-        if (body.classList.contains("framed")) {
-          const pad = state.size * 0.1;
-          const r = state.size * 0.22;
-          ctx.save();
-          ctx.globalAlpha = state.opacity;
-          ctx.fillStyle = "rgba(255,255,255,0.08)";
-          ctx.strokeStyle = "rgba(255,255,255,0.14)";
-          ctx.lineWidth = 1.5;
-          roundRect(ctx, state.px - state.size / 2, state.py - state.size / 2, state.size, state.size, r);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-
-          if (uploadedUrls.length && loadedImages[state.index + 1]) {
-            drawImageContain(ctx, loadedImages[state.index + 1], state.px, state.py, state.size - pad * 2, state.size - pad * 2, state.opacity, state.blurPx);
-          } else {
-            drawDemoOrbiter(ctx, demoLabels[state.index % demoLabels.length], state.px, state.py, state.size - pad * 2, state.opacity, state.blurPx);
-          }
-        } else {
-          if (uploadedUrls.length && loadedImages[state.index + 1]) {
-            drawImageContain(ctx, loadedImages[state.index + 1], state.px, state.py, state.size, state.size, state.opacity, state.blurPx);
-          } else {
-            drawDemoOrbiter(ctx, demoLabels[state.index % demoLabels.length], state.px, state.py, state.size, state.opacity, state.blurPx);
-          }
-        }
-      }
-
-      back.forEach(drawOrbitItem);
-
-      if (uploadedUrls.length && loadedImages[0]) {
-        drawImageContain(ctx, loadedImages[0], cx, cy, centerSize, centerSize, 1, 0, true);
-      } else {
-        drawPlaceholderCenter(ctx, cx, cy, centerSize);
-      }
-
-      front.forEach(drawOrbitItem);
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = "#050505";
+      ctx.font = `900 ${Math.round(size * 0.3)}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x, y + 1);
 
       ctx.restore();
     }
 
-    function roundRect(ctx, x, y, w, h, r) {
-      const radius = Math.min(r, w / 2, h / 2);
+    /**************************************************************************
+     * Gradient Studio
+     **************************************************************************/
+
+    function applyGradientPreset(name) {
+      const preset = gradientPresets[name];
+      if (!preset) return;
+
+      $("gColor1").value = preset.color1;
+      $("gColor2").value = preset.color2;
+      $("gColor3").value = preset.color3;
+
+      state.options.gStyle = preset.style;
+
+      $("gBlobs").value = preset.blobs;
+      $("gSoft").value = preset.softness;
+      $("gGrain").value = preset.grain;
+      $("gMotion").value = preset.motion;
+      $("gSeed").value = preset.seed;
+      $("gTransparent").checked = preset.transparent;
+
+      syncSegmentedControls();
+    }
+
+    function renderGradient(ctx, size, elapsed) {
+      const color1 = hexToRgb($("gColor1").value);
+      const color2 = hexToRgb($("gColor2").value);
+      const color3 = hexToRgb($("gColor3").value);
+
+      const style = state.options.gStyle;
+      const blobCount = Number($("gBlobs").value);
+      const softness = Number($("gSoft").value);
+      const grainAmount = Number($("gGrain").value);
+      const motion = Number($("gMotion").value) / 100;
+      const seed = Number($("gSeed").value);
+      const transparent = $("gTransparent").checked;
+      const random = makeRng(seed);
+
+      clearCanvas(ctx, size, size, "#000", transparent);
+
+      if (!transparent) {
+        const background = ctx.createLinearGradient(0, 0, size, size);
+
+        if (style === "sunset") {
+          background.addColorStop(0, rgba(color3, 1));
+          background.addColorStop(0.42, rgba(color2, 1));
+          background.addColorStop(1, rgba(color1, 1));
+        } else {
+          background.addColorStop(0, rgba(color1, 1));
+          background.addColorStop(0.52, rgba(color2, 1));
+          background.addColorStop(1, rgba(color3, 1));
+        }
+
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      ctx.globalCompositeOperation = style === "aurora" ? "lighter" : "screen";
+
+      for (let i = 0; i < blobCount; i++) {
+        const color = [color1, color2, color3][i % 3];
+        const phase = seed * 0.13 + i * 1.618;
+
+        const driftX = Math.cos(elapsed * 0.00018 * motion * (1 + i * 0.02) + phase) * size * 0.12;
+        const driftY = Math.sin(elapsed * 0.00016 * motion * (1 + i * 0.018) + phase * 1.3) * size * 0.12;
+
+        const baseX = style === "aurora" ? (i / Math.max(1, blobCount - 1)) * size : random() * size;
+        const baseY = style === "aurora" ? size * (0.35 + Math.sin(i * 1.2 + seed) * 0.18) : random() * size;
+
+        const x = baseX + driftX;
+        const y = baseY + driftY;
+        const radius = (0.18 + random() * 0.45) * size * (softness / 74);
+        const alpha = style === "glow" ? 0.5 : style === "aurora" ? 0.33 : 0.42;
+
+        const blob = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        blob.addColorStop(0, rgba(color, alpha));
+        blob.addColorStop(0.55, rgba(color, alpha * 0.26));
+        blob.addColorStop(1, rgba(color, 0));
+
+        ctx.fillStyle = blob;
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      ctx.globalCompositeOperation = "source-over";
+
+      if (!transparent) {
+        const vignette = ctx.createRadialGradient(size / 2, size / 2, size * 0.1, size / 2, size / 2, size * 0.78);
+        vignette.addColorStop(0, "rgba(255,255,255,.04)");
+        vignette.addColorStop(1, "rgba(0,0,0,.28)");
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      if (style === "glow") {
+        const glow = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.5);
+        glow.addColorStop(0, "rgba(255,255,255,.12)");
+        glow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      addGrain(ctx, size, size, grainAmount, seed);
+    }
+
+    /**************************************************************************
+     * Orbit Studio
+     **************************************************************************/
+
+    function applyOrbitPreset(name) {
+      const preset = orbitPresets[name];
+      if (!preset) return;
+
+      $("oWidth").value = preset.width;
+      $("oDepth").value = preset.depth;
+      $("oCenter").value = preset.center;
+      $("oItem").value = preset.item;
+      $("oSpeed").value = preset.speed;
+      $("oDepthFx").value = preset.depthFx;
+    }
+
+    function makeOrbitPhases(count) {
+      return Array.from({ length: count }, (_, index) => index / count * Math.PI * 2);
+    }
+
+    function ensureOrbitPhases(count) {
+      if (!state.orbitPhases || state.orbitPhases.length !== count) {
+        state.orbitPhases = makeOrbitPhases(count);
+      }
+    }
+
+    function renderOrbit(ctx, size, elapsed) {
+      const background = $("oBg").value;
+      const shadow = $("oShadow").value;
+      const transparent = $("oTransparent").checked;
+      const rimEnabled = $("oRim").checked;
+
+      const orbitWidth = Number($("oWidth").value) / PREVIEW_SIZE * size;
+      const orbitDepth = Number($("oDepth").value) / PREVIEW_SIZE * size;
+      const centerSize = Number($("oCenter").value) / PREVIEW_SIZE * size;
+      const itemSize = Number($("oItem").value) / PREVIEW_SIZE * size;
+      const speed = Number($("oSpeed").value);
+      const depthFx = Number($("oDepthFx").value) / 100;
+
+      const center = size / 2;
+      const time = elapsed * 0.001 * speed;
+      const count = Math.max(state.orbitItems.length - 1, 6);
+
+      clearCanvas(ctx, size, size, background, transparent);
+      ensureOrbitPhases(count);
+
+      const orbitStates = [];
+
+      for (let i = 0; i < count; i++) {
+        const phase = state.orbitPhases[i] ?? i / count * Math.PI * 2;
+        const angle = time + phase;
+        const depth = (Math.sin(angle) + 1) / 2;
+
+        orbitStates.push({
+          index: i,
+          depth,
+          x: center + Math.cos(angle) * orbitWidth,
+          y: center + Math.sin(angle) * orbitDepth,
+          scale: 1 - depthFx * 0.24 + depth * depthFx * 0.38,
+          alpha: 1 - depthFx * 0.34 + depth * depthFx * 0.34,
+          blur: (1 - depth) * depthFx * 1.15 * size / PREVIEW_SIZE
+        });
+      }
+
+      const backItems = orbitStates
+        .filter(item => item.depth < 0.5)
+        .sort((a, b) => a.depth - b.depth);
+
+      const frontItems = orbitStates
+        .filter(item => item.depth >= 0.5)
+        .sort((a, b) => a.depth - b.depth);
+
+      backItems.forEach(item => drawOrbitItem(ctx, size, item, itemSize, shadow, rimEnabled));
+
+      if (state.orbitItems[0]?.image) {
+        drawImageContain(ctx, state.orbitItems[0].image, center, center, centerSize, centerSize, 1, 0, shadow);
+      } else {
+        drawCenterPlaceholder(ctx, size, centerSize);
+      }
+
+      frontItems.forEach(item => drawOrbitItem(ctx, size, item, itemSize, shadow, rimEnabled));
+    }
+
+    function drawOrbitItem(ctx, canvasSize, orbitState, itemSize, shadow, rimEnabled) {
+      const drawSize = itemSize * orbitState.scale;
+      const item = state.orbitItems[orbitState.index + 1];
+
+      if (item?.image) {
+        drawImageContain(
+          ctx,
+          item.image,
+          orbitState.x,
+          orbitState.y,
+          drawSize,
+          drawSize,
+          orbitState.alpha,
+          orbitState.blur,
+          shadow
+        );
+      } else {
+        drawDemoOrbiter(
+          ctx,
+          String(orbitState.index + 1).padStart(2, "0"),
+          orbitState.x,
+          orbitState.y,
+          drawSize,
+          orbitState.alpha,
+          orbitState.blur
+        );
+      }
+
+      if (rimEnabled && orbitState.depth > 0.55) {
+        ctx.save();
+        ctx.globalAlpha = (orbitState.depth - 0.55) * 0.25;
+        ctx.strokeStyle = "rgba(255,255,255,.9)";
+        ctx.lineWidth = Math.max(1, canvasSize * 0.002);
+        ctx.beginPath();
+        ctx.arc(orbitState.x, orbitState.y, drawSize * 0.53, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function renderOrbitList() {
+      const list = $("orbitList");
+      list.innerHTML = "";
+
+      if (!state.orbitItems.length) {
+        const note = document.createElement("div");
+        note.className = "note";
+        note.style.padding = "0";
+        note.textContent = "No images loaded yet.";
+        list.appendChild(note);
+        return;
+      }
+
+      state.orbitItems.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "orbit-item";
+        row.draggable = true;
+
+        row.innerHTML = `
+          <div class="orbit-thumb"><img src="${item.url}" alt=""></div>
+          <div>
+            <div class="orbit-name">${item.name}</div>
+            <span class="orbit-badge">${index === 0 ? "Center" : "Orbit " + index}</span>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Remove image">✕</button>
+        `;
+
+        row.querySelector("button").addEventListener("click", () => {
+          URL.revokeObjectURL(item.url);
+          state.orbitItems.splice(index, 1);
+          state.orbitPhases = makeOrbitPhases(Math.max(state.orbitItems.length - 1, 6));
+          renderOrbitList();
+          updateOrbitStatus();
+          renderPreview();
+        });
+
+        row.addEventListener("dragstart", () => {
+          state.orbitDragIndex = index;
+          row.classList.add("dragging");
+        });
+
+        row.addEventListener("dragend", () => {
+          state.orbitDragIndex = null;
+          row.classList.remove("dragging");
+        });
+
+        row.addEventListener("dragover", event => {
+          event.preventDefault();
+        });
+
+        row.addEventListener("drop", event => {
+          event.preventDefault();
+
+          if (state.orbitDragIndex === null || state.orbitDragIndex === index) return;
+
+          const moved = state.orbitItems.splice(state.orbitDragIndex, 1)[0];
+          state.orbitItems.splice(index, 0, moved);
+          state.orbitPhases = makeOrbitPhases(Math.max(state.orbitItems.length - 1, 6));
+
+          renderOrbitList();
+          updateOrbitStatus();
+          renderPreview();
+        });
+
+        list.appendChild(row);
+      });
+    }
+
+    function updateOrbitStatus() {
+      $("orbitStatus").textContent = state.orbitItems.length
+        ? `${state.orbitItems.length} image${state.orbitItems.length === 1 ? "" : "s"} loaded. Drag to reorder.`
+        : "First image becomes the center. Drag items below to reorder.";
+    }
+
+    async function handleOrbitFiles(fileList) {
+      const files = Array.from(fileList).filter(file => file.type.startsWith("image/"));
+
+      state.orbitItems.forEach(item => URL.revokeObjectURL(item.url));
+      state.orbitItems = await Promise.all(files.map(loadImageFile));
+      state.orbitPhases = makeOrbitPhases(Math.max(state.orbitItems.length - 1, 6));
+
+      renderOrbitList();
+      updateOrbitStatus();
+      renderPreview();
+    }
+
+    /**************************************************************************
+     * Dither Studio
+     **************************************************************************/
+
+    function contrastValue(value, contrast) {
+      const x = contrast - 100;
+      const factor = (259 * (x + 255)) / (255 * (259 - x));
+      return clamp(factor * (value - 128) + 128, 0, 255);
+    }
+
+    function createSourceCanvas(size) {
+      if (!state.ditherSource?.image) return null;
+
+      const canvas = createCanvas(size);
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const image = state.ditherSource.image;
+      const ratio = Math.min(size / image.naturalWidth, size / image.naturalHeight);
+      const width = image.naturalWidth * ratio;
+      const height = image.naturalHeight * ratio;
+
+      ctx.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      return canvas;
+    }
+
+    function renderDither(ctx, size, elapsed) {
+      const paper = $("dPaper").value;
+      const ink = $("dInk").value;
+      const transparent = $("dTransparent").checked;
+      const beforeAfter = $("dBeforeAfter").checked;
+      const mode = state.options.dMode;
+
+      clearCanvas(ctx, size, size, paper, transparent);
+
+      const sourceCanvas = createSourceCanvas(size);
+
+      if (!sourceCanvas) {
+        drawDitherPlaceholder(ctx, size);
+        return;
+      }
+
+      const sourceCtx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+      const source = sourceCtx.getImageData(0, 0, size, size).data;
+
+      const pixel = Number($("dPixel").value);
+      const contrast = Number($("dContrast").value);
+      const baseThreshold = Number($("dThreshold").value);
+      const motion = Number($("dMotion").value) / 100;
+      const animatedOffset = Math.sin(elapsed * 0.0025 * motion) * 28;
+
+      const bayer = [
+        [0, 8, 2, 10],
+        [12, 4, 14, 6],
+        [3, 11, 1, 9],
+        [15, 7, 13, 5]
+      ];
+
+      const asciiChars = ["@", "#", "%", "*", "+", ":", "."];
+
+      ctx.fillStyle = ink;
+      ctx.strokeStyle = ink;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      for (let y = 0; y < size; y += pixel) {
+        for (let x = 0; x < size; x += pixel) {
+          const index = (Math.min(size - 1, y) * size + Math.min(size - 1, x)) * 4;
+          const alpha = source[index + 3] / 255;
+
+          if (alpha < 0.03) continue;
+
+          let luminosity =
+            0.2126 * source[index] +
+            0.7152 * source[index + 1] +
+            0.0722 * source[index + 2];
+
+          luminosity = contrastValue(luminosity, contrast);
+
+          if (mode === "halftone") {
+            const darkness = clamp((baseThreshold + animatedOffset - luminosity + 128) / 255, 0, 1);
+            const radius = Math.max(0, pixel * 0.62 * darkness);
+
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            ctx.arc(x + pixel / 2, y + pixel / 2, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          } else if (mode === "ascii") {
+            const mapped = clamp(
+              Math.floor(((luminosity + animatedOffset * 0.15) / 255) * asciiChars.length),
+              0,
+              asciiChars.length - 1
+            );
+
+            ctx.globalAlpha = alpha;
+            ctx.font = `800 ${Math.max(6, pixel * 1.34)}px monospace`;
+            ctx.fillText(asciiChars[mapped], x + pixel / 2, y + pixel / 2);
+            ctx.globalAlpha = 1;
+          } else {
+            let threshold = baseThreshold + animatedOffset;
+
+            if (mode === "bayer") {
+              threshold += ((bayer[Math.floor(y / pixel) % 4][Math.floor(x / pixel) % 4] + 0.5) / 16 - 0.5) * 100;
+            }
+
+            if (luminosity < threshold) {
+              ctx.globalAlpha = alpha;
+              ctx.fillRect(x, y, pixel, pixel);
+              ctx.globalAlpha = 1;
+            }
+          }
+        }
+      }
+
+      if (beforeAfter) {
+        drawBeforeAfterOverlay(ctx, sourceCanvas, size);
+      }
+    }
+
+    function drawDitherPlaceholder(ctx, size) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,.08)";
+      ctx.fillRect(0, 0, size, size);
+
+      ctx.fillStyle = "rgba(255,255,255,.74)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${Math.round(size * 0.048)}px Inter, system-ui, sans-serif`;
+      ctx.fillText("Upload an image", size / 2, size / 2 - 16);
+
+      ctx.fillStyle = "rgba(255,255,255,.42)";
+      ctx.font = `400 ${Math.round(size * 0.022)}px Inter, system-ui, sans-serif`;
+      ctx.fillText("then choose a dither mode", size / 2, size / 2 + 34);
+      ctx.restore();
+    }
+
+    function drawBeforeAfterOverlay(ctx, sourceCanvas, size) {
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.arcTo(x + w, y, x + w, y + h, radius);
-      ctx.arcTo(x + w, y + h, x, y + h, radius);
-      ctx.arcTo(x, y + h, x, y, radius);
-      ctx.arcTo(x, y, x + w, y, radius);
-      ctx.closePath();
+      ctx.rect(0, 0, size / 2, size);
+      ctx.clip();
+      ctx.globalAlpha = 0.95;
+      ctx.drawImage(sourceCanvas, 0, 0);
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,.85)";
+      ctx.lineWidth = Math.max(2, size * 0.003);
+      ctx.beginPath();
+      ctx.moveTo(size / 2, 0);
+      ctx.lineTo(size / 2, size);
+      ctx.stroke();
+      ctx.restore();
     }
 
-    function getSupportedVideoMimeType(format) {
-      const mp4Types = [
-        "video/mp4;codecs=avc1.42E01E",
-        "video/mp4;codecs=avc1.640028",
-        "video/mp4;codecs=h264",
-        "video/mp4"
-      ];
+    async function handleDitherFile(fileList) {
+      const file = Array.from(fileList).find(item => item.type.startsWith("image/"));
+      if (!file) return;
 
-      const webmTypes = [
-        "video/webm;codecs=vp9",
-        "video/webm;codecs=vp8",
-        "video/webm"
-      ];
+      if (state.ditherSource?.url) {
+        URL.revokeObjectURL(state.ditherSource.url);
+      }
 
-      const types = format === "mp4" ? mp4Types : webmTypes;
-      return types.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+      state.ditherSource = await loadImageFile(file);
+      $("ditherStatus").textContent = `${file.name} loaded.`;
+      renderPreview();
     }
 
-    function extensionForMimeType(mimeType, format) {
-      if (format === "mp4" && mimeType.includes("mp4")) return "mp4";
-      return "webm";
+    /**************************************************************************
+     * File loading and drag/drop
+     **************************************************************************/
+
+    function loadImageFile(file) {
+      return new Promise(resolve => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+          resolve({
+            file,
+            image,
+            url,
+            name: file.name
+          });
+        };
+
+        image.src = url;
+      });
     }
 
-    async function exportVideo(format) {
-      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-        alert("Video export is not supported in this browser. Try Chrome, Edge, or Firefox, or export a PNG sequence.");
-        return false;
+    function setupDropzone(zoneId, inputId, handler) {
+      const zone = $(zoneId);
+      const input = $(inputId);
+
+      input.addEventListener("change", event => handler(event.target.files));
+
+      ["dragenter", "dragover"].forEach(type => {
+        zone.addEventListener(type, event => {
+          event.preventDefault();
+          zone.classList.add("drag");
+        });
+      });
+
+      ["dragleave", "drop"].forEach(type => {
+        zone.addEventListener(type, event => {
+          event.preventDefault();
+          zone.classList.remove("drag");
+        });
+      });
+
+      zone.addEventListener("drop", event => {
+        handler(event.dataTransfer.files);
+      });
+    }
+
+    /**************************************************************************
+     * Rendering and animation
+     **************************************************************************/
+
+    function getCurrentElapsed(tool) {
+      return state.elapsed[tool];
+    }
+
+    function renderPreview() {
+      setOutputs();
+
+      if (state.activeTool === "gradient") {
+        renderGradient(previewCtx, PREVIEW_SIZE, getCurrentElapsed("gradient"));
       }
 
-      const mimeType = getSupportedVideoMimeType(format);
-
-      if (!mimeType) {
-        return false;
+      if (state.activeTool === "orbit") {
+        renderOrbit(previewCtx, PREVIEW_SIZE, getCurrentElapsed("orbit"));
       }
 
-      if (uploadedUrls.length && loadedImages.length !== uploadedUrls.length) {
-        await prepareLoadedImages(uploadedUrls);
+      if (state.activeTool === "dither") {
+        renderDither(previewCtx, PREVIEW_SIZE, getCurrentElapsed("dither"));
+      }
+    }
+
+    function tick(now) {
+      Object.keys(state.playing).forEach(tool => {
+        if (state.playing[tool]) {
+          state.elapsed[tool] = now - state.startTime;
+        }
+      });
+
+      renderPreview();
+      requestAnimationFrame(tick);
+    }
+
+    /**************************************************************************
+     * Export: still PNG
+     **************************************************************************/
+
+    function getExportSetting(tool, setting) {
+      const prefix = tool[0];
+      return state.options[`${prefix}${setting}`];
+    }
+
+    async function exportStill(tool) {
+      const size = Number(getExportSetting(tool, "Resolution"));
+      const canvas = createCanvas(size);
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const elapsed = getCurrentElapsed(tool);
+
+      renderToolToContext(tool, ctx, size, elapsed);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      downloadBlob(blob, `${tool}-${timestamp()}.png`);
+      showToast(`${capitalize(tool)} PNG exported.`);
+    }
+
+    function renderToolToContext(tool, ctx, size, elapsed) {
+      if (tool === "gradient") {
+        renderGradient(ctx, size, elapsed);
       }
 
-      const canvasSize = Number(resolutionSelect.value);
-      const duration = Number(durationSelect.value);
-      const fps = Number(fpsSelect.value);
+      if (tool === "orbit") {
+        renderOrbit(ctx, size, elapsed);
+      }
+
+      if (tool === "dither") {
+        renderDither(ctx, size, elapsed);
+      }
+    }
+
+    /**************************************************************************
+     * Export: PNG sequence ZIP
+     **************************************************************************/
+
+    async function exportSequence(tool, button) {
+      const size = Number(getExportSetting(tool, "Resolution"));
+      const duration = Number(getExportSetting(tool, "Duration"));
+      const fps = Number(getExportSetting(tool, "Fps"));
       const totalFrames = Math.max(1, duration * fps);
-      const canvas = document.createElement("canvas");
-      canvas.width = canvasSize;
-      canvas.height = canvasSize;
-      const ctx = canvas.getContext("2d");
 
-      const stream = canvas.captureStream(fps);
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: canvasSize >= 1440 ? 14000000 : canvasSize >= 1080 ? 10000000 : 6000000
-      });
+      const canvas = createCanvas(size);
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const files = [];
+      const originalText = button.textContent;
 
-      const chunks = [];
+      button.disabled = true;
 
-      recorder.ondataavailable = event => {
-        if (event.data && event.data.size) chunks.push(event.data);
-      };
+      try {
+        for (let frame = 0; frame < totalFrames; frame++) {
+          const elapsed = (frame / totalFrames) * duration * 1000;
+          renderToolToContext(tool, ctx, size, elapsed);
 
-      const finished = new Promise(resolve => {
-        recorder.onstop = resolve;
-      });
+          files.push({
+            name: `${tool}_sequence/${tool}_${String(frame + 1).padStart(5, "0")}.png`,
+            data: await canvasToPngBytes(canvas)
+          });
 
-      recorder.start();
-
-      for (let frame = 0; frame < totalFrames; frame++) {
-        const progress = frame / totalFrames;
-        const elapsed = progress * duration * 1000;
-
-        exportFrame(ctx, canvasSize, elapsed);
-
-        if (frame % 4 === 0) {
-          downloadVideoButton.textContent = "Rendering video " + Math.round(progress * 100) + "%";
-          await new Promise(requestAnimationFrame);
+          if (frame % 2 === 0) {
+            button.textContent = `Rendering ${Math.round(frame / totalFrames * 100)}%`;
+            await new Promise(requestAnimationFrame);
+          }
         }
+
+        downloadBlob(makeZip(files), `${tool}-sequence-${timestamp()}.zip`);
+        showToast(`${capitalize(tool)} PNG sequence exported.`);
+      } catch (error) {
+        console.error(error);
+        alert("Export failed. Try a lower resolution, shorter duration, or lower FPS.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+        renderPreview();
       }
-
-      exportFrame(ctx, canvasSize, duration * 1000);
-      await new Promise(resolve => setTimeout(resolve, 120));
-
-      recorder.stop();
-      await finished;
-
-      stream.getTracks().forEach(track => track.stop());
-
-      const blob = new Blob(chunks, { type: mimeType || (format === "mp4" ? "video/mp4" : "video/webm") });
-      const extension = extensionForMimeType(mimeType, format);
-      downloadBlob(blob, "orbit-rotation-" + getTimestamp() + "." + extension);
-
-      return true;
-    }
-
-    function getTimestamp() {
-      return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    }
-
-    function downloadBlob(blob, filename) {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setTimeout(() => URL.revokeObjectURL(url), 1200);
-    }
-
-    function makeCrc32Table() {
-      const table = new Uint32Array(256);
-
-      for (let i = 0; i < 256; i++) {
-        let c = i;
-        for (let k = 0; k < 8; k++) {
-          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-        }
-        table[i] = c >>> 0;
-      }
-
-      return table;
-    }
-
-    const crc32Table = makeCrc32Table();
-
-    function crc32(bytes) {
-      let c = 0xffffffff;
-
-      for (let i = 0; i < bytes.length; i++) {
-        c = crc32Table[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
-      }
-
-      return (c ^ 0xffffffff) >>> 0;
-    }
-
-    function writeUint16(bytes, offset, value) {
-      bytes[offset] = value & 0xff;
-      bytes[offset + 1] = (value >>> 8) & 0xff;
-    }
-
-    function writeUint32(bytes, offset, value) {
-      bytes[offset] = value & 0xff;
-      bytes[offset + 1] = (value >>> 8) & 0xff;
-      bytes[offset + 2] = (value >>> 16) & 0xff;
-      bytes[offset + 3] = (value >>> 24) & 0xff;
-    }
-
-    function getDosDateTime(date = new Date()) {
-      const dosTime =
-        (date.getHours() << 11) |
-        (date.getMinutes() << 5) |
-        Math.floor(date.getSeconds() / 2);
-
-      const dosDate =
-        ((date.getFullYear() - 1980) << 9) |
-        ((date.getMonth() + 1) << 5) |
-        date.getDate();
-
-      return { dosTime, dosDate };
-    }
-
-    function createZip(files) {
-      const encoder = new TextEncoder();
-      const { dosTime, dosDate } = getDosDateTime();
-      const localParts = [];
-      const centralParts = [];
-      let offset = 0;
-
-      files.forEach(file => {
-        const nameBytes = encoder.encode(file.name);
-        const data = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
-        const checksum = crc32(data);
-
-        const local = new Uint8Array(30 + nameBytes.length);
-        writeUint32(local, 0, 0x04034b50);
-        writeUint16(local, 4, 20);
-        writeUint16(local, 6, 0);
-        writeUint16(local, 8, 0);
-        writeUint16(local, 10, dosTime);
-        writeUint16(local, 12, dosDate);
-        writeUint32(local, 14, checksum);
-        writeUint32(local, 18, data.length);
-        writeUint32(local, 22, data.length);
-        writeUint16(local, 26, nameBytes.length);
-        writeUint16(local, 28, 0);
-        local.set(nameBytes, 30);
-
-        localParts.push(local, data);
-
-        const central = new Uint8Array(46 + nameBytes.length);
-        writeUint32(central, 0, 0x02014b50);
-        writeUint16(central, 4, 20);
-        writeUint16(central, 6, 20);
-        writeUint16(central, 8, 0);
-        writeUint16(central, 10, 0);
-        writeUint16(central, 12, dosTime);
-        writeUint16(central, 14, dosDate);
-        writeUint32(central, 16, checksum);
-        writeUint32(central, 20, data.length);
-        writeUint32(central, 24, data.length);
-        writeUint16(central, 28, nameBytes.length);
-        writeUint16(central, 30, 0);
-        writeUint16(central, 32, 0);
-        writeUint16(central, 34, 0);
-        writeUint16(central, 36, 0);
-        writeUint32(central, 38, 0);
-        writeUint32(central, 42, offset);
-        central.set(nameBytes, 46);
-
-        centralParts.push(central);
-        offset += local.length + data.length;
-      });
-
-      const centralOffset = offset;
-      const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-
-      const end = new Uint8Array(22);
-      writeUint32(end, 0, 0x06054b50);
-      writeUint16(end, 4, 0);
-      writeUint16(end, 6, 0);
-      writeUint16(end, 8, files.length);
-      writeUint16(end, 10, files.length);
-      writeUint32(end, 12, centralSize);
-      writeUint32(end, 16, centralOffset);
-      writeUint16(end, 20, 0);
-
-      return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
     }
 
     function canvasToPngBytes(canvas) {
@@ -1667,100 +2150,234 @@
       });
     }
 
-    async function exportPngSequenceZip() {
-      if (uploadedUrls.length && loadedImages.length !== uploadedUrls.length) {
-        await prepareLoadedImages(uploadedUrls);
-      }
+    /**************************************************************************
+     * ZIP writer, no external libraries
+     **************************************************************************/
 
-      const canvasSize = Number(resolutionSelect.value);
-      const duration = Number(durationSelect.value);
-      const fps = Number(fpsSelect.value);
-      const totalFrames = Math.max(1, duration * fps);
-      const canvas = document.createElement("canvas");
-      canvas.width = canvasSize;
-      canvas.height = canvasSize;
-      const ctx = canvas.getContext("2d");
-      const files = [];
+    function makeCrcTable() {
+      const table = new Uint32Array(256);
 
-      for (let frame = 0; frame < totalFrames; frame++) {
-        const progress = frame / totalFrames;
-        const elapsed = progress * duration * 1000;
+      for (let i = 0; i < 256; i++) {
+        let c = i;
 
-        exportFrame(ctx, canvasSize, elapsed);
-
-        const frameNumber = String(frame + 1).padStart(5, "0");
-        const data = await canvasToPngBytes(canvas);
-
-        files.push({
-          name: "orbit_sequence/orbit_" + frameNumber + ".png",
-          data
-        });
-
-        if (frame % 2 === 0) {
-          downloadVideoButton.textContent = "Rendering PNGs " + Math.round(progress * 100) + "%";
-          await new Promise(requestAnimationFrame);
+        for (let k = 0; k < 8; k++) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
         }
+
+        table[i] = c >>> 0;
       }
 
-      const zipBlob = createZip(files);
-      downloadBlob(zipBlob, "orbit-png-sequence-" + getTimestamp() + ".zip");
+      return table;
     }
 
-    async function downloadRotation() {
-      const format = formatSelect.value;
+    const crcTable = makeCrcTable();
 
-      downloadVideoButton.disabled = true;
-      const originalText = downloadVideoButton.textContent;
+    function crc32(bytes) {
+      let c = 0xffffffff;
 
-      const pausedBeforeExport = running;
-      running = false;
-      toggleButton.textContent = "Play";
-
-      try {
-        if (format === "png") {
-          await exportPngSequenceZip();
-        } else {
-          const exported = await exportVideo(format);
-
-          if (!exported && format === "mp4") {
-            const shouldFallback = confirm(
-              "This browser does not support MP4 recording from the page. Export a PNG sequence ZIP instead? After Effects can import it as an image sequence."
-            );
-
-            if (shouldFallback) {
-              await exportPngSequenceZip();
-            }
-          } else if (!exported) {
-            alert("This browser does not support that video format. Try the PNG sequence export.");
-          }
-        }
-      } catch (error) {
-        console.error(error);
-        alert("Export failed. Try a lower resolution, shorter duration, or PNG sequence.");
-      } finally {
-        running = pausedBeforeExport;
-        if (running) startTime = performance.now() - lastElapsed;
-        toggleButton.textContent = running ? "Pause" : "Play";
-
-        downloadVideoButton.disabled = false;
-        downloadVideoButton.textContent = originalText;
+      for (let i = 0; i < bytes.length; i++) {
+        c = crcTable[(c ^ bytes[i]) & 255] ^ (c >>> 8);
       }
+
+      return (c ^ 0xffffffff) >>> 0;
     }
 
-    downloadVideoButton.addEventListener("click", downloadRotation);
+    function write16(array, offset, value) {
+      array[offset] = value & 255;
+      array[offset + 1] = (value >>> 8) & 255;
+    }
 
-    formatSelect.addEventListener("change", () => {
-      if (formatSelect.value === "mp4") {
-        downloadNote.textContent = "MP4 is attempted when your browser exposes MP4 recording. If not, the app can fall back to a PNG sequence ZIP for After Effects.";
-      } else if (formatSelect.value === "png") {
-        downloadNote.textContent = "Exports numbered PNG frames in a ZIP. In After Effects, import the first PNG and enable PNG Sequence.";
-      } else {
-        downloadNote.textContent = "Exports a WebM video. Useful for previewing, but MP4 or PNG sequence is usually better for After Effects.";
-      }
-    });
+    function write32(array, offset, value) {
+      array[offset] = value & 255;
+      array[offset + 1] = (value >>> 8) & 255;
+      array[offset + 2] = (value >>> 16) & 255;
+      array[offset + 3] = (value >>> 24) & 255;
+    }
 
-    createDemoOrbiters();
-    requestAnimationFrame(animate);
+    function makeZip(files) {
+      const encoder = new TextEncoder();
+      const localParts = [];
+      const centralParts = [];
+
+      let offset = 0;
+
+      const now = new Date();
+      const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+      const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+
+      files.forEach(file => {
+        const nameBytes = encoder.encode(file.name);
+        const data = file.data;
+        const checksum = crc32(data);
+
+        const local = new Uint8Array(30 + nameBytes.length);
+        write32(local, 0, 0x04034b50);
+        write16(local, 4, 20);
+        write16(local, 6, 0);
+        write16(local, 8, 0);
+        write16(local, 10, dosTime);
+        write16(local, 12, dosDate);
+        write32(local, 14, checksum);
+        write32(local, 18, data.length);
+        write32(local, 22, data.length);
+        write16(local, 26, nameBytes.length);
+        write16(local, 28, 0);
+        local.set(nameBytes, 30);
+        localParts.push(local, data);
+
+        const central = new Uint8Array(46 + nameBytes.length);
+        write32(central, 0, 0x02014b50);
+        write16(central, 4, 20);
+        write16(central, 6, 20);
+        write16(central, 8, 0);
+        write16(central, 10, 0);
+        write16(central, 12, dosTime);
+        write16(central, 14, dosDate);
+        write32(central, 16, checksum);
+        write32(central, 20, data.length);
+        write32(central, 24, data.length);
+        write16(central, 28, nameBytes.length);
+        write16(central, 30, 0);
+        write16(central, 32, 0);
+        write16(central, 34, 0);
+        write16(central, 36, 0);
+        write32(central, 38, 0);
+        write32(central, 42, offset);
+        central.set(nameBytes, 46);
+        centralParts.push(central);
+
+        offset += local.length + data.length;
+      });
+
+      const centralOffset = offset;
+      const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+
+      const end = new Uint8Array(22);
+      write32(end, 0, 0x06054b50);
+      write16(end, 4, 0);
+      write16(end, 6, 0);
+      write16(end, 8, files.length);
+      write16(end, 10, files.length);
+      write32(end, 12, centralSize);
+      write32(end, 16, centralOffset);
+      write16(end, 20, 0);
+
+      return new Blob([...localParts, ...centralParts, end], {
+        type: "application/zip"
+      });
+    }
+
+    /**************************************************************************
+     * Download helpers
+     **************************************************************************/
+
+    function downloadBlob(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = name;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 1200);
+    }
+
+    function timestamp() {
+      return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    }
+
+    function capitalize(value) {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
+
+    /**************************************************************************
+     * Events
+     **************************************************************************/
+
+    function bindEvents() {
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => setActiveTool(tab.dataset.tool));
+      });
+
+      document.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", renderPreview);
+        input.addEventListener("change", renderPreview);
+      });
+
+      document.querySelectorAll("[data-export-still]").forEach(button => {
+        button.addEventListener("click", () => exportStill(button.dataset.exportStill));
+      });
+
+      document.querySelectorAll("[data-export-sequence]").forEach(button => {
+        button.addEventListener("click", () => exportSequence(button.dataset.exportSequence, button));
+      });
+
+      $("gRandom").addEventListener("click", randomizeGradient);
+      $("oShuffle").addEventListener("click", shuffleOrbit);
+      $("dInvert").addEventListener("click", invertDitherColors);
+
+      bindPauseButton("gPause", "gradient");
+      bindPauseButton("oPause", "orbit");
+      bindPauseButton("dPause", "dither");
+
+      setupDropzone("orbitDrop", "orbitFiles", handleOrbitFiles);
+      setupDropzone("ditherDrop", "ditherFile", handleDitherFile);
+    }
+
+    function bindPauseButton(buttonId, tool) {
+      $(buttonId).addEventListener("click", () => {
+        state.playing[tool] = !state.playing[tool];
+        $(buttonId).textContent = state.playing[tool] ? "Pause" : "Play";
+      });
+    }
+
+    function randomizeGradient() {
+      const randomColor = () => "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
+
+      $("gColor1").value = randomColor();
+      $("gColor2").value = randomColor();
+      $("gColor3").value = randomColor();
+      $("gSeed").value = Math.floor(Math.random() * 999) + 1;
+      $("gBlobs").value = Math.floor(5 + Math.random() * 12);
+      $("gSoft").value = Math.floor(45 + Math.random() * 60);
+
+      renderPreview();
+    }
+
+    function shuffleOrbit() {
+      const count = Math.max(state.orbitItems.length - 1, 6);
+      state.orbitPhases = Array.from({ length: count }, () => Math.random() * Math.PI * 2);
+      renderPreview();
+    }
+
+    function invertDitherColors() {
+      const ink = $("dInk").value;
+      $("dInk").value = $("dPaper").value;
+      $("dPaper").value = ink;
+      renderPreview();
+    }
+
+    /**************************************************************************
+     * Boot
+     **************************************************************************/
+
+    function init() {
+      bindSegmentedControls();
+      bindEvents();
+
+      applyGradientPreset("cool");
+      applyOrbitPreset("classic");
+
+      renderOrbitList();
+      updateOrbitStatus();
+
+      setActiveTool("gradient");
+      requestAnimationFrame(tick);
+    }
+
+    init();
   </script>
 </body>
 </html>
