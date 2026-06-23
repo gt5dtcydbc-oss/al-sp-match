@@ -451,6 +451,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 
 <script>
 
+
       const ANILIST_ENDPOINT = "https://graphql.anilist.co";
       const RELEASES_ENDPOINT =
         "https://releases.moe/api/collections/entries/records";
@@ -470,6 +471,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       const RELEASES_REQUEST_DELAY_MS = 1000;
       const RELEASES_BULK_CHUNK_SIZE = 50;
       const RELEASES_SINGLE_FALLBACK_AUTO_LIMIT = 25;
+      const RELEASE_PROGRESS_TOAST_MIN_MS = 1500;
       const RELEASES_FULL_REFRESH_SAVE_EVERY = 50;
       const BOARDS = ["found", "watching", "downloaded"];
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -628,6 +630,22 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       }
       function dismissToast(t) {
         if (t?.isConnected) t.remove();
+      }
+      function updateToast(t, msg, type = "") {
+        if (!t?.isConnected) return null;
+        t.className = "toast " + type;
+        t.textContent = msg;
+        return t;
+      }
+      function finishToast(t, msg, type = "", duration = 3000) {
+        if (!t?.isConnected) return toast(msg, type, { duration });
+        updateToast(t, msg, type);
+        if (duration > 0) setTimeout(() => t.remove(), duration);
+        return t;
+      }
+      async function keepToastVisible(startedAt, minMs = RELEASE_PROGRESS_TOAST_MIN_MS) {
+        const remaining = minMs - (Date.now() - startedAt);
+        if (remaining > 0) await sleep(remaining);
       }
       function timeoutSignal(ms) {
         if (AbortSignal.timeout) return AbortSignal.timeout(ms);
@@ -1315,7 +1333,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           return false;
         }
       }
-      async function autoCloud({ announce = false } = {}) {
+      async function autoCloud({ announce = false, toastResults = announce } = {}) {
         if (!els.githubPat?.value.trim() || !els.gistId?.value.trim()) return;
         let progressToast = announce
           ? toast("Checking cloud...", "", { duration: 0 })
@@ -1327,7 +1345,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           if (!cloud || !cloudShows.length) {
             dismissToast(progressToast);
             progressToast = null;
-            if (announce)
+            if (toastResults)
               toast(lastCloudPullFailed ? "Cloud unavailable" : "Cloud checked", lastCloudPullFailed ? "error" : "");
             return;
           }
@@ -1337,7 +1355,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             render();
             dismissToast(progressToast);
             progressToast = null;
-            toast("Hydrated from Cloud");
+            if (toastResults) toast("Hydrated from Cloud");
             return;
           }
           const cloudTime = getStateTimestamp(cloud),
@@ -1349,11 +1367,11 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             render();
             dismissToast(progressToast);
             progressToast = null;
-            toast("Pulled new Cloud Version");
+            if (toastResults) toast("Pulled new Cloud Version");
           } else {
             dismissToast(progressToast);
             progressToast = null;
-            toast("Cloud is up to date");
+            if (toastResults) toast("Cloud is up to date");
           }
         } finally {
           dismissToast(progressToast);
@@ -2533,7 +2551,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           errors =
             (Number(watching?.errors) || 0) +
             (Number(library?.errors) || 0);
-        if (totalChecked < 1) return "No stale entries need checking";
+        if (totalChecked < 1) return "No stale releases due yet. Found/Watching check after 12h; Library checks after 24h.";
         const parts = [`${totalChecked} checked`];
         if (updates > 0) parts.push(`${updates} updates`);
         if (found > 0) parts.push(`${found} new`);
@@ -2575,22 +2593,25 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         };
 
         let progressToast = null;
+        const progressToastStartedAt = Date.now();
         if (manual) {
           setReleaseRefreshUi(true, "Refresh stale");
           setReleaseRefreshProgress(
             etaState.total
               ? releaseProgressText("Refreshing stale queued", 0, etaState.total, "waiting to start", etaState.startedAt, 0)
-              : "No stale entries need checking.",
+              : "No stale releases due yet. Found/Watching check after 12h; Library checks after 24h.",
             true,
           );
         }
-        if (announce && etaState.total > 0) {
+        if (announce) {
           progressToast = toast(
-            `Refreshing ${etaState.total} stale release${etaState.total === 1 ? "" : "s"}...`,
+            etaState.total > 0
+              ? `Checking ${etaState.total} stale release${etaState.total === 1 ? "" : "s"}...`
+              : "No stale releases due yet. Found/Watching check after 12h; Library checks after 24h.",
             "",
             { duration: 0 },
           );
-          setStatus("Checking releases...", "sync");
+          setStatus(etaState.total > 0 ? "Checking releases..." : "System Ready", etaState.total > 0 ? "sync" : "ready");
         }
 
         try {
@@ -2603,36 +2624,54 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             (Number(activeSummary?.checked) || 0) +
             (Number(librarySummary?.checked) || 0);
 
-          dismissToast(progressToast);
-          progressToast = null;
           const summaryPayload = {
             watching: activeSummary,
             library: librarySummary,
           };
           const msg = autoReleaseSummaryMessage(summaryPayload);
+          const errors =
+            (Number(activeSummary?.errors) || 0) +
+            (Number(librarySummary?.errors) || 0);
+          const findings =
+            (Number(activeSummary?.found) || 0) +
+            (Number(librarySummary?.updatesFound) || 0);
+          const type = errors && !findings ? "error" : "";
+
           if (releaseQueueCancelRequested) {
-            toast(`Refresh stopped. ${msg}`);
+            await keepToastVisible(progressToastStartedAt);
+            if (announce) finishToast(progressToast, `Refresh stopped. ${msg}`);
+            else toast(`Refresh stopped. ${msg}`);
+            progressToast = null;
             if (manual) setReleaseRefreshProgress(`Stopped after ${checked}/${etaState.total}. ${msg}`);
           } else {
             suppressCloudSync = false;
+            if (checked > 0) {
+              updateToast(progressToast, hasCloudCredentials() ? `${checked} checked. Backing up changes...` : `${checked} checked. Finishing...`);
+            }
             const cloud = checked > 0
               ? await syncReleaseRefreshToCloud()
               : { text: "Cloud backup skipped: nothing changed." };
-            toastAutoReleaseSummary(summaryPayload);
+            await keepToastVisible(progressToastStartedAt);
+            const finalMessage = manual
+              ? `${msg} · ${cloud.text}`
+              : msg;
+            if (announce) finishToast(progressToast, finalMessage, type);
+            else toast(finalMessage, type);
+            progressToast = null;
             if (manual) setReleaseRefreshProgress(`Finished stale refresh. ${msg} · ${cloud.text}`);
           }
         } catch (e) {
           console.warn(e);
-          dismissToast(progressToast);
+          await keepToastVisible(progressToastStartedAt);
+          if (announce) finishToast(progressToast, "Release check failed", "error");
+          else toast("Release check failed", "error");
           progressToast = null;
           setStatus("System Ready");
-          toast("Release check failed", "error");
           if (manual) setReleaseRefreshProgress("Release check failed. Try again later.");
         } finally {
           dismissToast(progressToast);
           suppressCloudSync = false;
           releaseCheckRunning = false;
-          setStatus("System Ready");
           if (manual) {
             setReleaseRefreshUi(false);
             if (els.cancelReleaseRefreshBtn) els.cancelReleaseRefreshBtn.textContent = "Cancel";
@@ -3767,7 +3806,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             setStatus("System Ready");
           }
           try {
-            await autoCloud({ announce: false });
+            await autoCloud({ announce: false, toastResults: false });
           } catch (e) {
             console.warn(e);
             setStatus("System Ready");
@@ -3779,6 +3818,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       }
       init();
       
+
 </script>
 </body>
 </html>
