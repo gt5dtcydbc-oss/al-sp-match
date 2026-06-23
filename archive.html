@@ -400,7 +400,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           </div>
           <div class="maintenance-box">
             <strong>Library tools</strong>
-            <p class="hint">Refresh stale checks only due entries. Full refresh scans every AniList-backed entry one at a time with a conservative delay and backs off on rate limits.</p>
+            <p class="hint">Refresh stale checks only due entries. Release checks are grouped into small batches and still back off on rate limits.</p>
             <div class="mini-actions">
               <button class="btn" id="smartGroupBtn" type="button">Smart Group</button>
               <button class="btn" id="refreshReleasesBtn" type="button">Refresh Stale</button>
@@ -464,10 +464,12 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       const MAX_LOCAL_FALLBACK_BYTES = 300000;
       const MAX_CLOUD_SYNC_BYTES = 900000;
       const MAX_PORTABLE_COVER_BYTES = 900 * 1024;
-      const AUTO_LIBRARY_RELEASE_CHECK_LIMIT = 25;
-      const LIBRARY_RELEASE_STALE_MS = 18 * 60 * 60 * 1000;
-      const RELEASES_REQUEST_DELAY_MS = 2500;
-      const RELEASES_FULL_REFRESH_SAVE_EVERY = 10;
+      const AUTO_LIBRARY_RELEASE_CHECK_LIMIT = 100;
+      const LIBRARY_RELEASE_STALE_MS = 36 * 60 * 60 * 1000;
+      const RELEASES_REQUEST_DELAY_MS = 1000;
+      const RELEASES_BULK_CHUNK_SIZE = 50;
+      const RELEASES_SINGLE_FALLBACK_AUTO_LIMIT = 25;
+      const RELEASES_FULL_REFRESH_SAVE_EVERY = 50;
       const BOARDS = ["found", "watching", "downloaded"];
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const q = (s) => document.querySelector(s);
@@ -501,7 +503,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         idbAvailable = null,
         lastLibraryUpdateToastCount = null,
         suppressCloudSync = false,
-        releaseQueueCancelRequested = false;
+        releaseQueueCancelRequested = false,
+        releaseBulkDisabled = false;
       const RESUME_RELEASE_CHECK_STALE_MS = 15 * 60 * 1000;
       const commentTimers = new Map(),
         groupNameTimers = new Map();
@@ -1412,7 +1415,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             Accept: "application/json",
           },
           body: JSON.stringify({ query, variables }),
-          signal: timeoutSignal(15000),
+          signal: timeoutSignal(timeoutMs),
         });
         const j = await r.json().catch(() => ({}));
         if (r.status === 429) {
@@ -1441,6 +1444,161 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           throw new Error("releases.moe rate limit");
         }
         return r;
+      }
+      function validAniListIds(ids) {
+        return [...new Set((ids || []).map(Number).filter((id) => Number.isFinite(id) && id > 0))];
+      }
+      function releaseItemAniListId(item) {
+        const id = Number(item?.alID ?? item?.alId ?? item?.alid ?? item?.anilistId);
+        return Number.isFinite(id) && id > 0 ? id : null;
+      }
+      function buildSingleReleaseUrl(anilistId) {
+        return `${RELEASES_ENDPOINT}?` + new URLSearchParams({
+          perPage: "1",
+          filter: `alID=${Number(anilistId)}`,
+        }).toString();
+      }
+      function buildBulkReleaseUrl(anilistIds) {
+        const ids = validAniListIds(anilistIds);
+        const filter = ids.map((id) => `alID=${id}`).join(" || ");
+        return `${RELEASES_ENDPOINT}?` + new URLSearchParams({
+          perPage: String(Math.max(1, ids.length)),
+          filter: `(${filter})`,
+        }).toString();
+      }
+      async function fetchReleaseMatchesByAniListIds(anilistIds) {
+        const ids = validAniListIds(anilistIds);
+        if (!ids.length) return new Map();
+        const url = ids.length === 1 || releaseBulkDisabled
+          ? buildSingleReleaseUrl(ids[0])
+          : buildBulkReleaseUrl(ids);
+        const r = await releasesRequest(url, 1, 12000);
+        if (!r.ok) {
+          const err = new Error("API Error " + r.status);
+          err.status = r.status;
+          throw err;
+        }
+        const j = await r.json().catch(() => ({}));
+        const matches = new Map();
+        (j.items || []).forEach((item) => {
+          const id = releaseItemAniListId(item);
+          if (id) matches.set(id, item);
+        });
+        return matches;
+      }
+      function applyReleaseMatch(s, match, { forceMove = false, checkedAt = new Date().toISOString() } = {}) {
+        if (!s) return;
+        if (!s.anilistId) {
+          s.releasesMoe = defaultRelease(s.releasesMoe);
+          s.releasesMoe.checkedAt = checkedAt;
+          s.needsAnilist = true;
+          s.temporary = true;
+          return;
+        }
+        const prev = getBoard(s),
+          isLib = getBoard(s) === "downloaded",
+          apiUpdated = match?.updated || null;
+        s.releasesMoe = defaultRelease(s.releasesMoe);
+        s.releasesMoe.found = !!match;
+        s.releasesMoe.recordId = match?.id || null;
+        s.releasesMoe.checkedAt = checkedAt;
+        s.releasesMoe.error = null;
+        s.releasesMoe.notListed = !match;
+        s.releasesMoe.notListedAt = match ? null : checkedAt;
+        if (!match) {
+          s.releasesMoe.updateAvailable = false;
+          s.releasesMoe.latestUpdated = null;
+        }
+        if (match && apiUpdated) {
+          const old = s.releasesMoe.updated
+              ? Date.parse(s.releasesMoe.updated)
+              : 0,
+            next = Date.parse(apiUpdated);
+          if (!s.releasesMoe.updated) {
+            s.releasesMoe.updated = apiUpdated;
+            s.releasesMoe.updateAvailable = false;
+          } else if (
+            apiUpdated !== s.releasesMoe.updated &&
+            Number.isFinite(next) &&
+            next > old
+          ) {
+            if (isLib) {
+              s.releasesMoe.updateAvailable = true;
+              s.releasesMoe.latestUpdated = apiUpdated;
+            } else {
+              s.releasesMoe.updated = apiUpdated;
+              s.releasesMoe.updateAvailable = false;
+            }
+          }
+        }
+        if (!isLib && forceMove) s.board = match ? "found" : "watching";
+        s.needsAnilist = false;
+        s.temporary = false;
+        s.source = "anilist";
+        s.updatedAt = checkedAt;
+        const next = getBoard(s);
+        if (forceMove && prev !== next) moveBoard(s.id, prev, next);
+      }
+      function markReleaseRefreshError(s, error, checkedAt = new Date().toISOString()) {
+        if (!s) return;
+        s.releasesMoe = defaultRelease(s.releasesMoe);
+        s.releasesMoe.error = error?.message || "Refresh failed";
+        s.releasesMoe.checkedAt = checkedAt;
+      }
+      async function refreshReleaseSingles(shows, { forceMove = false, singleFallbackLimit = Infinity, fallbackLabel = "" } = {}) {
+        const arr = (shows || []).filter((s) => s?.anilistId);
+        const max = Number.isFinite(singleFallbackLimit)
+          ? Math.max(0, Math.min(arr.length, singleFallbackLimit))
+          : arr.length;
+        const processed = [];
+        for (let i = 0; i < max; i++) {
+          if (releaseQueueCancelRequested) break;
+          await refreshShow(arr[i], { forceMove });
+          processed.push(arr[i]);
+          if (i < max - 1 && !(await waitBetweenReleaseRequests(fallbackLabel)))
+            break;
+        }
+        return {
+          processed,
+          limited: max < arr.length,
+          singlesUsed: processed.length,
+        };
+      }
+      async function refreshReleaseChunk(shows, { forceMove = false, singleFallbackLimit = Infinity, fallbackLabel = "" } = {}) {
+        const arr = (shows || []).filter((s) => s?.anilistId);
+        if (!arr.length)
+          return { processed: [], singlesUsed: 0, usedBulk: false, fallbackLimited: false };
+        if (arr.length === 1 || releaseBulkDisabled) {
+          const single = await refreshReleaseSingles(arr, { forceMove, singleFallbackLimit, fallbackLabel });
+          return {
+            processed: single.processed,
+            singlesUsed: single.singlesUsed,
+            usedBulk: false,
+            fallbackLimited: single.limited,
+          };
+        }
+        try {
+          const checkedAt = new Date().toISOString();
+          const matches = await fetchReleaseMatchesByAniListIds(arr.map((s) => s.anilistId));
+          arr.forEach((s) => applyReleaseMatch(s, matches.get(Number(s.anilistId)) || null, { forceMove, checkedAt }));
+          return { processed: arr, singlesUsed: 0, usedBulk: true, fallbackLimited: false };
+        } catch (e) {
+          console.warn("Bulk releases refresh failed; falling back to single requests", e);
+          if (e?.status === 400) releaseBulkDisabled = true;
+          if (/rate limit/i.test(e?.message || "")) {
+            const checkedAt = new Date().toISOString();
+            arr.forEach((s) => markReleaseRefreshError(s, e, checkedAt));
+            return { processed: arr, singlesUsed: 0, usedBulk: false, fallbackLimited: false, bulkFailed: true };
+          }
+          const single = await refreshReleaseSingles(arr, { forceMove, singleFallbackLimit, fallbackLabel });
+          return {
+            processed: single.processed,
+            singlesUsed: single.singlesUsed,
+            usedBulk: false,
+            fallbackLimited: single.limited,
+            bulkFailed: true,
+          };
+        }
       }
       async function searchAniList(search, options = {}) {
         const query = `query($search:String){Page(perPage:8){media(search:$search,type:ANIME,sort:SEARCH_MATCH){id title{romaji english native} coverImage{medium large} format seasonYear episodes siteUrl}}}`;
@@ -1529,60 +1687,13 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           s.temporary = true;
           return;
         }
-        const prev = getBoard(s);
-        s.releasesMoe = defaultRelease(s.releasesMoe);
         try {
-          const r = await releasesRequest(
-            `${RELEASES_ENDPOINT}?perPage=1&filter=alID=${encodeURIComponent(s.anilistId)}`,
-          );
+          const r = await releasesRequest(buildSingleReleaseUrl(s.anilistId));
           if (!r.ok) throw new Error("API Error");
-          const j = await r.json(),
-            match = j.items?.[0],
-            apiUpdated = match?.updated || null,
-            isLib = getBoard(s) === "downloaded";
-          const checkedAt = new Date().toISOString();
-          s.releasesMoe.found = !!match;
-          s.releasesMoe.recordId = match?.id || null;
-          s.releasesMoe.checkedAt = checkedAt;
-          s.releasesMoe.error = null;
-          s.releasesMoe.notListed = !match;
-          s.releasesMoe.notListedAt = match ? null : checkedAt;
-          if (!match) {
-            s.releasesMoe.updateAvailable = false;
-            s.releasesMoe.latestUpdated = null;
-          }
-          if (match && apiUpdated) {
-            const old = s.releasesMoe.updated
-                ? Date.parse(s.releasesMoe.updated)
-                : 0,
-              next = Date.parse(apiUpdated);
-            if (!s.releasesMoe.updated) {
-              s.releasesMoe.updated = apiUpdated;
-              s.releasesMoe.updateAvailable = false;
-            } else if (
-              apiUpdated !== s.releasesMoe.updated &&
-              Number.isFinite(next) &&
-              next > old
-            ) {
-              if (isLib) {
-                s.releasesMoe.updateAvailable = true;
-                s.releasesMoe.latestUpdated = apiUpdated;
-              } else {
-                s.releasesMoe.updated = apiUpdated;
-                s.releasesMoe.updateAvailable = false;
-              }
-            }
-          }
-          if (!isLib && forceMove) s.board = match ? "found" : "watching";
-          s.needsAnilist = false;
-          s.temporary = false;
-          s.source = "anilist";
-          s.updatedAt = new Date().toISOString();
-          const next = getBoard(s);
-          if (forceMove && prev !== next) moveBoard(s.id, prev, next);
+          const j = await r.json().catch(() => ({}));
+          applyReleaseMatch(s, j.items?.[0] || null, { forceMove });
         } catch (e) {
-          s.releasesMoe.error = e.message || "Refresh failed";
-          s.releasesMoe.checkedAt = new Date().toISOString();
+          markReleaseRefreshError(s, e);
         }
       }
       function setReleaseRefreshProgress(text, visible = true) {
@@ -1603,8 +1714,12 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const remaining = Math.max(0, count - done);
         if (!remaining) return 0;
         const elapsed = Math.max(0, Date.now() - (Number(startedAt) || Date.now()));
-        if (done < 1 || elapsed < 1000) return remaining * RELEASES_REQUEST_DELAY_MS;
-        return remaining * Math.max(RELEASES_REQUEST_DELAY_MS, elapsed / done);
+        const requestUnits = releaseBulkDisabled
+          ? remaining
+          : Math.ceil(remaining / Math.max(1, RELEASES_BULK_CHUNK_SIZE));
+        const minimum = requestUnits * RELEASES_REQUEST_DELAY_MS;
+        if (done < 1 || elapsed < 1000) return minimum;
+        return Math.max(minimum, remaining * (elapsed / Math.max(1, done)));
       }
       function releaseProgressText(action, current, total, title, startedAt, completed = Math.max(0, current - 1)) {
         const etaMs = estimatedReleaseRemainingMs(completed, total, startedAt);
@@ -1711,27 +1826,38 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           summary = { checked: 0, found: 0, errors: 0, notListed: 0 };
         const startedAt = etaState?.startedAt || Date.now();
         if (!arr.length) return summary;
+        let singleFallbackRemaining = manual ? Infinity : RELEASES_SINGLE_FALLBACK_AUTO_LIMIT;
         setStatus(`Checking ${arr.length} watching entries...`, "sync");
-        for (let i = 0; i < arr.length; i++) {
+        for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
           if (releaseQueueCancelRequested) break;
-          const s = arr[i];
-          const beforeBoard = getBoard(s);
+          const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE),
+            beforeBoards = new Map(chunk.map((s) => [s.id, getBoard(s)]));
           if (manual) {
-            const current = etaState ? etaState.completed + 1 : i + 1;
+            const current = etaState ? etaState.completed + 1 : summary.checked + 1;
             const total = etaState ? etaState.total : arr.length;
             const completed = etaState ? etaState.completed : summary.checked;
+            const label = chunk.length === 1 ? showTitle(chunk[0]) : `${chunk.length} entries`;
             setReleaseRefreshProgress(
-              releaseProgressText("Refreshing stale", current, total, showTitle(s), startedAt, completed),
+              releaseProgressText("Refreshing stale", current, total, label, startedAt, completed),
             );
           }
-          await refreshShow(s, { forceMove: true });
-          summary.checked++;
-          if (etaState) etaState.completed++;
-          if (s.releasesMoe?.error) summary.errors++;
-          else if (s.releasesMoe?.notListed) summary.notListed++;
-          if (beforeBoard === "watching" && getBoard(s) === "found")
-            summary.found++;
-          if (i < arr.length - 1 && !(await waitBetweenReleaseRequests(manual ? "Watching check:" : "")))
+          const result = await refreshReleaseChunk(chunk, {
+            forceMove: true,
+            singleFallbackLimit: singleFallbackRemaining,
+            fallbackLabel: manual ? "Watching fallback:" : "",
+          });
+          if (Number.isFinite(singleFallbackRemaining))
+            singleFallbackRemaining = Math.max(0, singleFallbackRemaining - result.singlesUsed);
+          result.processed.forEach((s) => {
+            summary.checked++;
+            if (etaState) etaState.completed++;
+            if (s.releasesMoe?.error) summary.errors++;
+            else if (s.releasesMoe?.notListed) summary.notListed++;
+            if (beforeBoards.get(s.id) === "watching" && getBoard(s) === "found")
+              summary.found++;
+          });
+          if (result.fallbackLimited) break;
+          if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests(manual ? "Watching check:" : "")))
             break;
         }
         render();
@@ -1750,34 +1876,53 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         };
         const startedAt = etaState?.startedAt || Date.now();
         if (!arr.length) return summary;
+        let singleFallbackRemaining = manual ? Infinity : RELEASES_SINGLE_FALLBACK_AUTO_LIMIT;
         setStatus(`Checking ${arr.length} library entries...`, "sync");
-        for (let i = 0; i < arr.length; i++) {
+        for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
           if (releaseQueueCancelRequested) break;
-          const s = arr[i];
-          const before = defaultRelease(s.releasesMoe),
-            hadUpdate = !!before.updateAvailable,
-            previousLatest = before.latestUpdated || "";
+          const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE);
+          const before = new Map(
+            chunk.map((s) => {
+              const release = defaultRelease(s.releasesMoe);
+              return [s.id, {
+                hadUpdate: !!release.updateAvailable,
+                previousLatest: release.latestUpdated || "",
+              }];
+            }),
+          );
           if (manual) {
-            const current = etaState ? etaState.completed + 1 : i + 1;
+            const current = etaState ? etaState.completed + 1 : summary.checked + 1;
             const total = etaState ? etaState.total : arr.length;
             const completed = etaState ? etaState.completed : summary.checked;
+            const label = chunk.length === 1 ? showTitle(chunk[0]) : `${chunk.length} entries`;
             setReleaseRefreshProgress(
-              releaseProgressText("Refreshing stale", current, total, showTitle(s), startedAt, completed),
+              releaseProgressText("Refreshing stale", current, total, label, startedAt, completed),
             );
           }
-          await refreshShow(s, { forceMove: false });
-          summary.checked++;
-          if (etaState) etaState.completed++;
-          const after = defaultRelease(s.releasesMoe);
-          if (s.releasesMoe?.error) summary.errors++;
-          else if (after.notListed) summary.notListed++;
-          if (
-            after.updateAvailable &&
-            (!hadUpdate || (after.latestUpdated || "") !== previousLatest)
-          )
-            summary.updatesFound++;
-          s.releasesMoe.libraryCheckedAt = new Date().toISOString();
-          if (i < arr.length - 1 && !(await waitBetweenReleaseRequests(manual ? "Library check:" : "")))
+          const result = await refreshReleaseChunk(chunk, {
+            forceMove: false,
+            singleFallbackLimit: singleFallbackRemaining,
+            fallbackLabel: manual ? "Library fallback:" : "",
+          });
+          if (Number.isFinite(singleFallbackRemaining))
+            singleFallbackRemaining = Math.max(0, singleFallbackRemaining - result.singlesUsed);
+          const libraryCheckedAt = new Date().toISOString();
+          result.processed.forEach((s) => {
+            summary.checked++;
+            if (etaState) etaState.completed++;
+            const prev = before.get(s.id) || { hadUpdate: false, previousLatest: "" };
+            const after = defaultRelease(s.releasesMoe);
+            if (after.error) summary.errors++;
+            else if (after.notListed) summary.notListed++;
+            if (
+              after.updateAvailable &&
+              (!prev.hadUpdate || (after.latestUpdated || "") !== prev.previousLatest)
+            )
+              summary.updatesFound++;
+            s.releasesMoe.libraryCheckedAt = libraryCheckedAt;
+          });
+          if (result.fallbackLimited) break;
+          if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests(manual ? "Library check:" : "")))
             break;
         }
         render();
@@ -1809,34 +1954,51 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         );
         try {
           suppressCloudSync = true;
-          for (let i = 0; i < arr.length; i++) {
+          for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
             if (releaseQueueCancelRequested) break;
-            const s = arr[i],
-              beforeBoard = getBoard(s),
-              before = defaultRelease(s.releasesMoe),
-              hadUpdate = !!before.updateAvailable,
-              previousLatest = before.latestUpdated || "";
-            setStatus(`Refreshing ${i + 1}/${arr.length}...`, "sync");
-            setReleaseRefreshProgress(
-              releaseProgressText("Full refresh", i + 1, arr.length, showTitle(s), startedAt, summary.checked),
+            const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE);
+            const before = new Map(
+              chunk.map((s) => {
+                const release = defaultRelease(s.releasesMoe);
+                return [s.id, {
+                  board: getBoard(s),
+                  hadUpdate: !!release.updateAvailable,
+                  previousLatest: release.latestUpdated || "",
+                }];
+              }),
             );
-            await refreshShow(s, { forceMove: true });
-            summary.checked++;
-            const after = defaultRelease(s.releasesMoe);
-            if (after.error) summary.errors++;
-            else if (after.notListed) summary.notListed++;
-            if (
-              after.updateAvailable &&
-              (!hadUpdate || (after.latestUpdated || "") !== previousLatest)
-            )
-              summary.updatesFound++;
-            if (beforeBoard === "watching" && getBoard(s) === "found")
-              summary.activeFound++;
+            const startIndex = summary.checked + 1,
+              endIndex = Math.min(summary.checked + chunk.length, arr.length),
+              label = chunk.length === 1 ? showTitle(chunk[0]) : `${chunk.length} entries`;
+            setStatus(`Refreshing ${startIndex}-${endIndex}/${arr.length}...`, "sync");
+            setReleaseRefreshProgress(
+              releaseProgressText("Full refresh", startIndex, arr.length, label, startedAt, summary.checked),
+            );
+            const result = await refreshReleaseChunk(chunk, {
+              forceMove: true,
+              singleFallbackLimit: Infinity,
+              fallbackLabel: "Full refresh fallback:",
+            });
+            result.processed.forEach((s) => {
+              summary.checked++;
+              const prev = before.get(s.id) || { board: getBoard(s), hadUpdate: false, previousLatest: "" };
+              const after = defaultRelease(s.releasesMoe);
+              if (after.error) summary.errors++;
+              else if (after.notListed) summary.notListed++;
+              if (
+                after.updateAvailable &&
+                (!prev.hadUpdate || (after.latestUpdated || "") !== prev.previousLatest)
+              )
+                summary.updatesFound++;
+              if (prev.board === "watching" && getBoard(s) === "found")
+                summary.activeFound++;
+            });
             if (summary.checked % RELEASES_FULL_REFRESH_SAVE_EVERY === 0) {
               render();
               save();
             }
-            if (i < arr.length - 1 && !(await waitBetweenReleaseRequests("Full refresh:")))
+            if (result.fallbackLimited) break;
+            if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests("Full refresh:")))
               break;
           }
           render();
@@ -3600,12 +3762,14 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             setStatus("System Ready");
           }
           try {
-            await autoCloud({ announce: true });
+            await autoCloud({ announce: false });
           } catch (e) {
             console.warn(e);
             setStatus("System Ready");
           }
-          await runAutoReleaseCheck({ announce: true, force: true });
+          setTimeout(() => {
+            runAutoReleaseCheck({ announce: false, force: false });
+          }, 10000);
         }, 0);
       }
       init();
