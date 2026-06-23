@@ -400,7 +400,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           </div>
           <div class="maintenance-box">
             <strong>Library tools</strong>
-            <p class="hint">Refresh stale checks only due entries. Release checks are grouped into small batches and still back off on rate limits.</p>
+            <p class="hint">Refresh Stale checks active Found/Watching entries after 12 hours and Library entries after 24 hours. Release checks are grouped into small batches and still back off on rate limits.</p>
             <div class="mini-actions">
               <button class="btn" id="smartGroupBtn" type="button">Smart Group</button>
               <button class="btn" id="refreshReleasesBtn" type="button">Refresh Stale</button>
@@ -465,7 +465,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       const MAX_CLOUD_SYNC_BYTES = 900000;
       const MAX_PORTABLE_COVER_BYTES = 900 * 1024;
       const AUTO_LIBRARY_RELEASE_CHECK_LIMIT = 100;
-      const LIBRARY_RELEASE_STALE_MS = 36 * 60 * 60 * 1000;
+      const ACTIVE_RELEASE_STALE_MS = 12 * 60 * 60 * 1000;
+      const LIBRARY_RELEASE_STALE_MS = 24 * 60 * 60 * 1000;
       const RELEASES_REQUEST_DELAY_MS = 1000;
       const RELEASES_BULK_CHUNK_SIZE = 50;
       const RELEASES_SINGLE_FALLBACK_AUTO_LIMIT = 25;
@@ -1727,42 +1728,39 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         const label = title ? `: ${title}` : "";
         return `${action} ${current}/${total}${label} · ETA ${formatDuration(etaMs)}${suffix}`;
       }
-      function staleWatchingEntries(now = Date.now()) {
-        return state.shows.filter(
-          (s) =>
-            s.anilistId &&
-            getBoard(s) === "watching" &&
-            !s.downloaded &&
-            now - (Date.parse(s.releasesMoe?.checkedAt || 0) || 0) >
-              12 * 60 * 60 * 1000,
-        );
+      function releaseTime(v) {
+        const t = Date.parse(v || "");
+        return Number.isFinite(t) ? t : 0;
+      }
+      function releaseLastCheckedAt(s, library = false) {
+        const checkedAt = releaseTime(s?.releasesMoe?.checkedAt);
+        if (!library) return checkedAt;
+        const libraryCheckedAt = releaseTime(s?.releasesMoe?.libraryCheckedAt);
+        return Math.max(checkedAt, libraryCheckedAt);
+      }
+      function staleActiveEntries(now = Date.now()) {
+        return state.shows
+          .filter((s) => {
+            if (!s.anilistId || getBoard(s) === "downloaded") return false;
+            return now - releaseLastCheckedAt(s) > ACTIVE_RELEASE_STALE_MS;
+          })
+          .sort(
+            (a, b) =>
+              (releaseLastCheckedAt(a) || Date.parse(a.createdAt || 0) || 0) -
+              (releaseLastCheckedAt(b) || Date.parse(b.createdAt || 0) || 0),
+          );
       }
       function staleLibraryEntries(limit = AUTO_LIBRARY_RELEASE_CHECK_LIMIT, now = Date.now()) {
         return state.shows
           .filter((s) => {
             if (!s.anilistId || getBoard(s) !== "downloaded") return false;
-            const last =
-              Date.parse(
-                s.releasesMoe?.libraryCheckedAt ||
-                  s.releasesMoe?.checkedAt ||
-                  0,
-              ) || 0;
+            const last = releaseLastCheckedAt(s, true);
             return now - last > LIBRARY_RELEASE_STALE_MS;
           })
           .sort(
             (a, b) =>
-              (Date.parse(
-                a.releasesMoe?.libraryCheckedAt ||
-                  a.releasesMoe?.checkedAt ||
-                  a.createdAt ||
-                  0,
-              ) || 0) -
-              (Date.parse(
-                b.releasesMoe?.libraryCheckedAt ||
-                  b.releasesMoe?.checkedAt ||
-                  b.createdAt ||
-                  0,
-              ) || 0),
+              (releaseLastCheckedAt(a, true) || Date.parse(a.createdAt || 0) || 0) -
+              (releaseLastCheckedAt(b, true) || Date.parse(b.createdAt || 0) || 0),
           )
           .slice(0, limit);
       }
@@ -1821,13 +1819,13 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         return !releaseQueueCancelRequested;
       }
 
-      async function checkWatching({ manual = false, entries = null, etaState = null } = {}) {
-        const arr = entries || staleWatchingEntries(),
+      async function checkActive({ manual = false, entries = null, etaState = null } = {}) {
+        const arr = entries || staleActiveEntries(),
           summary = { checked: 0, found: 0, errors: 0, notListed: 0 };
         const startedAt = etaState?.startedAt || Date.now();
         if (!arr.length) return summary;
         let singleFallbackRemaining = manual ? Infinity : RELEASES_SINGLE_FALLBACK_AUTO_LIMIT;
-        setStatus(`Checking ${arr.length} watching entries...`, "sync");
+        setStatus(`Checking ${arr.length} active entries...`, "sync");
         for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
           if (releaseQueueCancelRequested) break;
           const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE),
@@ -1844,7 +1842,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           const result = await refreshReleaseChunk(chunk, {
             forceMove: true,
             singleFallbackLimit: singleFallbackRemaining,
-            fallbackLabel: manual ? "Watching fallback:" : "",
+            fallbackLabel: manual ? "Active fallback:" : "",
           });
           if (Number.isFinite(singleFallbackRemaining))
             singleFallbackRemaining = Math.max(0, singleFallbackRemaining - result.singlesUsed);
@@ -1857,7 +1855,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               summary.found++;
           });
           if (result.fallbackLimited) break;
-          if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests(manual ? "Watching check:" : "")))
+          if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests(manual ? "Active check:" : "")))
             break;
         }
         render();
@@ -2426,7 +2424,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         if (!Number.isFinite(d)) return "Never";
         if (d < 60) return "Just now";
         if (d < 3600) return Math.floor(d / 60) + "m ago";
-        if (d < 86400) return Math.floor(d / 3600) + "h ago";
+        if (d < 72 * 3600) return Math.floor(d / 3600) + "h ago";
         return Math.floor(d / 86400) + "d ago";
       }
       function releaseLink(s) {
@@ -2535,7 +2533,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           errors =
             (Number(watching?.errors) || 0) +
             (Number(library?.errors) || 0);
-        if (totalChecked < 1) return "Nothing to check";
+        if (totalChecked < 1) return "No stale entries need checking";
         const parts = [`${totalChecked} checked`];
         if (updates > 0) parts.push(`${updates} updates`);
         if (found > 0) parts.push(`${found} new`);
@@ -2568,11 +2566,11 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         releaseQueueCancelRequested = false;
         lastAutoReleaseCheckAt = now;
 
-        const watchingEntries = staleWatchingEntries(now);
+        const activeEntries = staleActiveEntries(now);
         const libraryEntries = staleLibraryEntries(AUTO_LIBRARY_RELEASE_CHECK_LIMIT, now);
         const etaState = {
           startedAt: Date.now(),
-          total: watchingEntries.length + libraryEntries.length,
+          total: activeEntries.length + libraryEntries.length,
           completed: 0,
         };
 
@@ -2586,25 +2584,29 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             true,
           );
         }
-        if (announce && !manual) {
-          progressToast = toast("Checking releases...", "", { duration: 0 });
+        if (announce && etaState.total > 0) {
+          progressToast = toast(
+            `Refreshing ${etaState.total} stale release${etaState.total === 1 ? "" : "s"}...`,
+            "",
+            { duration: 0 },
+          );
           setStatus("Checking releases...", "sync");
         }
 
         try {
           suppressCloudSync = true;
-          const watchingSummary = await checkWatching({ manual, entries: watchingEntries, etaState });
+          const activeSummary = await checkActive({ manual, entries: activeEntries, etaState });
           const librarySummary = releaseQueueCancelRequested
             ? { checked: 0, updatesFound: 0, errors: 0, notListed: 0, pendingUpdates: updateLibraryUpdateIndicator() }
             : await checkLibrary(AUTO_LIBRARY_RELEASE_CHECK_LIMIT, { manual, entries: libraryEntries, etaState });
           const checked =
-            (Number(watchingSummary?.checked) || 0) +
+            (Number(activeSummary?.checked) || 0) +
             (Number(librarySummary?.checked) || 0);
 
           dismissToast(progressToast);
           progressToast = null;
           const summaryPayload = {
-            watching: watchingSummary,
+            watching: activeSummary,
             library: librarySummary,
           };
           const msg = autoReleaseSummaryMessage(summaryPayload);
@@ -2630,6 +2632,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           dismissToast(progressToast);
           suppressCloudSync = false;
           releaseCheckRunning = false;
+          setStatus("System Ready");
           if (manual) {
             setReleaseRefreshUi(false);
             if (els.cancelReleaseRefreshBtn) els.cancelReleaseRefreshBtn.textContent = "Cancel";
@@ -2785,7 +2788,9 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
           : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
         const downloadControl = isDl ? "" : `<input class="check" type="checkbox" data-download-id="${escapeAttr(s.id)}">`;
-        return `<article class="card ${hasUpdate ? "has-update" : ""} ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(s.releasesMoe.checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
+        const checkedAtMs = releaseLastCheckedAt(s, isDl);
+        const checkedAt = checkedAtMs ? new Date(checkedAtMs).toISOString() : "";
+        return `<article class="card ${hasUpdate ? "has-update" : ""} ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
       }
       function moveWithin(arr, id, dir) {
         const i = arr.indexOf(id),
@@ -3768,7 +3773,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             setStatus("System Ready");
           }
           setTimeout(() => {
-            runAutoReleaseCheck({ announce: false, force: false });
+            runAutoReleaseCheck({ announce: true, force: false });
           }, 10000);
         }, 0);
       }
