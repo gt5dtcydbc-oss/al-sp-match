@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kinetic Canvas Studio v100002</title>
+  <title>Kinetic Canvas Studio v100003</title>
 
   <style>
     :root {
@@ -789,7 +789,7 @@
               <p class="subtitle">Gradient · Orbit · Dither</p>
             </div>
           </div>
-          <div class="version">v100002</div>
+          <div class="version">v100003</div>
         </header>
 
         <nav class="tabs" aria-label="Tool navigation">
@@ -852,6 +852,11 @@
             </label>
 
             <label class="control">
+              <span class="control-row"><span>Blob influence</span><output id="gInfluenceOut"></output></span>
+              <input id="gInfluence" type="range" min="20" max="180" value="125">
+            </label>
+
+            <label class="control">
               <span class="control-row"><span>Grain</span><output id="gGrainOut"></output></span>
               <input id="gGrain" type="range" min="0" max="70" value="12">
             </label>
@@ -874,6 +879,11 @@
             <label class="toggle">
               <input id="gShowBlobs" type="checkbox" checked>
               Show and drag color blobs in the preview
+            </label>
+
+            <label class="toggle">
+              <input id="gAnimateBlobs" type="checkbox">
+              Animate blob drift around handles
             </label>
 
             <label class="control">
@@ -912,7 +922,7 @@
             <button class="action wide" data-export-sequence="gradient">PNG Sequence</button>
           </div>
 
-          <p class="note">Reveal the gradient blobs in the preview and drag them around directly.</p>
+          <p class="note">Drag blob handles directly: their positions now control the actual gradient centers.</p>
         </section>
 
         <section class="card" data-panel="orbit">
@@ -1213,6 +1223,7 @@
         style: "mesh",
         blobs: 8,
         softness: 74,
+        influence: 125,
         grain: 12,
         motion: 22,
         seed: 38,
@@ -1225,6 +1236,7 @@
         style: "sunset",
         blobs: 9,
         softness: 82,
+        influence: 130,
         grain: 10,
         motion: 18,
         seed: 58,
@@ -1237,6 +1249,7 @@
         style: "glow",
         blobs: 6,
         softness: 78,
+        influence: 115,
         grain: 18,
         motion: 16,
         seed: 77,
@@ -1249,6 +1262,7 @@
         style: "aurora",
         blobs: 11,
         softness: 92,
+        influence: 145,
         grain: 8,
         motion: 34,
         seed: 91,
@@ -1261,6 +1275,7 @@
         style: "mesh",
         blobs: 12,
         softness: 105,
+        influence: 135,
         grain: 4,
         motion: 28,
         seed: 14,
@@ -1388,6 +1403,7 @@
       const pairs = [
         ["gBlobs", "gBlobsOut"],
         ["gSoft", "gSoftOut"],
+        ["gInfluence", "gInfluenceOut"],
         ["gGrain", "gGrainOut"],
         ["gMotion", "gMotionOut"],
         ["gSeed", "gSeedOut"],
@@ -1577,10 +1593,12 @@
 
       $("gBlobs").value = preset.blobs;
       $("gSoft").value = preset.softness;
+      $("gInfluence").value = preset.influence ?? 125;
       $("gGrain").value = preset.grain;
       $("gMotion").value = preset.motion;
       $("gSeed").value = preset.seed;
       $("gTransparent").checked = preset.transparent;
+      $("gAnimateBlobs").checked = false;
 
       resetGradientBlobLayout();
       syncSegmentedControls();
@@ -1713,10 +1731,12 @@
       const style = state.options.gStyle;
       const blobCount = Number($("gBlobs").value);
       const softness = Number($("gSoft").value);
+      const influence = Number($("gInfluence").value) / 100;
       const grainAmount = Number($("gGrain").value);
       const motion = Number($("gMotion").value) / 100;
       const seed = Number($("gSeed").value);
       const transparent = $("gTransparent").checked;
+      const animateBlobs = $("gAnimateBlobs").checked;
 
       clearCanvas(ctx, size, size, "#000", transparent);
 
@@ -1733,8 +1753,11 @@
           background.addColorStop(1, rgba(color3, 1));
         }
 
+        ctx.save();
+        ctx.globalAlpha = Math.max(0.22, 0.78 - influence * 0.28);
         ctx.fillStyle = background;
         ctx.fillRect(0, 0, size, size);
+        ctx.restore();
       }
 
       ensureGradientBlobLayout(blobCount);
@@ -1744,18 +1767,20 @@
         const color = palette[blob.colorIndex % palette.length];
         const phase = blob.phase + seed * 0.13 + index * 1.618;
 
-        const motionScale = style === "aurora" ? 0.6 : 1;
+        const motionScale = animateBlobs ? (style === "aurora" ? 0.6 : 1) : 0;
         const driftX = Math.cos(elapsed * 0.00018 * motion * (1 + index * 0.02) + phase) * size * 0.12 * motionScale;
         const driftY = Math.sin(elapsed * 0.00016 * motion * (1 + index * 0.018) + phase * 1.3) * size * 0.12 * motionScale;
 
         const x = blob.x * size + driftX;
         const y = blob.y * size + driftY;
-        const radius = blob.radius * size * (softness / 74);
-        const alpha = style === "glow" ? 0.5 : style === "aurora" ? 0.33 : 0.42;
+        const radius = blob.radius * size * (softness / 74) * (0.82 + influence * 0.18);
+        const baseAlpha = style === "glow" ? 0.5 : style === "aurora" ? 0.33 : 0.42;
+        const alpha = clamp(baseAlpha * influence, 0.08, 0.9);
 
         const radial = ctx.createRadialGradient(x, y, 0, x, y, radius);
         radial.addColorStop(0, rgba(color, alpha));
-        radial.addColorStop(0.55, rgba(color, alpha * 0.26));
+        radial.addColorStop(0.32, rgba(color, alpha * 0.64));
+        radial.addColorStop(0.68, rgba(color, alpha * 0.18));
         radial.addColorStop(1, rgba(color, 0));
 
         ctx.fillStyle = radial;
@@ -2530,8 +2555,10 @@
       $("gSeed").value = Math.floor(Math.random() * 999) + 1;
       $("gBlobs").value = Math.floor(5 + Math.random() * 12);
       $("gSoft").value = Math.floor(45 + Math.random() * 60);
+      $("gInfluence").value = Math.floor(85 + Math.random() * 70);
       $("gGrain").value = Math.floor(Math.random() * 28);
       $("gMotion").value = Math.floor(10 + Math.random() * 45);
+      $("gAnimateBlobs").checked = false;
 
       resetGradientBlobLayout();
       renderPreview();
