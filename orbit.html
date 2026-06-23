@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kinetic Canvas Studio v100003</title>
+  <title>Kinetic Canvas Studio v100004</title>
 
   <style>
     :root {
@@ -789,7 +789,7 @@
               <p class="subtitle">Gradient · Orbit · Dither</p>
             </div>
           </div>
-          <div class="version">v100003</div>
+          <div class="version">v100004</div>
         </header>
 
         <nav class="tabs" aria-label="Tool navigation">
@@ -1030,7 +1030,7 @@
             <button class="action" data-export-sequence="orbit">PNG Sequence</button>
           </div>
 
-          <p class="note">Drag thumbnails to reorder. The top image is the center image; all others orbit around it.</p>
+          <p class="note">Drag thumbnails to reorder. With one image it displays centered; with more, the first image is the center and the rest orbit around it.</p>
         </section>
 
         <section class="card" data-panel="dither">
@@ -1849,9 +1849,30 @@
 
       const center = size / 2;
       const time = elapsed * 0.001 * speed;
-      const count = Math.max(state.orbitItems.length - 1, 6);
+      const actualOrbitCount = Math.max(0, state.orbitItems.length - 1);
+      const hasAnyImages = state.orbitItems.length > 0;
 
       clearCanvas(ctx, size, size, background, transparent);
+
+      if (state.orbitItems.length === 1 && state.orbitItems[0]?.image) {
+        const floatY = Math.sin(elapsed * 0.0018) * size * 0.012;
+        const pulse = 1 + Math.sin(elapsed * 0.0014) * 0.015;
+
+        drawImageContain(
+          ctx,
+          state.orbitItems[0].image,
+          center,
+          center + floatY,
+          centerSize * pulse,
+          centerSize * pulse,
+          1,
+          0,
+          shadow
+        );
+        return;
+      }
+
+      const count = actualOrbitCount > 0 ? actualOrbitCount : 6;
       ensureOrbitPhases(count);
 
       const orbitStates = [];
@@ -1884,7 +1905,7 @@
 
       if (state.orbitItems[0]?.image) {
         drawImageContain(ctx, state.orbitItems[0].image, center, center, centerSize, centerSize, 1, 0, shadow);
-      } else {
+      } else if (!hasAnyImages) {
         drawCenterPlaceholder(ctx, size, centerSize);
       }
 
