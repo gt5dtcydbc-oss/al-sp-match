@@ -1333,7 +1333,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           return false;
         }
       }
-      async function autoCloud({ announce = false, toastResults = announce } = {}) {
+      async function autoCloud({ announce = false, toastResults = announce, toastErrors = true } = {}) {
         if (!els.githubPat?.value.trim() || !els.gistId?.value.trim()) return;
         let progressToast = announce
           ? toast("Checking cloud...", "", { duration: 0 })
@@ -1345,8 +1345,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           if (!cloud || !cloudShows.length) {
             dismissToast(progressToast);
             progressToast = null;
-            if (toastResults)
-              toast(lastCloudPullFailed ? "Cloud unavailable" : "Cloud checked", lastCloudPullFailed ? "error" : "");
+            if (lastCloudPullFailed && toastErrors) toast("Cloud unavailable", "error");
+            else if (toastResults) toast("Cloud checked");
             return;
           }
           if (!localShows.length) {
@@ -3806,7 +3806,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             setStatus("System Ready");
           }
           try {
-            await autoCloud({ announce: false, toastResults: false });
+            await autoCloud({ announce: false, toastResults: false, toastErrors: true });
           } catch (e) {
             console.warn(e);
             setStatus("System Ready");
