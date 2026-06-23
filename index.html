@@ -778,6 +778,8 @@
     const SEARCH_DEBOUNCE_MS = 650;
     const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
+    const RECENT_RELEASE_WINDOW_MS = 36 * 60 * 60 * 1000;
+    const UPCOMING_EPISODE_PREVIEW_MS = 36 * 60 * 60 * 1000;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
     const TITLE_STOPWORDS = new Set([
@@ -1790,6 +1792,81 @@
       return /^\d{2}:\d{2}$/.test(String(value || ""));
     }
 
+    function episodeNumberFromToken(value) {
+      const cleaned = String(value ?? "").trim().replace(/v\d+$/i, "");
+      if (!cleaned) return null;
+      const number = Number(cleaned);
+      return Number.isFinite(number) && number > 0 ? number : null;
+    }
+
+    function isRecentTimestamp(timestampMs, windowMs = RECENT_RELEASE_WINDOW_MS) {
+      const safeTimestamp = Number(timestampMs);
+      if (!Number.isFinite(safeTimestamp) || safeTimestamp <= 0) return false;
+      const ageMs = Date.now() - safeTimestamp;
+      return ageMs >= 0 && ageMs <= windowMs;
+    }
+
+    function resolveEpisodeDisplayState(options = {}) {
+      const nextEpisode = Number(options.nextEpisodeNumber);
+      const totalEpisode = Number(options.totalEpisodeNumber);
+      const nextAiringAt = Number(options.nextAiringAt);
+      const nowSeconds = Number.isFinite(Number(options.nowSeconds))
+        ? Number(options.nowSeconds)
+        : Math.floor(Date.now() / 1000);
+
+      const hasNextEpisode = Number.isFinite(nextEpisode) && nextEpisode > 0;
+      const hasTotalEpisode = Number.isFinite(totalEpisode) && totalEpisode > 0;
+      const hasNextAiringAt = Number.isFinite(nextAiringAt) && nextAiringAt > 0;
+      const isUpcomingSeason = Boolean(options.isUpcomingSeason);
+      const isScheduleMoved = Boolean(options.isScheduleMoved);
+
+      const rawFinalEpisode = hasNextEpisode && hasTotalEpisode && nextEpisode === totalEpisode;
+      const finalAiringHasActuallyPassed = rawFinalEpisode && hasNextAiringAt && nextAiringAt <= nowSeconds;
+
+      let displayEpisode = hasNextEpisode ? nextEpisode : "?";
+      let episodeBasis = hasNextEpisode ? "anilist-next" : "unknown";
+
+      if (!isUpcomingSeason && !isScheduleMoved && hasNextEpisode && !finalAiringHasActuallyPassed) {
+        const latestReleasedEpisode = episodeNumberFromToken(options.matchedEpisode);
+        const latestLooksLikePreviousEpisode = (
+          latestReleasedEpisode !== null &&
+          latestReleasedEpisode < nextEpisode &&
+          (nextEpisode - latestReleasedEpisode) <= 1
+        );
+        const latestReleaseIsRecent = isRecentTimestamp(options.latestReleaseDate);
+        const nextIsStillFarAway = hasNextAiringAt
+          ? ((nextAiringAt * 1000) - Date.now()) > UPCOMING_EPISODE_PREVIEW_MS
+          : false;
+        const slotAlreadyPassedToday = (
+          WEEKDAYS.includes(options.day) &&
+          isValidTime(options.time) &&
+          hasAired(options.day, options.time, options.timeZone || DEFAULT_TIMEZONE)
+        );
+
+        if (latestLooksLikePreviousEpisode && (latestReleaseIsRecent || nextIsStillFarAway || slotAlreadyPassedToday)) {
+          displayEpisode = latestReleasedEpisode;
+          episodeBasis = "rss-latest";
+        } else if (slotAlreadyPassedToday && hasNextAiringAt && nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > (24 * 60 * 60) && nextEpisode > 1) {
+          // AniList advances to the next episode immediately after the scheduled airing time.
+          // On the same local airing day, keep the just-aired episode visible instead of
+          // jumping ahead to next week's episode, especially when next week's episode is final.
+          displayEpisode = nextEpisode - 1;
+          episodeBasis = "post-airing-estimate";
+        }
+      }
+
+      const displayEpisodeNumber = Number(displayEpisode);
+      const displayIsFinalEpisode = hasTotalEpisode && Number.isFinite(displayEpisodeNumber) && displayEpisodeNumber === totalEpisode;
+
+      return {
+        displayEpisode,
+        episodeBasis,
+        isFinalEpisode: displayIsFinalEpisode && !finalAiringHasActuallyPassed && episodeBasis === "anilist-next",
+        isFinalAired: finalAiringHasActuallyPassed,
+        isEnded: finalAiringHasActuallyPassed
+      };
+    }
+
     function overrideForMediaId(mediaId) {
       const override = state.overrides?.[String(mediaId)];
       if (!override) return null;
@@ -1865,20 +1942,14 @@
       const nowSeconds = Math.floor(Date.now() / 1000);
       const todayStr = getLocalDate(nowSeconds);
 
-      for (const entry of entries) {
-        const media = entry.media;
-        if (!media?.id) continue;
-
-        const title = titleForMedia(media);
-        const cover = coverForMedia(media);
+      function getSharedEpisodeAndScheduleState(media) {
         const nextEpisodeNumber = Number(media?.nextAiringEpisode?.episode);
         const nextAiringAt = Number(media?.nextAiringEpisode?.airingAt);
         const hasNextAiring = Number.isFinite(nextEpisodeNumber) && nextEpisodeNumber > 0;
         const totalEpisodeNumber = Number(media.episodes);
-        const totalEpisodes = Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0 ? totalEpisodeNumber : "?";
-        const displayEpisode = hasNextAiring ? nextEpisodeNumber : "?";
+        const hasTotalEpisodeNumber = Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0;
+        const totalEpisodes = hasTotalEpisodeNumber ? totalEpisodeNumber : "?";
         const isUpcomingSeason = media.status === "NOT_YET_RELEASED";
-        const isFinalEpisode = hasNextAiring && Number.isFinite(totalEpisodeNumber) && totalEpisodeNumber > 0 && nextEpisodeNumber === totalEpisodeNumber;
 
         let isScheduleMoved = false;
         let diffDays = 0;
@@ -1890,26 +1961,71 @@
           isScheduleMoved = !isUpcomingSeason && diffDays > 7;
         }
 
+        return {
+          nextEpisodeNumber,
+          nextAiringAt,
+          hasNextAiring,
+          totalEpisodeNumber,
+          totalEpisodes,
+          isUpcomingSeason,
+          isScheduleMoved,
+          diffDays
+        };
+      }
+
+      for (const entry of entries) {
+        const media = entry.media;
+        if (!media?.id) continue;
+
+        const title = titleForMedia(media);
+        const cover = coverForMedia(media);
+        const shared = getSharedEpisodeAndScheduleState(media);
+
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
-          const isFinalAired = isFinalEpisode && hasAired(override.day, override.time, timeZone);
-          const isEnded = isFinalAired;
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: shared.nextEpisodeNumber,
+            totalEpisodeNumber: shared.totalEpisodeNumber,
+            day: override.day,
+            time: override.time,
+            nextAiringAt: shared.nextAiringAt,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isScheduleMoved: shared.isScheduleMoved,
+            timeZone,
+            nowSeconds
+          });
+
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: override.day, time: override.time,
             format: media.format || "", source: "manual", sampleCount: 1, matchedTitle: "",
-            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring, totalEpisodes,
-            displayEpisode, isScheduleMoved, diffDays, isUpcomingSeason,
-            isFinalEpisode, isFinalAired, isEnded, isFinalHoldover: false,
-            nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
+            isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
+            totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
+            displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
+            isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays, isUpcomingSeason: shared.isUpcomingSeason,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
+            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
           });
           continue;
         }
 
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
-          const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= 36 * 60 * 60 * 1000;
-          const isFinalAired = isFinalEpisode && hasAired(primary.day, primary.time, timeZone);
-          const isEnded = isFinalAired;
+          const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: shared.nextEpisodeNumber,
+            totalEpisodeNumber: shared.totalEpisodeNumber,
+            matchedEpisode: primary.matchedEpisode,
+            latestReleaseDate: primary.latestReleaseDate,
+            day: primary.day,
+            time: primary.time,
+            nextAiringAt: shared.nextAiringAt,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isScheduleMoved: shared.isScheduleMoved,
+            timeZone,
+            nowSeconds
+          });
+
           items.push({
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
             format: media.format || "", source: primary.source,
@@ -1920,9 +2036,14 @@
             latestReleaseDate: primary.latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring, totalEpisodes, displayEpisode, isScheduleMoved, diffDays,
-            isUpcomingSeason, isFinalEpisode, isFinalAired, isEnded, isFinalHoldover: false,
-            nextAiringAt: Number.isFinite(nextAiringAt) ? nextAiringAt : null
+            hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
+            totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
+            displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
+            isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
+            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
           });
         }
       }
@@ -1979,12 +2100,29 @@
             item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: item.aniListNextEpisode,
+            totalEpisodeNumber: item.totalEpisodeNumber,
+            matchedEpisode: item.matchedEpisode,
+            latestReleaseDate: item.latestReleaseDate,
+            day: item.day,
+            time: item.time,
+            nextAiringAt: item.nextAiringAt,
+            isUpcomingSeason: item.isUpcomingSeason,
+            isScheduleMoved: item.isScheduleMoved,
+            timeZone: DEFAULT_TIMEZONE
+          });
+
           cache[key] = { 
             ...entry, day: item.day, time: item.time, sampleCount: item.sampleCount, 
             matchedTitle: item.matchedTitle || "", latestReleaseDate: item.latestReleaseDate || null,
             origin: "rss", updatedAt: new Date().toISOString() 
           };
-          output.push({ ...item, historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ") });
+          output.push({
+            ...item,
+            ...episodeState,
+            historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
+          });
           continue;
         }
 
@@ -1995,12 +2133,31 @@
           const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
           const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
           
-          const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= 36 * 60 * 60 * 1000;
+          const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
           
+          const latestRememberedEpisode = rememberedHistory.length
+            ? rememberedHistory[rememberedHistory.length - 1]?.episode
+            : item.matchedEpisode;
+
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: item.aniListNextEpisode,
+            totalEpisodeNumber: item.totalEpisodeNumber,
+            matchedEpisode: latestRememberedEpisode,
+            latestReleaseDate: entry.latestReleaseDate,
+            day: item.day,
+            time: rememberedTime,
+            nextAiringAt: item.nextAiringAt,
+            isUpcomingSeason: item.isUpcomingSeason,
+            isScheduleMoved: item.isScheduleMoved,
+            timeZone: DEFAULT_TIMEZONE
+          });
+
           output.push({
             ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
             matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
+            matchedEpisode: latestRememberedEpisode || item.matchedEpisode || null,
             isFreshRss: isFreshRss || false,
+            ...episodeState,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
 
@@ -2306,7 +2463,17 @@
 
     function topLeftBadgeHTML(item) {
       const diffDays = Number(item?.diffDays);
-      const shouldShowCountdown = (item?.isScheduleMoved || item?.isUpcomingSeason) && Number.isFinite(diffDays) && diffDays > 0;
+      if (!Number.isFinite(diffDays) || diffDays <= 0) {
+        return '<div></div>';
+      }
+
+      const isUpcomingFutureStart = Boolean(item?.isUpcomingSeason);
+      const isMovedCurrentShow = Boolean(item?.isScheduleMoved);
+
+      // Keep normal next-week season starts visually clean.
+      // A future-start badge is only useful once the start is beyond the coming week.
+      const shouldShowCountdown = isMovedCurrentShow || (isUpcomingFutureStart && diffDays > 7);
+
       if (shouldShowCountdown) {
         return `<span class="badge-chip countdown">${escapeHtml(diffDays)}d</span>`;
       }
@@ -2445,6 +2612,9 @@
           isFinalHoldover: true,
           hasNextAiring: false,
           displayEpisode: item.displayEpisode || item.totalEpisodes || "?",
+          episodeBasis: item.episodeBasis || "final-holdover",
+          totalEpisodeNumber: item.totalEpisodeNumber || null,
+          aniListNextEpisode: item.aniListNextEpisode || null,
           isScheduleMoved: false,
           isUpcomingSeason: false,
           diffDays: 0,
