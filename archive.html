@@ -154,7 +154,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 @keyframes pulseSync { 0% { box-shadow: 0 0 0 0 rgba(139,150,255,.4); } 70% { box-shadow: 0 0 0 6px rgba(139,150,255,0); } 100% { box-shadow: 0 0 0 0 rgba(139,150,255,0); } }
 .activity-indicator { position: fixed; top: calc(16px + env(safe-area-inset-top)); right: calc(16px + env(safe-area-inset-right)); z-index: 1200; display: inline-flex; align-items: center; gap: 8px; min-height: 34px; max-width: min(280px, calc(100vw - 32px)); padding: 0 12px; border-radius: 999px; background: rgba(20,24,34,.88); border: 1px solid rgba(139,150,255,.3); color: var(--text); box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: .78rem; font-weight: 850; pointer-events: none; }
 .activity-indicator[hidden] { display: none; }
-.activity-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 0 rgba(139,150,255,.4); animation: pulseSync 1.1s infinite ease-in-out; }
+.activity-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,.45); animation: pulseActivity 1.1s infinite ease-in-out; }
+@keyframes pulseActivity { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.45); } 70% { box-shadow: 0 0 0 6px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
 .activity-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 @media (max-width: 520px) { .activity-indicator { top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); min-height: 30px; padding-inline: 10px; } .activity-label { display: none; } }
 .maintenance-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
@@ -460,9 +461,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 <div class="toast-area" id="toastArea"></div>
 
 <script>
-
-
-      const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+const ANILIST_ENDPOINT = "https://graphql.anilist.co";
       const RELEASES_ENDPOINT =
         "https://releases.moe/api/collections/entries/records";
       const STORAGE_KEY = "anilist-releases-board:v2";
@@ -517,7 +516,10 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         lastLibraryUpdateToastCount = null,
         suppressCloudSync = false,
         releaseQueueCancelRequested = false,
-        releaseBulkDisabled = false;
+        releaseBulkDisabled = false,
+        activityCount = 0,
+        activityHideTimer = null,
+        activityLabel = "Working...";
       const RESUME_RELEASE_CHECK_STALE_MS = 15 * 60 * 1000;
       const commentTimers = new Map(),
         groupNameTimers = new Map();
@@ -592,7 +594,19 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
       };
 
       function on(el, ev, fn, opt) {
-        if (el) el.addEventListener(ev, fn, opt);
+        if (!el) return;
+        el.addEventListener(
+          ev,
+          function (...args) {
+            const result = fn.apply(this, args);
+            if (result && typeof result.then === "function") {
+              const endActivity = beginActivity(activityLabel || "Working...");
+              return result.finally(endActivity);
+            }
+            return result;
+          },
+          opt,
+        );
       }
       function escapeHtml(v) {
         return String(v ?? "")
@@ -623,6 +637,48 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           addMode: "search",
         };
       }
+      function setActivityLabel(text) {
+        const label = String(text || "").trim();
+        if (label && label !== "System Ready") activityLabel = label;
+        if (activityCount > 0 && els.activityIndicatorText)
+          els.activityIndicatorText.textContent = activityLabel || "Working...";
+      }
+      function updateActivityIndicator() {
+        if (!els.activityIndicator) return;
+        clearTimeout(activityHideTimer);
+        if (activityCount > 0) {
+          els.activityIndicator.hidden = false;
+          if (els.activityIndicatorText)
+            els.activityIndicatorText.textContent = activityLabel || "Working...";
+        } else {
+          activityHideTimer = setTimeout(() => {
+            if (activityCount === 0 && els.activityIndicator)
+              els.activityIndicator.hidden = true;
+          }, 220);
+        }
+      }
+      function beginActivity(label = "Working...") {
+        if (label) setActivityLabel(label);
+        activityCount += 1;
+        updateActivityIndicator();
+        let ended = false;
+        return () => {
+          if (ended) return;
+          ended = true;
+          activityCount = Math.max(0, activityCount - 1);
+          updateActivityIndicator();
+        };
+      }
+      async function withActivity(label, fn) {
+        const endActivity = beginActivity(label);
+        try {
+          return await fn();
+        } finally {
+          endActivity();
+        }
+      }
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = (...args) => withActivity("Working...", () => nativeFetch(...args));
       function setStatus(text, mode = "ready") {
         if (!els.statusText || !els.statusDot) return;
         els.statusText.textContent = text;
@@ -630,9 +686,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
           mode === "sync" ? "dot sync" : mode === "error" ? "dot err" : "dot";
 
         const statusText = String(text || "").trim();
-        const isBusy = mode === "sync" || (mode !== "error" && statusText && statusText !== "System Ready");
-        if (els.activityIndicator) els.activityIndicator.hidden = !isBusy;
-        if (els.activityIndicatorText) els.activityIndicatorText.textContent = statusText || "Working...";
+        if (mode === "sync" || (mode !== "error" && statusText && statusText !== "System Ready"))
+          setActivityLabel(statusText || "Working...");
       }
       function toast(msg, type = "", options = {}) {
         if (!els.toastArea) return null;
@@ -1683,7 +1738,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
               const m = window._searchResults.find(
                 (x) => mediaKey(x) === b.dataset.addKey,
               );
-              if (m) addShow(m);
+              if (m) return addShow(m);
             }),
           );
           setStatus("System Ready");
@@ -3595,7 +3650,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         on(els.searchInput, "input", debounce(runSearch, 350));
         on(els.searchInput, "keydown", (e) => {
           if (e.key === "Escape") els.results.classList.remove("open");
-          if (e.key === "Enter") runSearch();
+          if (e.key === "Enter") return runSearch();
         });
         
         // Allow the Enter key to submit the Manual Add form
@@ -3605,7 +3660,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             on(input, "keydown", (e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                addManual();
+                return addManual();
               }
             });
           }
@@ -3705,10 +3760,11 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
             (x) => mediaKey(x) === b.dataset.addExplore,
           );
           if (m) {
-            addShow(m);
-            b.textContent = "Added ✓";
-            b.classList.remove("primary");
-            b.disabled = true;
+            return addShow(m).finally(() => {
+              b.textContent = "Added ✓";
+              b.classList.remove("primary");
+              b.disabled = true;
+            });
           }
         });
       }
@@ -3816,26 +3872,26 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
         setTimeout(async () => {
           if (startupTasksStarted) return;
           startupTasksStarted = true;
-          try {
-            await hydrateWorkingStorage();
-          } catch (e) {
-            console.warn(e);
-            setStatus("System Ready");
-          }
-          try {
-            await autoCloud({ announce: false, toastResults: false, toastErrors: true });
-          } catch (e) {
-            console.warn(e);
-            setStatus("System Ready");
-          }
+          await withActivity("Starting...", async () => {
+            try {
+              await hydrateWorkingStorage();
+            } catch (e) {
+              console.warn(e);
+              setStatus("System Ready");
+            }
+            try {
+              await autoCloud({ announce: false, toastResults: false, toastErrors: true });
+            } catch (e) {
+              console.warn(e);
+              setStatus("System Ready");
+            }
+          });
           setTimeout(() => {
-            runAutoReleaseCheck({ announce: true, force: false });
+            withActivity("Checking releases...", () => runAutoReleaseCheck({ announce: true, force: false }));
           }, 10000);
         }, 0);
       }
       init();
-      
-
 </script>
 </body>
 </html>
