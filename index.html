@@ -1730,7 +1730,9 @@
 
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
       const airDateKey = String(holdover?.airDateKey || "");
-      if (!airDateKey) return false;
+      const airingAtMs = Number(holdover?.airingAtMs);
+      if (!airDateKey || !Number.isFinite(airingAtMs) || airingAtMs <= 0) return false;
+      if (Date.now() < airingAtMs) return false;
       return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
     }
 
@@ -1817,51 +1819,16 @@
       const hasNextEpisode = Number.isFinite(nextEpisode) && nextEpisode > 0;
       const hasTotalEpisode = Number.isFinite(totalEpisode) && totalEpisode > 0;
       const hasNextAiringAt = Number.isFinite(nextAiringAt) && nextAiringAt > 0;
-      const isUpcomingSeason = Boolean(options.isUpcomingSeason);
-      const isScheduleMoved = Boolean(options.isScheduleMoved);
 
-      const rawFinalEpisode = hasNextEpisode && hasTotalEpisode && nextEpisode === totalEpisode;
-      const finalAiringHasActuallyPassed = rawFinalEpisode && hasNextAiringAt && nextAiringAt <= nowSeconds;
-
-      let displayEpisode = hasNextEpisode ? nextEpisode : "?";
-      let episodeBasis = hasNextEpisode ? "anilist-next" : "unknown";
-
-      if (!isUpcomingSeason && !isScheduleMoved && hasNextEpisode && !finalAiringHasActuallyPassed) {
-        const latestReleasedEpisode = episodeNumberFromToken(options.matchedEpisode);
-        const latestLooksLikePreviousEpisode = (
-          latestReleasedEpisode !== null &&
-          latestReleasedEpisode < nextEpisode &&
-          (nextEpisode - latestReleasedEpisode) <= 1
-        );
-        const latestReleaseIsRecent = isRecentTimestamp(options.latestReleaseDate);
-        const nextIsStillFarAway = hasNextAiringAt
-          ? ((nextAiringAt * 1000) - Date.now()) > UPCOMING_EPISODE_PREVIEW_MS
-          : false;
-        const slotAlreadyPassedToday = (
-          WEEKDAYS.includes(options.day) &&
-          isValidTime(options.time) &&
-          hasAired(options.day, options.time, options.timeZone || DEFAULT_TIMEZONE)
-        );
-
-        if (latestLooksLikePreviousEpisode && (latestReleaseIsRecent || nextIsStillFarAway || slotAlreadyPassedToday)) {
-          displayEpisode = latestReleasedEpisode;
-          episodeBasis = "rss-latest";
-        } else if (slotAlreadyPassedToday && hasNextAiringAt && nextAiringAt > nowSeconds && (nextAiringAt - nowSeconds) > (24 * 60 * 60) && nextEpisode > 1) {
-          // AniList advances to the next episode immediately after the scheduled airing time.
-          // On the same local airing day, keep the just-aired episode visible instead of
-          // jumping ahead to next week's episode, especially when next week's episode is final.
-          displayEpisode = nextEpisode - 1;
-          episodeBasis = "post-airing-estimate";
-        }
-      }
-
-      const displayEpisodeNumber = Number(displayEpisode);
-      const displayIsFinalEpisode = hasTotalEpisode && Number.isFinite(displayEpisodeNumber) && displayEpisodeNumber === totalEpisode;
+      // Normal shows should not be held back. Use AniList's current next episode
+      // directly, and only apply special handling when that next episode is the finale.
+      const isFinalEpisode = hasNextEpisode && hasTotalEpisode && nextEpisode === totalEpisode;
+      const finalAiringHasActuallyPassed = isFinalEpisode && hasNextAiringAt && nextAiringAt <= nowSeconds;
 
       return {
-        displayEpisode,
-        episodeBasis,
-        isFinalEpisode: displayIsFinalEpisode && !finalAiringHasActuallyPassed && episodeBasis === "anilist-next",
+        displayEpisode: hasNextEpisode ? nextEpisode : "?",
+        episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
+        isFinalEpisode,
         isFinalAired: finalAiringHasActuallyPassed,
         isEnded: finalAiringHasActuallyPassed
       };
@@ -2387,8 +2354,11 @@
         html += `<div>`;
         for (const dayBlock of grouped) {
           
+          const dayItems = items.filter(i => i.day === dayBlock.day);
+          const hasVisibleFinalHoldover = dayItems.some(i => Boolean(i.isFinalHoldover || i.isFinalAired));
+
           let isAutoCollapsed = false;
-          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
+          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day) && !hasVisibleFinalHoldover) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
             for (const slot of dayBlock.slots) {
@@ -2403,7 +2373,6 @@
           }
 
           const collapsed = state.collapsedDays.has(dayBlock.day) || isAutoCollapsed;
-          const dayItems = items.filter(i => i.day === dayBlock.day);
           
           const activeItems = dayItems.filter(i => isBoardCountableItem(i, DEFAULT_TIMEZONE));
           const totalCount = activeItems.length;
@@ -2485,11 +2454,12 @@
       const coverUrl = item.cover || "";
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
-      const isFinal = Boolean(item.isFinalEpisode || item.isFinalHoldover);
+      const isFinal = Boolean(item.isFinalEpisode || item.isFinalAired || item.isFinalHoldover);
       const isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
-      const shouldShowEpisode = !isEnded && (item.hasNextAiring || isFinal || item.displayEpisode !== "?");
+      const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
+      const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?");
       const episodeHTML = shouldShowEpisode
-        ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${isFinal ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
+        ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
         : '';
 
       const imageHTML = coverUrl 
@@ -2645,10 +2615,11 @@
       const cached = await applyCache(built);
       await rememberFinalEpisodes(cached);
 
-      const existingIds = new Set(cached.map(item => String(item.id)));
-      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(existingIds);
+      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
+      const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
+      const cachedWithoutVisibleHoldovers = cached.filter(item => !visibleFinalHoldoverIds.has(String(item.id)));
 
-      state.items = [...cached, ...visibleFinalHoldovers].sort((a, b) =>
+      state.items = [...cachedWithoutVisibleHoldovers, ...visibleFinalHoldovers].sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
       renderSummary(state.items, state.primaryCandidates.length);
