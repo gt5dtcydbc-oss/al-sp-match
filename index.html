@@ -2380,7 +2380,7 @@
           const hasVisibleFinalHoldover = dayItems.some(i => Boolean(i.isFinalHoldover || i.isFinalAired));
 
           let isAutoCollapsed = false;
-          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day) && !hasVisibleFinalHoldover) {
+          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
             for (const slot of dayBlock.slots) {
