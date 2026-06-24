@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kinetic Canvas Studio v100004</title>
+  <title>Canvas Tools v100005</title>
 
   <style>
     :root {
-      --bg: #050505;
+      --bg: #030303;
       --surface-0: #080808;
-      --surface-1: rgba(15, 15, 15, 0.92);
-      --surface-2: rgba(255, 255, 255, 0.055);
-      --surface-3: rgba(255, 255, 255, 0.095);
+      --surface-1: rgba(12, 12, 12, 0.96);
+      --surface-2: rgba(255, 255, 255, 0.045);
+      --surface-3: rgba(255, 255, 255, 0.075);
       --surface-4: rgba(255, 255, 255, 0.135);
       --line: rgba(255, 255, 255, 0.12);
       --line-strong: rgba(255, 255, 255, 0.22);
@@ -21,10 +21,10 @@
       --white: #ffffff;
       --black: #050505;
       --danger: #ff5f57;
-      --radius-xl: 30px;
-      --radius-lg: 22px;
-      --radius-md: 16px;
-      --shadow-lg: 0 42px 150px rgba(0, 0, 0, 0.52);
+      --radius-xl: 22px;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --shadow-lg: 0 28px 90px rgba(0, 0, 0, 0.48);
       --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -44,10 +44,7 @@
 
     body {
       min-height: 100vh;
-      background:
-        radial-gradient(circle at 82% 8%, rgba(255, 255, 255, 0.085), transparent 30%),
-        radial-gradient(circle at 18% 86%, rgba(255, 255, 255, 0.045), transparent 30%),
-        linear-gradient(135deg, #050505, #080808 48%, #040404);
+      background: #030303;
     }
 
     button,
@@ -63,26 +60,24 @@
     .app {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 460px minmax(0, 1fr);
+      grid-template-columns: 420px minmax(0, 1fr);
     }
 
     .sidebar {
       min-height: 100vh;
-      padding: 20px;
+      padding: 14px;
       border-right: 1px solid var(--line);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
-        rgba(8, 8, 8, 0.94);
-      backdrop-filter: blur(26px);
+      background: rgba(7, 7, 7, 0.98);
+      backdrop-filter: blur(18px);
       position: relative;
       z-index: 10;
     }
 
     .panel {
-      min-height: calc(100vh - 40px);
+      min-height: calc(100vh - 32px);
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 12px;
     }
 
     .brand {
@@ -109,13 +104,13 @@
       place-items: center;
       font-weight: 950;
       letter-spacing: -0.09em;
-      box-shadow: 0 18px 40px rgba(255, 255, 255, 0.12);
+      box-shadow: none;
       flex: 0 0 auto;
     }
 
     h1 {
       margin: 0;
-      font-size: 18px;
+      font-size: 17px;
       letter-spacing: -0.05em;
       line-height: 1;
     }
@@ -145,8 +140,8 @@
 
     .tab {
       border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 13px 12px;
+      border-radius: 14px;
+      padding: 11px 10px;
       background: var(--surface-2);
       color: var(--muted);
       cursor: pointer;
@@ -198,7 +193,7 @@
     }
 
     .card-header {
-      padding: 16px 17px 13px;
+      padding: 13px 14px 11px;
       border-bottom: 1px solid var(--line);
       display: flex;
       align-items: center;
@@ -220,9 +215,9 @@
     }
 
     .controls {
-      padding: 16px;
+      padding: 14px;
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .control {
@@ -318,7 +313,7 @@
       gap: 8px;
       padding: 4px;
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: 14px;
       background: rgba(255, 255, 255, 0.05);
     }
 
@@ -381,7 +376,7 @@
     .upload {
       position: relative;
       border: 1px dashed var(--line-strong);
-      border-radius: 18px;
+      border-radius: 14px;
       padding: 14px;
       background: rgba(255, 255, 255, 0.04);
       transition: 160ms ease;
@@ -436,7 +431,7 @@
     .button:hover,
     button.action:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 34px rgba(255, 255, 255, 0.12);
+      box-shadow: none;
     }
 
     .button.secondary,
@@ -601,16 +596,9 @@
       aspect-ratio: 1;
       position: relative;
       border: 1px solid var(--line);
-      border-radius: 36px;
+      border-radius: 14px;
       overflow: hidden;
-      background:
-        linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
-        linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
-        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
-        #080808;
-      background-size: 24px 24px;
-      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      background: #080808;
       box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
       display: grid;
       place-items: center;
@@ -678,14 +666,14 @@
     .help {
       width: min(720px, calc(100% - 48px));
       padding: 13px 14px;
-      border-radius: 18px;
+      border-radius: 14px;
       color: var(--muted);
       background: rgba(10, 10, 10, 0.58);
       backdrop-filter: blur(18px);
       border: 1px solid var(--line);
       text-align: center;
       font-size: 12px;
-      line-height: 1.45;
+      line-height: 1.35;
     }
 
     .toast {
@@ -701,7 +689,7 @@
       backdrop-filter: blur(18px);
       color: var(--text);
       font-size: 12px;
-      line-height: 1.45;
+      line-height: 1.35;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
       opacity: 0;
       transform: translateY(10px);
@@ -783,34 +771,34 @@
       <div class="panel">
         <header class="brand">
           <div class="brand-left">
-            <div class="logo">KC</div>
+            <div class="logo">CT</div>
             <div>
-              <h1>Kinetic Canvas Studio</h1>
-              <p class="subtitle">Gradient · Orbit · Dither</p>
+              <h1>Canvas Tools</h1>
+              <p class="subtitle">/gradient /orbit /dither</p>
             </div>
           </div>
-          <div class="version">v100004</div>
+          <div class="version">v100005</div>
         </header>
 
         <nav class="tabs" aria-label="Tool navigation">
           <button class="tab active" data-tool="gradient">
             <strong>Gradient</strong>
-            <span>Animated mesh backgrounds</span>
+            <span>mesh</span>
           </button>
           <button class="tab" data-tool="orbit">
             <strong>Orbit</strong>
-            <span>Front-facing image carousel</span>
+            <span>images</span>
           </button>
           <button class="tab" data-tool="dither">
             <strong>Dither</strong>
-            <span>Halftone, Bayer, ASCII</span>
+            <span>texture</span>
           </button>
         </nav>
 
         <section class="card active" data-panel="gradient">
           <div class="card-header">
             <h2 class="card-title">Gradient Studio</h2>
-            <span class="card-meta">PNG / sequence</span>
+            <span class="card-meta">png / frames</span>
           </div>
 
           <div class="controls">
@@ -873,21 +861,21 @@
 
             <label class="toggle">
               <input id="gTransparent" type="checkbox">
-              Transparent background
+              Transparent
             </label>
 
             <label class="toggle">
               <input id="gShowBlobs" type="checkbox" checked>
-              Show and drag color blobs in the preview
+              Show blobs
             </label>
 
             <label class="toggle">
               <input id="gAnimateBlobs" type="checkbox">
-              Animate blob drift around handles
+              Drift
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Export resolution</span></span>
+              <span class="control-row"><span>Size</span></span>
               <div class="segmented cols-3" data-bind="gResolution">
                 <button type="button" data-value="720">720</button>
                 <button type="button" data-value="1080">1080</button>
@@ -896,7 +884,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Sequence duration</span></span>
+              <span class="control-row"><span>Duration</span></span>
               <div class="segmented cols-3" data-bind="gDuration">
                 <button type="button" data-value="3">3s</button>
                 <button type="button" data-value="5">5s</button>
@@ -905,7 +893,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Sequence frame rate</span></span>
+              <span class="control-row"><span>FPS</span></span>
               <div class="segmented cols-3" data-bind="gFps">
                 <button type="button" data-value="24">24fps</button>
                 <button type="button" data-value="30">30fps</button>
@@ -915,20 +903,20 @@
           </div>
 
           <div class="button-grid">
-            <button class="action" id="gRandom">Randomize</button>
+            <button class="action" id="gRandom">Random</button>
             <button class="secondary" id="gResetBlobs">Reset blobs</button>
             <button class="secondary" id="gPause">Pause</button>
             <button class="secondary" data-export-still="gradient">PNG</button>
-            <button class="action wide" data-export-sequence="gradient">PNG Sequence</button>
+            <button class="action wide" data-export-sequence="gradient">Frames ZIP</button>
           </div>
 
-          <p class="note">Drag blob handles directly: their positions now control the actual gradient centers.</p>
+          <p class="note">Drag blobs to shape the gradient.</p>
         </section>
 
         <section class="card" data-panel="orbit">
           <div class="card-header">
             <h2 class="card-title">Orbit Studio</h2>
-            <span class="card-meta">AE-friendly export</span>
+            <span class="card-meta">png / frames</span>
           </div>
 
           <div class="controls">
@@ -943,8 +931,8 @@
             </label>
 
             <label class="upload" id="orbitDrop">
-              <strong>Upload orbit images</strong>
-              <span id="orbitStatus">First image becomes the center. Drag items below to reorder.</span>
+              <strong>Images</strong>
+              <span id="orbitStatus">1 image = center. 2+ images = orbit.</span>
               <input id="orbitFiles" type="file" accept="image/*" multiple>
             </label>
 
@@ -957,7 +945,7 @@
 
             <label class="toggle">
               <input id="oTransparent" type="checkbox">
-              Transparent background
+              Transparent
             </label>
 
             <label class="toggle">
@@ -996,7 +984,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Export resolution</span></span>
+              <span class="control-row"><span>Size</span></span>
               <div class="segmented cols-3" data-bind="oResolution">
                 <button type="button" data-value="720">720</button>
                 <button type="button" data-value="1080">1080</button>
@@ -1005,7 +993,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Sequence duration</span></span>
+              <span class="control-row"><span>Duration</span></span>
               <div class="segmented cols-3" data-bind="oDuration">
                 <button type="button" data-value="3">3s</button>
                 <button type="button" data-value="5">5s</button>
@@ -1014,7 +1002,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Sequence frame rate</span></span>
+              <span class="control-row"><span>FPS</span></span>
               <div class="segmented cols-3" data-bind="oFps">
                 <button type="button" data-value="24">24fps</button>
                 <button type="button" data-value="30">30fps</button>
@@ -1027,22 +1015,22 @@
             <button class="action" id="oShuffle">Shuffle</button>
             <button class="secondary" id="oPause">Pause</button>
             <button class="secondary" data-export-still="orbit">PNG</button>
-            <button class="action" data-export-sequence="orbit">PNG Sequence</button>
+            <button class="action" data-export-sequence="orbit">Frames ZIP</button>
           </div>
 
-          <p class="note">Drag thumbnails to reorder. With one image it displays centered; with more, the first image is the center and the rest orbit around it.</p>
+          <p class="note">1 image = center. 2+ images = orbit. Drag to reorder.</p>
         </section>
 
         <section class="card" data-panel="dither">
           <div class="card-header">
             <h2 class="card-title">Dither Studio</h2>
-            <span class="card-meta">Image texture tool</span>
+            <span class="card-meta">png / frames</span>
           </div>
 
           <div class="controls">
             <label class="upload" id="ditherDrop">
-              <strong>Upload image</strong>
-              <span id="ditherStatus">Drop or choose an image to dither.</span>
+              <strong>Image</strong>
+              <span id="ditherStatus">Drop or choose an image.</span>
               <input id="ditherFile" type="file" accept="image/*">
             </label>
 
@@ -1083,16 +1071,16 @@
 
             <label class="toggle">
               <input id="dTransparent" type="checkbox">
-              Transparent paper
+              Transparent
             </label>
 
             <label class="toggle">
               <input id="dBeforeAfter" type="checkbox">
-              Before / after split preview
+              Split preview
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Export resolution</span></span>
+              <span class="control-row"><span>Size</span></span>
               <div class="segmented cols-3" data-bind="dResolution">
                 <button type="button" data-value="720">720</button>
                 <button type="button" data-value="1080">1080</button>
@@ -1101,7 +1089,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Sequence duration</span></span>
+              <span class="control-row"><span>Duration</span></span>
               <div class="segmented cols-3" data-bind="dDuration">
                 <button type="button" data-value="3">3s</button>
                 <button type="button" data-value="5">5s</button>
@@ -1110,7 +1098,7 @@
             </label>
 
             <label class="control">
-              <span class="control-row"><span>Sequence frame rate</span></span>
+              <span class="control-row"><span>FPS</span></span>
               <div class="segmented cols-3" data-bind="dFps">
                 <button type="button" data-value="24">24fps</button>
                 <button type="button" data-value="30">30fps</button>
@@ -1123,13 +1111,13 @@
             <button class="action" id="dInvert">Invert</button>
             <button class="secondary" id="dPause">Pause</button>
             <button class="secondary" data-export-still="dither">PNG</button>
-            <button class="action" data-export-sequence="dither">PNG Sequence</button>
+            <button class="action" data-export-sequence="dither">Frames ZIP</button>
           </div>
 
-          <p class="note">Dither sequences animate the threshold subtly for living texture plates.</p>
+          <p class="note">Upload image. Pick mode. Export.</p>
         </section>
 
-        <p class="footer-note">Local only. No libraries. No uploads. Built for quick motion-design experiments.</p>
+        <p class="footer-note">Local. Single HTML. No upload.</p>
       </div>
     </aside>
 
@@ -1147,7 +1135,7 @@
           <canvas id="canvas" width="1080" height="1080"></canvas>
           <div id="blobOverlay" class="blob-overlay"></div>
         </div>
-        <div class="help" id="helpText">Polished animated gradients with transparent PNG and sequence export.</div>
+        <div class="help" id="helpText">Drag blobs. Export PNG or frames.</div>
       </div>
     </main>
   </div>
@@ -1156,15 +1144,14 @@
 
   <script>
     /**************************************************************************
-     * Kinetic Canvas Studio v100000
+     * Canvas Tools
      *
-     * Single-file local creative tool:
-     * - Gradient Studio
-     * - Orbit Studio
-     * - Dither Studio
+     * Single-file local tools:
+     * - Gradient
+     * - Orbit
+     * - Dither
      *
-     * No external libraries. No network calls. Exports PNG stills and PNG
-     * sequences packed into ZIP files for After Effects.
+     * No external libraries. No network calls.
      **************************************************************************/
 
     const PREVIEW_SIZE = 1080;
@@ -1319,8 +1306,8 @@
     };
 
     const helpTextByTool = {
-      gradient: "Polished animated gradients with transparent PNG and sequence export.",
-      orbit: "Upload images, reorder them, and export a front-facing orbit as PNG frames.",
+      gradient: " animated gradients with transparent PNG and sequence export.",
+      orbit: "Images, reorder them, and export a front-facing orbit as PNG frames.",
       dither: "Turn an uploaded image into Bayer, threshold, halftone, or ASCII dither."
     };
 
@@ -2023,7 +2010,7 @@
     function updateOrbitStatus() {
       $("orbitStatus").textContent = state.orbitItems.length
         ? `${state.orbitItems.length} image${state.orbitItems.length === 1 ? "" : "s"} loaded. Drag to reorder.`
-        : "First image becomes the center. Drag items below to reorder.";
+        : "1 image = center. 2+ images = orbit.";
     }
 
     async function handleOrbitFiles(fileList) {
