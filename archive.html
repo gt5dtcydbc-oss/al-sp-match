@@ -1342,7 +1342,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           gid = els.gistId?.value.trim() || "";
         lastCloudPullFailed = false;
         if (!pat || !gid) return null;
-        setStatus("Checking cloud...", "sync");
+        setStatus("Pulling from Cloud...", "sync");
         try {
           const r = await fetch(
             `https://api.github.com/gists/${encodeURIComponent(gid)}`,
@@ -1378,7 +1378,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           );
           return false;
         }
-        setStatus("Pushing to cloud...", "sync");
+        setStatus("Saving to Cloud...", "sync");
         try {
           const r = await fetch(
             `https://api.github.com/gists/${encodeURIComponent(gid)}`,
@@ -1408,7 +1408,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
       async function autoCloud({ announce = false, toastResults = announce, toastErrors = true } = {}) {
         if (!els.githubPat?.value.trim() || !els.gistId?.value.trim()) return;
         let progressToast = announce
-          ? toast("Checking cloud...", "", { duration: 0 })
+          ? toast("Pulling from Cloud...", "", { duration: 0 })
           : null;
         try {
           const cloud = await pullFromCloud();
@@ -2718,7 +2718,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           } else {
             suppressCloudSync = false;
             if (checked > 0) {
-              updateToast(progressToast, hasCloudCredentials() ? `${checked} checked. Backing up changes...` : `${checked} checked. Finishing...`);
+              updateToast(progressToast, hasCloudCredentials() ? `${checked} checked. Saving to Cloud...` : `${checked} checked. Finishing...`);
             }
             const cloud = checked > 0
               ? await syncReleaseRefreshToCloud()
@@ -3874,21 +3874,27 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           startupTasksStarted = true;
           await withActivity("Starting...", async () => {
             try {
+              setActivityLabel("Loading board...");
               await hydrateWorkingStorage();
             } catch (e) {
               console.warn(e);
               setStatus("System Ready");
             }
             try {
-              await autoCloud({ announce: false, toastResults: false, toastErrors: true });
+              if (hasCloudCredentials()) setActivityLabel("Pulling from Cloud...");
+              await autoCloud({ announce: true, toastResults: true, toastErrors: true });
+            } catch (e) {
+              console.warn(e);
+              setStatus("System Ready");
+            }
+            try {
+              setActivityLabel("Checking releases...");
+              await runAutoReleaseCheck({ announce: true, force: false });
             } catch (e) {
               console.warn(e);
               setStatus("System Ready");
             }
           });
-          setTimeout(() => {
-            withActivity("Checking releases...", () => runAutoReleaseCheck({ announce: true, force: false }));
-          }, 10000);
         }, 0);
       }
       init();
