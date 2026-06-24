@@ -1718,7 +1718,18 @@
       const safeTimestamp = Number(timestampMs);
       const safeDate = Number.isFinite(safeTimestamp) ? new Date(safeTimestamp) : new Date();
       if (!Number.isFinite(safeDate.getTime())) return "";
-      return safeDate.toLocaleDateString("en-CA", { timeZone });
+
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(safeDate);
+
+      const lookup = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return lookup.year && lookup.month && lookup.day
+        ? `${lookup.year}-${lookup.month}-${lookup.day}`
+        : "";
     }
 
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
@@ -1734,6 +1745,17 @@
       if (!airDateKey || !Number.isFinite(airingAtMs) || airingAtMs <= 0) return false;
       if (Date.now() < airingAtMs) return false;
       return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
+    }
+
+    function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
+
+      const airingAtSeconds = Number(item?.nextAiringAt);
+      if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
+
+      const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
+      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+      return Boolean(airDateKey && todayKey && todayKey > airDateKey);
     }
 
     function finalHoldoverIds() {
@@ -2612,7 +2634,8 @@
       );
 
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
-      const cached = await applyCache(built);
+      const cachedRaw = await applyCache(built);
+      const cached = cachedRaw.filter(item => !isFinalAiredItemExpired(item, DEFAULT_TIMEZONE));
       await rememberFinalEpisodes(cached);
 
       const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
