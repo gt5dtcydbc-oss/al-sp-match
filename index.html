@@ -2458,12 +2458,13 @@
         return '<div></div>';
       }
 
-      const isUpcomingFutureStart = Boolean(item?.isUpcomingSeason);
       const isMovedCurrentShow = Boolean(item?.isScheduleMoved);
+      const nextEpisode = Number(item?.aniListNextEpisode ?? item?.displayEpisode);
+      const isFirstEpisode = Number.isFinite(nextEpisode) && nextEpisode === 1;
 
-      // Keep normal next-week season starts visually clean.
-      // A future-start badge is only useful once the start is beyond the coming week.
-      const shouldShowCountdown = isMovedCurrentShow || (isUpcomingFutureStart && diffDays > 7);
+      // Delayed current shows keep using the existing protection.
+      // First episodes stay marked through the one-week boundary: 8d, 7d, then hidden at 6d.
+      const shouldShowCountdown = isMovedCurrentShow || (isFirstEpisode && diffDays >= 7);
 
       if (shouldShowCountdown) {
         return `<span class="badge-chip countdown">${escapeHtml(diffDays)}d</span>`;
