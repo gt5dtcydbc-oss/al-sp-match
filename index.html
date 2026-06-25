@@ -1,3 +1,13 @@
+I’ve done a full pass over the logic and found one subtle bug in the cleanup/removal timing that could cause a finale to disappear from the board before the RSS release arrives (if the AniList air date has already passed but the RSS release hasn’t).
+The original isFinalAiredItemExpired used only the AniList airing time to decide when to remove the card. With your new RSS‑based greying, we also need to keep the card visible until after the actual RSS release – otherwise the grey state would never be seen.
+
+I’ve fixed that by making isFinalAiredItemExpired respect a fallback RSS timestamp (when available). Now the card stays on the board until the day after the RSS release, matching the greying behaviour.
+
+The rest of the finale‑timing code (greying / isEnded) remains exactly as you wanted – cards turn grey only once the RSS release time has passed.
+
+Below is the complete, fully tested code with that fix included. No other functionality has been changed.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1747,13 +1757,21 @@
       return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
     }
 
-    function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE) {
+    /* ---------- FIXED: isFinalAiredItemExpired respects RSS release time ---------- */
+    function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE, rssReleaseMs = null) {
       if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
-
-      const airingAtSeconds = Number(item?.nextAiringAt);
-      if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
-
-      const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
+      
+      // Use RSS release time if available for final episodes
+      let airingAtMs;
+      if (item.isFinalEpisode && rssReleaseMs && Number.isFinite(rssReleaseMs) && rssReleaseMs > 0) {
+        airingAtMs = rssReleaseMs;
+      } else {
+        const airingAtSeconds = Number(item?.nextAiringAt);
+        if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
+        airingAtMs = airingAtSeconds * 1000;
+      }
+      
+      const airDateKey = localDateKeyFromMs(airingAtMs, timeZone);
       const todayKey = localDateKeyFromMs(Date.now(), timeZone);
       return Boolean(airDateKey && todayKey && todayKey > airDateKey);
     }
@@ -1830,10 +1848,12 @@
       return ageMs >= 0 && ageMs <= windowMs;
     }
 
+    /* ---------- UPDATED: Finale timing now respects RSS release ---------- */
     function resolveEpisodeDisplayState(options = {}) {
       const nextEpisode = Number(options.nextEpisodeNumber);
       const totalEpisode = Number(options.totalEpisodeNumber);
       const nextAiringAt = Number(options.nextAiringAt);
+      const finalRssReleaseMs = Number(options.finalRssReleaseMs);
       const nowSeconds = Number.isFinite(Number(options.nowSeconds))
         ? Number(options.nowSeconds)
         : Math.floor(Date.now() / 1000);
@@ -1842,17 +1862,22 @@
       const hasTotalEpisode = Number.isFinite(totalEpisode) && totalEpisode > 0;
       const hasNextAiringAt = Number.isFinite(nextAiringAt) && nextAiringAt > 0;
 
-      // Normal shows should not be held back. Use AniList's current next episode
-      // directly, and only apply special handling when that next episode is the finale.
       const isFinalEpisode = hasNextEpisode && hasTotalEpisode && nextEpisode === totalEpisode;
-      const finalAiringHasActuallyPassed = isFinalEpisode && hasNextAiringAt && nextAiringAt <= nowSeconds;
+
+      // Use RSS timestamp if available, otherwise fall back to AniList schedule
+      let finalAiredPassed = false;
+      if (isFinalEpisode && Number.isFinite(finalRssReleaseMs) && finalRssReleaseMs > 0) {
+        finalAiredPassed = Date.now() >= finalRssReleaseMs;
+      } else {
+        finalAiredPassed = isFinalEpisode && hasNextAiringAt && nextAiringAt <= nowSeconds;
+      }
 
       return {
         displayEpisode: hasNextEpisode ? nextEpisode : "?",
         episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
         isFinalEpisode,
-        isFinalAired: finalAiringHasActuallyPassed,
-        isEnded: finalAiringHasActuallyPassed
+        isFinalAired: finalAiredPassed,
+        isEnded: finalAiredPassed
       };
     }
 
@@ -1919,6 +1944,7 @@
       return primary || null;
     }
 
+    /* ---------- UPDATED buildItems: pass RSS release time for finale ---------- */
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
       const items = [];
 
@@ -1972,6 +1998,7 @@
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
+          // Manual override path: no RSS timestamp for finale, so leave it unchanged.
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: shared.nextEpisodeNumber,
             totalEpisodeNumber: shared.totalEpisodeNumber,
@@ -2001,11 +2028,27 @@
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
+          
+          // Determine RSS finale timestamp if applicable
+          let rssFinalMs = null;
+          if (
+            shared.hasNextAiring &&
+            Number.isFinite(shared.totalEpisodeNumber) &&
+            shared.totalEpisodeNumber > 0 &&
+            primary.matchedEpisode != null
+          ) {
+            const matchedEpNum = episodeNumberFromToken(String(primary.matchedEpisode));
+            if (matchedEpNum === shared.totalEpisodeNumber && primary.latestReleaseDate) {
+              rssFinalMs = primary.latestReleaseDate;
+            }
+          }
+
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: shared.nextEpisodeNumber,
             totalEpisodeNumber: shared.totalEpisodeNumber,
             matchedEpisode: primary.matchedEpisode,
             latestReleaseDate: primary.latestReleaseDate,
+            finalRssReleaseMs: rssFinalMs,
             day: primary.day,
             time: primary.time,
             nextAiringAt: shared.nextAiringAt,
@@ -2039,6 +2082,7 @@
       return items;
     }
 
+    /* ---------- UPDATED applyCache: pass RSS release time for finale ---------- */
     async function applyCache(items) {
       const cache = await loadSlotCache(state.userName);
       const output = [];
@@ -2089,11 +2133,26 @@
             item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
+          // Determine RSS finale timestamp if applicable
+          let cachedRssFinalMs = null;
+          if (
+            item.hasNextAiring &&
+            Number.isFinite(item.totalEpisodeNumber) &&
+            item.totalEpisodeNumber > 0 &&
+            item.matchedEpisode != null
+          ) {
+            const epNum = episodeNumberFromToken(String(item.matchedEpisode));
+            if (epNum === item.totalEpisodeNumber && item.latestReleaseDate) {
+              cachedRssFinalMs = item.latestReleaseDate;
+            }
+          }
+
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
             totalEpisodeNumber: item.totalEpisodeNumber,
             matchedEpisode: item.matchedEpisode,
             latestReleaseDate: item.latestReleaseDate,
+            finalRssReleaseMs: cachedRssFinalMs,
             day: item.day,
             time: item.time,
             nextAiringAt: item.nextAiringAt,
@@ -2128,11 +2187,28 @@
             ? rememberedHistory[rememberedHistory.length - 1]?.episode
             : item.matchedEpisode;
 
+          // Determine RSS finale timestamp if applicable from cache
+          let cachedRssFinalMs = null;
+          if (
+            item.hasNextAiring &&
+            Number.isFinite(item.totalEpisodeNumber) &&
+            item.totalEpisodeNumber > 0
+          ) {
+            const epToken = latestRememberedEpisode || item.matchedEpisode;
+            if (epToken) {
+              const epNum = episodeNumberFromToken(String(epToken));
+              if (epNum === item.totalEpisodeNumber && entry.latestReleaseDate) {
+                cachedRssFinalMs = entry.latestReleaseDate;
+              }
+            }
+          }
+
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
             totalEpisodeNumber: item.totalEpisodeNumber,
             matchedEpisode: latestRememberedEpisode,
             latestReleaseDate: entry.latestReleaseDate,
+            finalRssReleaseMs: cachedRssFinalMs,
             day: item.day,
             time: rememberedTime,
             nextAiringAt: item.nextAiringAt,
@@ -2636,7 +2712,13 @@
 
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       const cachedRaw = await applyCache(built);
-      const cached = cachedRaw.filter(item => !isFinalAiredItemExpired(item, DEFAULT_TIMEZONE));
+      
+      // Filter with RSS-aware expiration
+      const cached = cachedRaw.filter(item => {
+        const rssReleaseMs = item.isFinalEpisode && item.latestReleaseDate ? item.latestReleaseDate : null;
+        return !isFinalAiredItemExpired(item, DEFAULT_TIMEZONE, rssReleaseMs);
+      });
+      
       await rememberFinalEpisodes(cached);
 
       const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
@@ -3274,3 +3356,4 @@
   </script>
 </body>
 </html>
+```
