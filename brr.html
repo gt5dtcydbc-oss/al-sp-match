@@ -334,6 +334,33 @@
         .log-line.warn { color: var(--warning); }
         .log-line.err { color: var(--error); }
 
+        .seasonal-truth-block {
+            margin: 0 0 20px;
+        }
+
+        .field-label {
+            display: block;
+            margin: 0 0 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        textarea.seasonal-truth-input {
+            height: 160px;
+            min-height: 120px;
+            margin-top: 0;
+        }
+
+        .input-help {
+            margin-top: 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -359,6 +386,12 @@
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
         <button id="generateBtn" type="button">Generate User List</button>
+    </div>
+
+    <div class="seasonal-truth-block">
+        <label class="field-label" for="seasonalTruthInput">Seasonal source names (optional)</label>
+        <textarea id="seasonalTruthInput" class="seasonal-truth-input" placeholder="Paste the seasonal post or list here. When present, matched pasted names become the preferred AutoBrr names for your CURRENT AniList shows."></textarea>
+        <div class="input-help">Matched pasted names are used as the naming source. If a watching show has no pasted match, the page falls back to AniList/Jikan and shows a warning.</div>
     </div>
 
     <div class="divider">OR</div>
@@ -408,6 +441,8 @@
 
     <div class="summary" id="summary" style="display:none;">
         <div class="metric"><span class="metric-value" id="animeCount">0</span><span class="metric-label">AniList anime</span></div>
+        <div class="metric"><span class="metric-value" id="truthMatchedCount">0</span><span class="metric-label">Pasted matches</span></div>
+        <div class="metric"><span class="metric-value" id="truthFallbackCount">0</span><span class="metric-label">Fallbacks</span></div>
         <div class="metric"><span class="metric-value" id="jikanAddedCount">0</span><span class="metric-label">MAL titles</span></div>
         <div class="metric"><span class="metric-value" id="jikanErrorCount">0</span><span class="metric-label">Jikan errors</span></div>
         <div class="metric"><span class="metric-value" id="patternCount">0</span><span class="metric-label">Patterns</span></div>
@@ -435,10 +470,12 @@
     const JIKAN_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
     const JIKAN_FALLBACK_ACCEPT_SCORE = 70;
     const LARGE_OUTPUT_WARNING_LENGTH = 500000;
+    const SEASONAL_TRUTH_KEY = 'autobrr_seasonal_truth_input';
 
     const els = {
         username: document.getElementById('username'),
         generateBtn: document.getElementById('generateBtn'),
+        seasonalTruthInput: document.getElementById('seasonalTruthInput'),
         singleShowInput: document.getElementById('singleShowInput'),
         generateSingleBtn: document.getElementById('generateSingleBtn'),
         useJikan: document.getElementById('useJikan'),
@@ -450,6 +487,8 @@
         progressBar: document.getElementById('progressBar'),
         summary: document.getElementById('summary'),
         animeCount: document.getElementById('animeCount'),
+        truthMatchedCount: document.getElementById('truthMatchedCount'),
+        truthFallbackCount: document.getElementById('truthFallbackCount'),
         jikanAddedCount: document.getElementById('jikanAddedCount'),
         jikanErrorCount: document.getElementById('jikanErrorCount'),
         patternCount: document.getElementById('patternCount'),
@@ -1139,11 +1178,179 @@
         return null;
     }
 
-    async function processMediaList(mediaList, options) {
-        const mediaTitleMap = new Map();
+
+    function displayNameForMedia(media) {
+        return media?.title?.userPreferred || media?.title?.english || media?.title?.romaji || `AniList ${media?.id || 'unknown'}`;
+    }
+
+    function cleanSeasonalTruthLine(line) {
+        let value = String(line || '').trim();
+        if (!value) return '';
+
+        value = value
+            .replace(/^\s*(?:[-*•]+|\d+[.)])\s*/u, '')
+            .replace(/^\s*\[[^\]]+\]\s*/u, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!value || /^https?:\/\//i.test(value)) return '';
+
+        const releaseMatch = value.match(/^(?:\[[^\]]+\]\s*)?(.+?)\s+-\s+\d+(?:\.\d+)?(?:v\d+)?(?:\s|$|\()/i);
+        if (releaseMatch?.[1]) value = releaseMatch[1].trim();
+
+        value = value
+            .replace(/\s+\[(?:new|ongoing|tv|ona|ova|movie)\]\s*$/i, '')
+            .replace(/\s+\((?:tv|ona|ova|movie|\d{4}|spring|summer|fall|autumn|winter)\)\s*$/i, '')
+            .replace(/[\s,;]+$/g, '')
+            .trim();
+
+        if (value.length < 3) return '';
+        if (/^(title|titles|anime|shows|season|source|name|names)$/i.test(value)) return '';
+        return value;
+    }
+
+    function parseSeasonalTruthInput(raw) {
+        const text = String(raw || '').trim();
+        if (!text) return [];
+
+        const splitLines = text
+            .replace(/\r\n?/g, '\n')
+            .split(/\n|\t|;/g)
+            .map(cleanSeasonalTruthLine)
+            .filter(Boolean);
+
+        return uniqueNonEmpty(splitLines);
+    }
+
+    function scorePastedTitleForMedia(pastedTitle, media, options) {
+        const matchOptions = { ...options, includeNonAscii: true };
+        const mediaTitles = uniqueNonEmpty([
+            ...collectAniListTitles(media, matchOptions),
+            media?.title?.native
+        ]);
+
+        const expandedMediaTitles = uniqueNonEmpty(
+            mediaTitles.flatMap(title => [title, ...makeTitleVariants(title, options)])
+        );
+        const pastedVariants = uniqueNonEmpty([pastedTitle, ...makeTitleVariants(pastedTitle, options)]);
+
+        let best = 0;
+
+        for (const pasted of pastedVariants) {
+            const pastedNorm = normalizeForCompare(pasted);
+            const pastedCompact = compactCompare(pasted);
+            if (!pastedNorm && !pastedCompact) continue;
+
+            for (const mediaTitle of expandedMediaTitles) {
+                const mediaNorm = normalizeForCompare(mediaTitle);
+                const mediaCompact = compactCompare(mediaTitle);
+                if (!mediaNorm && !mediaCompact) continue;
+
+                let score = 0;
+                if (pastedNorm && mediaNorm && pastedNorm === mediaNorm) score = 100;
+                else if (pastedCompact && mediaCompact && pastedCompact === mediaCompact) score = 98;
+                else if (
+                    pastedNorm && mediaNorm &&
+                    Math.min(pastedNorm.length, mediaNorm.length) >= 6 &&
+                    (pastedNorm.includes(mediaNorm) || mediaNorm.includes(pastedNorm))
+                ) score = 86;
+                else score = tokenOverlapScore(pasted, mediaTitle);
+
+                const pastedSeason = getSeasonInfo(pasted);
+                const mediaSeason = getSeasonInfo(mediaTitle);
+                if (pastedSeason && mediaSeason && pastedSeason.n !== mediaSeason.n) {
+                    score -= 25;
+                }
+
+                best = Math.max(best, score);
+            }
+        }
+
+        return Math.max(0, Math.min(100, best));
+    }
+
+    function matchSeasonalTruthNames(mediaList, pastedTitles, options) {
+        const candidates = [];
+        const mediaByKey = new Map();
+
         mediaList.forEach(media => {
-            mediaTitleMap.set(media.id, collectAniListTitles(media, options));
+            const mediaKey = String(media.id);
+            mediaByKey.set(mediaKey, media);
+
+            pastedTitles.forEach((title, index) => {
+                const score = scorePastedTitleForMedia(title, media, options);
+                if (score >= 70) {
+                    candidates.push({ mediaKey, pastedIndex: index, title, score });
+                }
+            });
         });
+
+        candidates.sort((a, b) => b.score - a.score);
+
+        const assignedByMedia = new Map();
+        const usedPasted = new Set();
+
+        candidates.forEach(candidate => {
+            if (assignedByMedia.has(candidate.mediaKey) || usedPasted.has(candidate.pastedIndex)) return;
+            assignedByMedia.set(candidate.mediaKey, candidate);
+            usedPasted.add(candidate.pastedIndex);
+        });
+
+        const matched = [];
+        const unmatchedMedia = [];
+
+        mediaList.forEach(media => {
+            const mediaKey = String(media.id);
+            const assignment = assignedByMedia.get(mediaKey);
+            if (assignment) {
+                matched.push({ media, title: assignment.title, score: assignment.score });
+            } else {
+                unmatchedMedia.push(media);
+            }
+        });
+
+        const unmatchedPastedTitles = pastedTitles.filter((_, index) => !usedPasted.has(index));
+
+        return { matched, unmatchedMedia, unmatchedPastedTitles };
+    }
+
+    async function processMediaList(mediaList, options) {
+        const seasonalTruthTitles = Array.isArray(options.seasonalTruthTitles) ? options.seasonalTruthTitles : [];
+        const usingSeasonalTruth = seasonalTruthTitles.length > 0;
+        const mediaTitleMap = new Map();
+        const fallbackMediaIds = new Set();
+        let truthMatched = 0;
+        let truthFallbacks = 0;
+        let unmatchedPastedCount = 0;
+
+        if (usingSeasonalTruth) {
+            const truthMatches = matchSeasonalTruthNames(mediaList, seasonalTruthTitles, options);
+            truthMatched = truthMatches.matched.length;
+            truthFallbacks = truthMatches.unmatchedMedia.length;
+            unmatchedPastedCount = truthMatches.unmatchedPastedTitles.length;
+
+            truthMatches.matched.forEach(({ media, title, score }) => {
+                mediaTitleMap.set(media.id, [title]);
+                logLine(`Pasted match: "${title}" -> ${displayNameForMedia(media)} (${score}).`, 'ok');
+            });
+
+            truthMatches.unmatchedMedia.forEach(media => {
+                fallbackMediaIds.add(String(media.id));
+                mediaTitleMap.set(media.id, collectAniListTitles(media, options));
+                logLine(`Warning: no pasted match for ${displayNameForMedia(media)}. Using AniList${options.useJikan ? '/Jikan' : ''} fallback.`, 'warn');
+            });
+
+            truthMatches.unmatchedPastedTitles.slice(0, 30).forEach(title => {
+                logLine(`Ignored pasted name not found in CURRENT watching list: ${title}`, 'warn');
+            });
+            if (truthMatches.unmatchedPastedTitles.length > 30) {
+                logLine(`Ignored ${truthMatches.unmatchedPastedTitles.length - 30} more pasted names that were not in CURRENT watching list.`, 'warn');
+            }
+        } else {
+            mediaList.forEach(media => {
+                mediaTitleMap.set(media.id, collectAniListTitles(media, options));
+            });
+        }
 
         let jikanAdded = 0;
         let jikanErrors = 0;
@@ -1152,15 +1359,20 @@
 
         for (let i = 0; i < mediaList.length; i++) {
             const media = mediaList[i];
-            const name = media.title?.userPreferred || media.title?.english || media.title?.romaji || `AniList ${media.id}`;
-            
+            const name = displayNameForMedia(media);
+            const usesFallbackForThisMedia = fallbackMediaIds.has(String(media.id));
+            const shouldUseJikan = options.useJikan && (!usingSeasonalTruth || usesFallbackForThisMedia);
+            const phase = shouldUseJikan
+                ? 'Enriching fallback with MAL/Jikan'
+                : (usingSeasonalTruth && !usesFallbackForThisMedia ? 'Using pasted seasonal names' : 'Generating patterns');
+
             if (mediaList.length > 1) {
-                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'}: ${i + 1}/${mediaList.length} — ${name}`);
+                setStatus(`${phase}: ${i + 1}/${mediaList.length} — ${name}`);
             } else {
-                setStatus(`${options.useJikan ? 'Enriching with MAL/Jikan' : 'Generating patterns'} — ${name}`);
+                setStatus(`${phase} — ${name}`);
             }
 
-            if (options.useJikan) {
+            if (shouldUseJikan) {
                 try {
                     const currentTitles = mediaTitleMap.get(media.id) || [];
                     const enriched = await enrichWithJikan(media, currentTitles, options);
@@ -1195,20 +1407,33 @@
         els.copyBtn.style.display = 'block';
         els.summary.style.display = 'grid';
         els.animeCount.textContent = mediaList.length.toLocaleString();
+        if (els.truthMatchedCount) els.truthMatchedCount.textContent = truthMatched.toLocaleString();
+        if (els.truthFallbackCount) els.truthFallbackCount.textContent = truthFallbacks.toLocaleString();
         els.jikanAddedCount.textContent = jikanAdded.toLocaleString();
         els.jikanErrorCount.textContent = jikanErrors.toLocaleString();
         els.patternCount.textContent = uniqueEntries.length.toLocaleString();
         els.charCount.textContent = final.length.toLocaleString();
 
-        let statusMessage = mediaList.length > 1 
+        let statusMessage = mediaList.length > 1
             ? `Generated ${uniqueEntries.length.toLocaleString()} clean patterns from ${mediaList.length.toLocaleString()} AniList anime`
-            : `Generated ${uniqueEntries.length.toLocaleString()} patterns for ${mediaList[0].title?.userPreferred || mediaList[0].title?.romaji}`;
+            : `Generated ${uniqueEntries.length.toLocaleString()} patterns for ${displayNameForMedia(mediaList[0])}`;
 
-        if (options.useJikan) statusMessage += `, with ${jikanAdded.toLocaleString()} extra MAL/Jikan titles added`;
+        if (usingSeasonalTruth) {
+            statusMessage += `. Used ${truthMatched.toLocaleString()} pasted seasonal match${truthMatched === 1 ? '' : 'es'}`;
+            if (truthFallbacks > 0) {
+                statusMessage += `; warning: ${truthFallbacks.toLocaleString()} watching show${truthFallbacks === 1 ? '' : 's'} had no pasted match and used AniList${options.useJikan ? '/Jikan' : ''} fallback`;
+            }
+            if (unmatchedPastedCount > 0) {
+                statusMessage += `. Ignored ${unmatchedPastedCount.toLocaleString()} pasted name${unmatchedPastedCount === 1 ? '' : 's'} not found in CURRENT`;
+            }
+        } else if (options.useJikan) {
+            statusMessage += `, with ${jikanAdded.toLocaleString()} extra MAL/Jikan titles added`;
+        }
+
         statusMessage += ` (${final.length.toLocaleString()} characters).`;
 
         if (jikanErrors > 0) {
-            statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but AniList patterns were still generated.`;
+            statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but fallback patterns were still generated.`;
         }
 
         const isLarge = final.length > LARGE_OUTPUT_WARNING_LENGTH;
@@ -1216,7 +1441,7 @@
             statusMessage += ' Warning: this output is very large and may be difficult to save or process in some AutoBrr/reverse-proxy setups.';
         }
 
-        setStatus(statusMessage, isLarge ? 'warning' : 'success');
+        setStatus(statusMessage, (isLarge || truthFallbacks > 0 || jikanErrors > 0) ? 'warning' : 'success');
     }
 
     async function generateUserFilter() {
@@ -1226,14 +1451,23 @@
             return;
         }
 
+        const rawSeasonalTruth = els.seasonalTruthInput?.value || '';
+        const seasonalTruthTitles = parseSeasonalTruthInput(rawSeasonalTruth);
         const options = {
             useJikan: els.useJikan.checked,
             includeNonAscii: els.includeNonAscii.checked,
-            shortDescriptorVariants: els.shortDescriptorVariants.checked
+            shortDescriptorVariants: els.shortDescriptorVariants.checked,
+            seasonalTruthTitles
         };
 
         resetUi();
+        if (rawSeasonalTruth.trim() && !seasonalTruthTitles.length) {
+            logLine('Warning: the pasted seasonal field did not contain any usable show names. Using normal AniList/Jikan mode.', 'warn');
+        } else if (seasonalTruthTitles.length) {
+            logLine(`Parsed ${seasonalTruthTitles.length.toLocaleString()} pasted seasonal name${seasonalTruthTitles.length === 1 ? '' : 's'}.`, 'ok');
+        }
         safeSetItem('anilist_username', username);
+        safeSetItem(SEASONAL_TRUTH_KEY, rawSeasonalTruth);
         toggleButtons(true);
         setStatus('Querying AniList for user list...');
 
@@ -1322,6 +1556,9 @@
         const savedName = safeGetItem('anilist_username');
         if (savedName) els.username.value = savedName;
 
+        const savedSeasonalTruth = safeGetItem(SEASONAL_TRUTH_KEY);
+        if (savedSeasonalTruth && els.seasonalTruthInput) els.seasonalTruthInput.value = savedSeasonalTruth;
+
         els.generateBtn.addEventListener('click', generateUserFilter);
         els.generateSingleBtn.addEventListener('click', generateSingleFilter);
         els.copyBtn.addEventListener('click', copyToClipboard);
@@ -1330,6 +1567,10 @@
         els.username.addEventListener('keydown', event => {
             if (event.key === 'Enter') generateUserFilter();
         });
+        if (els.seasonalTruthInput) {
+            els.seasonalTruthInput.addEventListener('blur', () => safeSetItem(SEASONAL_TRUTH_KEY, els.seasonalTruthInput.value));
+            els.seasonalTruthInput.addEventListener('change', () => safeSetItem(SEASONAL_TRUTH_KEY, els.seasonalTruthInput.value));
+        }
         els.singleShowInput.addEventListener('keydown', event => {
             if (event.key === 'Enter') generateSingleFilter();
         });
