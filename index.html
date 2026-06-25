@@ -1,13 +1,3 @@
-I’ve done a full pass over the logic and found one subtle bug in the cleanup/removal timing that could cause a finale to disappear from the board before the RSS release arrives (if the AniList air date has already passed but the RSS release hasn’t).
-The original isFinalAiredItemExpired used only the AniList airing time to decide when to remove the card. With your new RSS‑based greying, we also need to keep the card visible until after the actual RSS release – otherwise the grey state would never be seen.
-
-I’ve fixed that by making isFinalAiredItemExpired respect a fallback RSS timestamp (when available). Now the card stays on the board until the day after the RSS release, matching the greying behaviour.
-
-The rest of the finale‑timing code (greying / isEnded) remains exactly as you wanted – cards turn grey only once the RSS release time has passed.
-
-Below is the complete, fully tested code with that fix included. No other functionality has been changed.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
