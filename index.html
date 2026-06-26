@@ -1744,7 +1744,7 @@
       const airingAtMs = Number(holdover?.airingAtMs);
       const finalAiredAtMs = Number(holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs);
       const usesRssFinalTiming = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
-      const visibleAfterMs = usesRssFinalTiming ? finalAiredAtMs : airingAtMs;
+      const visibleAfterMs = (usesRssFinalTiming && finalAiredAtMs > 0) ? finalAiredAtMs : airingAtMs;
 
       if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
       if (Date.now() < visibleAfterMs) return false;
