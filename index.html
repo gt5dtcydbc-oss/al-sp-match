@@ -1742,8 +1742,12 @@
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
       const airDateKey = String(holdover?.airDateKey || "");
       const airingAtMs = Number(holdover?.airingAtMs);
-      if (!airDateKey || !Number.isFinite(airingAtMs) || airingAtMs <= 0) return false;
-      if (Date.now() < airingAtMs) return false;
+      const finalAiredAtMs = Number(holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs);
+      const usesRssFinalTiming = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
+      const visibleAfterMs = usesRssFinalTiming ? finalAiredAtMs : airingAtMs;
+
+      if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
+      if (Date.now() < visibleAfterMs) return false;
       return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
     }
 
@@ -1830,10 +1834,53 @@
       return ageMs >= 0 && ageMs <= windowMs;
     }
 
+    function localTimestampFromDateKeyAndTime(dateKey, hhmm, timeZone = DEFAULT_TIMEZONE) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || "")) || !isValidTime(hhmm)) return null;
+
+      const [year, month, day] = String(dateKey).split("-").map(Number);
+      const [hour, minute] = String(hhmm).split(":").map(Number);
+      if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
+
+      const targetUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+      let guess = targetUtc;
+
+      // Convert the target wall-clock time in the selected IANA timezone into an epoch timestamp.
+      // A few iterations are enough to account for timezone offsets and DST boundaries.
+      for (let i = 0; i < 3; i++) {
+        const parts = getTimeZoneParts(new Date(guess), timeZone);
+        const renderedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second || 0);
+        const diff = targetUtc - renderedUtc;
+        if (Math.abs(diff) < 1000) break;
+        guess += diff;
+      }
+
+      return guess;
+    }
+
+    function getRssFinalAiringAtMs(options = {}, timeZone = DEFAULT_TIMEZONE) {
+      const nextAiringAt = Number(options.nextAiringAt);
+      const totalEpisode = Number(options.totalEpisodeNumber);
+      const latestReleaseDate = Number(options.latestReleaseDate);
+      const matchedEpisode = episodeNumberFromToken(options.matchedEpisode);
+
+      if (!Number.isFinite(nextAiringAt) || nextAiringAt <= 0) return null;
+      if (!Number.isFinite(totalEpisode) || totalEpisode <= 0) return null;
+      if (!Number.isFinite(latestReleaseDate) || latestReleaseDate <= 0) return null;
+      if (!Number.isFinite(matchedEpisode) || matchedEpisode !== totalEpisode) return null;
+
+      const finalDateKey = localDateKeyFromMs(nextAiringAt * 1000, timeZone);
+      const rssSlot = dateToWeekdayTime(new Date(latestReleaseDate), timeZone);
+      if (!finalDateKey || !rssSlot?.time) return null;
+
+      return localTimestampFromDateKeyAndTime(finalDateKey, rssSlot.time, timeZone);
+    }
+
+
     function resolveEpisodeDisplayState(options = {}) {
       const nextEpisode = Number(options.nextEpisodeNumber);
       const totalEpisode = Number(options.totalEpisodeNumber);
       const nextAiringAt = Number(options.nextAiringAt);
+      const timeZone = options.timeZone || DEFAULT_TIMEZONE;
       const nowSeconds = Number.isFinite(Number(options.nowSeconds))
         ? Number(options.nowSeconds)
         : Math.floor(Date.now() / 1000);
@@ -1845,14 +1892,28 @@
       // Normal shows should not be held back. Use AniList's current next episode
       // directly, and only apply special handling when that next episode is the finale.
       const isFinalEpisode = hasNextEpisode && hasTotalEpisode && nextEpisode === totalEpisode;
-      const finalAiringHasActuallyPassed = isFinalEpisode && hasNextAiringAt && nextAiringAt <= nowSeconds;
+      const usesRssFinalTiming = Boolean(options.useRssFinalTiming);
+      const rssFinalAiringAtMs = isFinalEpisode && usesRssFinalTiming
+        ? getRssFinalAiringAtMs({
+            nextAiringAt,
+            totalEpisodeNumber: totalEpisode,
+            matchedEpisode: options.matchedEpisode,
+            latestReleaseDate: options.latestReleaseDate
+          }, timeZone)
+        : null;
+      const fallbackFinalAiringAtMs = hasNextAiringAt ? nextAiringAt * 1000 : null;
+      const finalAiredAtMs = usesRssFinalTiming ? rssFinalAiringAtMs : fallbackFinalAiringAtMs;
+      const finalAiringHasActuallyPassed = isFinalEpisode && Number.isFinite(finalAiredAtMs) && finalAiredAtMs <= (nowSeconds * 1000);
 
       return {
         displayEpisode: hasNextEpisode ? nextEpisode : "?",
         episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
         isFinalEpisode,
         isFinalAired: finalAiringHasActuallyPassed,
-        isEnded: finalAiringHasActuallyPassed
+        isEnded: finalAiringHasActuallyPassed,
+        finalAiredAtMs: Number.isFinite(finalAiredAtMs) ? finalAiredAtMs : null,
+        usesRssFinalTiming: isFinalEpisode && usesRssFinalTiming,
+        rssFinalReleaseSeen: Number.isFinite(rssFinalAiringAtMs)
       };
     }
 
@@ -1969,17 +2030,22 @@
         const title = titleForMedia(media);
         const cover = coverForMedia(media);
         const shared = getSharedEpisodeAndScheduleState(media);
+        const rssCandidateForFinal = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
+          const isFreshRss = rssCandidateForFinal?.latestReleaseDate && (Date.now() - rssCandidateForFinal.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: shared.nextEpisodeNumber,
             totalEpisodeNumber: shared.totalEpisodeNumber,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate,
             day: override.day,
             time: override.time,
             nextAiringAt: shared.nextAiringAt,
             isUpcomingSeason: shared.isUpcomingSeason,
             isScheduleMoved: shared.isScheduleMoved,
+            useRssFinalTiming: Boolean(rssCandidateForFinal),
             timeZone,
             nowSeconds
           });
@@ -1993,6 +2059,14 @@
             isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays, isUpcomingSeason: shared.isUpcomingSeason,
             isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
             isEnded: episodeState.isEnded, isFinalHoldover: false,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
+            latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
+            latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
+            isFreshRss: isFreshRss || false,
+            finalAiredAtMs: episodeState.finalAiredAtMs,
+            usesRssFinalTiming: episodeState.usesRssFinalTiming,
+            rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
             nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
           });
           continue;
@@ -2011,6 +2085,7 @@
             nextAiringAt: shared.nextAiringAt,
             isUpcomingSeason: shared.isUpcomingSeason,
             isScheduleMoved: shared.isScheduleMoved,
+            useRssFinalTiming: primary.source === "rss",
             timeZone,
             nowSeconds
           });
@@ -2032,6 +2107,9 @@
             isUpcomingSeason: shared.isUpcomingSeason,
             isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
             isEnded: episodeState.isEnded, isFinalHoldover: false,
+            finalAiredAtMs: episodeState.finalAiredAtMs,
+            usesRssFinalTiming: episodeState.usesRssFinalTiming,
+            rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
             nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
           });
         }
@@ -2099,6 +2177,7 @@
             nextAiringAt: item.nextAiringAt,
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
+            useRssFinalTiming: true,
             timeZone: DEFAULT_TIMEZONE
           });
 
@@ -2138,6 +2217,7 @@
             nextAiringAt: item.nextAiringAt,
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
+            useRssFinalTiming: entry.origin === "rss",
             timeZone: DEFAULT_TIMEZONE
           });
 
@@ -2145,6 +2225,7 @@
             ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
             matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
             matchedEpisode: latestRememberedEpisode || item.matchedEpisode || null,
+            latestReleaseDate: entry.latestReleaseDate || item.latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
             ...episodeState,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
@@ -2546,6 +2627,7 @@
         const id = String(item.id);
         const media = mediaById(id);
         const airingAtMs = Number(item.nextAiringAt) * 1000;
+        const finalAiredAtMs = Number(item.finalAiredAtMs);
         const airDateKey = localDateKeyFromMs(airingAtMs, DEFAULT_TIMEZONE);
         if (!airDateKey) continue;
 
@@ -2557,7 +2639,11 @@
           },
           media,
           airingAtMs,
+          finalAiredAtMs: Number.isFinite(finalAiredAtMs) ? finalAiredAtMs : null,
           airDateKey,
+          usesRssFinalTiming: Boolean(item.usesRssFinalTiming),
+          rssFinalReleaseSeen: Boolean(item.rssFinalReleaseSeen),
+          latestReleaseDate: item.latestReleaseDate || null,
           savedAt: Date.now()
         };
         changed = true;
@@ -2597,6 +2683,8 @@
         const item = holdover?.item;
         if (!item?.id) continue;
 
+        const latestReleaseDate = item.latestReleaseDate || holdover.latestReleaseDate || null;
+
         output.push({
           ...item,
           isFinalEpisode: true,
@@ -2612,7 +2700,11 @@
           isUpcomingSeason: false,
           diffDays: 0,
           source: item.source || "final-holdover",
-          isFreshRss: false
+          latestReleaseDate,
+          finalAiredAtMs: holdover.finalAiredAtMs || item.finalAiredAtMs || null,
+          usesRssFinalTiming: Boolean(holdover.usesRssFinalTiming || item.usesRssFinalTiming),
+          rssFinalReleaseSeen: Boolean(holdover.rssFinalReleaseSeen || item.rssFinalReleaseSeen),
+          isFreshRss: Boolean(item.isFreshRss) || isRecentTimestamp(latestReleaseDate)
         });
       }
 
