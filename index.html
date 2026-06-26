@@ -2730,6 +2730,21 @@
       const cachedRaw = await applyCache(built);
       const cached = cachedRaw.filter(item => !isFinalAiredItemExpired(item, DEFAULT_TIMEZONE));
       await rememberFinalEpisodes(cached);
+      for (const [id, holdover] of Object.entries(state.finalHoldovers)) {
+      if (!holdover.usesRssFinalTiming) continue;
+      const media = holdover.media || mediaById(id);
+      if (!media) continue;
+      const candidate = tryMatchCandidateSet(media, state.primaryCandidates, DEFAULT_TIMEZONE, "rss");
+      if (!candidate) continue;
+      const matchedEp = candidate.matchedEpisode;
+      const totalEp = media.episodes;
+      if (matchedEp && totalEp && Number(matchedEp) === Number(totalEp)) {
+      holdover.latestReleaseDate = candidate.latestReleaseDate;
+      holdover.item = { ...holdover.item, latestReleaseDate: candidate.latestReleaseDate, isFreshRss: true };
+      holdover.rssFinalReleaseSeen = true;
+  }
+}
+await saveFinalHoldovers(state.userName, state.finalHoldovers);
 
       const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
       const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
