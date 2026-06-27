@@ -232,7 +232,10 @@
 
     .anime-card.highlight-next { border: 2px solid var(--text); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
     .anime-card.on-break .anime-card-bg img { opacity: 0.4; filter: grayscale(100%); }
-    .anime-card.final-holdover .anime-card-bg img { opacity: 0.72; }
+    .anime-card.final-holdover .anime-card-bg img {
+    opacity: 0.72;
+    filter: none;   /* ← overrides any greyscale from .ended */
+}
     .anime-card.ended .anime-card-bg img { opacity: 0.35; filter: grayscale(100%); }
     
 
