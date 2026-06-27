@@ -2580,15 +2580,11 @@ if (item.isFinalHoldover) {
 const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
 const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
-let episodeHTML = '';
-if (shouldShowEpisode) {
-  if (item.isFinalHoldover) {
-    // Only the pulsing dot, no episode text
-    episodeHTML = '<div class="anime-card-episode"><span class="final-dot" title="Final episode aired" aria-label="Final episode aired"></span></div>';
-  } else {
-    episodeHTML = `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`;
-  }
-}
+const episodeHTML = shouldShowEpisode
+  ? (item.isFinalHoldover
+      ? '<div class="anime-card-episode"><span class="final-dot" title="Final episode aired" aria-label="Final episode aired"></span></div>'
+      : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`)
+  : '';
 
 const episodeHTML = shouldShowEpisode
   ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
