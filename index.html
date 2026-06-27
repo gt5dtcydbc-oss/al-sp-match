@@ -233,9 +233,9 @@
     .anime-card.highlight-next { border: 2px solid var(--text); box-shadow: 0 0 20px rgba(255,255,255,0.15); }
     .anime-card.on-break .anime-card-bg img { opacity: 0.4; filter: grayscale(100%); }
     .anime-card.final-holdover .anime-card-bg img {
-    opacity: 1.0;
-    filter: saturate(1.0);   /* still coloured, just less vibrant */
-}
+      opacity: 0.72;          /* slightly dimmed for final holdovers */
+      filter: none;           /* keep full colour */
+    }
     .anime-card.ended .anime-card-bg img { opacity: 0.35; filter: grayscale(100%); }
     
 
@@ -1735,6 +1735,7 @@
         : "";
     }
 
+    // ✅ RENAMED BACK: isFinalHoldoverExpired
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
       const airDateKey = String(holdover?.airDateKey || "");
       if (!airDateKey) return true;
@@ -1742,54 +1743,58 @@
       return todayKey > airDateKey;
     }
 
+    // ✅ RENAMED BACK + IMPROVED: isFinalHoldoverVisibleToday with fallback logic
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
-  const airDateKey = String(holdover?.airDateKey || "");
-  const airingAtMs = Number(holdover?.airingAtMs);
+      const airDateKey = String(holdover?.airDateKey || "");
+      const airingAtMs = Number(holdover?.airingAtMs);
 
-  const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
-  const finalAiredAtMs = Number.isFinite(rawFinal) ? rawFinal : null;
+      const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
+      let finalAiredAtMs = Number.isFinite(rawFinal) ? rawFinal : null;
 
-  const usesRssFinalTiming = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
+      const usesRss = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
 
-  // For RSS‑tracked finales: require a valid finalAiredAtMs (RSS release time).
-  // Without it the holdover stays hidden.
-  let visibleAfterMs;
-  if (usesRssFinalTiming) {
-    if (finalAiredAtMs !== null && finalAiredAtMs > 0) {
-      visibleAfterMs = finalAiredAtMs;
-    } else {
-      // RSS hasn’t confirmed the final episode yet → don’t show
-      return false;
+      let visibleAfterMs = null;
+
+      if (usesRss) {
+        if (finalAiredAtMs !== null && finalAiredAtMs > 0) {
+          visibleAfterMs = finalAiredAtMs;
+        } else {
+          const lrd = holdover?.latestReleaseDate ?? holdover?.item?.latestReleaseDate;
+          if (Number.isFinite(lrd) && lrd > 0) {
+            visibleAfterMs = lrd;
+          } else if (Number.isFinite(airingAtMs) && airingAtMs > 0) {
+            visibleAfterMs = airingAtMs;
+          }
+        }
+      } else {
+        visibleAfterMs = Number.isFinite(airingAtMs) ? airingAtMs : null;
+      }
+
+      if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
+      if (Date.now() < visibleAfterMs) return false;
+      return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
     }
-  } else {
-    // Fallback / manual shows use the original AniList time
-    visibleAfterMs = Number.isFinite(airingAtMs) ? airingAtMs : null;
-  }
 
-  if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
-  if (Date.now() < visibleAfterMs) return false;
-  return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
-}
-
+    // ✅ RENAMED BACK: isFinalAiredItemExpired
     function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE) {
-  if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
+      if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
 
-  const airingAtSeconds = Number(item?.nextAiringAt);
-  if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
+      const airingAtSeconds = Number(item?.nextAiringAt);
+      if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
 
-  // RSS-tracked final episodes stay alive until the release is actually seen
-  if (item.isFinalEpisode && (item.source === "rss" || item.source === "cache") && item.usesRssFinalTiming) {
-    const total = Number(item.totalEpisodeNumber);
-    const matched = Number(item.matchedEpisode);
-    if (Number.isFinite(total) && total > 0 && (!Number.isFinite(matched) || matched < total)) {
-      return false;   // still waiting for the final RSS release → don't expire
+      // RSS-tracked final episodes stay alive until the release is actually seen
+      if (item.isFinalEpisode && (item.source === "rss" || item.source === "cache") && item.usesRssFinalTiming) {
+        const total = Number(item.totalEpisodeNumber);
+        const matched = Number(item.matchedEpisode);
+        if (Number.isFinite(total) && total > 0 && (!Number.isFinite(matched) || matched < total)) {
+          return false;   // still waiting for the final RSS release → don't expire
+        }
+      }
+
+      const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
+      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+      return Boolean(airDateKey && todayKey && todayKey > airDateKey);
     }
-  }
-
-  const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
-  const todayKey = localDateKeyFromMs(Date.now(), timeZone);
-  return Boolean(airDateKey && todayKey && todayKey > airDateKey);
-}
 
     function finalHoldoverIds() {
       return Object.entries(state.finalHoldovers || {})
@@ -2590,18 +2595,18 @@
       const siteUrl = item.siteUrl || "#";
       const isFinal = Boolean(item.isFinalEpisode || item.isFinalAired || item.isFinalHoldover);
       let isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
-if (item.isFinalHoldover) {
-  isEnded = false;   // keep the card alive (no greying, episode still visible)
-}
+      if (item.isFinalHoldover) {
+        isEnded = false;   // keep the card alive (no greying, episode still visible)
+      }
 
-const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
-const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
+      const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
+      const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
-const episodeHTML = shouldShowEpisode
-  ? (item.isFinalHoldover
-      ? '<div class="anime-card-episode"><span class="final-dot" title="Final episode aired" aria-label="Final episode aired"></span></div>'
-      : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`)
-  : '';
+      const episodeHTML = shouldShowEpisode
+        ? (item.isFinalHoldover
+            ? '<div class="anime-card-episode"><span class="final-dot" title="Final episode aired" aria-label="Final episode aired"></span></div>'
+            : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`)
+        : '';
 
       const imageHTML = coverUrl 
         ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
@@ -2768,21 +2773,21 @@ const episodeHTML = shouldShowEpisode
       const cached = cachedRaw.filter(item => !isFinalAiredItemExpired(item, DEFAULT_TIMEZONE));
       await rememberFinalEpisodes(cached);
       for (const [id, holdover] of Object.entries(state.finalHoldovers)) {
-      if (!holdover.usesRssFinalTiming) continue;
-      const media = holdover.media || mediaById(id);
-      if (!media) continue;
-      const candidate = tryMatchCandidateSet(media, state.primaryCandidates, DEFAULT_TIMEZONE, "rss");
-      if (!candidate) continue;
-      const matchedEp = candidate.matchedEpisode;
-      const totalEp = media.episodes;
-      if (matchedEp && totalEp && Number(matchedEp) === Number(totalEp)) {
-      holdover.latestReleaseDate = candidate.latestReleaseDate;
-      holdover.item = { ...holdover.item, latestReleaseDate: candidate.latestReleaseDate, isFreshRss: true };
-      holdover.rssFinalReleaseSeen = true;
-      holdover.finalAiredAtMs = candidate.latestReleaseDate;
-  }
-}
-await saveFinalHoldovers(state.userName, state.finalHoldovers);
+        if (!holdover.usesRssFinalTiming) continue;
+        const media = holdover.media || mediaById(id);
+        if (!media) continue;
+        const candidate = tryMatchCandidateSet(media, state.primaryCandidates, DEFAULT_TIMEZONE, "rss");
+        if (!candidate) continue;
+        const matchedEp = candidate.matchedEpisode;
+        const totalEp = media.episodes;
+        if (matchedEp && totalEp && Number(matchedEp) === Number(totalEp)) {
+          holdover.latestReleaseDate = candidate.latestReleaseDate;
+          holdover.item = { ...holdover.item, latestReleaseDate: candidate.latestReleaseDate, isFreshRss: true };
+          holdover.rssFinalReleaseSeen = true;
+          holdover.finalAiredAtMs = candidate.latestReleaseDate;
+        }
+      }
+      await saveFinalHoldovers(state.userName, state.finalHoldovers);
 
       const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
       const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
