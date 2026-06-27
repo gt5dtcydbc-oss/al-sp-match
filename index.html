@@ -2554,6 +2554,7 @@
     }
 
     function cardHTML(item, displayTime, isNext) {
+      const todayName = getNowContext(DEFAULT_TIMEZONE).weekday;
       const title = escapeHtml(item.title);
       const coverUrl = item.cover || "";
       const id = String(item.id);
@@ -2571,7 +2572,7 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${item.isUpcomingSeason ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${(item.isScheduleMoved && item.day !== todayName) ? 'on-break' : ''} ${item.isUpcomingSeason ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
