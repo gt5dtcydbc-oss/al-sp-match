@@ -1743,16 +1743,33 @@
     }
 
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
-      const airDateKey = String(holdover?.airDateKey || "");
-      const airingAtMs = Number(holdover?.airingAtMs);
-      const finalAiredAtMs = Number(holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs);
-      const usesRssFinalTiming = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
-      const visibleAfterMs = (usesRssFinalTiming && finalAiredAtMs > 0) ? finalAiredAtMs : airingAtMs;
+  const airDateKey = String(holdover?.airDateKey || "");
+  const airingAtMs = Number(holdover?.airingAtMs);
 
-      if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
-      if (Date.now() < visibleAfterMs) return false;
-      return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
+  const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
+  const finalAiredAtMs = Number.isFinite(rawFinal) ? rawFinal : null;
+
+  const usesRssFinalTiming = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
+
+  // For RSS‑tracked finales: require a valid finalAiredAtMs (RSS release time).
+  // Without it the holdover stays hidden.
+  let visibleAfterMs;
+  if (usesRssFinalTiming) {
+    if (finalAiredAtMs !== null && finalAiredAtMs > 0) {
+      visibleAfterMs = finalAiredAtMs;
+    } else {
+      // RSS hasn’t confirmed the final episode yet → don’t show
+      return false;
     }
+  } else {
+    // Fallback / manual shows use the original AniList time
+    visibleAfterMs = Number.isFinite(airingAtMs) ? airingAtMs : null;
+  }
+
+  if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
+  if (Date.now() < visibleAfterMs) return false;
+  return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
+}
 
     function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE) {
   if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
@@ -2762,6 +2779,7 @@ const episodeHTML = shouldShowEpisode
       holdover.latestReleaseDate = candidate.latestReleaseDate;
       holdover.item = { ...holdover.item, latestReleaseDate: candidate.latestReleaseDate, isFreshRss: true };
       holdover.rssFinalReleaseSeen = true;
+      holdover.finalAiredAtMs = candidate.latestReleaseDate;
   }
 }
 await saveFinalHoldovers(state.userName, state.finalHoldovers);
