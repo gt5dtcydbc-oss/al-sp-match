@@ -1752,15 +1752,24 @@
     }
 
     function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE) {
-      if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
+  if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
 
-      const airingAtSeconds = Number(item?.nextAiringAt);
-      if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
+  const airingAtSeconds = Number(item?.nextAiringAt);
+  if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
 
-      const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
-      const todayKey = localDateKeyFromMs(Date.now(), timeZone);
-      return Boolean(airDateKey && todayKey && todayKey > airDateKey);
+  // RSS-tracked final episodes stay alive until the release is actually seen
+  if (item.isFinalEpisode && (item.source === "rss" || item.source === "cache") && item.usesRssFinalTiming) {
+    const total = Number(item.totalEpisodeNumber);
+    const matched = Number(item.matchedEpisode);
+    if (Number.isFinite(total) && total > 0 && (!Number.isFinite(matched) || matched < total)) {
+      return false;   // still waiting for the final RSS release → don't expire
     }
+  }
+
+  const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
+  const todayKey = localDateKeyFromMs(Date.now(), timeZone);
+  return Boolean(airDateKey && todayKey && todayKey > airDateKey);
+}
 
     function finalHoldoverIds() {
       return Object.entries(state.finalHoldovers || {})
@@ -2560,12 +2569,17 @@
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
       const isFinal = Boolean(item.isFinalEpisode || item.isFinalAired || item.isFinalHoldover);
-      const isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
-      const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
-      const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?");
-      const episodeHTML = shouldShowEpisode
-        ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
-        : '';
+      let isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
+if (item.isFinalHoldover) {
+  isEnded = false;   // keep the card alive (no greying, episode still visible)
+}
+
+const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
+const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?");
+
+const episodeHTML = shouldShowEpisode
+  ? `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`
+  : '';
 
       const imageHTML = coverUrl 
         ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
