@@ -91,13 +91,9 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .badge.done { color: var(--muted); background: var(--surface-softer); }
 .badge.need { color: var(--warn); background: rgba(242,195,107,.12); }
 .badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,.4); }
-.badge.new { color: #fff; background: var(--ok); box-shadow: 0 0 10px rgba(69,212,155,.4); }
 .card.has-update { border-color: rgba(139,150,255,.6); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
 .card.has-update:hover, .card.has-update:focus-within { border-color: rgba(168,176,255,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(139,150,255,.3), 0 0 28px rgba(139,150,255,.18); }
 .card.has-update > .card-main .thumb { box-shadow: 0 0 0 2px rgba(139,150,255,.65), 0 8px 20px rgba(0,0,0,.28); }
-.card.has-new { border-color: rgba(69,212,155,.6); box-shadow: 0 0 0 1px rgba(69,212,155,.26), 0 0 24px rgba(69,212,155,.12); }
-.card.has-new:hover, .card.has-new:focus-within { border-color: rgba(69,212,155,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(69,212,155,.3), 0 0 28px rgba(69,212,155,.18); }
-.card.has-new > .card-main .thumb { box-shadow: 0 0 0 2px rgba(69,212,155,.65), 0 8px 20px rgba(0,0,0,.28); }    
 .time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
 .menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
 .menu[open] { z-index: 120; }
@@ -486,7 +482,6 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
       const RELEASES_SINGLE_FALLBACK_AUTO_LIMIT = 25;
       const RELEASE_PROGRESS_TOAST_MIN_MS = 1500;
       const RELEASES_FULL_REFRESH_SAVE_EVERY = 50;
-      const NEW_FOUND_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
       const BOARDS = ["found", "watching", "downloaded"];
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const q = (s) => document.querySelector(s);
@@ -929,7 +924,6 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           updateAvailable: false,
           notListed: false,
           notListedAt: null,
-          foundAt: null,  
           ...(o || {}),
         };
       }
@@ -1629,18 +1623,13 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           }
         }
         if (!isLib && forceMove) s.board = match ? "found" : "watching";
-s.needsAnilist = false;
-s.temporary = false;
-s.source = "anilist";
-s.updatedAt = checkedAt;
-const next = getBoard(s);
-if (forceMove && prev !== next) {
-  moveBoard(s.id, prev, next);
-  // If we just moved from watching to found, record the timestamp
-  if (prev === "watching" && next === "found") {
-    s.releasesMoe.foundAt = checkedAt;
-  }
-}
+        s.needsAnilist = false;
+        s.temporary = false;
+        s.source = "anilist";
+        s.updatedAt = checkedAt;
+        const next = getBoard(s);
+        if (forceMove && prev !== next) moveBoard(s.id, prev, next);
+      }
       function markReleaseRefreshError(s, error, checkedAt = new Date().toISOString()) {
         if (!s) return;
         s.releasesMoe = defaultRelease(s.releasesMoe);
@@ -2896,30 +2885,24 @@ if (forceMove && prev !== next) {
           title = link
             ? `<a href="${escapeAttr(link)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a>`
             : escapeHtml(s.title);
-        lconst isNewFound = board === "found" &&
-  !!s.releasesMoe.found &&
-  s.releasesMoe.foundAt &&
-  (Date.now() - new Date(s.releasesMoe.foundAt).getTime() < NEW_FOUND_DURATION_MS);
-
-let badge =
-  s.needsAnilist || !s.anilistId
-    ? '<span class="badge need">Needs AniList</span>'
-    : isDl
-      ? s.releasesMoe.updateAvailable
-        ? '<span class="badge update">Updated</span>'
-        : ""
-      : isNewFound
-        ? '<span class="badge new">New</span>'
-        : s.releasesMoe.found
-          ? '<span class="badge found">Found</span>'
-          : '<span class="badge watch">Watching</span>';
+        let badge =
+          s.needsAnilist || !s.anilistId
+            ? '<span class="badge need">Needs AniList</span>'
+            : isDl
+              ? s.releasesMoe.updateAvailable
+                ? '<span class="badge update">Updated</span>'
+                : ""
+              : s.releasesMoe.found
+                ? '<span class="badge found">Found</span>'
+                : '<span class="badge watch">Watching</span>';
         const actions = sort
           ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
-          : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${isNewFound ? `<button class="menu-action active" data-ack-found-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge new</button>` : ""}${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
+          : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
         const downloadControl = isDl ? "" : `<input class="check" type="checkbox" data-download-id="${escapeAttr(s.id)}">`;
         const checkedAtMs = releaseLastCheckedAt(s, isDl);
         const checkedAt = checkedAtMs ? new Date(checkedAtMs).toISOString() : "";
-        return `<<article class="card ${hasUpdate ? "has-update" : ""} ${isNewFound ? "has-new" : ""} ${notes ? "notes-open" : ""}"
+        return `<article class="card ${hasUpdate ? "has-update" : ""} ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
+      }
       function moveWithin(arr, id, dir) {
         const i = arr.indexOf(id),
           j = dir === "up" ? i - 1 : i + 1;
@@ -3023,16 +3006,9 @@ let badge =
           if (g) setFolderComplete(g.id, !isFolderComplete(g));
           return;
         }
-        if ((d = id("[data-ack-found-id]"))) {
-  const s = byId(d.ackFoundId);
-  if (s) {
-    s.releasesMoe.foundAt = null;
-    render();
-    save();
-    toast("New found status acknowledged.");
-  }
-  return;
-}
+        if ((d = id("[data-ack-id]"))) {
+          ackUpdate(d.ackId);
+          return;
         }
         if ((d = id("[data-remove-id]"))) {
           removeShow(d.removeId);
