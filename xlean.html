@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X/Twitter Image Link Extractor</title>
+    <style>
+        :root {
+            --bg-color: #15202b;
+            --card-bg: #1e2732;
+            --text-color: #f7f9fa;
+            --accent-color: #1d9bf0;
+            --accent-hover: #1a8cd8;
+            --border-color: #38444d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: #8899a6;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            color: #8899a6;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: #15202b;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            background-color: #38444d;
+            color: #8899a6;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .success { color: #00ba7c; }
+        .error { color: #f4212e; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>X Image Link Extractor</h1>
+    <p class="subtitle">Bypass the terminal. Convert raw HAR data or network files into a clean list of high-res image URLs instantly.</p>
+
+    <div class="section">
+        <label for="fileInput">Option A: Upload your network.txt file</label>
+        <input type="file" id="fileInput" accept=".txt,.har,.json">
+    </div>
+
+    <div style="text-align: center; margin: 15px 0; color: #8899a6; font-size: 12px; font-weight: bold;">OR</div>
+
+    <div class="section">
+        <label for="textBox">Option B: Paste the raw text directly</label>
+        <textarea id="textBox" placeholder="Paste your 'Copy All As HAR' dump right here..."></textarea>
+    </div>
+
+    <button id="processBtn" onclick="processData()">Extract & Download Clean Links</button>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    function processData() {
+        const fileInput = document.getElementById('fileInput');
+        const textBox = document.getElementById('textBox');
+        const statusDiv = document.getElementById('status');
+
+        statusDiv.className = '';
+        statusDiv.innerText = '';
+
+        // Prioritize file upload, fallback to text box
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                extractAndDownload(e.target.result);
+            };
+            reader.readAsText(file);
+        } else if (textBox.value.trim().length > 0) {
+            extractAndDownload(textBox.value);
+        } else {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Please upload a file or paste text first!';
+        }
+    }
+
+    function extractAndDownload(rawText) {
+        const statusDiv = document.getElementById('status');
+        
+        // Match all X/Twitter media links
+        const regex = /https:\/\/pbs\.twimg\.com\/media\/[^"'\s?]+/g;
+        const matches = rawText.match(regex) || [];
+
+        if (matches.length === 0) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'No X/Twitter media URLs found in this data.';
+            return;
+        }
+
+        // Clean query strings, force name=orig, and remove duplicates
+        const cleanedLinks = matches.map(url => {
+            // If the link already has parameters, clean them up or append orig
+            if (url.includes('?')) {
+                return url.replace(/name=[^&"'\s]+/g, 'name=orig');
+            } else {
+                return url + '?format=jpg&name=orig';
+            }
+        });
+
+        // Deduplicate using a Set
+        const uniqueLinks = [...new Set(cleanedLinks)];
+
+        // Generate the text file payload
+        const fileContent = uniqueLinks.join('\n');
+        const blob = new Blob([fileContent], { type: 'text/plain' });
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        // Trigger automatic browser download
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'clean_links.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+
+        statusDiv.className = 'success';
+        statusDiv.innerText = `Success! Found ${uniqueLinks.length} unique images. "clean_links.txt" has been downloaded.`;
+    }
+</script>
+
+</body>
+</html>
