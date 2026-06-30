@@ -1737,7 +1737,12 @@
 
     // ✅ RENAMED BACK: isFinalHoldoverExpired
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
-      const airDateKey = String(holdover?.airDateKey || "");
+      const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
+      const finalAiredAtMs = Number(rawFinal);
+      const airDateKey = Number.isFinite(finalAiredAtMs) && finalAiredAtMs > 0
+        ? localDateKeyFromMs(finalAiredAtMs, timeZone)
+        : String(holdover?.airDateKey || "");
+
       if (!airDateKey) return true;
       const todayKey = localDateKeyFromMs(Date.now(), timeZone);
       return todayKey > airDateKey;
@@ -1745,53 +1750,50 @@
 
     // ✅ RENAMED BACK + IMPROVED: isFinalHoldoverVisibleToday with fallback logic
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
-      const airDateKey = String(holdover?.airDateKey || "");
-      const airingAtMs = Number(holdover?.airingAtMs);
+      const item = holdover?.item || {};
+      const usesRss = Boolean(holdover?.usesRssFinalTiming || item?.usesRssFinalTiming);
 
-      const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
-      let finalAiredAtMs = Number.isFinite(rawFinal) ? rawFinal : null;
+      const rawFinal = holdover?.finalAiredAtMs ?? item?.finalAiredAtMs;
+      let visibleAfterMs = Number(rawFinal);
 
-      const usesRss = Boolean(holdover?.usesRssFinalTiming || holdover?.item?.usesRssFinalTiming);
-
-      let visibleAfterMs = null;
-
-      if (usesRss) {
-        if (finalAiredAtMs !== null && finalAiredAtMs > 0) {
-          visibleAfterMs = finalAiredAtMs;
+      if (!Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) {
+        if (usesRss) {
+          visibleAfterMs = getRssFinalAiringAtMs({
+            nextAiringAt: item?.nextAiringAt,
+            day: item?.day,
+            time: item?.time,
+            finalTimingDay: item?.latestReleaseDay || item?.day,
+            finalTimingTime: item?.time
+          }, timeZone);
         } else {
-          const lrd = holdover?.latestReleaseDate ?? holdover?.item?.latestReleaseDate;
-          if (Number.isFinite(lrd) && lrd > 0) {
-            visibleAfterMs = lrd;
-          } else if (Number.isFinite(airingAtMs) && airingAtMs > 0) {
-            visibleAfterMs = airingAtMs;
-          }
+          const airingAtMs = Number(holdover?.airingAtMs);
+          visibleAfterMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
         }
-      } else {
-        visibleAfterMs = Number.isFinite(airingAtMs) ? airingAtMs : null;
       }
 
-      if (!airDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
+      const storedAirDateKey = String(holdover?.airDateKey || "");
+      const visibleDateKey = Number.isFinite(visibleAfterMs) && visibleAfterMs > 0
+        ? localDateKeyFromMs(visibleAfterMs, timeZone)
+        : storedAirDateKey;
+
+      if (!visibleDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
       if (Date.now() < visibleAfterMs) return false;
-      return localDateKeyFromMs(Date.now(), timeZone) === airDateKey;
+      return localDateKeyFromMs(Date.now(), timeZone) === visibleDateKey;
     }
 
     // ✅ RENAMED BACK: isFinalAiredItemExpired
     function isFinalAiredItemExpired(item, timeZone = DEFAULT_TIMEZONE) {
       if (!item?.isFinalEpisode && !item?.isFinalAired && !item?.isFinalHoldover) return false;
 
+      const finalAiredAtMs = Number(item?.finalAiredAtMs);
       const airingAtSeconds = Number(item?.nextAiringAt);
-      if (!Number.isFinite(airingAtSeconds) || airingAtSeconds <= 0) return false;
+      const expiryBasisMs = Number.isFinite(finalAiredAtMs) && finalAiredAtMs > 0
+        ? finalAiredAtMs
+        : (Number.isFinite(airingAtSeconds) && airingAtSeconds > 0 ? airingAtSeconds * 1000 : null);
 
-      // RSS-tracked final episodes stay alive until the release is actually seen
-      if (item.isFinalEpisode && (item.source === "rss" || item.source === "cache") && item.usesRssFinalTiming) {
-        const total = Number(item.totalEpisodeNumber);
-        const matched = Number(item.matchedEpisode);
-        if (Number.isFinite(total) && total > 0 && (!Number.isFinite(matched) || matched < total)) {
-          return false;   // still waiting for the final RSS release → don't expire
-        }
-      }
+      if (!Number.isFinite(expiryBasisMs) || expiryBasisMs <= 0) return false;
 
-      const airDateKey = localDateKeyFromMs(airingAtSeconds * 1000, timeZone);
+      const airDateKey = localDateKeyFromMs(expiryBasisMs, timeZone);
       const todayKey = localDateKeyFromMs(Date.now(), timeZone);
       return Boolean(airDateKey && todayKey && todayKey > airDateKey);
     }
@@ -1851,7 +1853,7 @@
     }
 
     function isValidTime(value) {
-      return /^\d{2}:\d{2}$/.test(String(value || ""));
+      return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || ""));
     }
 
     function episodeNumberFromToken(value) {
@@ -1891,22 +1893,47 @@
       return guess;
     }
 
+    function shiftLocalDateKey(dateKey, dayDelta) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) return "";
+      const [year, month, day] = String(dateKey).split("-").map(Number);
+      const date = new Date(Date.UTC(year, month - 1, day + Number(dayDelta || 0)));
+      return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : "";
+    }
+
+    function weekdayForLocalDateKey(dateKey, timeZone = DEFAULT_TIMEZONE) {
+      const timestampMs = localTimestampFromDateKeyAndTime(dateKey, "12:00", timeZone);
+      if (!Number.isFinite(timestampMs)) return "";
+      return getTimeZoneParts(new Date(timestampMs), timeZone).weekday || "";
+    }
+
+    function closestDateKeyForWeekday(baseDateKey, weekday, timeZone = DEFAULT_TIMEZONE) {
+      const baseWeekday = weekdayForLocalDateKey(baseDateKey, timeZone);
+      const baseIdx = WEEKDAYS.indexOf(baseWeekday);
+      const targetIdx = WEEKDAYS.indexOf(String(weekday || ""));
+      if (baseIdx < 0 || targetIdx < 0) return baseDateKey;
+
+      let dayDelta = (targetIdx - baseIdx + 7) % 7;
+      if (dayDelta > 3) dayDelta -= 7;
+
+      return shiftLocalDateKey(baseDateKey, dayDelta) || baseDateKey;
+    }
+
     function getRssFinalAiringAtMs(options = {}, timeZone = DEFAULT_TIMEZONE) {
       const nextAiringAt = Number(options.nextAiringAt);
-      const totalEpisode = Number(options.totalEpisodeNumber);
-      const latestReleaseDate = Number(options.latestReleaseDate);
-      const matchedEpisode = episodeNumberFromToken(options.matchedEpisode);
+      const sampledTime = String(options.finalTimingTime || options.time || "");
+      const sampledDay = String(options.finalTimingDay || options.day || "");
 
       if (!Number.isFinite(nextAiringAt) || nextAiringAt <= 0) return null;
-      if (!Number.isFinite(totalEpisode) || totalEpisode <= 0) return null;
-      if (!Number.isFinite(latestReleaseDate) || latestReleaseDate <= 0) return null;
-      if (!Number.isFinite(matchedEpisode) || matchedEpisode !== totalEpisode) return null;
+      if (!isValidTime(sampledTime)) return null;
 
       const finalDateKey = localDateKeyFromMs(nextAiringAt * 1000, timeZone);
-      const rssSlot = dateToWeekdayTime(new Date(latestReleaseDate), timeZone);
-      if (!finalDateKey || !rssSlot?.time) return null;
+      if (!finalDateKey) return null;
 
-      return localTimestampFromDateKeyAndTime(finalDateKey, rssSlot.time, timeZone);
+      const targetDateKey = sampledDay
+        ? closestDateKeyForWeekday(finalDateKey, sampledDay, timeZone)
+        : finalDateKey;
+
+      return localTimestampFromDateKeyAndTime(targetDateKey, sampledTime, timeZone);
     }
 
 
@@ -1930,14 +1957,19 @@
       const rssFinalAiringAtMs = isFinalEpisode && usesRssFinalTiming
         ? getRssFinalAiringAtMs({
             nextAiringAt,
-            totalEpisodeNumber: totalEpisode,
-            matchedEpisode: options.matchedEpisode,
-            latestReleaseDate: options.latestReleaseDate
+            day: options.day,
+            time: options.time,
+            finalTimingDay: options.finalTimingDay,
+            finalTimingTime: options.finalTimingTime
           }, timeZone)
         : null;
       const fallbackFinalAiringAtMs = hasNextAiringAt ? nextAiringAt * 1000 : null;
-      const finalAiredAtMs = usesRssFinalTiming ? rssFinalAiringAtMs : fallbackFinalAiringAtMs;
+      const finalAiredAtMs = isFinalEpisode
+        ? (usesRssFinalTiming ? rssFinalAiringAtMs : fallbackFinalAiringAtMs)
+        : null;
       const finalAiringHasActuallyPassed = isFinalEpisode && Number.isFinite(finalAiredAtMs) && finalAiredAtMs <= (nowSeconds * 1000);
+      const rssFinalReleaseSeen = isFinalEpisode && usesRssFinalTiming &&
+        Number(options.matchedEpisode) === totalEpisode;
 
       return {
         displayEpisode: hasNextEpisode ? nextEpisode : "?",
@@ -1947,7 +1979,7 @@
         isEnded: finalAiringHasActuallyPassed,
         finalAiredAtMs: Number.isFinite(finalAiredAtMs) ? finalAiredAtMs : null,
         usesRssFinalTiming: isFinalEpisode && usesRssFinalTiming,
-        rssFinalReleaseSeen: Number.isFinite(rssFinalAiringAtMs)
+        rssFinalReleaseSeen
       };
     }
 
@@ -2076,6 +2108,8 @@
             latestReleaseDate: rssCandidateForFinal?.latestReleaseDate,
             day: override.day,
             time: override.time,
+            finalTimingDay: rssCandidateForFinal?.latestReleaseDay || rssCandidateForFinal?.day,
+            finalTimingTime: rssCandidateForFinal?.time,
             nextAiringAt: shared.nextAiringAt,
             isUpcomingSeason: shared.isUpcomingSeason,
             isScheduleMoved: shared.isScheduleMoved,
@@ -2116,6 +2150,8 @@
             latestReleaseDate: primary.latestReleaseDate,
             day: primary.day,
             time: primary.time,
+            finalTimingDay: primary.latestReleaseDay || primary.day,
+            finalTimingTime: primary.time,
             nextAiringAt: shared.nextAiringAt,
             isUpcomingSeason: shared.isUpcomingSeason,
             isScheduleMoved: shared.isScheduleMoved,
@@ -2201,6 +2237,10 @@
             item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
+          const latestHistoryDay = entry.history.length
+            ? entry.history[entry.history.length - 1]?.day
+            : null;
+
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
             totalEpisodeNumber: item.totalEpisodeNumber,
@@ -2208,6 +2248,8 @@
             latestReleaseDate: item.latestReleaseDate,
             day: item.day,
             time: item.time,
+            finalTimingDay: latestHistoryDay || item.latestReleaseDay || item.day,
+            finalTimingTime: item.time,
             nextAiringAt: item.nextAiringAt,
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
@@ -2240,6 +2282,9 @@
           const latestRememberedEpisode = rememberedHistory.length
             ? rememberedHistory[rememberedHistory.length - 1]?.episode
             : item.matchedEpisode;
+          const latestRememberedDay = rememberedHistory.length
+            ? rememberedHistory[rememberedHistory.length - 1]?.day
+            : null;
 
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
@@ -2248,6 +2293,8 @@
             latestReleaseDate: entry.latestReleaseDate,
             day: item.day,
             time: rememberedTime,
+            finalTimingDay: latestRememberedDay || item.latestReleaseDay || item.day,
+            finalTimingTime: rememberedTime,
             nextAiringAt: item.nextAiringAt,
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
@@ -2604,8 +2651,8 @@
 
       const episodeHTML = shouldShowEpisode
         ? (item.isFinalHoldover
-            ? '<div class="anime-card-episode"><span class="final-dot" title="Final episode aired" aria-label="Final episode aired"></span></div>'
-            : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Final episode" aria-label="Final episode"></span>' : ''}</div>`)
+            ? '<div class="anime-card-episode"><span class="final-dot" title="Finale aired" aria-label="Finale aired"></span></div>'
+            : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Finale" aria-label="Finale"></span>' : ''}</div>`)
         : '';
 
       const imageHTML = coverUrl 
@@ -2670,7 +2717,10 @@
         const media = mediaById(id);
         const airingAtMs = Number(item.nextAiringAt) * 1000;
         const finalAiredAtMs = Number(item.finalAiredAtMs);
-        const airDateKey = localDateKeyFromMs(airingAtMs, DEFAULT_TIMEZONE);
+        const finalDateBasisMs = Number.isFinite(finalAiredAtMs) && finalAiredAtMs > 0
+          ? finalAiredAtMs
+          : airingAtMs;
+        const airDateKey = localDateKeyFromMs(finalDateBasisMs, DEFAULT_TIMEZONE);
         if (!airDateKey) continue;
 
         finalHoldovers[id] = {
@@ -2784,7 +2834,12 @@
           holdover.latestReleaseDate = candidate.latestReleaseDate;
           holdover.item = { ...holdover.item, latestReleaseDate: candidate.latestReleaseDate, isFreshRss: true };
           holdover.rssFinalReleaseSeen = true;
-          holdover.finalAiredAtMs = candidate.latestReleaseDate;
+
+          const storedFinalAiredAtMs = Number(holdover.finalAiredAtMs ?? holdover.item?.finalAiredAtMs);
+          if (Number.isFinite(storedFinalAiredAtMs) && storedFinalAiredAtMs > 0) {
+            holdover.finalAiredAtMs = storedFinalAiredAtMs;
+            holdover.airDateKey = localDateKeyFromMs(storedFinalAiredAtMs, DEFAULT_TIMEZONE) || holdover.airDateKey;
+          }
         }
       }
       await saveFinalHoldovers(state.userName, state.finalHoldovers);
@@ -3276,9 +3331,22 @@
 
     function startAutoRefresh() {
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
-      setInterval(() => { 
-        if (state.items.length) updateBoardHighlights(); 
-        renderFooterStatus(); 
+      setInterval(async () => {
+        const now = Date.now();
+        const finalDisplayNeedsRefresh = state.items.some(item => (
+          item.isFinalEpisode &&
+          !item.isFinalAired &&
+          Number.isFinite(Number(item.finalAiredAtMs)) &&
+          Number(item.finalAiredAtMs) <= now
+        ));
+
+        if (finalDisplayNeedsRefresh) {
+          await refreshBoardFromState();
+        } else if (state.items.length) {
+          updateBoardHighlights();
+        }
+
+        renderFooterStatus();
       }, COUNTDOWN_TICK_MS);
     }
 
