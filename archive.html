@@ -1577,7 +1577,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         });
         return matches;
       }
-      function applyReleaseMatch(s, match, { forceMove = false, checkedAt = new Date().toISOString() } = {}) {
+      function applyReleaseMatch(s, match, { forceMove = false, checkedAt = new Date().toISOString(), markFoundUpdate = true } = {}) {
         if (!s) return;
         if (!s.anilistId) {
           s.releasesMoe = defaultRelease(s.releasesMoe);
@@ -1628,6 +1628,8 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         s.source = "anilist";
         s.updatedAt = checkedAt;
         const next = getBoard(s);
+        const movedWatchingToFound = forceMove && markFoundUpdate && prev === "watching" && next === "found";
+        if (movedWatchingToFound) s.releasesMoe.updateAvailable = true;
         if (forceMove && prev !== next) moveBoard(s.id, prev, next);
       }
       function markReleaseRefreshError(s, error, checkedAt = new Date().toISOString()) {
@@ -1758,7 +1760,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         els.searchInput.value = "";
         const s = showFromMedia(m);
         state.shows.unshift(s);
-        await refreshShow(s, { forceMove: true });
+        await refreshShow(s, { forceMove: true, markFoundUpdate: false });
         insertAZ(state.order[getBoard(s)], s.id);
         render();
         save();
@@ -1770,7 +1772,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         );
       }
 
-      async function refreshShow(s, { forceMove = false } = {}) {
+      async function refreshShow(s, { forceMove = false, markFoundUpdate = true } = {}) {
         if (!s.anilistId) {
           s.releasesMoe = defaultRelease(s.releasesMoe);
           s.releasesMoe.checkedAt = new Date().toISOString();
@@ -1782,7 +1784,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           const r = await releasesRequest(buildSingleReleaseUrl(s.anilistId));
           if (!r.ok) throw new Error("API Error");
           const j = await r.json().catch(() => ({}));
-          applyReleaseMatch(s, j.items?.[0] || null, { forceMove });
+          applyReleaseMatch(s, j.items?.[0] || null, { forceMove, markFoundUpdate });
         } catch (e) {
           markReleaseRefreshError(s, e);
         }
@@ -2334,7 +2336,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           if (!mediaOnBoard(m)) {
             const s = showFromMedia(m);
             state.shows.unshift(s);
-            await refreshShow(s, { forceMove: true });
+            await refreshShow(s, { forceMove: true, markFoundUpdate: false });
             insertAZ(state.order[getBoard(s)], s.id);
             added++;
             render();
@@ -2403,7 +2405,7 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
             );
           const s = showFromMedia(m);
           state.shows.unshift(s);
-          await refreshShow(s, { forceMove: true });
+          await refreshShow(s, { forceMove: true, markFoundUpdate: false });
           insertAZ(state.order[getBoard(s)], s.id);
           render();
           save();
@@ -2876,7 +2878,8 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         const board = getBoard(s),
           isDl = board === "downloaded",
           notes = !!state.ui.openNotes[s.id],
-          hasUpdate = isDl && !!s.releasesMoe.updateAvailable,
+          showUpdateBadge = !!s.releasesMoe.updateAvailable && (isDl || board === "found"),
+          hasUpdate = showUpdateBadge,
           sort = state.ui.sortMode && isDl,
           link = releaseLink(s),
           poster = link
@@ -2888,13 +2891,13 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         let badge =
           s.needsAnilist || !s.anilistId
             ? '<span class="badge need">Needs AniList</span>'
-            : isDl
-              ? s.releasesMoe.updateAvailable
-                ? '<span class="badge update">Updated</span>'
-                : ""
-              : s.releasesMoe.found
-                ? '<span class="badge found">Found</span>'
-                : '<span class="badge watch">Watching</span>';
+            : showUpdateBadge
+              ? '<span class="badge update">Updated</span>'
+              : isDl
+                ? ""
+                : s.releasesMoe.found
+                  ? '<span class="badge found">Found</span>'
+                  : '<span class="badge watch">Watching</span>';
         const actions = sort
           ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
           : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
