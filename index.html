@@ -2660,7 +2660,7 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${(item.isScheduleMoved && item.day !== todayName) ? 'on-break' : ''} ${item.isUpcomingSeason ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${item.isUpcomingSeason ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
