@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Framed - Daily Guessing Game</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --text-color: #ffffff;
+            --accent-color: #6366f1;
+            --border-color: #2e2e33;
+            --success-color: #22c55e;
+            --fail-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            width: 100%;
+            max-width: 600px;
+            padding-bottom: 10px;
+        }
+
+        h1 { margin: 0; font-size: 2rem; letter-spacing: 2px; }
+        .date-sub { color: #888; font-size: 0.9rem; margin-top: 5px; }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .frame-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .frame-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .frame-container img.active {
+            display: block;
+        }
+
+        .dots-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 35px;
+            height: 8px;
+            background-color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .dot.unlocked { background-color: #555; }
+        .dot.active { background-color: var(--accent-color) !important; }
+        .dot.correct { background-color: var(--success-color) !important; }
+        .dot.wrong { background-color: var(--fail-color) !important; }
+
+        .search-box {
+            position: relative;
+            width: 100%;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .autocomplete-item:hover {
+            background-color: #252529;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-submit { background-color: var(--accent-color); color: #fff; }
+        .btn-skip { background-color: #333; color: #fff; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .guesses-log {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .guess-row {
+            padding: 10px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .guess-row.wrong { border-left: 4px solid var(--fail-color); }
+        .guess-row.skipped { border-left: 4px solid #555; color: #888; }
+        .guess-row.correct { border-left: 4px solid var(--success-color); }
+
+        .modal {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .loader {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ANIME FRAMED</h1>
+        <div class="date-sub" id="current-date">Daily Puzzle</div>
+    </header>
+
+    <div class="container">
+        <div id="loader" class="loader">Loading Daily Anime Frames...</div>
+        
+        <div id="game-interface" style="display: none;">
+            <div class="frame-container" id="frame-viewer"></div>
+
+            <div class="dots-container" id="dots-container">
+                <div class="dot unlocked active" data-index="0"></div>
+                <div class="dot" data-index="1"></div>
+                <div class="dot" data-index="2"></div>
+                <div class="dot" data-index="3"></div>
+                <div class="dot" data-index="4"></div>
+                <div class="dot" data-index="5"></div>
+            </div>
+
+            <div class="guesses-log" id="guesses-log"></div>
+
+            <div id="input-area">
+                <div class="search-box">
+                    <input type="text" id="anime-search" placeholder="Search Anime title..." autocomplete="off">
+                    <div class="autocomplete-dropdown" id="autocomplete-list"></div>
+                </div>
+                <div class="button-row" style="margin-top: 10px;">
+                    <button class="btn-skip" id="btn-skip">SKIP</button>
+                    <button class="btn-submit" id="btn-submit">SUBMIT</button>
+                </div>
+            </div>
+
+            <div class="modal" id="end-modal">
+                <h2 id="end-title"></h2>
+                <p id="end-meta"></p>
+                <p>Come back tomorrow for a new entry!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SEEDABLE RANDOM NUMBER GENERATOR (SFC32) ---
+        function cyrb128(str) {
+            let h1 = 1779033703, h2 = 3024734485, h3 = 3362453611, h4 = 502494348;
+            for (let i = 0, k; i < str.length; i++) {
+                k = str.charCodeAt(i);
+                h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+                h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+                h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+                h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+            }
+            return [(h1>>>0), (h2>>>0), (h3>>>0), (h4>>>0)];
+        }
+
+        function sfc32(a, b, c, d) {
+            return function() {
+                a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+                var t = (a + b) | 0;
+                a = b ^ (b >>> 9);
+                b = (c + (c << 3)) | 0;
+                c = (c << 21) | (c >>> 11);
+                d = (d + 1) | 0;
+                t = (t + d) | 0;
+                c = (c + t) | 0;
+                return (t >>> 0) / 4294967296;
+            }
+        }
+
+        // --- 2. GAME STATE CONFIGURATION ---
+        const MAX_GUESSES = 6;
+        let currentStep = 0;
+        let activeViewStep = 0;
+        let targetAnime = null;
+        let allImages = [];
+        let gameOver = false;
+
+        // Establish uniform seed using current local date string (e.g., "2026-07-08")
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('current-date').innerText = `Puzzle Date: ${todayStr}`;
+        const seed = cyrb128(todayStr);
+        const rand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+
+        // A curated list of highly recognizable, top-tier popular anime MAL IDs to keep the game fun
+        const POOL_IDS = [
+            5114, 20, 1535, 30276, 21, 31964, 11061, 38000, 40028, 16498, 
+            32281, 1575, 22319, 199, 2904, 30, 42249, 50265, 34572, 44511,
+            263, 15, 18671, 37521, 9253, 28977, 31240, 28851, 3588, 19815
+        ];
+
+        // --- 3. INITIALIZATION & API FETCHING ---
+        async function initGame() {
+            try {
+                // Pick an anime deterministically out of our list
+                const randomIndex = Math.floor(rand() * POOL_IDS.length);
+                const targetId = POOL_IDS[randomIndex];
+
+                // Fetch details and pictures from Jikan V4
+                const [infoRes, picsRes] = await Promise.all([
+                    fetch(`https://api.jikan.moe/v4/anime/${targetId}`),
+                    fetch(`https://api.jikan.moe/v4/anime/${targetId}/pictures`)
+                ]);
+
+                const infoData = await infoRes.json();
+                const picsData = await picsRes.json();
+
+                targetAnime = infoData.data;
+                
+                // Consolidate main image and accessory pictures
+                let fetchedPics = picsData.data.map(p => p.jpg.large_image_url);
+                if (targetAnime.images?.jpg?.large_image_url) {
+                    fetchedPics.unshift(targetAnime.images.jpg.large_image_url);
+                }
+                // Filter out unique values
+                allImages = [...new Set(fetchedPics)];
+
+                // Ensure we have exactly 6 frames by padding with the main one if lacking pictures
+                while(allImages.length < MAX_GUESSES) {
+                    allImages.push(allImages[0]);
+                }
+                // Shorten if it contains more than 6
+                allImages = allImages.slice(0, MAX_GUESSES);
+
+                renderFrames();
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('game-interface').style.display = 'block';
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loader').innerText = "Failed to load Jikan data. Rate limited? Retrying shortly...";
+                setTimeout(initGame, 3000); // Fail-safe retry
+            }
+        }
+
+        function renderFrames() {
+            const viewer = document.getElementById('frame-viewer');
+            viewer.innerHTML = '';
+            allImages.forEach((url, index) => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.id = `frame-${index}`;
+                if (index === 0) img.classList.add('active');
+                viewer.appendChild(img);
+            });
+        }
+
+        function updateFrameView(index) {
+            if (index > currentStep) return; // Can't view locked frames
+            activeViewStep = index;
+            document.querySelectorAll('#frame-viewer img').forEach((img, idx) => {
+                img.classList.toggle('active', idx === index);
+            });
+            document.querySelectorAll('.dot').forEach((dot, idx) => {
+                dot.classList.toggle('active', idx === index);
+            });
+        }
+
+        // --- 4. AUTOCOMPLETE JIKAN SEARCH ---
+        const searchInput = document.getElementById('anime-search');
+        const autocompleteList = document.getElementById('autocomplete-list');
+        let timeoutId = null;
+
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timeoutId);
+            const query = searchInput.value.trim();
+            if (query.length < 3) {
+                autocompleteList.innerHTML = '';
+                return;
+            }
+
+            // Debounce API calls to respect rate limits
+            timeoutId = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=6`);
+                    const json = await res.json();
+                    renderAutocomplete(json.data);
+                } catch(e) { console.error("Search error", e); }
+            }, 400);
+        });
+
+        function renderAutocomplete(list) {
+            autocompleteList.innerHTML = '';
+            if (!list) return;
+            list.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.innerText = item.title;
+                div.addEventListener('click', () => {
+                    searchInput.value = item.title;
+                    autocompleteList.innerHTML = '';
+                });
+                autocompleteList.appendChild(div);
+            });
+        }
+
+        // Hide dropdown on clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target !== searchInput) autocompleteList.innerHTML = '';
+        });
+
+        // --- 5. GAMEPLAY LOGIC ---
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnSkip = document.getElementById('btn-skip');
+        const dots = document.querySelectorAll('.dot');
+
+        // Allow navigation between unlocked frames clicking on dots
+        dots.forEach((dot, idx) => {
+            dot.addEventListener('click', () => updateFrameView(idx));
+        });
+
+        btnSubmit.addEventListener('click', () => {
+            const guessValue = searchInput.value.trim();
+            if (!guessValue) return;
+
+            // Simple title validation mechanism (lowercased)
+            const isCorrect = guessValue.toLowerCase() === targetAnime.title.toLowerCase() || 
+                              (targetAnime.title_english && guessValue.toLowerCase() === targetAnime.title_english.toLowerCase());
+
+            handleTurn(isCorrect, guessValue);
+        });
+
+        btnSkip.addEventListener('click', () => {
+            handleTurn(false, "Skipped", true);
+        });
+
+        function handleTurn(isCorrect, guessText, isSkipped = false) {
+            if (gameOver) return;
+
+            const log = document.getElementById('guesses-log');
+            const row = document.createElement('div');
+            row.className = `guess-row ${isCorrect ? 'correct' : (isSkipped ? 'skipped' : 'wrong')}`;
+            row.innerText = `Frame ${currentStep + 1}: ${guessText}`;
+            log.appendChild(row);
+
+            const currentDot = dots[currentStep];
+
+            if (isCorrect) {
+                currentDot.classList.add('correct');
+                endGame(true);
+                return;
+            } else {
+                currentDot.classList.add('wrong');
+                currentStep++;
+                
+                if (currentStep < MAX_GUESSES) {
+                    dots[currentStep].classList.add('unlocked');
+                    updateFrameView(currentStep);
+                    searchInput.value = '';
+                } else {
+                    endGame(false);
+                }
+            }
+        }
+
+        function endGame(won) {
+            gameOver = true;
+            searchInput.disabled = true;
+            btnSubmit.disabled = true;
+            btnSkip.disabled = true;
+
+            const modal = document.getElementById('end-modal');
+            const title = document.getElementById('end-title');
+            const meta = document.getElementById('end-meta');
+
+            modal.style.display = 'block';
+            if (won) {
+                title.innerText = "🎉 You Got It!";
+                title.style.color = "var(--success-color)";
+            } else {
+                title.innerText = "💀 Game Over!";
+                title.style.color = "var(--fail-color)";
+            }
+
+            meta.innerHTML = `The anime was: <strong>${targetAnime.title}</strong><br><br>
+            <a href="${targetAnime.url}" target="_blank" style="color: var(--accent-color); text-decoration: none;">View on MyAnimeList ↗</a>`;
+            
+            // Unlock all dots and show the main picture at the end
+            dots.forEach(dot => dot.classList.add('unlocked'));
+            updateFrameView(0);
+        }
+
+        // Run application
+        initGame();
+    </script>
+</body>
+</html>
