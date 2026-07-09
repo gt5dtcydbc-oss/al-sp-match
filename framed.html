@@ -51,13 +51,18 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            min-width: 0;
             margin-bottom: 14px;
             padding-bottom: 14px;
             border-bottom: 1px solid var(--border-color);
         }
 
         h1 {
+            min-width: 0;
             margin: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             font-size: 1.8rem;
             line-height: 1;
             letter-spacing: 0.08em;
@@ -67,12 +72,13 @@
 
         .header-actions {
             display: flex;
+            flex: 0 0 auto;
             align-items: center;
             gap: 6px;
         }
 
         .icon-button {
-            min-width: 34px;
+            min-width: 48px;
             width: auto;
             height: 34px;
             display: inline-grid;
@@ -83,11 +89,20 @@
             background: transparent;
             cursor: pointer;
             font-weight: 700;
-            padding: 0 9px;
+            padding: 0 10px;
             font-size: 0.82rem;
+            line-height: 1;
+            white-space: nowrap;
         }
 
         .helper-button { display: none; }
+
+        #btn-close-stats {
+            min-width: 34px;
+            width: 34px;
+            padding: 0;
+            font-size: 1.05rem;
+        }
 
         .icon-button:hover,
         .icon-button:focus-visible {
@@ -613,12 +628,22 @@
 
         @media (max-width: 560px) {
             body { padding: 14px; }
+            .hero-header { gap: 10px; }
             h1 { font-size: 1.45rem; letter-spacing: 0.06em; }
             .header-actions { gap: 5px; }
-            .icon-button { width: 32px; height: 32px; }
+            .icon-button { min-width: 48px; height: 32px; padding: 0 10px; }
+            #btn-close-stats { min-width: 32px; width: 32px; padding: 0; }
             .frame-window { max-height: 58vh; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .button-row, .end-actions { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 360px) {
+            body { padding: 12px; }
+            .hero-header { gap: 8px; }
+            h1 { font-size: 1.28rem; letter-spacing: 0.045em; }
+            .icon-button { min-width: 46px; height: 31px; padding: 0 9px; font-size: 0.78rem; }
+            #btn-close-stats { min-width: 31px; width: 31px; padding: 0; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -652,7 +677,7 @@
                         <span class="mode-option-subtitle">Top 1000</span>
                     </button>
                     <button class="mode-option" id="mode-expert" type="button" data-mode="expert">
-                        <span class="mode-option-title">Expert</span>
+                        <span class="mode-option-title">Hard</span>
                         <span class="mode-option-subtitle">Hints</span>
                     </button>
                 </div>
@@ -705,7 +730,7 @@
                     <div class="hint-header">
                         <div>
                             <span class="hint-title" id="hint-title">Hints</span>
-                            <span class="hint-subtitle">Expert only</span>
+                            <span class="hint-subtitle">Hard only</span>
                         </div>
                         <span class="hint-count" id="hint-count">0/2</span>
                     </div>
@@ -801,10 +826,10 @@
             },
             expert: {
                 id: "expert",
-                label: "Expert",
+                label: "Hard",
                 meta: "Ranks 1001-6000",
-                shareLabel: "Expert",
-                statusReady: "Expert mode",
+                shareLabel: "Hard",
+                statusReady: "Hard mode",
                 rankMin: 1000,
                 rankMax: 5999,
                 hintMode: true
@@ -1497,7 +1522,7 @@
             if (event.target === els.statsBackdrop) closeStats();
         });
         els.btnHelp.addEventListener("click", () => {
-            const hintText = getModeDef().hintMode ? " Expert hints unlock after misses 1 and 3." : " Popular uses the top 1000 pool.";
+            const hintText = getModeDef().hintMode ? " Hard hints unlock after misses 1 and 3." : " Popular uses the top 1000 pool.";
             setFeedback(`Guess the anime. Wrong guesses and skips reveal clearer frames.${hintText}`);
             els.searchInput.focus();
         });
