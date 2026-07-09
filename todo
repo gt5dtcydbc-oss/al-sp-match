@@ -1,3 +1,6 @@
 - Delayed shows should keep sampels and days for the whole
 day. e.g show is on break for 14 days. 7 days before airing again
 it looses day counter and sampels. it shoulf keep the day counter until end of day otherwise its confusing for useres since theyll think the show will air today even though its still on break
+
+
+BRR error for 0 patterns Bang!Yume
