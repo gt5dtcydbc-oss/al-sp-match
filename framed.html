@@ -46,11 +46,10 @@
             gap: 16px;
         }
 
-        /* The Frame Box Container */
         .frame-window {
             position: relative;
             width: 100%;
-            aspect-ratio: 3 / 4; /* Matches standard anime poster ratios */
+            aspect-ratio: 3 / 4;
             background-color: #050505;
             border-radius: 12px;
             overflow: hidden;
@@ -65,13 +64,13 @@
             transition: filter 0.3s ease, transform 0.3s ease;
         }
 
-        /* RE-BALANCED PROGRESSIVE CLUE STATES */
+        /* PROGRESSIVE CLUE STATES */
         .frame-style-0 { filter: blur(14px); transform: scale(1.6); object-position: center; }
         .frame-style-1 { filter: blur(8px);  transform: scale(1.4); object-position: center; }
         .frame-style-2 { filter: blur(4px);  transform: scale(1.2); object-position: center; }
         .frame-style-3 { filter: blur(2px);  transform: scale(1.1); object-position: center; } 
-        .frame-style-4 { filter: blur(0px);  transform: scale(1.2); object-position: top; }    /* Clear, offset view */
-        .frame-style-5 { filter: blur(0px);  transform: scale(1);   object-position: center; } /* Perfect original view */
+        .frame-style-4 { filter: blur(0px);  transform: scale(1.2); object-position: top; }    
+        .frame-style-5 { filter: blur(0px);  transform: scale(1);   object-position: center; } 
 
         .dots-container {
             display: flex;
@@ -226,7 +225,7 @@
     </div>
 
     <script>
-        // --- 1. SEEDABLE PRNG SYSTEM (SFC32 + CYRB128) ---
+        // --- 1. SEEDABLE PRNG SYSTEM ---
         function cyrb128(str) {
             let h1 = 1779033703, h2 = 3024734485, h3 = 3362453611, h4 = 502494348;
             for (let i = 0, k; i < str.length; i++) {
@@ -259,14 +258,15 @@
         let activeViewStep = 0;
         let targetAnime = null;
         let gameOver = false;
+        let savedHistory = []; // Tracks structural log variables across sessions
 
-        // Generate consistent seed daily based on local clock calendar date
         const todayStr = new Date().toISOString().split('T')[0];
-        document.getElementById('current-date').innerText = `PUZZLE ID: ${todayStr.replace(/-/g, '')}`;
+        const puzzleId = todayStr.replace(/-/g, '');
+        document.getElementById('current-date').innerText = `PUZZLE ID: ${puzzleId}`;
+        
         const seed = cyrb128(todayStr);
         const rand = sfc32(seed[0], seed[1], seed[2], seed[3]);
 
-        // Curated high-profile Kitsu Anime IDs to build the daily pool sequence
         const ANIME_POOL_IDS = [
             7442, 1376, 3919, 11469, 12, 11, 6448, 41370, 42765, 5204, 
             11614, 176, 197, 1, 10740, 244, 1517, 6977, 8305, 8220, 
@@ -276,23 +276,21 @@
         // --- 3. RUN APPLICATION INITIALIZER ---
         async function initGame() {
             try {
-                // Select an entry deterministically from the curated database indices
                 const targetIdx = Math.floor(rand() * ANIME_POOL_IDS.length);
                 const targetId = ANIME_POOL_IDS[targetIdx];
 
-                // Fetch entity data directly from Kitsu API
                 const response = await fetch(`https://kitsu.io/api/edge/anime/${targetId}`);
                 const json = await response.json();
                 
                 if(!json.data) throw new Error("Malformed payload data structures.");
                 targetAnime = json.data.attributes;
 
-                // Bind high-res poster element asset
                 const posterImg = document.getElementById('game-poster');
                 posterImg.src = targetAnime.posterImage.large || targetAnime.posterImage.original;
 
-                // Sync UI views
-                updateFrameView(0);
+                // Load any historical data stored for today's puzzle context
+                loadGameState();
+
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('game-interface').style.display = 'block';
 
@@ -303,13 +301,70 @@
             }
         }
 
+        // --- LOCAL STORAGE SYSTEM FUNCTIONS ---
+        function saveGameState(status = "IN_PROGRESS") {
+            const statePayload = {
+                puzzleId: puzzleId,
+                currentStep: currentStep,
+                status: status, // "IN_PROGRESS", "WON", "LOST"
+                history: savedHistory
+            };
+            localStorage.setItem('anime_framed_state', JSON.stringify(statePayload));
+        }
+
+        function loadGameState() {
+            const rawData = localStorage.getItem('anime_framed_state');
+            if (!rawData) {
+                updateFrameView(0);
+                return;
+            }
+
+            const parsed = JSON.parse(rawData);
+            
+            // Check if the saved state matches today's puzzle ID. If outdated, ignore it.
+            if (parsed.puzzleId !== puzzleId) {
+                localStorage.removeItem('anime_framed_state');
+                updateFrameView(0);
+                return;
+            }
+
+            // Reconstruct timeline steps and logs dynamically
+            currentStep = parsed.currentStep;
+            savedHistory = parsed.history;
+
+            const dots = document.querySelectorAll('.dot');
+            const trackingLogs = document.getElementById('guesses-log');
+
+            savedHistory.forEach((logItem, idx) => {
+                // Build layout log structures
+                const logRow = document.createElement('div');
+                logRow.className = `guess-row ${logItem.type}`;
+                logRow.innerText = `Attempt ${idx + 1}: ${logItem.text}`;
+                trackingLogs.appendChild(logRow);
+
+                // Reassign timeline node colors
+                if (logItem.type === 'correct') dots[idx].className = 'dot correct';
+                else dots[idx].className = 'dot wrong';
+            });
+
+            if (parsed.status === "WON") {
+                processEndgame(true, true);
+            } else if (parsed.status === "LOST") {
+                processEndgame(false, true);
+            } else {
+                // Game is still active; unlock the current step element
+                for (let i = 0; i <= currentStep; i++) {
+                    dots[i].classList.add('unlocked');
+                }
+                updateFrameView(currentStep);
+            }
+        }
+
         function updateFrameView(stepIndex) {
-            if (stepIndex > currentStep) return; // Prevent viewing locked upcoming hints
+            if (!gameOver && stepIndex > currentStep) return; 
             activeViewStep = stepIndex;
 
             const posterImg = document.getElementById('game-poster');
-            
-            // Wipe old step configurations and assign explicit active CSS modifier frame values
             posterImg.className = '';
             posterImg.classList.add(`frame-style-${stepIndex}`);
 
@@ -318,7 +373,7 @@
             });
         }
 
-        // --- 4. AUTOCOMPLETE LOGIC (Kitsu Context Engine) ---
+        // --- 4. AUTOCOMPLETE LOGIC ---
         const searchInput = document.getElementById('anime-search');
         const autocompleteList = document.getElementById('autocomplete-list');
         let searchTimeout = null;
@@ -332,7 +387,6 @@
                 return;
             }
 
-            // Debounce Kitsu text filters safely to optimize stream requests
             searchTimeout = setTimeout(async () => {
                 try {
                     const url = `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}&page[limit]=6`;
@@ -377,7 +431,6 @@
             const currentGuess = searchInput.value.trim();
             if (!currentGuess) return;
 
-            // Gather standard array variations mapped via API titles
             const parsedGuess = currentGuess.toLowerCase();
             const validTitles = [
                 targetAnime.canonicalTitle?.toLowerCase(),
@@ -396,9 +449,12 @@
         function evaluateRoundResult(isCorrect, loggedText, wasSkipped = false) {
             if (gameOver) return;
 
+            const typeStr = isCorrect ? 'correct' : (wasSkipped ? 'skipped' : 'wrong');
+            savedHistory.push({ text: loggedText, type: typeStr });
+
             const trackingLogs = document.getElementById('guesses-log');
             const logRow = document.createElement('div');
-            logRow.className = `guess-row ${isCorrect ? 'correct' : (wasSkipped ? 'skipped' : 'wrong')}`;
+            logRow.className = `guess-row ${typeStr}`;
             logRow.innerText = `Attempt ${currentStep + 1}: ${loggedText}`;
             trackingLogs.appendChild(logRow);
 
@@ -406,6 +462,7 @@
 
             if (isCorrect) {
                 activeDotMarker.className = 'dot correct';
+                saveGameState("WON");
                 processEndgame(true);
                 return;
             } else {
@@ -416,13 +473,15 @@
                     dots[currentStep].classList.add('unlocked');
                     updateFrameView(currentStep);
                     searchInput.value = '';
+                    saveGameState("IN_PROGRESS");
                 } else {
+                    saveGameState("LOST");
                     processEndgame(false);
                 }
             }
         }
 
-        function processEndgame(victory) {
+        function processEndgame(victory, loadedFromStorage = false) {
             gameOver = true;
             searchInput.disabled = true;
             btnSubmit.disabled = true;
@@ -445,12 +504,10 @@
 
             endMeta.innerHTML = `The correct answer was:<br><span style="font-size:1.3rem; font-weight:800; color:#fff;">${targetAnime.canonicalTitle}</span>`;
             
-            // Clean timeline markers and completely remove distortions
             dots.forEach(dot => dot.classList.add('unlocked'));
             updateFrameView(5);
         }
 
-        // Initialize application instance
         initGame();
     </script>
 </body>
