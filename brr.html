@@ -210,6 +210,52 @@
         .status.error { color: var(--error); }
         .status.warning { color: var(--warning); }
 
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: min(440px, calc(100vw - 40px));
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            animation: toast-in 0.2s ease-out;
+        }
+
+        .toast.warning { border-color: rgba(245, 158, 11, 0.65); }
+        .toast.error { border-color: rgba(239, 68, 68, 0.75); }
+        .toast.success { border-color: rgba(16, 185, 129, 0.65); }
+
+        .toast-title {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .toast-message {
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .progress-wrap {
             display: none;
             height: 6px;
@@ -376,6 +422,8 @@
 </head>
 <body>
 
+<div id="toastContainer" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
 <div class="card">
     <h1>AniList + MAL → AutoBrr</h1>
     <p class="subtitle">
@@ -445,6 +493,7 @@
         <div class="metric"><span class="metric-value" id="truthFallbackCount">0</span><span class="metric-label">Fallbacks</span></div>
         <div class="metric"><span class="metric-value" id="jikanAddedCount">0</span><span class="metric-label">MAL titles</span></div>
         <div class="metric"><span class="metric-value" id="jikanErrorCount">0</span><span class="metric-label">Jikan errors</span></div>
+        <div class="metric"><span class="metric-value" id="zeroPatternCount">0</span><span class="metric-label">Zero-pattern shows</span></div>
         <div class="metric"><span class="metric-value" id="patternCount">0</span><span class="metric-label">Patterns</span></div>
         <div class="metric"><span class="metric-value" id="charCount">0</span><span class="metric-label">Characters</span></div>
     </div>
@@ -491,17 +540,26 @@
         truthFallbackCount: document.getElementById('truthFallbackCount'),
         jikanAddedCount: document.getElementById('jikanAddedCount'),
         jikanErrorCount: document.getElementById('jikanErrorCount'),
+        zeroPatternCount: document.getElementById('zeroPatternCount'),
         patternCount: document.getElementById('patternCount'),
         charCount: document.getElementById('charCount'),
         output: document.getElementById('output'),
         copyBtn: document.getElementById('copyBtn'),
         clearCacheBtn: document.getElementById('clearCacheBtn'),
-        log: document.getElementById('log')
+        log: document.getElementById('log'),
+        toastContainer: document.getElementById('toastContainer')
     };
 
     let lastJikanRequestAt = 0;
 
-    const isEnglishFriendly = (value) => /^[\x00-\xFF]*$/.test(String(value || ''));
+    // Allow Latin titles that contain Unicode punctuation/symbols (for example ×, ☆, or an em dash).
+    // Purely non-Latin titles remain excluded unless "Include native / non-ASCII titles" is enabled.
+    const isEnglishFriendly = (value) => {
+        const folded = String(value || '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '');
+        return /[a-z]/i.test(folded);
+    };
     
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -520,6 +578,31 @@
     function setStatus(message, type = '') {
         els.status.textContent = message;
         els.status.className = `status ${type}`.trim();
+    }
+
+    function showToast(message, type = 'warning', title = 'Warning', duration = 12000) {
+        if (!els.toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`.trim();
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.title = 'Click to dismiss';
+
+        const heading = document.createElement('span');
+        heading.className = 'toast-title';
+        heading.textContent = title;
+
+        const body = document.createElement('div');
+        body.className = 'toast-message';
+        body.textContent = message;
+
+        toast.append(heading, body);
+        toast.addEventListener('click', () => toast.remove());
+        els.toastContainer.appendChild(toast);
+
+        if (duration > 0) {
+            setTimeout(() => toast.remove(), duration);
+        }
     }
 
     function setProgress(done, total) {
@@ -1152,15 +1235,23 @@
         }
     }
 
+    function buildPatternsForTitles(titles, options) {
+        const patterns = new Set();
+
+        (Array.isArray(titles) ? titles : []).forEach(title => {
+            makeTitleVariants(title, options).forEach(variant => {
+                addPattern(patterns, toWildcardPattern(variant));
+            });
+        });
+
+        return patterns;
+    }
+
     function buildFilterPatterns(mediaTitleMap, options) {
         const patterns = new Set();
 
         for (const titles of mediaTitleMap.values()) {
-            titles.forEach(title => {
-                makeTitleVariants(title, options).forEach(variant => {
-                    addPattern(patterns, toWildcardPattern(variant));
-                });
-            });
+            buildPatternsForTitles(titles, options).forEach(pattern => patterns.add(pattern));
         }
 
         return [...patterns].sort((a, b) => {
@@ -1396,6 +1487,47 @@
         }
 
         setStatus('Generating AutoBrr patterns...');
+
+        const zeroPatternMedia = mediaList.filter(media => {
+            const titles = mediaTitleMap.get(media.id) || [];
+            const patterns = buildPatternsForTitles(titles, options);
+            if (patterns.size > 0) return false;
+
+            const availableTitles = uniqueNonEmpty([
+                media?.title?.romaji,
+                media?.title?.english,
+                media?.title?.userPreferred,
+                media?.title?.native
+            ]);
+            const titleDetails = availableTitles.length
+                ? ` Available titles: ${availableTitles.join(' | ')}`
+                : '';
+            logLine(`0 variations created for ${displayNameForMedia(media)}.${titleDetails}`, 'err');
+            return true;
+        });
+
+        if (zeroPatternMedia.length === 1 && mediaList.length === 1) {
+            const name = displayNameForMedia(zeroPatternMedia[0]);
+            showToast(
+                `No usable variations were created for ${name}. Try enabling native/non-ASCII titles or inspect the match log.`,
+                'error',
+                '0 variations created',
+                0
+            );
+            throw new Error(`0 variations created for ${name}. Try enabling native/non-ASCII titles or inspect the match log.`);
+        }
+
+        if (zeroPatternMedia.length > 0) {
+            const names = zeroPatternMedia.map(displayNameForMedia);
+            const preview = names.slice(0, 4).join(', ');
+            const remaining = names.length > 4 ? ` and ${names.length - 4} more` : '';
+            showToast(
+                `${zeroPatternMedia.length} show${zeroPatternMedia.length === 1 ? '' : 's'} produced no variations: ${preview}${remaining}. Successful shows were kept; see the match log for details.`,
+                'warning',
+                'Batch completed with skipped shows'
+            );
+        }
+
         const uniqueEntries = buildFilterPatterns(mediaTitleMap, options);
 
         if (uniqueEntries.length === 0) {
@@ -1411,6 +1543,7 @@
         if (els.truthFallbackCount) els.truthFallbackCount.textContent = truthFallbacks.toLocaleString();
         els.jikanAddedCount.textContent = jikanAdded.toLocaleString();
         els.jikanErrorCount.textContent = jikanErrors.toLocaleString();
+        if (els.zeroPatternCount) els.zeroPatternCount.textContent = zeroPatternMedia.length.toLocaleString();
         els.patternCount.textContent = uniqueEntries.length.toLocaleString();
         els.charCount.textContent = final.length.toLocaleString();
 
@@ -1436,12 +1569,19 @@
             statusMessage += ` Jikan failed for ${jikanErrors.toLocaleString()} show${jikanErrors === 1 ? '' : 's'}, but fallback patterns were still generated.`;
         }
 
+        if (zeroPatternMedia.length > 0) {
+            const failedNames = zeroPatternMedia.map(displayNameForMedia);
+            const preview = failedNames.slice(0, 4).join(', ');
+            const remaining = failedNames.length > 4 ? ` and ${failedNames.length - 4} more` : '';
+            statusMessage += ` Warning: 0 variations were created for ${zeroPatternMedia.length.toLocaleString()} show${zeroPatternMedia.length === 1 ? '' : 's'}: ${preview}${remaining}.`;
+        }
+
         const isLarge = final.length > LARGE_OUTPUT_WARNING_LENGTH;
         if (isLarge) {
             statusMessage += ' Warning: this output is very large and may be difficult to save or process in some AutoBrr/reverse-proxy setups.';
         }
 
-        setStatus(statusMessage, (isLarge || truthFallbacks > 0 || jikanErrors > 0) ? 'warning' : 'success');
+        setStatus(statusMessage, (isLarge || truthFallbacks > 0 || jikanErrors > 0 || zeroPatternMedia.length > 0) ? 'warning' : 'success');
     }
 
     async function generateUserFilter() {
