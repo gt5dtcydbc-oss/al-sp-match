@@ -492,3 +492,231 @@
         ];
         return filterTitleListForAscii(titles, options);
     }
+    function ordinalSuffix(n) {
+        const num = Number(n); if (!Number.isFinite(num)) return `${n}th`;
+        const mod100 = num % 100; if (mod100 >= 11 && mod100 <= 13) return `${num}th`;
+        switch (num % 10) { case 1: return `${num}st`; case 2: return `${num}nd`; case 3: return `${num}rd`; default: return `${num}th`; }
+    }
+    function ordinalWord(n) { return { 1: 'first', 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth', 6: 'sixth', 7: 'seventh', 8: 'eighth', 9: 'ninth', 10: 'tenth' }[Number(n)] || null; }
+    function romanNumeral(n) { return { 1: 'i', 2: 'ii', 3: 'iii', 4: 'iv', 5: 'v', 6: 'vi', 7: 'vii', 8: 'viii', 9: 'ix', 10: 'x' }[Number(n)] || null; }
+    function stripTrailingSeparators(value) { return String(value).replace(/[\s:;,\.\-–—_]+$/g, '').replace(/^[\s:;,\.\-–—_]+/g, '').trim(); }
+
+    function expandBasicTitleVariants(title) {
+        const variants = new Set([title]);
+        const original = String(title || '').trim(); if (!original) return variants;
+        variants.add(original.replace(/[’'`´]/g, ''));
+        variants.add(original.replace(/\s*&\s*/g, ' and '));
+        variants.add(original.replace(/\s*&\s*/g, ' '));
+        variants.add(original.replace(/^(the|a|an)\s+/i, ''));
+        return new Set([...variants].map(v => v.trim()).filter(Boolean));
+    }
+
+    function getSeasonInfo(title) {
+        const folded = normalizeForCompare(title).toLowerCase();
+        const match = folded.match(/\b(?:season|part|cour)\s*0*(\d+)\b/i) || folded.match(/\b0*(\d+)(?:st|nd|rd|th)\s+(?:season|part|cour)\b/i) || folded.match(/\bs0*(\d+)\b/i) || folded.match(/\s+0*(\d+)$/); 
+        if (!match) return null;
+        const n = Number(match[1]); if (!Number.isInteger(n) || n < 1 || n > 99) return null;
+        const rootTitle = stripTrailingSeparators(String(title).replace(/\b(?:season|part|cour)\s*0*\d+\b/ig, '').replace(/\b0*\d+(?:st|nd|rd|th)\s+(?:season|part|cour)\b/ig, '').replace(/\bs0*\d+\b/ig, '').replace(/\s+0*\d+$/g, ''));
+        return rootTitle ? { rootTitle, n } : null;
+    }
+
+    function expandSeasonVariants(title) {
+        const info = getSeasonInfo(title); if (!info) return new Set();
+        const { rootTitle, n } = info; const padded = String(n).padStart(2, '0');
+        const ordinal = ordinalSuffix(n); const ordinalAsWord = ordinalWord(n); const roman = romanNumeral(n);
+        const variants = new Set([rootTitle, `${rootTitle} ${n}`, `${rootTitle} ${ordinal} season`, `${rootTitle} season ${n}`, `${rootTitle} part ${n}`, `${rootTitle} cour ${n}`, `${rootTitle} s${n}`, `${rootTitle} s${padded}`, `${rootTitle} season${n}`, `${rootTitle} season${padded}`]);
+        if (ordinalAsWord) variants.add(`${rootTitle} ${ordinalAsWord} season`);
+        if (roman) { variants.add(`${rootTitle} ${roman}`); variants.add(`${rootTitle} season ${roman}`); variants.add(`${rootTitle} part ${roman}`); }
+        return new Set([...variants].map(v => v.trim()).filter(Boolean));
+    }
+
+    function expandTrailingDescriptorVariants(title) {
+        const variants = new Set([title]); const original = String(title || '').trim();
+        const shortened = original.replace(/[\s:._-]+(arc|hen|saga|chapter|story|movie|film)$/i, '').trim();
+        if (shortened !== original && compactCompare(shortened).length >= 8) variants.add(shortened);
+        return variants;
+    }
+
+    function makeTitleVariants(title, options) {
+        const variants = new Set(); const original = String(title || '').trim(); if (!original) return [];
+        const subtitleVariants = new Set([original]);
+        const parts = original.split(/[:\-~]/); if (parts.length > 1 && parts[0].trim().length >= 5) subtitleVariants.add(parts[0].trim());
+        const seasonMatch = original.match(/^(.*?(?:season|part|cour)\s*\d+)\b/i) || original.match(/^(.*?\d+(?:st|nd|rd|th)\s+(?:season|part|cour))\b/i);
+        if (seasonMatch) subtitleVariants.add(seasonMatch[1].trim());
+
+        const descriptorVariants = new Set();
+        subtitleVariants.forEach(sv => { if (options.shortDescriptorVariants) expandTrailingDescriptorVariants(sv).forEach(v => descriptorVariants.add(v)); else descriptorVariants.add(sv); });
+        descriptorVariants.forEach(dv => { expandBasicTitleVariants(dv).forEach(v => variants.add(v)); expandSeasonVariants(dv).forEach(sv => { expandBasicTitleVariants(sv).forEach(v => variants.add(v)); }); });
+        return uniqueNonEmpty([...variants]);
+    }
+
+    function filterTitleListForAscii(titles, options) { const unique = uniqueNonEmpty(titles); return options.includeNonAscii ? unique : unique.filter(isEnglishFriendly); }
+
+    function tokenOverlapScore(a, b) {
+        const aTokens = new Set(wildcardTokens(a)); const bTokens = new Set(wildcardTokens(b)); if (!aTokens.size || !bTokens.size) return 0;
+        let intersection = 0; aTokens.forEach(t => { if (bTokens.has(t)) intersection++; });
+        return Math.round((intersection / Math.min(aTokens.size, bTokens.size) * 60) + (intersection / Math.max(aTokens.size, bTokens.size) * 30));
+    }
+
+    function scoreKitsuCandidate(anilistTitles, item, media, options) {
+        const kitsuTitles = collectKitsuTitles(item, options);
+        const aniNorm = anilistTitles.map(normalizeForCompare).filter(Boolean); const kitsuNorm = kitsuTitles.map(normalizeForCompare).filter(Boolean);
+        const aniComp = anilistTitles.map(compactCompare).filter(Boolean); const kitsuComp = kitsuTitles.map(compactCompare).filter(Boolean);
+        let best = 0;
+        for (const a of aniNorm) { for (const k of kitsuNorm) { if (a === k) best = Math.max(best, 100); else if (a.includes(k) || k.includes(a)) best = Math.max(best, 85); else best = Math.max(best, tokenOverlapScore(a, k)); } }
+        for (const a of aniComp) { for (const k of kitsuComp) { if (a === k) best = Math.max(best, 96); } }
+        const aniYear = media?.startDate?.year; const start = item?.attributes?.startDate; const kitsuYear = start ? parseInt(start.match(/^(\d{4})/)?.[1], 10) : null;
+        if (aniYear && kitsuYear) { if (aniYear === kitsuYear) best += 5; else if (Math.abs(aniYear - kitsuYear) >= 2) best -= 12; }
+        return Math.max(0, Math.min(100, best));
+    }
+    function kitsuCacheGet(key) {
+        const raw = safeGetItem(key); if (!raw) return null;
+        try { const p = JSON.parse(raw); if (!p || Date.now() - p.savedAt > KITSU_CACHE_TTL_MS) { safeRemoveItem(key); return null; } return p.value; } catch { safeRemoveItem(key); return null; }
+    }
+    function kitsuCacheSet(key, value) { safeSetItem(key, JSON.stringify({ savedAt: Date.now(), value })); }
+
+    async function throttledKitsuFetch(url) {
+        const now = Date.now(); const elapsed = now - lastKitsuRequestAt; if (elapsed < KITSU_DELAY_MS) await sleep(KITSU_DELAY_MS - elapsed);
+        lastKitsuRequestAt = Date.now();
+        const res = await fetch(url, { headers: { 'Accept': 'application/vnd.api+json' } });
+        const result = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(result?.errors?.[0]?.detail || `Kitsu error HTTP ${res.status}`);
+        return result;
+    }
+
+    async function getKitsuByMalId(malId) {
+        const key = `autobrr:kitsu:v3:mal:${malId}`; const cached = kitsuCacheGet(key); if (cached) return { item: cached, fromCache: true };
+        const result = await throttledKitsuFetch(`${KITSU_API_URL}/mappings?filter[externalSite]=myanimelist/anime&filter[externalId]=${encodeURIComponent(malId)}&include=item`);
+        const item = result?.included?.find(x => x.type === 'anime') || null; if (item) kitsuCacheSet(key, item);
+        return { item, fromCache: false };
+    }
+
+    async function searchKitsu(searchTerm) {
+        const key = `autobrr:kitsu:v3:search:${normalizeForCompare(searchTerm)}`; const cached = kitsuCacheGet(key); if (cached) return { items: cached, fromCache: true };
+        const result = await throttledKitsuFetch(`${KITSU_API_URL}/anime?filter[text]=${encodeURIComponent(searchTerm)}&page[limit]=5`);
+        const items = Array.isArray(result?.data) ? result.data : []; kitsuCacheSet(key, items);
+        return { items, fromCache: false };
+    }
+
+    async function enrichWithKitsu(media, anilistTitles, options) {
+        if (media.idMal) {
+            const { item, fromCache } = await getKitsuByMalId(media.idMal);
+            if (item) return { titles: collectKitsuTitles(item, options), status: 'ok', message: `${displayNameForMedia(media)}: mapped MAL ID ${media.idMal} via Kitsu${fromCache ? ' (cached)' : ''}.` };
+        }
+        const term = media.title?.english || media.title?.romaji || anilistTitles[0] || ''; if (!term) return { titles: [], status: 'miss', message: 'No search term.' };
+        const { items, fromCache } = await searchKitsu(term); if (!items.length) return { titles: [], status: 'miss', message: `${term}: no Kitsu results.` };
+        const scored = items.map(item => ({ item, score: scoreKitsuCandidate(anilistTitles, item, media, options) })).sort((a, b) => b.score - a.score);
+        if (!scored[0] || scored[0].score < KITSU_FALLBACK_ACCEPT_SCORE) return { titles: [], status: 'warn', message: `${term}: skipped fuzzy Kitsu match (low score).` };
+        return { titles: collectKitsuTitles(scored[0].item, options), status: 'ok', message: `${term}: fuzzy Kitsu match score ${scored[0].score}${fromCache ? ' (cached)' : ''}.` };
+    }
+
+    async function fetchAniListCurrent(username) {
+        if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+        const query = `query ($name: String) { MediaListCollection(userName: $name, type: ANIME, status: CURRENT) { lists { entries { media { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } } } } }`;
+        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { name: username } }) });
+        if (res.status === 429) { const r = Number(res.headers.get('Retry-After')) || 60; aniListCooldownUntil = Date.now() + (r * 1000); throw new Error("AniList rate limit. Pausing..."); }
+        const r = await res.json(); if (!res.ok || r.errors) throw new Error(r.errors?.[0]?.message || 'AniList request failed.');
+        const out = []; r.data?.MediaListCollection?.lists?.forEach(l => l.entries?.forEach(e => { if (e.media) out.push(e.media); }));
+        return out;
+    }
+
+    async function fetchSingleAniListAnime(id) {
+        if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+        const query = `query ($id: Int) { Media(id: $id, type: ANIME) { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } }`;
+        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { id } }) });
+        const r = await res.json(); if (!res.ok || r.errors) throw new Error(r.errors?.[0]?.message || 'AniList lookup failed.');
+        return r.data?.Media;
+    }
+    function buildFilterPatterns(mediaTitleMap, options) {
+        const patterns = new Set();
+        for (const [_, titles] of mediaTitleMap.entries()) {
+            titles.forEach(t => { makeTitleVariants(t, options).forEach(v => { addPattern(patterns, toWildcardPattern(v)); }); });
+        }
+        return [...patterns].sort((a, b) => a.replace(/^\*/, '').localeCompare(b.replace(/^\*/, '')));
+    }
+
+    function cleanSeasonalTruthLine(line) {
+        let v = String(line || '').trim(); if (!v || /^https?:\/\//i.test(v)) return '';
+        v = v.replace(/^\s*(?:[-*•]+|\d+[.)])\s*/u, '').replace(/^\s*\[[^\]]+\]\s*/u, '').replace(/\s+/g, ' ').trim();
+        const rm = v.match(/^(?:\[[^\]]+\]\s*)?(.+?)\s+-\s+\d+/i); if (rm?.[1]) v = rm[1].trim();
+        v = v.replace(/\s+\[(?:new|ongoing|tv|ona|ova|movie)\]\s*$/i, '').replace(/\s+\((?:tv|ona|ova|movie|\d{4})\)\s*$/i, '').trim();
+        return v.length >= 3 ? v : '';
+    }
+
+    function parseSeasonalTruthInput(raw) { return uniqueNonEmpty(String(raw || '').replace(/\r\n?/g, '\n').split('\n').map(cleanSeasonalTruthLine)); }
+    function displayNameForMedia(m) { return m?.title?.userPreferred || m?.title?.english || m?.title?.romaji || `ID: ${m?.id}`; }
+
+    async function processMediaList(mediaList, options) {
+        const truthTitles = options.seasonalTruthTitles || [];
+        const mediaTitleMap = new Map();
+        mediaList.forEach(m => mediaTitleMap.set(m.id, collectAniListTitles(m, options)));
+
+        let kitsuAdded = 0; setProgress(0, mediaList.length);
+        for (let i = 0; i < mediaList.length; i++) {
+            const media = mediaList[i];
+            setStatus(`Enriching indices: ${i + 1}/${mediaList.length} — ${displayNameForMedia(media)}`);
+            if (options.useKitsu) {
+                try {
+                    const current = mediaTitleMap.get(media.id) || [];
+                    const enr = await enrichWithKitsu(media, current, options);
+                    const merged = uniqueNonEmpty([...current, ...enr.titles]);
+                    mediaTitleMap.set(media.id, merged); kitsuAdded += Math.max(0, merged.length - current.length);
+                    logLine(enr.message, enr.status === 'ok' ? 'ok' : 'warn');
+                } catch (e) { logLine(`${displayNameForMedia(media)}: Kitsu error: ${e.message}`, 'err'); }
+            }
+            setProgress(i + 1, mediaList.length);
+        }
+
+        const patterns = buildFilterPatterns(mediaTitleMap, options);
+        const finalStr = patterns.join(','); els.output.value = finalStr;
+
+        els.copyBtn.style.display = 'block'; els.summary.style.display = 'grid';
+        els.animeCount.textContent = mediaList.length; els.kitsuAddedCount.textContent = kitsuAdded;
+        els.patternCount.textContent = patterns.length; els.charCount.textContent = finalStr.length;
+        setStatus('AutoBrr filters successfully compiled!', 'success');
+    }
+
+    async function generateUserFilter() {
+        const username = els.username.value.trim(); if (!username) { setStatus('Enter username.', 'error'); return; }
+        const rawTruth = els.seasonalTruthInput.value; const truthTitles = parseSeasonalTruthInput(rawTruth);
+        const options = { useKitsu: els.useKitsu.checked, includeNonAscii: els.includeNonAscii.checked, shortDescriptorVariants: els.shortDescriptorVariants.checked, seasonalTruthTitles: truthTitles };
+        resetUi(); toggleButtons(true); setStatus('Querying user catalog...');
+        try {
+            const list = await fetchAniListCurrent(username);
+            if (!list.length) throw new Error('No items active with status CURRENT found.');
+            await processMediaList(list, options);
+        } catch (e) { setStatus(`Error: ${e.message}`, 'error'); } finally { toggleButtons(false); setProgress(0,0); }
+    }
+
+    async function generateSingleFilter() {
+        const input = els.singleShowInput.value.trim(); const mediaId = input.match(/anilist\.co\/anime\/(\d+)/i)?.[1] || ( /^\d+$/.test(input) ? input : null );
+        if (!mediaId) { setStatus('Invalid ID or URL.', 'error'); return; }
+        const options = { useKitsu: els.useKitsu.checked, includeNonAscii: els.includeNonAscii.checked, shortDescriptorVariants: els.shortDescriptorVariants.checked };
+        resetUi(); toggleButtons(true); setStatus('Querying specific object data...');
+        try {
+            const target = await fetchSingleAniListAnime(parseInt(mediaId, 10));
+            if (!target) throw new Error('Object index missing.');
+            await processMediaList([target], options);
+        } catch (e) { setStatus(`Error: ${e.message}`, 'error'); } finally { toggleButtons(false); setProgress(0,0); }
+    }
+
+    async function copyToClipboard() {
+        try { await navigator.clipboard.writeText(els.output.value); } catch { els.output.select(); document.execCommand('copy'); }
+        const old = els.copyBtn.textContent; els.copyBtn.textContent = 'Copied!'; setTimeout(() => { els.copyBtn.textContent = old; }, 1500);
+    }
+
+    function clearKitsuCache() {
+        let c = 0; for(let i=localStorage.length-1; i>=0; i--) { const k = localStorage.key(i); if(k&&k.startsWith('autobrr:kitsu:')) { localStorage.removeItem(k); c++; } }
+        setStatus(`Cleared ${c} cache indexes.`, 'success');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const sn = safeGetItem('anilist_username'); if (sn) els.username.value = sn;
+        els.generateBtn.addEventListener('click', generateUserFilter);
+        els.generateSingleBtn.addEventListener('click', generateSingleFilter);
+        els.copyBtn.addEventListener('click', copyToClipboard);
+        els.clearCacheBtn.addEventListener('click', clearKitsuCache);
+    });
+</script>
+</body>
+</html>
