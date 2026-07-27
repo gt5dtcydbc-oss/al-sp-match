@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AniList + Kitsu AutoBrr Filter Gen</title>
+    <style>
+        :root {
+            --bg: #09090b;
+            --surface: #18181b;
+            --surface-hover: #27272a;
+            --border: #27272a;
+            --border-focus: #3f3f46;
+            --text: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.25);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 0;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .card {
+            background: var(--surface);
+            width: 100%;
+            max-width: 980px;
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            font-size: clamp(24px, 4vw, 32px);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin: 0 0 32px;
+            font-size: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+            margin: 0 16px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 14px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        button {
+            padding: 14px 24px;
+            cursor: pointer;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) { 
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled { 
+            opacity: 0.5;
+            cursor: not-allowed; 
+            transform: none;
+        }
+
+        .secondary-btn { 
+            background: var(--surface-hover);
+            color: var(--text); 
+            border: 1px solid var(--border);
+        }
+
+        .options {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            margin: 32px 0;
+        }
+
+        .option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        .option input[type="checkbox"] { 
+            margin-top: 4px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+        
+        .option strong { 
+            display: block;
+            font-size: 14px; 
+            margin-bottom: 4px;
+        }
+        
+        .option span span { 
+            display: block;
+            color: var(--text-muted); 
+            font-size: 13px; 
+        }
+
+        .status {
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0 0 16px;
+            min-height: 20px;
+        }
+
+        .status.success { color: var(--success); }
+        .status.error { color: var(--error); }
+        .status.warning { color: var(--warning); }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: min(440px, calc(100vw - 40px));
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+        }
+
+        .toast-title { display: block; font-weight: 700; margin-bottom: 3px; }
+        .toast-message { color: var(--text-muted); font-size: 13px; }
+
+        .progress-wrap {
+            display: none;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            margin-top: 16px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: monospace;
+            font-size: 13px;
+            background: var(--bg);
+            color: var(--text);
+            resize: vertical;
+        }
+
+        .button-row { display: flex; gap: 12px; margin-top: 16px; }
+        #copyBtn { display: none; background: var(--success); flex: 1; }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .metric {
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+            padding: 16px;
+        }
+
+        .metric-value { font-size: 28px; font-weight: 700; }
+        .metric-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; }
+
+        .log {
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .log-line { padding: 10px 16px; border-bottom: 1px solid var(--surface); font-family: monospace; font-size: 12px; }
+        .log-line.ok { color: var(--success); }
+        .log-line.warn { color: var(--warning); }
+        .log-line.err { color: var(--error); }
+
+        .seasonal-truth-block { margin: 0 0 20px; }
+        .field-label { display: block; margin: 0 0 8px; color: var(--text-muted); font-size: 13px; font-weight: 700; text-transform: uppercase; }
+        textarea.seasonal-truth-input { height: 120px; margin-top: 0; }
+        .input-help { margin-top: 8px; color: var(--text-muted); font-size: 13px; }
+
+        @media (max-width: 760px) {
+            .input-group, .button-row { flex-direction: column; }
+            .card { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<div class="card">
+    <h1>AniList + Kitsu AutoBrr</h1>
+    <p class="subtitle">Enter an AniList username to pull CURRENT anime, or match a specific show.</p>
+
+    <div class="input-group">
+        <input type="text" id="username" placeholder="AniList Username">
+        <button id="generateBtn" type="button">Generate User List</button>
+    </div>
+
+    <div class="seasonal-truth-block">
+        <label class="field-label" for="seasonalTruthInput">Seasonal source names (optional)</label>
+        <textarea id="seasonalTruthInput" class="seasonal-truth-input" placeholder="Paste the seasonal text list here..."></textarea>
+        <div class="input-help">Matched names override API defaults. Unmatched fall back gracefully.</div>
+    </div>
+
+    <div class="divider">OR</div>
+
+    <div class="input-group">
+        <input type="text" id="singleShowInput" placeholder="Paste AniList Anime URL or ID">
+        <button id="generateSingleBtn" type="button" class="secondary-btn">Match One Show</button>
+    </div>
+
+    <div class="options">
+        <label class="option">
+            <input type="checkbox" id="useKitsu" checked>
+            <span><strong>Enrich with Kitsu titles</strong><span>Maps MAL IDs and falls back to fuzzy text search.</span></span>
+        </label>
+        <label class="option">
+            <input type="checkbox" id="includeNonAscii">
+            <span><strong>Include native titles</strong><span>Off by default to avoid Japanese-script filters.</span></span>
+        </label>
+        <label class="option">
+            <input type="checkbox" id="shortDescriptorVariants" checked>
+            <span><strong>Add shortened variants</strong><span>Drops trailing tags like Arc, Saga, Chapter, Hen.</span></span>
+        </label>
+        <label class="option">
+            <input type="checkbox" id="showLog" checked>
+            <span><strong>Show match log</strong><span>Displays internal verification streams.</span></span>
+        </label>
+    </div>
+
+    <div id="status" class="status"></div>
+    <div id="progressWrap" class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
+
+    <div class="summary" id="summary" style="display:none;">
+        <div class="metric"><div class="metric-value" id="animeCount">0</div><div class="metric-label">Anime</div></div>
+        <div class="metric"><div class="metric-value" id="kitsuAddedCount">0</div><div class="metric-label">Kitsu Additions</div></div>
+        <div class="metric"><div class="metric-value" id="patternCount">0</div><div class="metric-label">Patterns</div></div>
+        <div class="metric"><div class="metric-value" id="charCount">0</div><div class="metric-label">Chars</div></div>
+    </div>
+
+    <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
+
+    <div class="button-row">
+        <button id="copyBtn" type="button">Copy Filter</button>
+        <button id="clearCacheBtn" type="button" class="secondary-btn">Clear Cache</button>
+    </div>
+    <div id="log" class="log"></div>
+</div>
+<script>
+    const ANILIST_API_URL = 'https://graphql.anilist.co';
+    const KITSU_API_URL = 'https://kitsu.io/api/edge';
+    const KITSU_DELAY_MS = 500; 
+    const KITSU_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    const KITSU_FALLBACK_ACCEPT_SCORE = 70;
+    const SEASONAL_TRUTH_KEY = 'autobrr_seasonal_truth_input';
+
+    const els = {
+        username: document.getElementById('username'),
+        generateBtn: document.getElementById('generateBtn'),
+        seasonalTruthInput: document.getElementById('seasonalTruthInput'),
+        singleShowInput: document.getElementById('singleShowInput'),
+        generateSingleBtn: document.getElementById('generateSingleBtn'),
+        useKitsu: document.getElementById('useKitsu'),
+        includeNonAscii: document.getElementById('includeNonAscii'),
+        shortDescriptorVariants: document.getElementById('shortDescriptorVariants'),
+        showLog: document.getElementById('showLog'),
+        status: document.getElementById('status'),
+        progressWrap: document.getElementById('progressWrap'),
+        progressBar: document.getElementById('progressBar'),
+        summary: document.getElementById('summary'),
+        animeCount: document.getElementById('animeCount'),
+        kitsuAddedCount: document.getElementById('kitsuAddedCount'),
+        patternCount: document.getElementById('patternCount'),
+        charCount: document.getElementById('charCount'),
+        output: document.getElementById('output'),
+        copyBtn: document.getElementById('copyBtn'),
+        clearCacheBtn: document.getElementById('clearCacheBtn'),
+        log: document.getElementById('log'),
+        toastContainer: document.getElementById('toastContainer')
+    };
+    let lastKitsuRequestAt = 0;
+    let aniListCooldownUntil = 0;
+
+    const isEnglishFriendly = (value) => {
+        const folded = String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+        return /[a-z]/i.test(folded);
+    };
+    
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    function safeGetItem(key) { try { return localStorage.getItem(key); } catch { return null; } }
+    function safeSetItem(key, value) { try { localStorage.setItem(key, value); } catch {} }
+    function safeRemoveItem(key) { try { localStorage.removeItem(key); } catch {} }
+
+    function setStatus(message, type = '') {
+        els.status.textContent = message;
+        els.status.className = `status ${type}`.trim();
+    }
+
+    function showToast(message, type = 'warning', title = 'Warning') {
+        if (!els.toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`.trim();
+        toast.innerHTML = `<span class="toast-title">${title}</span><div class="toast-message">${message}</div>`;
+        toast.addEventListener('click', () => toast.remove());
+        els.toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 8000);
+    }
+
+    function setProgress(done, total) {
+        if (!total) { els.progressWrap.style.display = 'none'; return; }
+        els.progressWrap.style.display = 'block';
+        els.progressBar.style.width = `${Math.min(100, Math.round((done / total) * 100))}%`;
+    }
+
+    function resetUi() {
+        els.output.value = '';
+        els.copyBtn.style.display = 'none';
+        els.summary.style.display = 'none';
+        els.log.innerHTML = '';
+        els.log.style.display = els.showLog.checked ? 'block' : 'none';
+        setProgress(0, 0);
+    }
+
+    function logLine(message, kind = '') {
+        if (!els.showLog.checked) return;
+        els.log.style.display = 'block';
+        const div = document.createElement('div');
+        div.className = `log-line ${kind}`.trim();
+        div.textContent = message;
+        els.log.appendChild(div);
+        els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function toggleButtons(disabled) {
+        els.generateBtn.disabled = disabled;
+        els.generateSingleBtn.disabled = disabled;
+        els.clearCacheBtn.disabled = disabled;
+    }
+
+    function foldForWildcard(value) {
+        return String(value).normalize('NFC').replace(/[×]/g, ' x ').replace(/&/g, ' and ').replace(/\+/g, ' plus ').replace(/[–—]/g, '-');
+    }
+
+    function wildcardTokens(value) {
+        return foldForWildcard(value).toLowerCase().match(/[a-z0-9]+/g) || [];
+    }
+
+    function toWildcardPattern(title) {
+        const tokens = wildcardTokens(title);
+        if (!tokens.length) return '';
+        return tokens.join('*').replace(/\*+/g, '*');
+    }
+
+    function addPattern(patterns, rawPattern) {
+        const pattern = String(rawPattern || '').trim().replace(/\*+/g, '*');
+        if (!pattern) return;
+        const compactLength = pattern.replace(/[?*]/g, '').length;
+        if (compactLength === 0) return;
+        if (compactLength <= 3 && !/[?*]/.test(pattern)) { patterns.add(pattern); return; }
+        if (compactLength <= 3) return;
+        patterns.add(`*${pattern}*`.replace(/\*+/g, '*'));
+    }
+
+    function normalizeForCompare(value) { return wildcardTokens(value).join(' '); }
+    function compactCompare(value) { return wildcardTokens(value).join(''); }
+
+    function uniqueNonEmpty(items) {
+        const seen = new Set();
+        return items.map(i => String(i || '').trim()).filter(v => v && !seen.has(v.toLowerCase()) && seen.add(v.toLowerCase()));
+    }
+
+    function collectAniListTitles(media, options) {
+        const titles = [
+            media.title?.romaji,
+            media.title?.english,
+            media.title?.userPreferred,
+            ...(options.includeNonAscii ? [media.title?.native] : []),
+            ...(Array.isArray(media.synonyms) ? media.synonyms : [])
+        ];
+        return filterTitleListForAscii(titles, options);
+    }
+
+    function collectKitsuTitles(item, options) {
+        const attrs = item?.attributes || {};
+        const titlesObj = attrs.titles || {};
+        const titles = [
+            attrs.canonicalTitle,
+            titlesObj.en,
+            titlesObj.en_jp,
+            ...(options.includeNonAscii ? [titlesObj.ja_jp] : []),
+            ...(Array.isArray(attrs.abbreviatedTitles) ? attrs.abbreviatedTitles : [])
+        ];
+        return filterTitleListForAscii(titles, options);
+    }
