@@ -283,7 +283,7 @@
             display: none;
         }
 
-        .log-line { padding: 10px 16px; border-bottom: 1px solid var(--surface); font-family: monospace; font-size: 12px; }
+        .log-line { padding: 10px 16px; border-bottom: 1px solid var(--surface); font-family: monospace; font-size: 12px; word-break: break-all; }
         .log-line.ok { color: var(--success); }
         .log-line.warn { color: var(--warning); }
         .log-line.err { color: var(--error); }
@@ -364,8 +364,8 @@
 </div>
 
 <script>
-    const ANILIST_API_URL = '[https://graphql.anilist.co](https://graphql.anilist.co)';
-    const KITSU_API_URL = '[https://kitsu.io/api/edge](https://kitsu.io/api/edge)';
+    const ANILIST_API_URL = 'https://graphql.anilist.co';
+    const KITSU_API_URL = 'https://kitsu.io/api/edge';
     const KITSU_DELAY_MS = 500; 
     const KITSU_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
     const KITSU_FALLBACK_ACCEPT_SCORE = 70;
@@ -671,30 +671,65 @@
         };
     }
 
-    async function fetchAniListCurrent(username) {
-        if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
-        const query = `query ($name: String) { MediaListCollection(userName: $name, type: ANIME, status: CURRENT) { lists { entries { media { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } } } } }`;
-        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { name: username } }) });
-        if (res.status === 429) { const r = Number(res.headers.get('Retry-After')) || 60; aniListCooldownUntil = Date.now() + (r * 1000); throw new Error("AniList rate limit. Pausing..."); }
-        const r = await res.json(); if (!res.ok || r.errors) throw new Error(r.errors?.[0]?.message || 'AniList request failed.');
-        const out = []; r.data?.MediaListCollection?.lists?.forEach(l => l.entries?.forEach(e => { if (e.media) out.push(e.media); }));
-        return out;
-    }
-
     async function fetchSingleAniListAnime(id) {
         if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
         const query = `query ($id: Int) { Media(id: $id, type: ANIME) { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } }`;
-        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { id } }) });
-        const r = await res.json(); if (!res.ok || r.errors) throw new Error(r.errors?.[0]?.message || 'AniList lookup failed.');
+        
+        const res = await fetch(ANILIST_API_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, 
+            body: JSON.stringify({ query, variables: { id } }) 
+        });
+        
+        if (res.status === 429) { 
+            const r = Number(res.headers.get('Retry-After')) || 60; 
+            aniListCooldownUntil = Date.now() + (r * 1000); 
+            throw new Error("Rate limited by AniList. Pausing..."); 
+        }
+        
+        let r;
+        try {
+            r = await res.json();
+        } catch (e) {
+            throw new Error(`API returned an unreadable response (HTTP ${res.status}). The ID might be invalid or network blocked.`);
+        }
+        
+        if (!res.ok || r.errors) {
+            throw new Error(r.errors?.[0]?.message || `AniList lookup failed (HTTP ${res.status}).`);
+        }
+        
         return r.data?.Media;
     }
 
     async function fetchAniListAnimeBySearch(search) {
         if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
         const query = `query ($search: String) { Media(search: $search, type: ANIME) { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } }`;
-        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { search } }) });
-        const r = await res.json(); if (!res.ok || r.errors) return null; 
+        
+        const res = await fetch(ANILIST_API_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, 
+            body: JSON.stringify({ query, variables: { search } }) 
+        });
+        
+        let r;
+        try {
+            r = await res.json();
+        } catch (e) {
+            throw new Error(`API returned an unreadable response (HTTP ${res.status}).`);
+        }
+
+        if (!res.ok || r.errors) return null; 
         return r.data?.Media;
+    }
+
+    async function fetchAniListCurrent(username) {
+        if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+        const query = `query ($name: String) { MediaListCollection(userName: $name, type: ANIME, status: CURRENT) { lists { entries { media { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } } } } }`;
+        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ query, variables: { name: username } }) });
+        if (res.status === 429) { const r = Number(res.headers.get('Retry-After')) || 60; aniListCooldownUntil = Date.now() + (r * 1000); throw new Error("AniList rate limit. Pausing..."); }
+        const r = await res.json(); if (!res.ok || r.errors) throw new Error(r.errors?.[0]?.message || 'AniList request failed.');
+        const out = []; r.data?.MediaListCollection?.lists?.forEach(l => l.entries?.forEach(e => { if (e.media) out.push(e.media); }));
+        return out;
     }
 
     function buildFilterPatterns(mediaTitleMap, options) {
@@ -786,12 +821,19 @@
                 const item = items[i];
                 setStatus(`Querying AniList (${i + 1}/${items.length}): ${item}`);
                 
-                const mediaId = item.match(/anilist\.co\/anime\/(\d+)/i)?.[1] || ( /^\d+$/.test(item) ? item : null );
+                let mediaId = null;
+                const urlMatch = item.match(/anilist\.co\/anime\/(\d+)/i);
+                
+                if (urlMatch) {
+                    mediaId = parseInt(urlMatch[1], 10);
+                } else if (/^\d+$/.test(item)) {
+                    mediaId = parseInt(item, 10);
+                }
                 
                 try {
                     let target = null;
-                    if (mediaId) {
-                        target = await fetchSingleAniListAnime(parseInt(mediaId, 10));
+                    if (mediaId && !isNaN(mediaId)) {
+                        target = await fetchSingleAniListAnime(mediaId);
                     } else {
                         target = await fetchAniListAnimeBySearch(item);
                     }
