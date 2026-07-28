@@ -97,9 +97,25 @@
             transition: all 0.2s ease;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, textarea.batch-input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        textarea.batch-input {
+            flex-grow: 1;
+            padding: 14px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            resize: vertical;
+            min-height: 50px;
+            height: 100px;
+            font-family: inherit;
+            margin-top: 0;
         }
 
         button {
@@ -223,7 +239,7 @@
             transition: width 0.3s ease;
         }
 
-        textarea {
+        textarea.output-area {
             width: 100%;
             height: 300px;
             margin-top: 16px;
@@ -274,7 +290,7 @@
 
         .seasonal-truth-block { margin: 0 0 20px; }
         .field-label { display: block; margin: 0 0 8px; color: var(--text-muted); font-size: 13px; font-weight: 700; text-transform: uppercase; }
-        textarea.seasonal-truth-input { height: 120px; margin-top: 0; }
+        textarea.seasonal-truth-input { width: 100%; height: 120px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); color: var(--text); resize: vertical; margin-top: 0; font-family: monospace; font-size: 13px; }
         .input-help { margin-top: 8px; color: var(--text-muted); font-size: 13px; }
 
         @media (max-width: 760px) {
@@ -289,7 +305,7 @@
 
 <div class="card">
     <h1>AniList + Kitsu AutoBrr</h1>
-    <p class="subtitle">Enter an AniList username to pull CURRENT anime, or match a specific show.</p>
+    <p class="subtitle">Enter an AniList username to pull CURRENT anime, or match a batch of specific shows.</p>
 
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username">
@@ -305,8 +321,8 @@
     <div class="divider">OR</div>
 
     <div class="input-group">
-        <input type="text" id="singleShowInput" placeholder="Paste AniList Anime URL or ID">
-        <button id="generateSingleBtn" type="button" class="secondary-btn">Match One Show</button>
+        <textarea id="singleShowInput" class="batch-input" placeholder="Paste AniList URLs, IDs, or Anime Names (one per line or comma-separated)"></textarea>
+        <button id="generateSingleBtn" type="button" class="secondary-btn" style="height: fit-content; align-self: flex-start;">Match Show(s)</button>
     </div>
 
     <div class="options">
@@ -338,7 +354,7 @@
         <div class="metric"><div class="metric-value" id="charCount">0</div><div class="metric-label">Chars</div></div>
     </div>
 
-    <textarea id="output" readonly placeholder="Filter will appear here..."></textarea>
+    <textarea id="output" class="output-area" readonly placeholder="Filter will appear here..."></textarea>
 
     <div class="button-row">
         <button id="copyBtn" type="button">Copy Filter</button>
@@ -346,13 +362,13 @@
     </div>
     <div id="log" class="log"></div>
 </div>
+
 <script>
-    const ANILIST_API_URL = 'https://graphql.anilist.co';
-    const KITSU_API_URL = 'https://kitsu.io/api/edge';
+    const ANILIST_API_URL = '[https://graphql.anilist.co](https://graphql.anilist.co)';
+    const KITSU_API_URL = '[https://kitsu.io/api/edge](https://kitsu.io/api/edge)';
     const KITSU_DELAY_MS = 500; 
     const KITSU_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
     const KITSU_FALLBACK_ACCEPT_SCORE = 70;
-    const SEASONAL_TRUTH_KEY = 'autobrr_seasonal_truth_input';
 
     const els = {
         username: document.getElementById('username'),
@@ -378,6 +394,7 @@
         log: document.getElementById('log'),
         toastContainer: document.getElementById('toastContainer')
     };
+    
     let lastKitsuRequestAt = 0;
     let aniListCooldownUntil = 0;
 
@@ -492,6 +509,7 @@
         ];
         return filterTitleListForAscii(titles, options);
     }
+
     function ordinalSuffix(n) {
         const num = Number(n); if (!Number.isFinite(num)) return `${n}th`;
         const mod100 = num % 100; if (mod100 >= 11 && mod100 <= 13) return `${num}th`;
@@ -550,7 +568,10 @@
         return uniqueNonEmpty([...variants]);
     }
 
-    function filterTitleListForAscii(titles, options) { const unique = uniqueNonEmpty(titles); return options.includeNonAscii ? unique : unique.filter(isEnglishFriendly); }
+    function filterTitleListForAscii(titles, options) { 
+        const unique = uniqueNonEmpty(titles); 
+        return options.includeNonAscii ? unique : unique.filter(isEnglishFriendly); 
+    }
 
     function tokenOverlapScore(a, b) {
         const aTokens = new Set(wildcardTokens(a)); const bTokens = new Set(wildcardTokens(b)); if (!aTokens.size || !bTokens.size) return 0;
@@ -569,6 +590,7 @@
         if (aniYear && kitsuYear) { if (aniYear === kitsuYear) best += 5; else if (Math.abs(aniYear - kitsuYear) >= 2) best -= 12; }
         return Math.max(0, Math.min(100, best));
     }
+
     function kitsuCacheGet(key) {
         const raw = safeGetItem(key); if (!raw) return null;
         try { const p = JSON.parse(raw); if (!p || Date.now() - p.savedAt > KITSU_CACHE_TTL_MS) { safeRemoveItem(key); return null; } return p.value; } catch { safeRemoveItem(key); return null; }
@@ -600,14 +622,53 @@
 
     async function enrichWithKitsu(media, anilistTitles, options) {
         if (media.idMal) {
-            const { item, fromCache } = await getKitsuByMalId(media.idMal);
-            if (item) return { titles: collectKitsuTitles(item, options), status: 'ok', message: `${displayNameForMedia(media)}: mapped MAL ID ${media.idMal} via Kitsu${fromCache ? ' (cached)' : ''}.` };
+            try {
+                const { item, fromCache } = await getKitsuByMalId(media.idMal);
+                if (item) {
+                    return { 
+                        titles: collectKitsuTitles(item, options), 
+                        status: 'ok', 
+                        message: `${displayNameForMedia(media)}: mapped MAL ID ${media.idMal} via Kitsu${fromCache ? ' (cached)' : ''}.` 
+                    };
+                }
+            } catch (e) {
+                logLine(`${displayNameForMedia(media)}: Kitsu MAL mapping skipped: ${e.message}`, 'warn');
+            }
         }
-        const term = media.title?.english || media.title?.romaji || anilistTitles[0] || ''; if (!term) return { titles: [], status: 'miss', message: 'No search term.' };
-        const { items, fromCache } = await searchKitsu(term); if (!items.length) return { titles: [], status: 'miss', message: `${term}: no Kitsu results.` };
-        const scored = items.map(item => ({ item, score: scoreKitsuCandidate(anilistTitles, item, media, options) })).sort((a, b) => b.score - a.score);
-        if (!scored[0] || scored[0].score < KITSU_FALLBACK_ACCEPT_SCORE) return { titles: [], status: 'warn', message: `${term}: skipped fuzzy Kitsu match (low score).` };
-        return { titles: collectKitsuTitles(scored[0].item, options), status: 'ok', message: `${term}: fuzzy Kitsu match score ${scored[0].score}${fromCache ? ' (cached)' : ''}.` };
+        
+        const searchTerms = uniqueNonEmpty([
+            media.title?.english,
+            media.title?.romaji,
+            media.title?.userPreferred,
+            ...(Array.isArray(media.synonyms) ? media.synonyms : [])
+        ]).slice(0, 3); 
+
+        for (const term of searchTerms) {
+            if (!term) continue;
+            try {
+                const { items, fromCache } = await searchKitsu(term);
+                if (!items || !items.length) continue;
+
+                const scored = items.map(item => ({ 
+                    item, 
+                    score: scoreKitsuCandidate(anilistTitles, item, media, options) 
+                })).sort((a, b) => b.score - a.score);
+
+                if (scored[0] && scored[0].score >= KITSU_FALLBACK_ACCEPT_SCORE) {
+                    return { 
+                        titles: collectKitsuTitles(scored[0].item, options), 
+                        status: 'ok', 
+                        message: `${displayNameForMedia(media)}: fuzzy Kitsu match via "${term}" (score: ${scored[0].score})${fromCache ? ' (cached)' : ''}.` 
+                    };
+                }
+            } catch (innerErr) { }
+        }
+
+        return { 
+            titles: [], 
+            status: 'miss', 
+            message: `${displayNameForMedia(media)}: no match found on Kitsu via MAL ID or text queries.` 
+        };
     }
 
     async function fetchAniListCurrent(username) {
@@ -627,6 +688,15 @@
         const r = await res.json(); if (!res.ok || r.errors) throw new Error(r.errors?.[0]?.message || 'AniList lookup failed.');
         return r.data?.Media;
     }
+
+    async function fetchAniListAnimeBySearch(search) {
+        if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+        const query = `query ($search: String) { Media(search: $search, type: ANIME) { id idMal siteUrl format startDate { year } title { romaji english native userPreferred } synonyms } }`;
+        const res = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { search } }) });
+        const r = await res.json(); if (!res.ok || r.errors) return null; 
+        return r.data?.Media;
+    }
+
     function buildFilterPatterns(mediaTitleMap, options) {
         const patterns = new Set();
         for (const [_, titles] of mediaTitleMap.entries()) {
@@ -647,7 +717,6 @@
     function displayNameForMedia(m) { return m?.title?.userPreferred || m?.title?.english || m?.title?.romaji || `ID: ${m?.id}`; }
 
     async function processMediaList(mediaList, options) {
-        const truthTitles = options.seasonalTruthTitles || [];
         const mediaTitleMap = new Map();
         mediaList.forEach(m => mediaTitleMap.set(m.id, collectAniListTitles(m, options)));
 
@@ -689,15 +758,67 @@
     }
 
     async function generateSingleFilter() {
-        const input = els.singleShowInput.value.trim(); const mediaId = input.match(/anilist\.co\/anime\/(\d+)/i)?.[1] || ( /^\d+$/.test(input) ? input : null );
-        if (!mediaId) { setStatus('Invalid ID or URL.', 'error'); return; }
-        const options = { useKitsu: els.useKitsu.checked, includeNonAscii: els.includeNonAscii.checked, shortDescriptorVariants: els.shortDescriptorVariants.checked };
-        resetUi(); toggleButtons(true); setStatus('Querying specific object data...');
+        const rawInput = els.singleShowInput.value.trim();
+        if (!rawInput) { setStatus('Enter IDs, URLs, or Names.', 'error'); return; }
+        
+        const items = rawInput.split(/[\n,]+/).map(i => i.trim()).filter(Boolean);
+        if (!items.length) { setStatus('No valid items found.', 'error'); return; }
+
+        const rawTruth = els.seasonalTruthInput.value;
+        const truthTitles = parseSeasonalTruthInput(rawTruth);
+
+        const options = { 
+            useKitsu: els.useKitsu.checked, 
+            includeNonAscii: els.includeNonAscii.checked, 
+            shortDescriptorVariants: els.shortDescriptorVariants.checked,
+            seasonalTruthTitles: truthTitles 
+        };
+        
+        resetUi(); 
+        toggleButtons(true); 
+        setStatus('Processing batch list...');
+        
+        const collectedMedia = [];
+        let missedCount = 0;
+        
         try {
-            const target = await fetchSingleAniListAnime(parseInt(mediaId, 10));
-            if (!target) throw new Error('Object index missing.');
-            await processMediaList([target], options);
-        } catch (e) { setStatus(`Error: ${e.message}`, 'error'); } finally { toggleButtons(false); setProgress(0,0); }
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                setStatus(`Querying AniList (${i + 1}/${items.length}): ${item}`);
+                
+                const mediaId = item.match(/anilist\.co\/anime\/(\d+)/i)?.[1] || ( /^\d+$/.test(item) ? item : null );
+                
+                try {
+                    let target = null;
+                    if (mediaId) {
+                        target = await fetchSingleAniListAnime(parseInt(mediaId, 10));
+                    } else {
+                        target = await fetchAniListAnimeBySearch(item);
+                    }
+                    
+                    if (target) {
+                        collectedMedia.push(target);
+                    } else {
+                        logLine(`AniList returned no matching results for: "${item}"`, 'warn');
+                        missedCount++;
+                    }
+                } catch (innerErr) {
+                    logLine(`Error fetching "${item}": ${innerErr.message}`, 'err');
+                    missedCount++;
+                }
+            }
+            
+            if (!collectedMedia.length) throw new Error('No valid anime data could be recovered from your list.');
+            if (missedCount > 0) showToast(`Failed to match ${missedCount} items. Check logs for details.`, 'warning', 'Partial Success');
+            
+            await processMediaList(collectedMedia, options);
+            
+        } catch (e) { 
+            setStatus(`Error: ${e.message}`, 'error'); 
+        } finally { 
+            toggleButtons(false); 
+            setProgress(0,0); 
+        }
     }
 
     async function copyToClipboard() {
