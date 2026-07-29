@@ -31,7 +31,7 @@
             background: var(--bg);
             color: var(--text);
             display: flex;
-            justify-content: center;
+            justify(content): center;
             padding: 40px 20px;
             margin: 0;
             line-height: 1.5;
@@ -597,13 +597,30 @@
     }
     function kitsuCacheSet(key, value) { safeSetItem(key, JSON.stringify({ savedAt: Date.now(), value })); }
 
-    async function throttledKitsuFetch(url) {
-        const now = Date.now(); const elapsed = now - lastKitsuRequestAt; if (elapsed < KITSU_DELAY_MS) await sleep(KITSU_DELAY_MS - elapsed);
-        lastKitsuRequestAt = Date.now();
-        const res = await fetch(url, { headers: { 'Accept': 'application/vnd.api+json' } });
-        const result = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(result?.errors?.[0]?.detail || `Kitsu error HTTP ${res.status}`);
-        return result;
+    async function throttledKitsuFetch(url, retries = 3) {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const now = Date.now(); 
+                const elapsed = now - lastKitsuRequestAt; 
+                if (elapsed < KITSU_DELAY_MS) await sleep(KITSU_DELAY_MS - elapsed);
+                lastKitsuRequestAt = Date.now();
+                
+                const res = await fetch(url, { headers: { 'Accept': 'application/vnd.api+json' } });
+                let result;
+                try {
+                    result = await res.json();
+                } catch (e) {
+                    result = null;
+                }
+                
+                if (!res.ok) throw new Error(result?.errors?.[0]?.detail || `Kitsu error HTTP ${res.status}`);
+                return result;
+            } catch (err) {
+                if (attempt === retries) throw err;
+                // Gracefully pause slightly longer on each step before retry
+                await sleep(800 * attempt);
+            }
+        }
     }
 
     async function getKitsuByMalId(malId) {
@@ -636,12 +653,19 @@
             }
         }
         
-        const searchTerms = uniqueNonEmpty([
+        let baseTerms = [
             media.title?.english,
             media.title?.romaji,
             media.title?.userPreferred,
             ...(Array.isArray(media.synonyms) ? media.synonyms : [])
-        ]).slice(0, 3); 
+        ];
+
+        // Advanced string parsing: Generate versions with colons/dashes stripped for finicky search indexes
+        const cleanExtras = baseTerms
+            .filter(t => t && (t.includes(':') || t.includes('-')))
+            .map(t => t.replace(/[:\-]+/g, ' ').replace(/\s+/g, ' ').trim());
+
+        const searchTerms = uniqueNonEmpty([...baseTerms, ...cleanExtras]).slice(0, 4); 
 
         for (const term of searchTerms) {
             if (!term) continue;
