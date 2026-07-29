@@ -197,37 +197,31 @@
             toastContainer: document.getElementById('toastContainer')
         };
         let lastKitsuRequestAt = 0;
+        let aniListCooldownUntil = 0;
 
+        // -------- Utility functions (unchanged from original) ----------
         const isEnglishFriendly = (value) => {
             const folded = String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
             return /[a-z]/i.test(folded);
         };
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         function safeGetItem(key) { try { return localStorage.getItem(key); } catch { return null; } }
-        function safeSetItem(key, value) { try { localStorage.setItem(key, value); } catch { /* ignore */ } }
-        function safeRemoveItem(key) { try { localStorage.removeItem(key); } catch { /* ignore */ } }
-
-        function setStatus(message, type = '') {
-            els.status.textContent = message;
-            els.status.className = `status ${type}`.trim();
-        }
+        function safeSetItem(key, value) { try { localStorage.setItem(key, value); } catch {} }
+        function safeRemoveItem(key) { try { localStorage.removeItem(key); } catch {} }
+        function setStatus(message, type = '') { els.status.textContent = message; els.status.className = `status ${type}`.trim(); }
         function showToast(message, type = 'warning', title = 'Warning', duration = 12000) {
             if (!els.toastContainer) return;
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`.trim();
-            toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
-            toast.title = 'Click to dismiss';
+            const toast = document.createElement('div'); toast.className = `toast ${type}`.trim();
+            toast.setAttribute('role', type === 'error' ? 'alert' : 'status'); toast.title = 'Click to dismiss';
             const heading = document.createElement('span'); heading.className = 'toast-title'; heading.textContent = title;
             const body = document.createElement('div'); body.className = 'toast-message'; body.textContent = message;
-            toast.append(heading, body);
-            toast.addEventListener('click', () => toast.remove());
+            toast.append(heading, body); toast.addEventListener('click', () => toast.remove());
             els.toastContainer.appendChild(toast);
             if (duration > 0) setTimeout(() => toast.remove(), duration);
         }
         function setProgress(done, total) {
             if (!total) { els.progressWrap.style.display = 'none'; els.progressBar.style.width = '0%'; return; }
-            els.progressWrap.style.display = 'block';
-            els.progressBar.style.width = `${Math.min(100, Math.round((done / total) * 100))}%`;
+            els.progressWrap.style.display = 'block'; els.progressBar.style.width = `${Math.min(100, Math.round((done / total) * 100))}%`;
         }
         function resetUi() {
             els.output.value = ''; els.copyBtn.style.display = 'none'; els.summary.style.display = 'none';
@@ -239,15 +233,9 @@
             const div = document.createElement('div'); div.className = `log-line ${kind}`.trim(); div.textContent = message;
             els.log.appendChild(div); els.log.scrollTop = els.log.scrollHeight;
         }
-        function toggleButtons(disabled) {
-            els.generateBtn.disabled = disabled; els.generateSingleBtn.disabled = disabled; els.clearCacheBtn.disabled = disabled;
-        }
-        function foldCommonCharacters(value) {
-            return String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[×]/g, ' x ').replace(/&/g, ' and ').replace(/\+/g, ' plus ').replace(/½/g, ' 1 2 ').replace(/[–—]/g, '-');
-        }
-        function foldForWildcard(value) {
-            return String(value).normalize('NFC').replace(/[×]/g, ' x ').replace(/&/g, ' and ').replace(/\+/g, ' plus ').replace(/½/g, ' 1 2 ').replace(/[–—]/g, '-');
-        }
+        function toggleButtons(disabled) { els.generateBtn.disabled = disabled; els.generateSingleBtn.disabled = disabled; els.clearCacheBtn.disabled = disabled; }
+        function foldCommonCharacters(value) { return String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[×]/g, ' x ').replace(/&/g, ' and ').replace(/\+/g, ' plus ').replace(/½/g, ' 1 2 ').replace(/[–—]/g, '-'); }
+        function foldForWildcard(value) { return String(value).normalize('NFC').replace(/[×]/g, ' x ').replace(/&/g, ' and ').replace(/\+/g, ' plus ').replace(/½/g, ' 1 2 ').replace(/[–—]/g, '-'); }
         function titleTokens(value) { return foldCommonCharacters(value).toLowerCase().match(/[a-z0-9]+/g) || []; }
         function wildcardTokens(value) { return foldForWildcard(value).toLowerCase().match(/[a-z0-9]+/g) || []; }
         function toWildcardPattern(title) { const tokens = wildcardTokens(title); return tokens.length ? tokens.join('*').replace(/\*+/g, '*') : ''; }
@@ -316,6 +304,8 @@
             const titles = [media.title?.romaji, media.title?.english, media.title?.userPreferred, ...(options.includeNonAscii ? [media.title?.native] : [])];
             return filterTitleListForAscii(titles, options);
         }
+
+        // ---------- Kitsu-specific helpers ----------
         function collectKitsuTitles(kitsuItem, options) {
             const attr = kitsuItem.attributes || {};
             const titles = [];
@@ -345,15 +335,14 @@
             const aniCompact = anilistTitles.map(compactCompare).filter(Boolean);
             const kitsuCompact = kitsuTitles.map(compactCompare).filter(Boolean);
             let best = 0;
-            for (const a of aniNormalized) { for (const k of kitsuNormalized) { if (!a || !k) continue; if (a === k) best = Math.max(best, 100); else if (a.includes(k) || k.includes(a)) best = Math.max(best, 85); else best = Math.max(best, tokenOverlapScore(a, k)); } }
-            for (const a of aniCompact) { for (const k of kitsuCompact) { if (!a || !k) continue; if (a === k) best = Math.max(best, 96); } }
+            for (const a of aniNormalized) for (const k of kitsuNormalized) { if (!a || !k) continue; if (a === k) best = Math.max(best, 100); else if (a.includes(k) || k.includes(a)) best = Math.max(best, 85); else best = Math.max(best, tokenOverlapScore(a, k)); }
+            for (const a of aniCompact) for (const k of kitsuCompact) { if (!a || !k) continue; if (a === k) best = Math.max(best, 96); }
             const aniYear = media?.startDate?.year || null; const kitsuYear = yearFromKitsu(item);
             if (aniYear && kitsuYear) { if (aniYear === kitsuYear) best += 5; else if (Math.abs(aniYear - kitsuYear) >= 2) best -= 12; }
             return Math.max(0, Math.min(100, best));
         }
         function kitsuCacheGet(key) { const raw = safeGetItem(key); if (!raw) return null; try { const parsed = JSON.parse(raw); if (!parsed || Date.now() - parsed.savedAt > KITSU_CACHE_TTL_MS) { safeRemoveItem(key); return null; } return parsed.value; } catch { safeRemoveItem(key); return null; } }
         function kitsuCacheSet(key, value) { safeSetItem(key, JSON.stringify({ savedAt: Date.now(), value })); }
-        let aniListCooldownUntil = 0;
         function timeoutSignal(ms) { if (AbortSignal.timeout) return AbortSignal.timeout(ms); const controller = new AbortController(); setTimeout(() => controller.abort(), ms); return controller.signal; }
 
         async function throttledKitsuFetch(url) {
@@ -392,17 +381,146 @@
             return { titles, status: 'ok', message: `${term}: Kitsu match score ${best.score}${fromCache ? ' from cache' : ''}; ${titles.length} titles.` };
         }
 
-        async function fetchAniListCurrent(username, retries = 2) { /* unchanged AniList logic */ }
-        async function fetchSingleAniListAnime(id, retries = 2) { /* unchanged */ }
-        function buildPatternsForTitles(titles, options) { /* unchanged */ }
-        function buildFilterPatterns(mediaTitleMap, options, strictMediaIds) { /* unchanged */ }
-        function getAniListIdFromInput(input) { /* unchanged */ }
-        function displayNameForMedia(media) { /* unchanged */ }
-        function cleanSeasonalTruthLine(line) { /* unchanged */ }
-        function parseSeasonalTruthInput(raw) { /* unchanged */ }
-        function scorePastedTitleForMedia(pastedTitle, media, options) { /* unchanged */ }
-        function matchSeasonalTruthNames(mediaList, pastedTitles, options) { /* unchanged */ }
+        // ---------- AniList API calls ----------
+        async function fetchAniListCurrent(username, retries = 2) {
+            if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+            const query = `
+                query ($name: String) {
+                  MediaListCollection(userName: $name, type: ANIME, status: CURRENT) {
+                    lists { entries { media { id idMal siteUrl format startDate { year month day } title { romaji english native userPreferred } } } }
+                  }
+                }`;
+            try {
+                const response = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ query, variables: { name: username } }), signal: timeoutSignal(15000) });
+                const result = await response.json().catch(() => ({}));
+                if (response.status === 429) {
+                    const retryAfter = Number(response.headers.get('Retry-After')) || 60;
+                    aniListCooldownUntil = Date.now() + (retryAfter * 1000);
+                    if (retries > 0) { setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning'); await sleep(retryAfter * 1000); return fetchAniListCurrent(username, retries - 1); }
+                    throw new Error("AniList rate limit reached. Try again later.");
+                }
+                if (!response.ok || result.errors) { const message = result.errors?.map(err => err.message).join('; ') || `AniList returned HTTP ${response.status}.`; throw new Error(message); }
+                const collection = result.data?.MediaListCollection; if (!collection) throw new Error('User not found or list is private.');
+                const uniqueById = new Map();
+                (Array.isArray(collection.lists) ? collection.lists : []).forEach(list => (Array.isArray(list.entries)?list.entries:[]).forEach(entry => { if (entry?.media?.id && !uniqueById.has(entry.media.id)) uniqueById.set(entry.media.id, entry.media); }));
+                return [...uniqueById.values()];
+            } catch (error) { if (error.name === 'AbortError' || error.name === 'TimeoutError') throw new Error("Request to AniList timed out."); throw error; }
+        }
 
+        async function fetchSingleAniListAnime(id, retries = 2) {
+            if (Date.now() < aniListCooldownUntil) await sleep(aniListCooldownUntil - Date.now());
+            const query = `
+                query ($id: Int) {
+                  Media(id: $id, type: ANIME) { id idMal siteUrl format startDate { year month day } title { romaji english native userPreferred } }
+                }`;
+            try {
+                const response = await fetch(ANILIST_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ query, variables: { id } }), signal: timeoutSignal(15000) });
+                const result = await response.json().catch(() => ({}));
+                if (response.status === 429) {
+                    const retryAfter = Number(response.headers.get('Retry-After')) || 60;
+                    aniListCooldownUntil = Date.now() + (retryAfter * 1000);
+                    if (retries > 0) { setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning'); await sleep(retryAfter * 1000); return fetchSingleAniListAnime(id, retries - 1); }
+                    throw new Error("AniList rate limit reached. Try again later.");
+                }
+                if (!response.ok || result.errors) { const message = result.errors?.map(err => err.message).join('; ') || `AniList returned HTTP ${response.status}.`; throw new Error(message); }
+                return result.data?.Media;
+            } catch (error) { if (error.name === 'AbortError' || error.name === 'TimeoutError') throw new Error("Request to AniList timed out."); throw error; }
+        }
+
+        function getAniListIdFromInput(input) {
+            const str = String(input).trim();
+            if (/^\d+$/.test(str)) return parseInt(str, 10);
+            const match = str.match(/anilist\.co\/anime\/(\d+)/i);
+            return match ? parseInt(match[1], 10) : null;
+        }
+
+        function displayNameForMedia(media) {
+            return media?.title?.userPreferred || media?.title?.english || media?.title?.romaji || `AniList ${media?.id || 'unknown'}`;
+        }
+
+        // ---------- Seasonal truth matching ----------
+        function cleanSeasonalTruthLine(line) {
+            let value = String(line || '').trim(); if (!value) return '';
+            value = value.replace(/^\s*(?:[-*•]+|\d+[.)])\s*/u, '').replace(/^\s*\[[^\]]+\]\s*/u, '').replace(/\s+/g, ' ').trim();
+            if (!value || /^https?:\/\//i.test(value)) return '';
+            const releaseMatch = value.match(/^(?:\[[^\]]+\]\s*)?(.+?)\s+-\s+\d+(?:\.\d+)?(?:v\d+)?(?:\s|$|\()/i);
+            if (releaseMatch?.[1]) value = releaseMatch[1].trim();
+            value = value.replace(/\s+\[(?:new|ongoing|tv|ona|ova|movie)\]\s*$/i, '').replace(/\s+\((?:tv|ona|ova|movie|\d{4}|spring|summer|fall|autumn|winter)\)\s*$/i, '').replace(/[\s,;]+$/g, '').trim();
+            if (value.length < 3) return '';
+            if (/^(title|titles|anime|shows|season|source|name|names)$/i.test(value)) return '';
+            return value;
+        }
+
+        function parseSeasonalTruthInput(raw) {
+            const text = String(raw || '').trim(); if (!text) return [];
+            const splitLines = text.replace(/\r\n?/g, '\n').split(/\n|\t|;/g).map(cleanSeasonalTruthLine).filter(Boolean);
+            return uniqueNonEmpty(splitLines);
+        }
+
+        function scorePastedTitleForMedia(pastedTitle, media, options) {
+            const matchOptions = { ...options, includeNonAscii: true };
+            const mediaTitles = uniqueNonEmpty([...collectAniListTitles(media, matchOptions), media?.title?.native]);
+            const expandedMediaTitles = uniqueNonEmpty(mediaTitles.flatMap(title => [title, ...makeTitleVariants(title, options)]));
+            const pastedVariants = uniqueNonEmpty([pastedTitle, ...makeTitleVariants(pastedTitle, options)]);
+            let best = 0;
+            for (const pasted of pastedVariants) {
+                const pastedNorm = normalizeForCompare(pasted); const pastedCompact = compactCompare(pasted);
+                if (!pastedNorm && !pastedCompact) continue;
+                for (const mediaTitle of expandedMediaTitles) {
+                    const mediaNorm = normalizeForCompare(mediaTitle); const mediaCompact = compactCompare(mediaTitle);
+                    if (!mediaNorm && !mediaCompact) continue;
+                    let score = 0;
+                    if (pastedNorm && mediaNorm && pastedNorm === mediaNorm) score = 100;
+                    else if (pastedCompact && mediaCompact && pastedCompact === mediaCompact) score = 98;
+                    else if (pastedNorm && mediaNorm && Math.min(pastedNorm.length, mediaNorm.length) >= 6 && (pastedNorm.includes(mediaNorm) || mediaNorm.includes(pastedNorm))) score = 86;
+                    else score = tokenOverlapScore(pasted, mediaTitle);
+                    const pastedSeason = getSeasonInfo(pasted); const mediaSeason = getSeasonInfo(mediaTitle);
+                    if (pastedSeason && mediaSeason && pastedSeason.n !== mediaSeason.n) score -= 25;
+                    best = Math.max(best, score);
+                }
+            }
+            return Math.max(0, Math.min(100, best));
+        }
+
+        function matchSeasonalTruthNames(mediaList, pastedTitles, options) {
+            const candidates = []; const mediaByKey = new Map();
+            mediaList.forEach(media => {
+                mediaByKey.set(String(media.id), media);
+                pastedTitles.forEach((title, index) => { const score = scorePastedTitleForMedia(title, media, options); if (score >= 70) candidates.push({ mediaKey: String(media.id), pastedIndex: index, title, score }); });
+            });
+            candidates.sort((a,b) => b.score - a.score);
+            const assignedByMedia = new Map(); const usedPasted = new Set();
+            candidates.forEach(c => { if (!assignedByMedia.has(c.mediaKey) && !usedPasted.has(c.pastedIndex)) { assignedByMedia.set(c.mediaKey, c); usedPasted.add(c.pastedIndex); } });
+            const matched = [], unmatchedMedia = [];
+            mediaList.forEach(media => { const assignment = assignedByMedia.get(String(media.id)); if (assignment) matched.push({ media, title: assignment.title, score: assignment.score }); else unmatchedMedia.push(media); });
+            const unmatchedPasted = pastedTitles.filter((_, i) => !usedPasted.has(i));
+            return { matched, unmatchedMedia, unmatchedPastedTitles: unmatchedPasted };
+        }
+
+        // ---------- Pattern building ----------
+        function buildPatternsForTitles(titles, options) {
+            const patterns = new Set();
+            (Array.isArray(titles) ? titles : []).forEach(title => makeTitleVariants(title, options).forEach(variant => addPattern(patterns, toWildcardPattern(variant))));
+            return patterns;
+        }
+
+        function buildFilterPatterns(mediaTitleMap, options, strictMediaIds) {
+            const patterns = new Set();
+            for (const [mediaId, titles] of mediaTitleMap.entries()) {
+                if (strictMediaIds.has(mediaId)) {
+                    (Array.isArray(titles) ? titles : []).forEach(title => addPattern(patterns, toWildcardPattern(title)));
+                } else {
+                    buildPatternsForTitles(titles, options).forEach(pattern => patterns.add(pattern));
+                }
+            }
+            return [...patterns].sort((a,b) => {
+                const cleanA = a.replace(/^\*/, '').replace(/\*$/, '');
+                const cleanB = b.replace(/^\*/, '').replace(/\*$/, '');
+                return cleanA.localeCompare(cleanB) || a.localeCompare(b);
+            });
+        }
+
+        // ---------- Core processing ----------
         async function processMediaList(mediaList, options) {
             const seasonalTruthTitles = Array.isArray(options.seasonalTruthTitles) ? options.seasonalTruthTitles : [];
             const usingSeasonalTruth = seasonalTruthTitles.length > 0;
@@ -410,16 +528,24 @@
             const fallbackMediaIds = new Set();
             const strictMediaIds = new Set();
             let truthMatched = 0, truthFallbacks = 0, unmatchedPastedCount = 0;
+
             if (usingSeasonalTruth) {
                 const truthMatches = matchSeasonalTruthNames(mediaList, seasonalTruthTitles, options);
                 truthMatched = truthMatches.matched.length; truthFallbacks = truthMatches.unmatchedMedia.length; unmatchedPastedCount = truthMatches.unmatchedPastedTitles.length;
-                truthMatches.matched.forEach(({media, title, score}) => { mediaTitleMap.set(media.id, [title]); strictMediaIds.add(media.id); logLine(`Pasted match: "${title}" -> ${displayNameForMedia(media)} (${score}).`, 'ok'); });
-                truthMatches.unmatchedMedia.forEach(media => { fallbackMediaIds.add(String(media.id)); mediaTitleMap.set(media.id, collectAniListTitles(media, options)); logLine(`Warning: no pasted match for ${displayNameForMedia(media)}. Using AniList${options.useKitsu?'/Kitsu':''} fallback.`, 'warn'); });
-                truthMatches.unmatchedPastedTitles.slice(0,30).forEach(title => logLine(`Ignored pasted name not found in CURRENT watching list: ${title}`, 'warn'));
-                if (truthMatches.unmatchedPastedTitles.length > 30) logLine(`Ignored ${truthMatches.unmatchedPastedTitles.length - 30} more pasted names.`, 'warn');
+                truthMatches.matched.forEach(({media, title, score}) => {
+                    mediaTitleMap.set(media.id, [title]); strictMediaIds.add(media.id);
+                    logLine(`Pasted match: "${title}" -> ${displayNameForMedia(media)} (${score}).`, 'ok');
+                });
+                truthMatches.unmatchedMedia.forEach(media => {
+                    fallbackMediaIds.add(String(media.id)); mediaTitleMap.set(media.id, collectAniListTitles(media, options));
+                    logLine(`Warning: no pasted match for ${displayNameForMedia(media)}. Using AniList${options.useKitsu?'/Kitsu':''} fallback.`, 'warn');
+                });
+                truthMatches.unmatchedPastedTitles.slice(0,30).forEach(title => logLine(`Ignored pasted name not in CURRENT: ${title}`, 'warn'));
+                if (truthMatches.unmatchedPastedTitles.length > 30) logLine(`Ignored ${truthMatches.unmatchedPastedTitles.length - 30} more.`, 'warn');
             } else {
                 mediaList.forEach(media => mediaTitleMap.set(media.id, collectAniListTitles(media, options)));
             }
+
             let kitsuAdded = 0, kitsuErrors = 0;
             setProgress(0, mediaList.length);
             for (let i = 0; i < mediaList.length; i++) {
@@ -443,6 +569,7 @@
                 }
                 setProgress(i+1, mediaList.length);
             }
+
             setStatus('Generating AutoBrr patterns...');
             const zeroPatternMedia = mediaList.filter(media => {
                 const titles = mediaTitleMap.get(media.id) || [];
@@ -453,6 +580,7 @@
                 logLine(`0 variations for ${displayNameForMedia(media)}. Titles: ${availableTitles.join(' | ')}`, 'err');
                 return true;
             });
+
             if (zeroPatternMedia.length === 1 && mediaList.length === 1) {
                 const name = displayNameForMedia(zeroPatternMedia[0]);
                 showToast(`No usable variations for ${name}. Try enabling native/non-ASCII titles or inspect the log.`, 'error', '0 variations', 0);
@@ -462,6 +590,7 @@
                 const names = zeroPatternMedia.map(displayNameForMedia);
                 showToast(`${zeroPatternMedia.length} show(s) produced no variations: ${names.slice(0,4).join(', ')}${names.length>4?` and ${names.length-4} more`:''}. See log.`, 'warning', 'Batch completed with skipped shows');
             }
+
             const uniqueEntries = buildFilterPatterns(mediaTitleMap, options, strictMediaIds);
             if (uniqueEntries.length === 0) throw new Error('No usable title patterns generated.');
             const final = uniqueEntries.join(',');
@@ -475,15 +604,12 @@
             els.patternCount.textContent = uniqueEntries.length.toLocaleString();
             els.charCount.textContent = final.length.toLocaleString();
             let statusMsg = mediaList.length > 1 ? `Generated ${uniqueEntries.length} patterns from ${mediaList.length} anime` : `Generated ${uniqueEntries.length} patterns for ${displayNameForMedia(mediaList[0])}`;
-            if (usingSeasonalTruth) {
-                statusMsg += `. ${truthMatched} pasted match(es)`;
-                if (truthFallbacks > 0) statusMsg += `; ${truthFallbacks} fallback(s)`;
-                if (unmatchedPastedCount > 0) statusMsg += `. Ignored ${unmatchedPastedCount} pasted name(s)`;
-            } else if (options.useKitsu) statusMsg += `, with ${kitsuAdded} Kitsu titles added`;
+            if (usingSeasonalTruth) { statusMsg += `. ${truthMatched} pasted match(es)`; if (truthFallbacks) statusMsg += `; ${truthFallbacks} fallback(s)`; if (unmatchedPastedCount) statusMsg += `. Ignored ${unmatchedPastedCount} pasted name(s)`; }
+            else if (options.useKitsu) statusMsg += `, with ${kitsuAdded} Kitsu titles added`;
             statusMsg += ` (${final.length.toLocaleString()} characters).`;
-            if (kitsuErrors > 0) statusMsg += ` Kitsu failed for ${kitsuErrors} show(s).`;
-            if (zeroPatternMedia.length > 0) statusMsg += ` Warning: 0 variations for ${zeroPatternMedia.length} show(s).`;
-            setStatus(statusMsg, (truthFallbacks>0||kitsuErrors>0||zeroPatternMedia.length>0||final.length>LARGE_OUTPUT_WARNING_LENGTH)?'warning':'success');
+            if (kitsuErrors) statusMsg += ` Kitsu failed for ${kitsuErrors} show(s).`;
+            if (zeroPatternMedia.length) statusMsg += ` Warning: 0 variations for ${zeroPatternMedia.length} show(s).`;
+            setStatus(statusMsg, (truthFallbacks||kitsuErrors||zeroPatternMedia.length||final.length>LARGE_OUTPUT_WARNING_LENGTH)?'warning':'success');
         }
 
         async function generateUserFilter() {
@@ -516,7 +642,16 @@
             finally { toggleButtons(false); setProgress(0,0); }
         }
 
-        async function copyToClipboard() { /* unchanged */ }
+        async function copyToClipboard() {
+            try {
+                if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable.');
+                await navigator.clipboard.writeText(els.output.value);
+            } catch {
+                els.output.focus(); els.output.select(); document.execCommand('copy'); els.output.setSelectionRange(0, 0);
+            }
+            const old = els.copyBtn.textContent; els.copyBtn.textContent = 'Copied!'; setTimeout(() => { els.copyBtn.textContent = old; }, 1600);
+        }
+
         function clearKitsuCache() {
             let removed = 0;
             try { for (let i=localStorage.length-1; i>=0; i--) { const key = localStorage.key(i); if (key && key.startsWith('autobrr:kitsu:')) { localStorage.removeItem(key); removed++; } } }
@@ -524,7 +659,7 @@
             setStatus(`Cleared ${removed} cached Kitsu entr${removed===1?'y':'ies'}.`, 'success');
         }
 
-        // Initialization
+        // ---------- Initialization ----------
         document.addEventListener('DOMContentLoaded', () => {
             const savedName = safeGetItem('anilist_username'); if (savedName) els.username.value = savedName;
             const savedSeasonal = safeGetItem(SEASONAL_TRUTH_KEY); if (savedSeasonal && els.seasonalTruthInput) els.seasonalTruthInput.value = savedSeasonal;
@@ -536,11 +671,6 @@
             if (els.seasonalTruthInput) { els.seasonalTruthInput.addEventListener('blur', () => safeSetItem(SEASONAL_TRUTH_KEY, els.seasonalTruthInput.value)); els.seasonalTruthInput.addEventListener('change', () => safeSetItem(SEASONAL_TRUTH_KEY, els.seasonalTruthInput.value)); }
             els.singleShowInput.addEventListener('keydown', e => { if (e.key === 'Enter') generateSingleFilter(); });
         });
-
-        // Include all previously existing helper functions that were cut for brevity
-        // (fetchAniListCurrent, fetchSingleAniListAnime, buildPatternsForTitles, buildFilterPatterns, getAniListIdFromInput, displayNameForMedia, cleanSeasonalTruthLine, parseSeasonalTruthInput, scorePastedTitleForMedia, matchSeasonalTruthNames, copyToClipboard)
-        // ... they are identical to the original file and too long to fully repeat here; in a real deployment you would keep them.
-        // For the purpose of this answer, assume they are present and unchanged.
     })();
 </script>
 </body>
