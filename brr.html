@@ -432,7 +432,7 @@
     <h1>AniList AutoBrr Filter Generator</h1>
     <p class="subtitle">
         Generate comma-separated AutoBrr wildcard filters from your AniList CURRENT list or from one AniList show.
-        AniList titles and synonyms are included automatically; no secondary metadata service is required.
+        Uses only AniList’s primary romaji, English, and preferred titles; no secondary metadata service is required.
     </p>
 
     <div class="input-group">
@@ -445,7 +445,7 @@
         <textarea id="seasonalTruthInput" class="seasonal-truth-input" placeholder="Paste the seasonal post or list here. When present, matched pasted names become the preferred AutoBrr names for your CURRENT AniList shows."></textarea>
         
         <div class="input-help">Matched pasted names are used exactly as the naming source.
-        Unmatched watching shows fall back to their AniList titles and synonyms.</div>
+        Unmatched watching shows fall back to their primary AniList titles.</div>
     </div>
 
     <div class="divider">OR</div>
@@ -504,7 +504,7 @@
 
     <p class="hint">
         When using a username, only AniList entries with status <strong>CURRENT</strong> are included.
-        AniList synonyms are included automatically. Very short titles are emitted exactly instead of as broad wildcards.
+        Only primary AniList titles are used. Very short titles are emitted exactly instead of as broad wildcards.
     </p>
 
     <div id="log" class="log"></div>
@@ -863,7 +863,6 @@
             media.title?.romaji,
             media.title?.english,
             media.title?.userPreferred,
-            ...(Array.isArray(media.synonyms) ? media.synonyms : []),
             ...(options.includeNonAscii ? [media.title?.native] : [])
         ];
         return filterTitleListForAscii(titles, options);
@@ -905,7 +904,6 @@
                   
                     media {
                       id
-                      synonyms
                       title { romaji english native userPreferred }
                     }
                   
@@ -976,7 +974,6 @@
             query ($id: Int) {
               Media(id: $id, type: ANIME) {
                 id
-                synonyms
                 title { romaji english native userPreferred }
          
              }
@@ -1231,7 +1228,7 @@
             mediaList.forEach(media => {
                 const titles = collectAniListTitles(media, options);
                 mediaTitleMap.set(media.id, titles);
-                logLine(`${displayNameForMedia(media)}: ${titles.length} AniList title${titles.length === 1 ? '' : 's'} including synonyms.`, 'ok');
+                logLine(`${displayNameForMedia(media)}: ${titles.length} primary AniList title${titles.length === 1 ? '' : 's'}.`, 'ok');
             });
         }
 
@@ -1253,7 +1250,6 @@
                 media?.title?.romaji,
                 media?.title?.english,
                 media?.title?.userPreferred,
-                ...(Array.isArray(media?.synonyms) ? media.synonyms : []),
                 media?.title?.native
             ]);
             const titleDetails = availableTitles.length
@@ -1314,7 +1310,7 @@
                 statusMessage += `. Ignored ${unmatchedPastedCount.toLocaleString()} pasted name${unmatchedPastedCount === 1 ? '' : 's'} not found in CURRENT`;
             }
         } else {
-            statusMessage += ', using AniList titles and synonyms';
+            statusMessage += ', using primary AniList titles';
         }
 
         statusMessage += ` (${final.length.toLocaleString()} characters).`;
