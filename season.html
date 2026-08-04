@@ -132,6 +132,41 @@
 
     .config-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
 
+    .schedule-override-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.18);
+      overflow: hidden;
+    }
+    .schedule-override-panel > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    .schedule-override-panel > summary::-webkit-details-marker { display: none; }
+    .schedule-override-panel[open] .manager-toggle-icon { transform: rotate(180deg); }
+    .schedule-override-body {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .schedule-override-body textarea {
+      min-height: 210px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .schedule-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .schedule-status { color: var(--text-muted); font-size: 0.82rem; font-weight: 600; }
+    .schedule-status.ok { color: var(--ok); }
+    .schedule-status.warning { color: var(--warn); }
+
     @media (min-width: 768px) {
       .config-grid { grid-template-columns: repeat(2, 1fr); }
     }
@@ -151,7 +186,7 @@
       font-size: 1rem;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    input[type="text"]:focus, input[type="time"]:focus, select:focus {
+    input[type="text"]:focus, input[type="time"]:focus, select:focus, textarea:focus {
       border-color: rgba(255,255,255,0.4);
       box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
     }
@@ -297,6 +332,42 @@
       animation: breath-fresh 3s infinite ease-in-out;
     }
 
+    .anime-card-top-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .schedule-source-chip {
+      max-width: 100%;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.68);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text-muted);
+      font-size: 0.56rem;
+      font-weight: 850;
+      letter-spacing: 0.06em;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .schedule-source-chip.source-manual,
+    .schedule-source-chip.source-pasted {
+      color: #000;
+      background: rgba(255,255,255,0.94);
+      border-color: transparent;
+    }
+
+    .schedule-source-chip.source-api { color: #d8f3ff; }
+    .schedule-source-chip.source-rss { color: #c7f9df; }
+    .schedule-source-chip.source-cache { color: #f6e7b0; }
+
     .badge-chip {
       background: rgba(0,0,0,0.65);
       backdrop-filter: blur(12px);
@@ -388,38 +459,6 @@
     .top-dropdown-body {
       padding: 0 20px 20px; border-top: 1px solid var(--line); padding-top: 20px;
     }
-
-    .timetable-importer {
-      margin-top: 20px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: rgba(255,255,255,0.02);
-      overflow: hidden;
-    }
-
-    .timetable-importer > summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 16px;
-      cursor: pointer;
-      list-style: none;
-      user-select: none;
-    }
-
-    .timetable-importer > summary::-webkit-details-marker { display: none; }
-    .timetable-importer[open] .manager-toggle-icon { transform: rotate(180deg); }
-    .timetable-importer-body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
-    .timetable-importer textarea {
-      min-height: 180px;
-      resize: vertical;
-      margin-top: 16px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.85rem;
-      line-height: 1.45;
-    }
-    .timetable-status { margin-top: 12px; white-space: pre-line; }
 
     .summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
     .summary-card { padding: 16px; background: var(--panel); border-radius: var(--radius-md); border: 1px solid var(--line); }
@@ -709,25 +748,56 @@
             <label for="rssProxyTemplate">RSS Proxy (Optional)</label>
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
-        </div>
 
-        <details class="timetable-importer">
-          <summary>
-            <div>
-              <div class="section-title" style="font-size: 0.95rem;">Season Timetable Override</div>
-              <div class="manager-toggle-copy">Paste the SubsPlease schedule once per season. Hidden during normal use.</div>
+          <details class="schedule-override-panel" id="scheduleApiPanel" style="grid-column: 1 / -1;">
+            <summary>
+              <div>
+                <div style="font-weight: 800;">Automatic SubsPlease Timetable</div>
+                <div class="manager-toggle-copy">Read today's official schedule and build a rolling weekly cache.</div>
+              </div>
+              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+            </summary>
+            <div class="schedule-override-body">
+              <label class="toggle">
+                <input id="scheduleApiEnabled" type="checkbox" checked />
+                Use the automatic SubsPlease timetable
+              </label>
+              <div class="modal-note">
+                The site reads SubsPlease's daily schedule API in your local timezone and remembers each weekday. The optional RSS proxy is also used if the direct request is blocked. Individual show overrides and the pasted emergency timetable still take priority.
+              </div>
+              <div class="schedule-actions">
+                <button id="refreshScheduleApiBtn" class="primary" type="button">Refresh Today</button>
+                <button id="clearScheduleApiCacheBtn" class="secondary" type="button">Clear API Cache</button>
+                <span id="scheduleApiStatus" class="schedule-status">Waiting for schedule data.</span>
+              </div>
             </div>
-            <span class="manager-toggle-icon" aria-hidden="true">▾</span>
-          </summary>
-          <div class="timetable-importer-body">
-            <textarea id="timetablePaste" spellcheck="false" autocomplete="off" placeholder="Paste the copied SubsPlease weekly schedule here. Day headings and times can be on separate lines or in table rows."></textarea>
-            <div class="button-row" style="margin-top: 12px;">
-              <button id="importTimetableBtn" class="primary" type="button">Import Timetable</button>
-              <button id="clearTimetableBtn" class="secondary" type="button">Clear Timetable</button>
+          </details>
+
+          <details class="schedule-override-panel" id="scheduleOverridePanel" style="grid-column: 1 / -1;">
+            <summary>
+              <div>
+                <div style="font-weight: 800;">Pasted SubsPlease Timetable</div>
+                <div class="manager-toggle-copy">Emergency global schedule override when RSS access is unavailable.</div>
+              </div>
+              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+            </summary>
+            <div class="schedule-override-body">
+              <label class="toggle">
+                <input id="scheduleOverrideEnabled" type="checkbox" />
+                Use pasted timetable as the global automatic schedule
+              </label>
+              <div class="modal-note">
+                Paste the copied SubsPlease timetable with weekday headings and times. Individual show overrides still take priority; the existing RSS and AniList logic remains the fallback for unmatched shows.
+              </div>
+              <textarea id="scheduleOverrideText" rows="10" spellcheck="false" placeholder="Monday&#10;Show Name 18:30&#10;Another Show 20:00&#10;&#10;Tuesday&#10;Third Show 17:45"></textarea>
+              <div class="schedule-actions">
+                <button id="applyScheduleOverrideBtn" class="primary" type="button">Apply Timetable</button>
+                <button id="clearScheduleOverrideBtn" class="secondary" type="button">Clear Timetable</button>
+                <span id="scheduleOverrideStatus" class="schedule-status">No pasted timetable.</span>
+              </div>
             </div>
-            <div id="timetableStatus" class="modal-note timetable-status">No timetable imported.</div>
-          </div>
-        </details>
+          </details>
+        </div>
         
         <div id="message" class="message" aria-live="polite"></div>
 
@@ -815,7 +885,6 @@
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const FINAL_HOLDOVERS_KEY = "airing-board-final-holdovers-v1";
-    const TIMETABLE_KEY = "airing-board-subsplease-timetable-v1";
     const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const SELECTED_DAY_KEY = "airing-board-selected-day-v1";
     
@@ -824,10 +893,12 @@
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
     const COLLAPSED_DAYS_KEY = "airing-board-collapsed-days-v1";
+    const SUBSPLEASE_SCHEDULE_API_CACHE_KEY = "airing-board-subsplease-schedule-api-v1";
+    const SUBSPLEASE_SCHEDULE_API_REFRESH_MS = 60 * 60 * 1000;
+    const SUBSPLEASE_SCHEDULE_DAY_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
     
     const REFRESH_STALE_MS = 5 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-    const TIMETABLE_RSS_REFRESH_MS = 15 * 60 * 1000;
     
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const SEARCH_DEBOUNCE_MS = 650;
@@ -1008,25 +1079,12 @@
       }
     }
 
-    function waitForTransaction(tx) {
-      return new Promise((resolve, reject) => {
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error("IndexedDB transaction failed."));
-        tx.onabort = () => reject(tx.error || new Error("IndexedDB transaction was aborted."));
-      });
-    }
-
     async function saveStateDB(key, value) {
       try {
         const db = await getDB();
         const tx = db.transaction(STATE_STORE, 'readwrite');
         tx.objectStore(STATE_STORE).put(value, key);
-        await waitForTransaction(tx);
-        return true;
-      } catch (e) {
-        console.error(`Could not save ${key}:`, e);
-        return false;
-      }
+      } catch (e) {}
     }
 
     async function deleteStateDB(key) {
@@ -1034,12 +1092,7 @@
         const db = await getDB();
         const tx = db.transaction(STATE_STORE, 'readwrite');
         tx.objectStore(STATE_STORE).delete(key);
-        await waitForTransaction(tx);
-        return true;
-      } catch (e) {
-        console.error(`Could not delete ${key}:`, e);
-        return false;
-      }
+      } catch (e) {}
     }
 
     function loadJSON(key, fallback) {
@@ -1070,10 +1123,17 @@
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
       rssProxyTemplate: document.getElementById("rssProxyTemplate"),
-      timetablePaste: document.getElementById("timetablePaste"),
-      importTimetableBtn: document.getElementById("importTimetableBtn"),
-      clearTimetableBtn: document.getElementById("clearTimetableBtn"),
-      timetableStatus: document.getElementById("timetableStatus"),
+      scheduleApiPanel: document.getElementById("scheduleApiPanel"),
+      scheduleApiEnabled: document.getElementById("scheduleApiEnabled"),
+      refreshScheduleApiBtn: document.getElementById("refreshScheduleApiBtn"),
+      clearScheduleApiCacheBtn: document.getElementById("clearScheduleApiCacheBtn"),
+      scheduleApiStatus: document.getElementById("scheduleApiStatus"),
+      scheduleOverridePanel: document.getElementById("scheduleOverridePanel"),
+      scheduleOverrideEnabled: document.getElementById("scheduleOverrideEnabled"),
+      scheduleOverrideText: document.getElementById("scheduleOverrideText"),
+      applyScheduleOverrideBtn: document.getElementById("applyScheduleOverrideBtn"),
+      clearScheduleOverrideBtn: document.getElementById("clearScheduleOverrideBtn"),
+      scheduleOverrideStatus: document.getElementById("scheduleOverrideStatus"),
       loadBtn: document.getElementById("loadBtn"),
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
       addShowSearch: document.getElementById("addShowSearch"),
@@ -1117,7 +1177,6 @@
       overrides: {},
       addedShows: {},
       finalHoldovers: {},
-      timetable: { importedAt: 0, sourceText: "", entries: [] },
       primaryCandidates: [],
       items: [],
       notes: [],
@@ -1126,7 +1185,14 @@
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
       lastRssReleaseAt: 0,
-      lastRssFetchAt: 0,
+      scheduleApiEnabled: true,
+      scheduleApiCache: null,
+      scheduleApiEntries: [],
+      scheduleApiLastFetchedAt: 0,
+      scheduleApiLastError: "",
+      pastedScheduleEnabled: false,
+      pastedScheduleEntries: [],
+      pastedScheduleIgnoredLines: 0,
       isLoading: false,
       activeSettingsId: null,
       healthStatus: "healthy",
@@ -1446,6 +1512,407 @@
       return Array.from(variants).filter(Boolean);
     }
 
+    function normalizeScheduleDay(value, fallback = null, timeZone = DEFAULT_TIMEZONE) {
+      const text = String(value || "").trim().toLowerCase();
+      if (!text) return fallback;
+      if (/\btoday\b/.test(text)) {
+        return new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(new Date());
+      }
+      const aliases = {
+        mon: "Monday", monday: "Monday",
+        tue: "Tuesday", tues: "Tuesday", tuesday: "Tuesday",
+        wed: "Wednesday", weds: "Wednesday", wednesday: "Wednesday",
+        thu: "Thursday", thur: "Thursday", thurs: "Thursday", thursday: "Thursday",
+        fri: "Friday", friday: "Friday",
+        sat: "Saturday", saturday: "Saturday",
+        sun: "Sunday", sunday: "Sunday"
+      };
+      const match = text.match(/\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i);
+      return match ? (aliases[match[1].toLowerCase()] || fallback) : fallback;
+    }
+
+    function normalizeScheduleTime(value) {
+      const text = String(value || "").trim().toLowerCase();
+      const match = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?\b/i);
+      if (!match) return null;
+      let hour = Number(match[1]);
+      const minute = Number(match[2]);
+      const meridiem = String(match[3] || "").toLowerCase();
+      if (meridiem) {
+        if (hour < 1 || hour > 12) return null;
+        if (meridiem === "am" && hour === 12) hour = 0;
+        if (meridiem === "pm" && hour !== 12) hour += 12;
+      }
+      if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23) return null;
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+
+    function isScheduleNoiseLine(value) {
+      const text = String(value || "").trim().toLowerCase();
+      if (!text) return true;
+      return /^(schedule|shows|packlist|irc|discord|rss|time|airtime|download|subsplease|dark mode|new and hot|see more)$/i.test(text) ||
+        /^(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(text);
+    }
+
+    function cleanScheduleTitle(value) {
+      return String(value || "")
+        .replace(/^[\s\-–—•·*|]+/u, "")
+        .replace(/[\s\-–—|]+$/u, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function parsePastedSchedule(rawText, timeZone = DEFAULT_TIMEZONE) {
+      const lines = String(rawText || "")
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map(line => line.replace(/\u00a0/g, " ").replace(/\t+/g, "  ").trim())
+        .filter(Boolean);
+
+      const entries = [];
+      let currentDay = null;
+      let pendingTitle = "";
+      let ignoredLines = 0;
+
+      for (const originalLine of lines) {
+        const line = originalLine.replace(/\s+/g, " ").trim();
+        const lineDay = normalizeScheduleDay(line, null, timeZone);
+        const timeMatch = line.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\s*(?:am|pm)?\b/i);
+        const normalizedTime = timeMatch ? normalizeScheduleTime(timeMatch[0]) : null;
+        const looksLikeHeading = Boolean(lineDay) && !normalizedTime &&
+          (line.length <= 24 || /schedule|airtime|today/i.test(line));
+
+        if (looksLikeHeading) {
+          currentDay = lineDay;
+          pendingTitle = "";
+          continue;
+        }
+
+        if (normalizedTime) {
+          const effectiveDay = lineDay || currentDay || normalizeScheduleDay("today", "Monday", timeZone);
+          let title = line.replace(timeMatch[0], " ");
+          if (lineDay) {
+            title = title.replace(/\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/ig, " ");
+          }
+          title = cleanScheduleTitle(title);
+          if (!title) title = cleanScheduleTitle(pendingTitle);
+
+          if (title && !isScheduleNoiseLine(title)) {
+            entries.push({
+              title,
+              day: effectiveDay,
+              time: normalizedTime,
+              variants: generateVariants([title]).map(prepareVariant)
+            });
+            pendingTitle = "";
+          } else {
+            ignoredLines++;
+          }
+          continue;
+        }
+
+        if (lineDay && /schedule|airtime|today/i.test(line)) {
+          currentDay = lineDay;
+          pendingTitle = "";
+          continue;
+        }
+
+        if (!isScheduleNoiseLine(line)) {
+          pendingTitle = cleanScheduleTitle(line);
+        } else {
+          ignoredLines++;
+        }
+      }
+
+      const deduped = new Map();
+      for (const entry of entries) {
+        const key = `${normalizeTitle(entry.title)}::${entry.day}`;
+        if (!deduped.has(key)) deduped.set(key, entry);
+      }
+
+      return { entries: Array.from(deduped.values()), ignoredLines };
+    }
+
+    function tryMatchPastedSchedule(media, scheduleEntries) {
+      if (!state.pastedScheduleEnabled || !Array.isArray(scheduleEntries) || !scheduleEntries.length) return null;
+      const variants = titleVariants(media);
+      let best = null;
+      let bestScore = 0;
+      for (const candidate of scheduleEntries) {
+        const score = scoreMatch(candidate, variants);
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+      if (!best || bestScore < 70 || !WEEKDAYS.includes(best.day) || !isValidTime(best.time)) return null;
+      return {
+        day: best.day,
+        time: best.time,
+        source: "schedule",
+        sampleCount: 1,
+        matchedTitle: best.title,
+        matchScore: bestScore
+      };
+    }
+
+    function scheduleApiCacheKey(timeZone = DEFAULT_TIMEZONE) {
+      return `${SUBSPLEASE_SCHEDULE_API_CACHE_KEY}:${String(timeZone || "local")}`;
+    }
+
+    function emptyScheduleApiCache(timeZone = DEFAULT_TIMEZONE) {
+      return { version: 1, timeZone, updatedAt: 0, lastFetchedAt: 0, days: {} };
+    }
+
+    function normalizeScheduleApiCache(value, timeZone = DEFAULT_TIMEZONE) {
+      const cache = value && typeof value === "object" ? value : emptyScheduleApiCache(timeZone);
+      const days = {};
+      for (const day of WEEKDAYS) {
+        const stored = cache.days?.[day];
+        if (!stored || typeof stored !== "object") continue;
+        const updatedAt = Number(stored.updatedAt) || 0;
+        const entries = Array.isArray(stored.entries)
+          ? stored.entries
+              .map(entry => ({
+                title: cleanScheduleTitle(entry?.title),
+                time: normalizeScheduleTime(entry?.time),
+                page: String(entry?.page || ""),
+                imageUrl: String(entry?.imageUrl || entry?.image_url || "")
+              }))
+              .filter(entry => entry.title && entry.time)
+          : [];
+        if (entries.length || updatedAt) {
+          days[day] = {
+            dateKey: String(stored.dateKey || ""),
+            updatedAt,
+            entries
+          };
+        }
+      }
+      return {
+        version: 1,
+        timeZone: String(cache.timeZone || timeZone),
+        updatedAt: Number(cache.updatedAt) || 0,
+        lastFetchedAt: Number(cache.lastFetchedAt) || 0,
+        days
+      };
+    }
+
+    function scheduleApiCandidatesFromCache(cache, now = Date.now()) {
+      const output = [];
+      for (const day of WEEKDAYS) {
+        const stored = cache?.days?.[day];
+        if (!stored || !Array.isArray(stored.entries)) continue;
+        const age = now - (Number(stored.updatedAt) || 0);
+        if (!Number.isFinite(age) || age < 0 || age > SUBSPLEASE_SCHEDULE_DAY_MAX_AGE_MS) continue;
+        for (const entry of stored.entries) {
+          const title = cleanScheduleTitle(entry?.title);
+          const time = normalizeScheduleTime(entry?.time);
+          if (!title || !time) continue;
+          output.push({
+            title,
+            day,
+            time,
+            page: String(entry?.page || ""),
+            imageUrl: String(entry?.imageUrl || ""),
+            variants: generateVariants([title]).map(prepareVariant)
+          });
+        }
+      }
+      return output;
+    }
+
+    async function loadScheduleApiCache(timeZone = DEFAULT_TIMEZONE) {
+      return normalizeScheduleApiCache(
+        await loadStateDB(scheduleApiCacheKey(timeZone), emptyScheduleApiCache(timeZone)),
+        timeZone
+      );
+    }
+
+    async function saveScheduleApiCache(cache, timeZone = DEFAULT_TIMEZONE) {
+      const normalized = normalizeScheduleApiCache(cache, timeZone);
+      await saveStateDB(scheduleApiCacheKey(timeZone), normalized);
+      return normalized;
+    }
+
+    async function deleteScheduleApiCache(timeZone = DEFAULT_TIMEZONE) {
+      await deleteStateDB(scheduleApiCacheKey(timeZone));
+    }
+
+    function buildSubsPleaseScheduleApiUrl(timeZone = DEFAULT_TIMEZONE) {
+      const url = new URL("https://subsplease.org/api/");
+      url.searchParams.set("f", "schedule");
+      url.searchParams.set("h", "true");
+      url.searchParams.set("tz", timeZone);
+      url.searchParams.set("_cb", String(Date.now()));
+      return url.toString();
+    }
+
+    function parseSubsPleaseScheduleApi(rawText, timeZone = DEFAULT_TIMEZONE) {
+      let payload;
+      try {
+        payload = JSON.parse(String(rawText || ""));
+      } catch (_) {
+        throw new Error("SubsPlease schedule response was not valid JSON.");
+      }
+      if (!payload || !Array.isArray(payload.schedule)) {
+        throw new Error("SubsPlease schedule response did not contain a schedule.");
+      }
+      const day = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(new Date());
+      const dateKey = localDateKeyFromMs(Date.now(), timeZone);
+      const entries = payload.schedule
+        .map(entry => ({
+          title: cleanScheduleTitle(entry?.title),
+          time: normalizeScheduleTime(entry?.time),
+          page: String(entry?.page || ""),
+          imageUrl: String(entry?.image_url || "")
+        }))
+        .filter(entry => entry.title && entry.time);
+      return {
+        timeZone: String(payload.tz || timeZone),
+        day,
+        dateKey,
+        entries
+      };
+    }
+
+    function syncScheduleApiEnabledFromInput() {
+      state.scheduleApiEnabled = els.scheduleApiEnabled
+        ? Boolean(els.scheduleApiEnabled.checked)
+        : true;
+      if (els.refreshScheduleApiBtn) {
+        els.refreshScheduleApiBtn.disabled = !state.scheduleApiEnabled;
+      }
+      renderScheduleApiStatus();
+    }
+
+    async function hydrateScheduleApiCache() {
+      state.scheduleApiCache = await loadScheduleApiCache(DEFAULT_TIMEZONE);
+      state.scheduleApiEntries = scheduleApiCandidatesFromCache(state.scheduleApiCache);
+      state.scheduleApiLastFetchedAt = Number(state.scheduleApiCache.lastFetchedAt) || 0;
+      renderScheduleApiStatus();
+      return state.scheduleApiCache;
+    }
+
+    function setScheduleApiStatus(text, mode = "") {
+      if (!els.scheduleApiStatus) return;
+      els.scheduleApiStatus.textContent = text;
+      els.scheduleApiStatus.className = `schedule-status ${mode}`.trim();
+    }
+
+    function renderScheduleApiStatus() {
+      if (!els.scheduleApiStatus) return;
+      const cache = state.scheduleApiCache || emptyScheduleApiCache(DEFAULT_TIMEZONE);
+      const now = Date.now();
+      const freshDays = WEEKDAYS.filter(day => {
+        const updatedAt = Number(cache.days?.[day]?.updatedAt) || 0;
+        const age = now - updatedAt;
+        return updatedAt && age >= 0 && age <= SUBSPLEASE_SCHEDULE_DAY_MAX_AGE_MS;
+      });
+      const rowCount = state.scheduleApiEntries.length;
+      const matchedCount = (state.items || []).filter(item => item.source === "schedule-api").length;
+      const lastLabel = state.scheduleApiLastFetchedAt
+        ? ` · last checked ${timeAgo(state.scheduleApiLastFetchedAt)} ago`
+        : "";
+
+      if (!state.scheduleApiEnabled) {
+        setScheduleApiStatus(`Disabled · ${freshDays.length}/7 weekdays cached${lastLabel}`);
+      } else if (state.scheduleApiLastError && !rowCount) {
+        setScheduleApiStatus(`Unavailable · ${state.scheduleApiLastError}`, "warning");
+      } else if (state.scheduleApiLastError) {
+        setScheduleApiStatus(`Using cache · ${freshDays.length}/7 weekdays · ${matchedCount} shows matched${lastLabel}`, "warning");
+      } else if (!rowCount) {
+        setScheduleApiStatus("Enabled · waiting to collect today's schedule.");
+      } else {
+        setScheduleApiStatus(`Active · ${freshDays.length}/7 weekdays · ${rowCount} rows · ${matchedCount} shows matched${lastLabel}`, "ok");
+      }
+    }
+
+    async function refreshScheduleApi(options = {}) {
+      syncScheduleApiEnabledFromInput();
+      if (!state.scheduleApiCache) await hydrateScheduleApiCache();
+      if (!state.scheduleApiEnabled) {
+        return { ok: false, skipped: true, cached: state.scheduleApiEntries.length > 0 };
+      }
+
+      const now = Date.now();
+      const todayDay = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: DEFAULT_TIMEZONE }).format(new Date(now));
+      const todayDateKey = localDateKeyFromMs(now, DEFAULT_TIMEZONE);
+      const todayCache = state.scheduleApiCache?.days?.[todayDay];
+      const recentlyFetched = now - (Number(state.scheduleApiCache?.lastFetchedAt) || 0) < SUBSPLEASE_SCHEDULE_API_REFRESH_MS;
+      const hasToday = todayCache?.dateKey === todayDateKey && Array.isArray(todayCache.entries);
+
+      if (!options.force && recentlyFetched && hasToday) {
+        state.scheduleApiEntries = scheduleApiCandidatesFromCache(state.scheduleApiCache, now);
+        state.scheduleApiLastError = "";
+        renderScheduleApiStatus();
+        return { ok: true, cached: true, fetched: false, day: todayDay, rows: todayCache.entries.length };
+      }
+
+      if (els.refreshScheduleApiBtn) {
+        els.refreshScheduleApiBtn.disabled = true;
+        els.refreshScheduleApiBtn.textContent = "Refreshing...";
+      }
+
+      try {
+        const rawText = await fetchTextWithOptionalProxy(
+          buildSubsPleaseScheduleApiUrl(DEFAULT_TIMEZONE),
+          els.rssProxyTemplate?.value.trim() || ""
+        );
+        const parsed = parseSubsPleaseScheduleApi(rawText, DEFAULT_TIMEZONE);
+        const fetchedAt = Date.now();
+        const cache = normalizeScheduleApiCache(state.scheduleApiCache, DEFAULT_TIMEZONE);
+        cache.timeZone = parsed.timeZone || DEFAULT_TIMEZONE;
+        cache.updatedAt = fetchedAt;
+        cache.lastFetchedAt = fetchedAt;
+        cache.days[parsed.day] = {
+          dateKey: parsed.dateKey,
+          updatedAt: fetchedAt,
+          entries: parsed.entries
+        };
+        state.scheduleApiCache = await saveScheduleApiCache(cache, DEFAULT_TIMEZONE);
+        state.scheduleApiEntries = scheduleApiCandidatesFromCache(state.scheduleApiCache, fetchedAt);
+        state.scheduleApiLastFetchedAt = fetchedAt;
+        state.scheduleApiLastError = "";
+        renderScheduleApiStatus();
+        return { ok: true, fetched: true, cached: false, day: parsed.day, rows: parsed.entries.length };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Schedule request failed.");
+        state.scheduleApiLastError = message;
+        state.scheduleApiEntries = scheduleApiCandidatesFromCache(state.scheduleApiCache);
+        renderScheduleApiStatus();
+        return { ok: false, error: message, cached: state.scheduleApiEntries.length > 0 };
+      } finally {
+        if (els.refreshScheduleApiBtn) {
+          els.refreshScheduleApiBtn.disabled = !state.scheduleApiEnabled;
+          els.refreshScheduleApiBtn.textContent = "Refresh Today";
+        }
+      }
+    }
+
+    function tryMatchScheduleApi(media, scheduleEntries) {
+      if (!state.scheduleApiEnabled || !Array.isArray(scheduleEntries) || !scheduleEntries.length) return null;
+      const variants = titleVariants(media);
+      let best = null;
+      let bestScore = 0;
+      for (const candidate of scheduleEntries) {
+        const score = scoreMatch(candidate, variants);
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+      if (!best || bestScore < 70 || !WEEKDAYS.includes(best.day) || !isValidTime(best.time)) return null;
+      return {
+        day: best.day,
+        time: best.time,
+        source: "schedule-api",
+        sampleCount: 1,
+        matchedTitle: best.title,
+        matchScore: bestScore
+      };
+    }
+
     function extractSeasonNumber(text) {
       const normalized = normalizeTitle(text);
       const match = normalized.match(/\bs(\d+)\b|\bseason\s*(\d+)\b/);
@@ -1520,220 +1987,6 @@
         }
       }
       return best;
-    }
-
-    function weekdayFromText(value) {
-      const normalized = String(value || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z]/g, "");
-
-      if (!normalized) return null;
-
-      return WEEKDAYS.find(day => {
-        const lower = day.toLowerCase();
-        return normalized === lower || normalized === lower.slice(0, 3);
-      }) || null;
-    }
-
-    function splitWeekdayPrefix(value) {
-      const text = String(value || "").trim();
-      const match = text.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s*[:|,–—-]\s*|\s+(?=\d{1,2}\s*[:.]))(.+)$/i);
-      if (!match) return null;
-      const day = WEEKDAYS.find(value => value.toLowerCase() === match[1].toLowerCase());
-      return day ? { day, rest: match[2].trim() } : null;
-    }
-
-    function extractClockTime(value) {
-      const text = String(value || "");
-
-      let match = text.match(/\b(1[0-2]|0?[1-9])\s*[:.]\s*([0-5]\d)\s*(am|pm)\b/i);
-      if (match) {
-        let hour = Number(match[1]);
-        const minute = Number(match[2]);
-        const suffix = match[3].toLowerCase();
-        if (suffix === "pm" && hour !== 12) hour += 12;
-        if (suffix === "am" && hour === 12) hour = 0;
-        return { time: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, index: match.index, length: match[0].length };
-      }
-
-      match = text.match(/\b([01]?\d|2[0-3])\s*[:.]\s*([0-5]\d)\b/);
-      if (match) {
-        return {
-          time: `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`,
-          index: match.index,
-          length: match[0].length
-        };
-      }
-
-      return null;
-    }
-
-    function cleanTimetableTitle(value) {
-      return String(value || "")
-        .replace(/^[\s|•·–—-]+|[\s|•·–—-]+$/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
-
-    function isTimetableNoise(value) {
-      const normalized = String(value || "").trim().toLowerCase();
-      return !normalized || [
-        "weekly schedule", "schedule", "time", "airtime today", "subsplease",
-        "delayed", "tba", "to be announced", "dark mode"
-      ].includes(normalized);
-    }
-
-    function parseTimetableText(rawText) {
-      const lines = String(rawText || "")
-        .replace(/\r/g, "")
-        .split("\n")
-        .map(line => line.replace(/\u00a0/g, " ").trim());
-
-      const entries = [];
-      const seen = new Set();
-      let currentDay = null;
-      let pendingTitle = "";
-      let pendingTime = "";
-
-      const addEntry = (title, day, time) => {
-        const cleanedTitle = cleanTimetableTitle(title);
-        if (!cleanedTitle || !WEEKDAYS.includes(day) || !isValidTime(time)) return;
-        if (isTimetableNoise(cleanedTitle)) return;
-
-        const key = `${normalizeTitle(cleanedTitle)}::${day}::${time}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        entries.push({ title: cleanedTitle, day, time });
-      };
-
-      for (const rawLine of lines) {
-        if (!rawLine) continue;
-
-        const prefixedDay = splitWeekdayPrefix(rawLine);
-        const workingLine = prefixedDay?.rest || rawLine;
-        if (prefixedDay?.day) currentDay = prefixedDay.day;
-
-        const wholeDay = weekdayFromText(workingLine);
-        if (wholeDay) {
-          currentDay = wholeDay;
-          pendingTitle = "";
-          pendingTime = "";
-          continue;
-        }
-
-        const cells = workingLine
-          .split(/\t+|\s*\|\s*/)
-          .map(cell => cell.trim())
-          .filter(Boolean);
-
-        let lineDay = prefixedDay?.day || currentDay;
-        let timeInfo = null;
-        let titleParts = [];
-
-        if (cells.length > 1) {
-          for (const cell of cells) {
-            const cellDay = weekdayFromText(cell);
-            if (cellDay) {
-              lineDay = cellDay;
-              currentDay = cellDay;
-              continue;
-            }
-
-            const cellTime = extractClockTime(cell);
-            if (cellTime && !timeInfo) {
-              timeInfo = cellTime;
-              const remainder = cleanTimetableTitle(cell.slice(0, cellTime.index) + " " + cell.slice(cellTime.index + cellTime.length));
-              if (remainder) titleParts.push(remainder);
-              continue;
-            }
-
-            if (!isTimetableNoise(cell)) titleParts.push(cell);
-          }
-        } else {
-          timeInfo = extractClockTime(workingLine);
-          if (timeInfo) {
-            const remainder = cleanTimetableTitle(
-              workingLine.slice(0, timeInfo.index) + " " + workingLine.slice(timeInfo.index + timeInfo.length)
-            );
-            if (remainder) titleParts.push(remainder);
-          } else if (!isTimetableNoise(workingLine)) {
-            titleParts.push(workingLine);
-          }
-        }
-
-        const lineTitle = cleanTimetableTitle(titleParts.join(" "));
-        const lineTime = timeInfo?.time || "";
-
-        if (lineDay && lineTitle && lineTime) {
-          addEntry(lineTitle, lineDay, lineTime);
-          pendingTitle = "";
-          pendingTime = "";
-          continue;
-        }
-
-        if (lineDay && lineTime && pendingTitle) {
-          addEntry(pendingTitle, lineDay, lineTime);
-          pendingTitle = "";
-          pendingTime = "";
-          continue;
-        }
-
-        if (lineDay && lineTitle && pendingTime) {
-          addEntry(lineTitle, lineDay, pendingTime);
-          pendingTitle = "";
-          pendingTime = "";
-          continue;
-        }
-
-        if (lineTitle) pendingTitle = lineTitle;
-        if (lineTime) pendingTime = lineTime;
-      }
-
-      return entries;
-    }
-
-    function sanitizeTimetable(value) {
-      const source = value && typeof value === "object" ? value : {};
-      const entries = Array.isArray(source.entries)
-        ? source.entries
-            .map(entry => ({
-              title: cleanTimetableTitle(entry?.title),
-              day: WEEKDAYS.includes(entry?.day) ? entry.day : null,
-              time: isValidTime(entry?.time) ? entry.time : null
-            }))
-            .filter(entry => entry.title && entry.day && entry.time)
-        : [];
-
-      return {
-        importedAt: Number(source.importedAt) || 0,
-        sourceText: String(source.sourceText || ""),
-        entries
-      };
-    }
-
-    function tryMatchTimetable(media, timetableEntries) {
-      const variants = titleVariants(media);
-      const ranked = (Array.isArray(timetableEntries) ? timetableEntries : [])
-        .map(entry => ({
-          entry,
-          score: scoreMatch({ variants: generateVariants([entry.title]).map(prepareVariant) }, variants)
-        }))
-        .sort((a, b) => b.score - a.score);
-
-      const best = ranked[0];
-      const second = ranked[1];
-      if (!best || best.score < 74) return null;
-      if (best.score < 98 && second && second.score >= best.score - 3) return null;
-
-      return {
-        day: best.entry.day,
-        time: best.entry.time,
-        source: "timetable",
-        sampleCount: 1,
-        matchedTitle: best.entry.title,
-        matchScore: best.score
-      };
     }
 
     function parseReleaseTitle(rawTitle) {
@@ -1920,11 +2173,76 @@
 
     function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
 
+    function setPastedScheduleStatus(text, mode = "") {
+      if (!els.scheduleOverrideStatus) return;
+      els.scheduleOverrideStatus.textContent = text;
+      els.scheduleOverrideStatus.className = `schedule-status ${mode}`.trim();
+    }
+
+    function syncPastedScheduleStateFromInputs(options = {}) {
+      const rawText = String(els.scheduleOverrideText?.value || "");
+      const parsed = parsePastedSchedule(rawText, DEFAULT_TIMEZONE);
+      const enabled = options.forceEnable
+        ? parsed.entries.length > 0
+        : Boolean(els.scheduleOverrideEnabled?.checked);
+
+      if (els.scheduleOverrideEnabled && options.forceEnable) {
+        els.scheduleOverrideEnabled.checked = enabled;
+      }
+
+      state.pastedScheduleEnabled = enabled;
+      state.pastedScheduleEntries = parsed.entries;
+      state.pastedScheduleIgnoredLines = parsed.ignoredLines;
+      renderPastedScheduleStatus();
+      return parsed;
+    }
+
+    function renderPastedScheduleStatus() {
+      if (!els.scheduleOverrideStatus) return;
+      const parsedCount = state.pastedScheduleEntries.length;
+      const matchedCount = (state.items || []).filter(item => item.source === "schedule").length;
+
+      if (!String(els.scheduleOverrideText?.value || "").trim()) {
+        setPastedScheduleStatus("No pasted timetable.");
+      } else if (!parsedCount) {
+        setPastedScheduleStatus("No valid weekday/time rows found.", "warning");
+      } else if (!state.pastedScheduleEnabled) {
+        setPastedScheduleStatus(`Parsed ${parsedCount} rows · currently disabled.`);
+      } else {
+        const ignored = state.pastedScheduleIgnoredLines ? ` · ${state.pastedScheduleIgnoredLines} lines ignored` : "";
+        setPastedScheduleStatus(`Active · ${parsedCount} rows parsed · ${matchedCount} shows matched${ignored}`, "ok");
+      }
+    }
+
+    async function applyPastedScheduleOverride() {
+      const parsed = syncPastedScheduleStateFromInputs({ forceEnable: true });
+      savePageSettings();
+      if (!parsed.entries.length) {
+        showMessage("error", "No valid timetable rows were found. Include a weekday heading and a time such as 18:30.");
+        return;
+      }
+      if (state.userName) await refreshBoardFromState();
+      renderPastedScheduleStatus();
+      showMessage("info", `Pasted timetable enabled with ${parsed.entries.length} schedule rows.`);
+    }
+
+    async function clearPastedScheduleOverride() {
+      if (els.scheduleOverrideText) els.scheduleOverrideText.value = "";
+      if (els.scheduleOverrideEnabled) els.scheduleOverrideEnabled.checked = false;
+      syncPastedScheduleStateFromInputs();
+      savePageSettings();
+      if (state.userName) await refreshBoardFromState();
+      showMessage("info", "Pasted timetable cleared. Automatic schedule detection is active.");
+    }
+
     function savePageSettings() {
       saveJSON(PAGE_SETTINGS_KEY, {
         userName: els.username.value.trim(),
         rssUrl: els.rssUrl.value.trim(),
-        rssProxyTemplate: els.rssProxyTemplate.value.trim()
+        rssProxyTemplate: els.rssProxyTemplate.value.trim(),
+        scheduleApiEnabled: els.scheduleApiEnabled ? Boolean(els.scheduleApiEnabled.checked) : true,
+        pastedScheduleEnabled: Boolean(els.scheduleOverrideEnabled?.checked),
+        pastedScheduleText: String(els.scheduleOverrideText?.value || "")
       });
     }
 
@@ -1933,6 +2251,17 @@
       if (settings.userName) els.username.value = settings.userName;
       if (settings.rssUrl) els.rssUrl.value = settings.rssUrl;
       if (settings.rssProxyTemplate) els.rssProxyTemplate.value = settings.rssProxyTemplate;
+      if (els.scheduleApiEnabled) {
+        els.scheduleApiEnabled.checked = settings.scheduleApiEnabled !== false;
+      }
+      syncScheduleApiEnabledFromInput();
+      if (els.scheduleOverrideText && typeof settings.pastedScheduleText === "string") {
+        els.scheduleOverrideText.value = settings.pastedScheduleText;
+      }
+      if (els.scheduleOverrideEnabled) {
+        els.scheduleOverrideEnabled.checked = Boolean(settings.pastedScheduleEnabled);
+      }
+      syncPastedScheduleStateFromInputs();
     }
 
     async function loadBoardSnapshot() { return await loadStateDB(BOARD_SNAPSHOT_KEY, null); }
@@ -1942,13 +2271,11 @@
         userName: state.userName,
         currentEntries: state.currentEntries,
         finalHoldovers: state.finalHoldovers,
-        timetable: state.timetable,
         primaryCandidates: state.primaryCandidates,
         totalAniListEntries: state.totalAniListEntries,
         notes: state.notes,
         healthStatus: state.healthStatus,
         lastRssReleaseAt: state.lastRssReleaseAt,
-        lastRssFetchAt: state.lastRssFetchAt,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -1968,11 +2295,6 @@
       state.overrides = await loadOverrides(state.userName);
       state.addedShows = await loadAddedShows(state.userName);
       state.finalHoldovers = await loadFinalHoldovers(state.userName);
-      state.timetable = await loadTimetable(state.userName);
-      if (!state.timetable.entries.length && snapshot.timetable) {
-        state.timetable = sanitizeTimetable(snapshot.timetable);
-        if (state.timetable.entries.length) await saveTimetable(state.userName, state.timetable);
-      }
       if (!Object.keys(state.finalHoldovers || {}).length && snapshot.finalHoldovers && typeof snapshot.finalHoldovers === "object") {
         state.finalHoldovers = snapshot.finalHoldovers;
         await saveFinalHoldovers(state.userName, state.finalHoldovers);
@@ -1983,7 +2305,6 @@
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
       state.lastRssReleaseAt = Number(snapshot.lastRssReleaseAt) || 0;
-      state.lastRssFetchAt = Number(snapshot.lastRssFetchAt) || 0;
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       
@@ -1993,7 +2314,8 @@
           await saveStateDB(BOARD_SNAPSHOT_KEY, repairedSnapshot);
         } catch (_) {}
       }
-      
+
+      await hydrateScheduleApiCache();
       await refreshBoardFromState();
       setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
@@ -2012,16 +2334,6 @@
 
     async function loadFinalHoldovers(userName) { return await loadStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), {}); }
     async function saveFinalHoldovers(userName, finalHoldovers) { await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers); }
-
-    async function loadTimetable(userName) {
-      return sanitizeTimetable(await loadStateDB(scopedKey(TIMETABLE_KEY, userName), null));
-    }
-    async function saveTimetable(userName, timetable) {
-      await saveStateDB(scopedKey(TIMETABLE_KEY, userName), sanitizeTimetable(timetable));
-    }
-    async function clearTimetable(userName) {
-      await deleteStateDB(scopedKey(TIMETABLE_KEY, userName));
-    }
     
     function makeEntryFromMedia(media) { return { media }; }
 
@@ -2302,22 +2614,7 @@
     }
 
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
-      const rssMatch = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
-      const timetableMatch = tryMatchTimetable(media, state.timetable?.entries);
-
-      // The imported seasonal timetable is authoritative for the normal weekly slot.
-      // RSS is still attached as release confirmation and finale metadata.
-      if (timetableMatch) {
-        return {
-          ...timetableMatch,
-          matchedEpisode: rssMatch?.matchedEpisode || null,
-          latestReleaseDay: rssMatch?.latestReleaseDay || null,
-          latestReleaseTime: rssMatch?.latestReleaseTime || null,
-          latestReleaseDate: rssMatch?.latestReleaseDate || null,
-          rssMatchedTitle: rssMatch?.matchedTitle || ""
-        };
-      }
-
+      const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
 
       if (next?.airingAt) {
@@ -2326,33 +2623,39 @@
           const { weekday: aniDay, time: aniTime } = airingSlot;
           const aniMinutes = toMinutes(aniTime);
 
-          if (rssMatch?.time) {
-            const rssMinutes = toMinutes(rssMatch.time);
+          if (primary?.time) {
+            const rssMinutes = toMinutes(primary.time);
             let diff = rssMinutes - aniMinutes;
+            
+            // Keep track of if the time crossed midnight
             let expectedDayShift = 0;
             if (diff > 720) { diff -= 1440; expectedDayShift = -1; }
             if (diff < -720) { diff += 1440; expectedDayShift = 1; }
 
+            // Keep your symmetrical 3.5 hour window
             if (Math.abs(diff) <= 210) {
+              
+              // PROTECTION: Ensure the day is actually correct
               const aniDayIdx = WEEKDAYS.indexOf(aniDay);
-              const rssDayIdx = WEEKDAYS.indexOf(rssMatch.day);
+              const rssDayIdx = WEEKDAYS.indexOf(primary.day);
               const expectedRssDayIdx = (aniDayIdx + expectedDayShift + 7) % 7;
 
               if (rssDayIdx === expectedRssDayIdx) {
                 return {
                   day: aniDay,
-                  time: rssMatch.time,
+                  time: primary.time,
                   source: "rss",
-                  sampleCount: rssMatch.sampleCount || 1,
-                  matchedTitle: rssMatch.matchedTitle || "",
-                  matchedEpisode: rssMatch.matchedEpisode || null,
-                  latestReleaseDay: rssMatch.latestReleaseDay || null,
-                  latestReleaseTime: rssMatch.latestReleaseTime || null,
-                  latestReleaseDate: rssMatch.latestReleaseDate || null
+                  sampleCount: primary.sampleCount || 1,
+                  matchedTitle: primary.matchedTitle || "",
+                  matchedEpisode: primary.matchedEpisode || null,
+                  latestReleaseDay: primary.latestReleaseDay || null,
+                  latestReleaseTime: primary.latestReleaseTime || null,
+                  latestReleaseDate: primary.latestReleaseDate || null
                 };
               }
             }
-
+            
+            // Out of bounds or wrong day. Reject and use fallback.
             return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
           }
 
@@ -2360,7 +2663,7 @@
         }
       }
 
-      return rssMatch || null;
+      return primary || null;
     }
 
     function buildItems(entries, overrides, primaryCandidates, timeZone) {
@@ -2414,6 +2717,8 @@
         const cover = coverForMedia(media);
         const shared = getSharedEpisodeAndScheduleState(media);
         const rssCandidateForFinal = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+        const pastedSchedule = tryMatchPastedSchedule(media, state.pastedScheduleEntries);
+        const automaticSchedule = tryMatchScheduleApi(media, state.scheduleApiEntries);
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
@@ -2457,6 +2762,94 @@
           continue;
         }
 
+        if (pastedSchedule) {
+          const isFreshRss = rssCandidateForFinal?.latestReleaseDate && (Date.now() - rssCandidateForFinal.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: shared.nextEpisodeNumber,
+            totalEpisodeNumber: shared.totalEpisodeNumber,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate,
+            day: pastedSchedule.day,
+            time: pastedSchedule.time,
+            finalTimingDay: pastedSchedule.day,
+            finalTimingTime: pastedSchedule.time,
+            nextAiringAt: shared.nextAiringAt,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isScheduleMoved: shared.isScheduleMoved,
+            useRssFinalTiming: true,
+            timeZone,
+            nowSeconds
+          });
+
+          items.push({
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: pastedSchedule.day, time: pastedSchedule.time,
+            format: media.format || "", source: "schedule", sampleCount: 1,
+            matchedTitle: pastedSchedule.matchedTitle || "", scheduleMatchScore: pastedSchedule.matchScore || 0,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
+            latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
+            latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
+            isFreshRss: isFreshRss || false,
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
+            totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
+            displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
+            isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
+            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            finalAiredAtMs: episodeState.finalAiredAtMs,
+            usesRssFinalTiming: episodeState.usesRssFinalTiming,
+            rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
+            nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
+          });
+          continue;
+        }
+
+        if (automaticSchedule) {
+          const isFreshRss = rssCandidateForFinal?.latestReleaseDate && (Date.now() - rssCandidateForFinal.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: shared.nextEpisodeNumber,
+            totalEpisodeNumber: shared.totalEpisodeNumber,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate,
+            day: automaticSchedule.day,
+            time: automaticSchedule.time,
+            finalTimingDay: automaticSchedule.day,
+            finalTimingTime: automaticSchedule.time,
+            nextAiringAt: shared.nextAiringAt,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isScheduleMoved: shared.isScheduleMoved,
+            useRssFinalTiming: true,
+            timeZone,
+            nowSeconds
+          });
+
+          items.push({
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: automaticSchedule.day, time: automaticSchedule.time,
+            format: media.format || "", source: "schedule-api", sampleCount: 1,
+            matchedTitle: automaticSchedule.matchedTitle || "", scheduleMatchScore: automaticSchedule.matchScore || 0,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
+            latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
+            latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
+            isFreshRss: isFreshRss || false,
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
+            totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
+            displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
+            isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
+            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            finalAiredAtMs: episodeState.finalAiredAtMs,
+            usesRssFinalTiming: episodeState.usesRssFinalTiming,
+            rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
+            nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
+          });
+          continue;
+        }
+
         const primary = detectDefaultSlot(media, primaryCandidates, timeZone);
         if (primary) {
           const isFreshRss = primary.latestReleaseDate && (Date.now() - primary.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
@@ -2467,12 +2860,12 @@
             latestReleaseDate: primary.latestReleaseDate,
             day: primary.day,
             time: primary.time,
-            finalTimingDay: primary.source === "timetable" ? primary.day : (primary.latestReleaseDay || primary.day),
+            finalTimingDay: primary.latestReleaseDay || primary.day,
             finalTimingTime: primary.time,
             nextAiringAt: shared.nextAiringAt,
             isUpcomingSeason: shared.isUpcomingSeason,
             isScheduleMoved: shared.isScheduleMoved,
-            useRssFinalTiming: primary.source === "rss" || primary.source === "timetable",
+            useRssFinalTiming: primary.source === "rss",
             timeZone,
             nowSeconds
           });
@@ -2528,17 +2921,9 @@
           entry.wasDelayed = false;
         }
 
-        if (item.source === "timetable") {
-          cache[key] = {
-            ...entry,
-            day: item.day,
-            time: item.time,
-            sampleCount: 1,
-            matchedTitle: item.matchedTitle || "",
-            latestReleaseDate: item.latestReleaseDate || null,
-            origin: "timetable",
-            updatedAt: new Date().toISOString()
-          };
+        if (item.source === "schedule" || item.source === "schedule-api") {
+          // Keep global timetable values transient so they override old RSS history
+          // without destroying that history when either timetable source is disabled later.
           output.push(item);
           continue;
         }
@@ -2605,7 +2990,7 @@
         if (item.source === "manual") {
           cache[key] = { ...entry, day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
           output.push(item);
-        } else if (entry.origin && entry.origin !== "timetable" && (isValidTime(entry.time) || Array.isArray(entry.history))) {
+        } else if (entry.origin && (isValidTime(entry.time) || Array.isArray(entry.history))) {
           const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
           const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
           
@@ -2966,6 +3351,24 @@
       return '<div></div>';
     }
 
+    function scheduleSourceMeta(item) {
+      const source = String(item?.source || "").toLowerCase();
+      const meta = {
+        manual: { label: "Manual", className: "source-manual", title: "Individual show override" },
+        schedule: { label: "Pasted", className: "source-pasted", title: "Pasted SubsPlease timetable" },
+        "schedule-api": { label: "API", className: "source-api", title: "Automatic SubsPlease schedule API" },
+        rss: { label: "RSS", className: "source-rss", title: "SubsPlease RSS release history" },
+        cache: { label: "RSS cache", className: "source-cache", title: "Remembered SubsPlease RSS schedule" },
+        fallback: { label: "AniList", className: "source-fallback", title: "AniList airtime fallback" }
+      }[source];
+      return meta || { label: "Auto", className: "source-auto", title: "Automatic schedule source" };
+    }
+
+    function scheduleSourceChipHTML(item) {
+      const meta = scheduleSourceMeta(item);
+      return `<span class="schedule-source-chip ${escapeHtml(meta.className)}" title="${escapeHtml(meta.title)}" aria-label="Schedule source: ${escapeHtml(meta.label)}">${escapeHtml(meta.label)}</span>`;
+    }
+
     function cardHTML(item, displayTime, isNext) {
       const todayName = getNowContext(DEFAULT_TIMEZONE).weekday;
       const title = escapeHtml(item.title);
@@ -2999,7 +3402,10 @@
           <div class="anime-card-overlay">
             <div class="anime-card-top">
               ${topLeftBadgeHTML(item)}
-              <div class="anime-card-time-chip ${item.isFreshRss ? 'fresh' : ''}">${escapeHtml(displayTime)}</div>
+              <div class="anime-card-top-right">
+                <div class="anime-card-time-chip ${item.isFreshRss ? 'fresh' : ''}">${escapeHtml(displayTime)}</div>
+                ${scheduleSourceChipHTML(item)}
+              </div>
             </div>
             <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
               <div class="anime-card-title">${title}</div>
@@ -3012,18 +3418,19 @@
 
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
-      const timetableCount = items.filter(item => item.source === "timetable").length;
       const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
+      const apiCount = items.filter(item => item.source === "schedule-api").length;
+      const pastedCount = items.filter(item => item.source === "schedule").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
       const cards = [
         { label: "Visible Shows", value: String(items.length) },
-        { label: "Timetable Matches", value: String(timetableCount) },
         { label: "Custom Slots", value: String(manualCount) },
-        { label: "Manually Added", value: String(addedCount) },
+        { label: "Pasted Schedule", value: String(pastedCount) },
+        { label: "Matched via API", value: String(apiCount) },
         { label: "Matched via RSS", value: String(rssCount) },
-        { label: "Fallback Data", value: String(fallbackCount) },
-        { label: "Timetable Rows", value: String(state.timetable?.entries?.length || 0) },
+        { label: "AniList Fallback", value: String(fallbackCount) },
+        { label: "Manually Added", value: String(addedCount) },
         { label: "Parsed RSS Feed", value: String(primaryCount) }
       ];
       els.summary.innerHTML = cards.map(card => `
@@ -3032,31 +3439,6 @@
           <div class="summary-value">${escapeHtml(card.value)}</div>
         </article>
       `).join("");
-    }
-
-    function renderTimetableStatus() {
-      if (!els.timetableStatus) return;
-      const timetable = sanitizeTimetable(state.timetable);
-      const rowCount = timetable.entries.length;
-
-      if (!rowCount) {
-        els.timetableStatus.textContent = "No timetable imported. RSS and AniList are controlling all detected slots.";
-        return;
-      }
-
-      const boardMatches = (state.items || []).filter(item => item.source === "timetable").length;
-      const importedLabel = timetable.importedAt
-        ? new Intl.DateTimeFormat("en-GB", {
-            timeZone: DEFAULT_TIMEZONE,
-            dateStyle: "medium",
-            timeStyle: "short"
-          }).format(new Date(timetable.importedAt))
-        : "unknown time";
-
-      els.timetableStatus.textContent =
-        `${rowCount} timetable rows saved · ${boardMatches} current board matches
-` +
-        `Imported ${importedLabel}. Manual show settings still win; RSS remains active for fresh releases, finales, and unmatched shows, with automatic RSS checks reduced to every 15 minutes.`;
     }
 
     function itemMap() {
@@ -3211,10 +3593,11 @@
       state.items = [...cachedWithoutVisibleHoldovers, ...visibleFinalHoldovers].sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
+      renderScheduleApiStatus();
+      renderPastedScheduleStatus();
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
-      renderTimetableStatus();
       renderFooterStatus();
     }
 
@@ -3287,16 +3670,9 @@
         state.addedShows[id] ? "Added show" : "Current show"
       ].filter(Boolean).join(" · ");
 
-      const detectedSourceLabels = {
-        timetable: "season timetable",
-        rss: "RSS",
-        fallback: "AniList fallback",
-        manual: "manual",
-        cache: "saved RSS history"
-      };
-      const detectedSource = detected?.source ? detectedSourceLabels[detected.source] || detected.source : "";
+      const detectedSource = detected ? scheduleSourceMeta(detected).label : "";
       els.modalDetectedSlot.textContent = detected
-        ? `Detected: ${detected.day} at ${detected.time}${detectedSource ? ` · ${detectedSource}` : ""}`
+        ? `Detected: ${detected.day} at ${detected.time} · ${detectedSource}`
         : "Detected: No slot found";
 
       const activeItem = itemMap().get(id);
@@ -3477,62 +3853,6 @@
       openSettingsModalForId(media.id);
     }
 
-    async function importTimetableFromPaste() {
-      const userName = String(state.userName || els.username.value || "").trim();
-      if (!userName) {
-        showMessage("error", "Enter an AniList username before importing the timetable.");
-        return;
-      }
-
-      const sourceText = String(els.timetablePaste?.value || "").trim();
-      const entries = parseTimetableText(sourceText);
-      if (!entries.length) {
-        showMessage("error", "No valid timetable rows were found. Keep the weekday names and visible HH:MM or AM/PM times in the pasted text.");
-        return;
-      }
-
-      const timetable = {
-        importedAt: Date.now(),
-        sourceText,
-        entries
-      };
-
-      await saveTimetable(userName, timetable);
-      if (state.userName === userName || !state.userName) {
-        state.timetable = timetable;
-      }
-
-      if (els.timetablePaste) els.timetablePaste.value = "";
-
-      if (state.userName === userName && state.currentEntries.length) {
-        await refreshBoardFromState();
-        await saveBoardSnapshot();
-      } else {
-        renderTimetableStatus();
-      }
-
-      showMessage("info", `Imported ${entries.length} SubsPlease timetable rows. The timetable now overrides RSS-derived weekly times.`);
-    }
-
-    async function clearImportedTimetable() {
-      const userName = String(state.userName || els.username.value || "").trim();
-      if (!userName) return;
-
-      await clearTimetable(userName);
-      if (state.userName === userName || !state.userName) {
-        state.timetable = { importedAt: 0, sourceText: "", entries: [] };
-      }
-
-      if (state.userName === userName && state.currentEntries.length) {
-        await refreshBoardFromState();
-        await saveBoardSnapshot();
-      } else {
-        renderTimetableStatus();
-      }
-
-      showMessage("info", "Season timetable cleared. The board is using RSS and AniList again.");
-    }
-
     function renderSearchResults() {
       if (!els.addShowResults) return;
 
@@ -3609,6 +3929,9 @@
       if (state.isLoading) return false;
 
       state.isLoading = true;
+      syncScheduleApiEnabledFromInput();
+      syncPastedScheduleStateFromInputs();
+      await hydrateScheduleApiCache();
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
@@ -3616,28 +3939,35 @@
       const nextOverrides = await loadOverrides(userName);
       const nextAddedShows = await loadAddedShows(userName);
       const nextFinalHoldovers = await loadFinalHoldovers(userName);
-      const nextTimetable = await loadTimetable(userName);
       const rssUrls = getRssUrls();
-      const isAutomaticRefresh = options.reason === "refresh";
-      const timetableIsActive = nextTimetable.entries.length > 0;
-      const shouldFetchRss = !isAutomaticRefresh || !timetableIsActive ||
-        !state.lastRssFetchAt || (Date.now() - state.lastRssFetchAt) >= TIMETABLE_RSS_REFRESH_MS;
 
       els.loadBtn.disabled = true;
       showMessage("info", loadingText);
 
       try {
-        const [aniListResult, rssResult] = await Promise.allSettled([
+        const [aniListResult, rssResult, scheduleApiResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
-          shouldFetchRss
-            ? fetchRssFeedsWithOptionalProxy(
-                rssUrls,
-                els.rssProxyTemplate.value.trim()
-              )
-            : Promise.resolve(null)
+          fetchRssFeedsWithOptionalProxy(
+            rssUrls,
+            els.rssProxyTemplate.value.trim()
+          ),
+          refreshScheduleApi({ force: options.reason !== "refresh" })
         ]);
 
         const nextNotes = [];
+        const hasPastedScheduleOverride = state.pastedScheduleEnabled && state.pastedScheduleEntries.length > 0;
+        const hasAutomaticSchedule = state.scheduleApiEnabled && state.scheduleApiEntries.length > 0;
+        const hasGlobalSchedule = hasPastedScheduleOverride || hasAutomaticSchedule;
+        let pastedScheduleFallbackUsed = false;
+        let automaticScheduleFallbackUsed = false;
+        const scheduleApiOutcome = scheduleApiResult.status === "fulfilled"
+          ? scheduleApiResult.value
+          : { ok: false, error: scheduleApiResult.reason?.message || "Schedule request failed.", cached: hasAutomaticSchedule };
+
+        if (state.scheduleApiEnabled && !scheduleApiOutcome?.ok) {
+          if (hasAutomaticSchedule) automaticScheduleFallbackUsed = true;
+          else if (scheduleApiOutcome?.error) nextNotes.push(`SubsPlease schedule API: ${scheduleApiOutcome.error}`);
+        }
         let nextCurrentEntries = state.currentEntries || [];
 
         if (aniListResult.status === "fulfilled") {
@@ -3648,14 +3978,17 @@
           nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
         }
 
-        let nextPrimaryCandidates = Array.isArray(state.primaryCandidates) ? state.primaryCandidates : [];
+        let nextPrimaryCandidates = [];
 
-        if (rssResult.status === "fulfilled" && Array.isArray(rssResult.value)) {
+        if (rssResult.status === "fulfilled") {
           const allCandidates = [];
 
           for (const feed of rssResult.value || []) {
             if (!feed.ok) {
-              nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
+              if (hasGlobalSchedule) {
+                if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
+                else automaticScheduleFallbackUsed = true;
+              } else nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
               continue;
             }
 
@@ -3670,7 +4003,6 @@
           }
 
           nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
-          state.lastRssFetchAt = Date.now();
           
           let newest = 0;
           for (const c of nextPrimaryCandidates) {
@@ -3682,11 +4014,17 @@
           
           const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
           if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
-            nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+            if (hasGlobalSchedule) {
+              if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
+              else automaticScheduleFallbackUsed = true;
+            } else nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
           }
 
-        } else if (rssResult.status === "rejected") {
-          nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
+        } else {
+          if (hasGlobalSchedule) {
+            if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
+            else automaticScheduleFallbackUsed = true;
+          } else nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
@@ -3709,7 +4047,6 @@
         state.overrides = nextOverrides;
         state.addedShows = nextAddedShows;
         state.finalHoldovers = nextFinalHoldovers;
-        state.timetable = nextTimetable;
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
@@ -3725,6 +4062,9 @@
         showMessage(
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
+          (pastedScheduleFallbackUsed ? `\n\nPasted timetable override is active; RSS availability did not affect the schedule.` : "") +
+          (automaticScheduleFallbackUsed ? `\n\nAutomatic SubsPlease timetable cache is active; RSS availability did not affect the schedule.` : "") +
+          (scheduleApiOutcome?.fetched ? `\n\nUpdated ${scheduleApiOutcome.day} from the SubsPlease timetable API (${scheduleApiOutcome.rows} rows).` : "") +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
         );
         return true;
@@ -3849,8 +4189,65 @@
       await dropLatestRssSampleForActiveShow();
     });
     els.loadBtn.addEventListener("click", async () => await loadBoard());
-    els.importTimetableBtn?.addEventListener("click", importTimetableFromPaste);
-    els.clearTimetableBtn?.addEventListener("click", clearImportedTimetable);
+
+    if (els.scheduleApiEnabled) {
+      els.scheduleApiEnabled.addEventListener("change", async () => {
+        syncScheduleApiEnabledFromInput();
+        savePageSettings();
+        if (state.scheduleApiEnabled) {
+          const result = await refreshScheduleApi({ force: true });
+          if (!result.ok && !result.cached) {
+            showMessage("error", `Automatic timetable unavailable: ${result.error || "Request failed."}`);
+          } else if (result.fetched) {
+            showMessage("info", `Automatic timetable updated for ${result.day} (${result.rows} rows).`);
+          }
+        }
+        if (state.userName) await refreshBoardFromState();
+      });
+    }
+    if (els.refreshScheduleApiBtn) {
+      els.refreshScheduleApiBtn.addEventListener("click", async () => {
+        const result = await refreshScheduleApi({ force: true });
+        if (state.userName) await refreshBoardFromState();
+        if (result.ok) showMessage("info", `Automatic timetable updated for ${result.day} (${result.rows} rows).`);
+        else showMessage("error", `Automatic timetable unavailable: ${result.error || "Request failed."}`);
+      });
+    }
+    if (els.clearScheduleApiCacheBtn) {
+      els.clearScheduleApiCacheBtn.addEventListener("click", async () => {
+        await deleteScheduleApiCache(DEFAULT_TIMEZONE);
+        state.scheduleApiCache = emptyScheduleApiCache(DEFAULT_TIMEZONE);
+        state.scheduleApiEntries = [];
+        state.scheduleApiLastFetchedAt = 0;
+        state.scheduleApiLastError = "";
+        renderScheduleApiStatus();
+        if (state.userName) await refreshBoardFromState();
+        showMessage("info", "Automatic timetable cache cleared. It will rebuild one weekday at a time.");
+      });
+    }
+
+    if (els.applyScheduleOverrideBtn) {
+      els.applyScheduleOverrideBtn.addEventListener("click", applyPastedScheduleOverride);
+    }
+    if (els.clearScheduleOverrideBtn) {
+      els.clearScheduleOverrideBtn.addEventListener("click", clearPastedScheduleOverride);
+    }
+    if (els.scheduleOverrideEnabled) {
+      els.scheduleOverrideEnabled.addEventListener("change", async () => {
+        syncPastedScheduleStateFromInputs();
+        savePageSettings();
+        if (state.userName) await refreshBoardFromState();
+      });
+    }
+    if (els.scheduleOverrideText) {
+      els.scheduleOverrideText.addEventListener("keydown", async event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          await applyPastedScheduleOverride();
+        }
+      });
+      els.scheduleOverrideText.addEventListener("blur", savePageSettings);
+    }
 
     if (els.clearMemoryBtn) {
       els.clearMemoryBtn.addEventListener("click", async () => {
@@ -3896,7 +4293,6 @@
       bootCompleted = true;
       try {
         applySavedSettings();
-        renderTimetableStatus();
         const hydrated = await hydrateBoardSnapshot();
         if (!els.username.value.trim()) els.username.value = "zrr";
         if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
