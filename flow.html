@@ -37,6 +37,10 @@
     button, input, select { font: inherit; }
     button { color: inherit; }
     a { color: inherit; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 3px;
+    }
     ::selection { color: white; background: var(--blue); }
 
     .app {
@@ -213,6 +217,7 @@
     .search-field { grid-column: 4 / span 4; }
     .sort-field { grid-column: 8 / span 3; }
     .filter-open { grid-column: 11 / span 2; justify-self: stretch; }
+    .filter-open.has-filters { background: var(--yellow); }
 
     .content-grid {
       display: grid;
@@ -258,12 +263,15 @@
       z-index: 4;
       left: 18px;
       top: 16px;
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
       color: white;
-      font-size: clamp(2.2rem, 6vw, 5rem);
       line-height: .8;
-      letter-spacing: -.08em;
       font-weight: 900;
     }
+    .flow-index-current { font-size: clamp(2.2rem, 6vw, 5rem); letter-spacing: -.08em; }
+    .flow-index-total { color: rgba(255,255,255,.58); font-size: clamp(.74rem, 1.5vw, 1.05rem); letter-spacing: .05em; }
     .flow-caption {
       position: absolute;
       z-index: 4;
@@ -415,19 +423,47 @@
       position: relative;
       border: 2px solid var(--ink);
       background: var(--paper-2);
-      padding: 0;
-      text-align: left;
-      cursor: pointer;
       overflow: hidden;
       transition: transform .18s ease, box-shadow .18s ease;
     }
-    .grid-card:hover, .grid-card.selected { transform: translate(-3px,-3px); box-shadow: 7px 7px 0 var(--blue); }
-    .grid-cover { position: relative; aspect-ratio: 2 / 3; background: #ddd; }
-    .grid-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .grid-card:hover, .grid-card:focus-within, .grid-card.selected { transform: translate(-3px,-3px); box-shadow: 7px 7px 0 var(--blue); }
+    .grid-cover-link { position: relative; display: block; color: inherit; text-decoration: none; }
+    .grid-cover { position: relative; aspect-ratio: 2 / 3; background: #ddd; overflow: hidden; }
+    .grid-cover img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .22s ease, filter .22s ease; }
+    .grid-cover-link:hover img, .grid-cover-link:focus-visible img { transform: scale(1.025); filter: brightness(.78); }
+    .grid-open-label {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      padding: 7px 9px;
+      border: 2px solid var(--ink);
+      background: white;
+      color: var(--ink);
+      font-size: .62rem;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .grid-cover-link:hover .grid-open-label, .grid-cover-link:focus-visible .grid-open-label { opacity: 1; transform: translateY(0); }
     .grid-score { position: absolute; left: 8px; top: 8px; min-width: 38px; padding: 7px 6px; border: 2px solid var(--ink); background: var(--yellow); text-align: center; font-weight: 900; }
-    .grid-info { min-height: 100px; padding: 11px; border-top: 2px solid var(--ink); }
+    .grid-info-button {
+      width: 100%;
+      min-height: 100px;
+      padding: 11px;
+      border: 0;
+      border-top: 2px solid var(--ink);
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .grid-info-button:hover { background: rgba(20,87,217,.07); }
     .grid-title { font-size: .82rem; line-height: 1.15; font-weight: 900; text-transform: uppercase; }
     .grid-meta { margin-top: 8px; color: var(--muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .detail-panel[hidden] { display: none; }
 
     .empty-state[hidden] { display: none; }
     .empty-state {
@@ -533,14 +569,14 @@
       .masthead { display: block; min-height: 0; padding-bottom: 18px; }
       .masthead::before { width: 82px; top: 8px; right: 36px; }
       .masthead::after { width: 12px; }
-      .issue { margin-bottom: 34px; }
+      .issue { margin-bottom: 20px; }
       .hero-copy { padding-right: 22px; }
-      h1 { font-size: clamp(3.4rem, 19vw, 6.4rem); }
-      .load-panel { margin-top: 28px; padding-right: 22px; }
+      h1 { font-size: clamp(2.9rem, 15.5vw, 5.4rem); }
+      .load-panel { margin-top: 20px; padding-right: 22px; }
       .status-strip { display: flex; justify-content: space-between; gap: 12px; }
       .status-copy { min-width: 0; }
       .status-mode { flex: 0 0 auto; }
-      .control-deck { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .control-deck { grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 16px; }
       .view-switch, .search-field, .sort-field, .filter-open { grid-column: auto; }
       .view-switch { grid-column: 1 / -1; }
       .search-field { grid-column: 1 / -1; }
@@ -561,7 +597,7 @@
       .control-deck { grid-template-columns: 1fr; }
       .sort-field, .filter-open { grid-column: 1; }
       .grid-view.active { grid-template-columns: 1fr 1fr; gap: 8px; }
-      .grid-info { min-height: 88px; padding: 8px; }
+      .grid-info-button { min-height: 88px; padding: 8px; }
       .grid-title { font-size: .7rem; }
       .ratings { grid-template-columns: 1fr 1fr; }
       .detail-title { font-size: 2.2rem; }
@@ -632,7 +668,7 @@
     <section class="content-grid">
       <div class="library-stage">
         <section class="flow-shell" id="flowShell" aria-label="Cover flow">
-          <div class="flow-index" id="flowIndex">01</div>
+          <div class="flow-index" id="flowIndex"><span class="flow-index-current">01</span><span class="flow-index-total">/ 12</span></div>
           <div class="flow-caption">Drag · Scroll · Arrow keys</div>
           <div class="flow-viewport" id="flowViewport" tabindex="0" aria-label="Manga cover carousel"></div>
           <div class="flow-nav">
@@ -643,11 +679,11 @@
         </section>
         <section class="grid-view" id="gridView" aria-label="Manga grid"></section>
         <section class="empty-state" id="emptyState" hidden>
-          <div><strong>No works match</strong><p>Reset the filters or include manga that are still publishing.</p></div>
+          <div><strong>No works match</strong><p>Reset the filters or include manga that are still publishing.</p><button class="action secondary small" id="emptyResetButton" type="button">Reset filters</button></div>
         </section>
       </div>
 
-      <aside class="detail-panel" aria-live="polite">
+      <aside class="detail-panel" id="detailPanel" aria-live="polite">
         <article class="detail-card" id="detailCard">
           <div class="detail-accent" aria-hidden="true"><span></span><span></span><span></span></div>
           <div class="detail-body">
@@ -721,7 +757,7 @@
       </div>
       <div class="drawer-actions">
         <button class="action secondary" id="resetFiltersButton" type="button">Reset</button>
-        <button class="action" type="button" data-close-drawer>View results</button>
+        <button class="action" id="viewResultsButton" type="button" data-close-drawer>View results</button>
       </div>
     </aside>
   </div>
@@ -802,6 +838,8 @@
       publishedOnlyFilter: document.getElementById("publishedOnlyFilter"),
       genreFilters: document.getElementById("genreFilters"),
       resetFiltersButton: document.getElementById("resetFiltersButton"),
+      emptyResetButton: document.getElementById("emptyResetButton"),
+      viewResultsButton: document.getElementById("viewResultsButton"),
       flowShell: document.getElementById("flowShell"),
       flowViewport: document.getElementById("flowViewport"),
       flowIndex: document.getElementById("flowIndex"),
@@ -809,6 +847,7 @@
       nextButton: document.getElementById("nextButton"),
       gridView: document.getElementById("gridView"),
       emptyState: document.getElementById("emptyState"),
+      detailPanel: document.getElementById("detailPanel"),
       detailCard: document.getElementById("detailCard"),
       detailPosition: document.getElementById("detailPosition"),
       detailStatus: document.getElementById("detailStatus"),
@@ -1031,7 +1070,7 @@
       return String(format || "Unknown").replaceAll("_", " ").replace(/\b\w/g, char => char.toUpperCase());
     }
 
-    function applyFilters({ preserveSelection = true } = {}) {
+    function applyFilters({ preserveSelection = false } = {}) {
       const previousId = preserveSelection ? state.selectedId : null;
       const search = state.filters.search.trim().toLowerCase();
       let items = state.all.filter(item => {
@@ -1062,8 +1101,8 @@
         state.selectedIndex = items.findIndex(item => item.id === previousId);
         state.selectedId = previousId;
       } else {
-        state.selectedIndex = Math.min(state.selectedIndex, items.length - 1);
-        state.selectedId = items[state.selectedIndex]?.id || null;
+        state.selectedIndex = 0;
+        state.selectedId = items[0]?.id || null;
       }
       render();
     }
@@ -1072,7 +1111,7 @@
       return state.filtered[state.selectedIndex] || null;
     }
 
-    function selectIndex(index) {
+    function selectIndex(index, { revealDetails = false } = {}) {
       const count = state.filtered.length;
       if (!count) return;
       state.selectedIndex = ((Number(index) % count) + count) % count;
@@ -1080,6 +1119,9 @@
       renderFlow();
       renderGrid();
       renderDetails();
+      if (revealDetails && window.innerWidth <= 760) {
+        requestAnimationFrame(() => els.detailPanel?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
     }
 
     function shiftSelection(delta) {
@@ -1089,15 +1131,21 @@
     function render() {
       const hasItems = state.filtered.length > 0;
       els.emptyState.hidden = hasItems;
+      els.detailPanel.hidden = !hasItems;
       els.flowShell.style.display = hasItems && state.view === "flow" ? "block" : "none";
       els.gridView.classList.toggle("active", hasItems && state.view === "grid");
-      document.querySelectorAll(".view-btn").forEach(button => button.classList.toggle("active", button.dataset.view === state.view));
+      document.querySelectorAll(".view-btn").forEach(button => {
+        const active = button.dataset.view === state.view;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
       if (hasItems) {
         renderFlow();
         renderGrid();
         renderDetails();
       }
       renderStats();
+      updateFilterUi();
       els.statusMode.textContent = `${state.source === "demo" ? "Demo" : state.userName || "Library"} / ${state.filtered.length} works`;
       saveSettings();
     }
@@ -1105,7 +1153,7 @@
     function renderFlow() {
       const count = state.filtered.length;
       if (!count) { els.flowViewport.innerHTML = ""; return; }
-      els.flowIndex.textContent = String(state.selectedIndex + 1).padStart(2, "0");
+      els.flowIndex.innerHTML = `<span class="flow-index-current">${String(state.selectedIndex + 1).padStart(2, "0")}</span><span class="flow-index-total">/ ${String(count).padStart(2, "0")}</span>`;
       const visibleRange = window.innerWidth < 600 ? 2 : 3;
       const maxVisibleCards = Math.min(count, (visibleRange * 2) + 1);
       const offsets = [0];
@@ -1143,13 +1191,17 @@
 
     function renderGrid() {
       els.gridView.innerHTML = state.filtered.map((item, index) => `
-        <button class="grid-card ${index === state.selectedIndex ? "selected" : ""}" type="button" data-grid-index="${index}" aria-label="Select ${escapeHtml(item.title)}">
-          <div class="grid-cover"><img src="${escapeHtml(item.cover)}" alt="" loading="lazy" /><span class="grid-score">${item.score || "—"}</span></div>
-          <div class="grid-info"><div class="grid-title">${escapeHtml(item.title)}</div><div class="grid-meta">${escapeHtml(formatLabel(item.format))} · ${escapeHtml(item.completedAt?.year || "No date")}</div></div>
-        </button>
+        <article class="grid-card ${index === state.selectedIndex ? "selected" : ""}">
+          <a class="grid-cover-link" href="${escapeHtml(item.siteUrl || "https://anilist.co")}" target="_blank" rel="noopener" aria-label="Open ${escapeHtml(item.title)} on AniList">
+            <div class="grid-cover"><img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="lazy" /><span class="grid-score">${item.score || "—"}</span><span class="grid-open-label">Open ↗</span></div>
+          </a>
+          <button class="grid-info-button" type="button" data-grid-index="${index}" aria-label="Show details for ${escapeHtml(item.title)}">
+            <div class="grid-title">${escapeHtml(item.title)}</div><div class="grid-meta">${escapeHtml(formatLabel(item.format))} · ${escapeHtml(item.completedAt?.year || "No date")}</div>
+          </button>
+        </article>
       `).join("");
       els.gridView.querySelectorAll("[data-grid-index]").forEach(button => {
-        button.addEventListener("click", () => selectIndex(Number(button.dataset.gridIndex)));
+        button.addEventListener("click", () => selectIndex(Number(button.dataset.gridIndex), { revealDetails: true }));
       });
     }
 
@@ -1206,16 +1258,36 @@
       els.statGenre.textContent = topGenre;
     }
 
+    function updateFilterUi() {
+      const changedCount = [
+        state.filters.format !== "ALL",
+        state.filters.year !== "ALL",
+        state.filters.minScore > 0,
+        state.filters.publishedOnly !== true
+      ].filter(Boolean).length + state.filters.genres.size;
+      els.openFiltersButton.textContent = changedCount ? `Filters · ${changedCount}` : "Filters";
+      els.openFiltersButton.classList.toggle("has-filters", changedCount > 0);
+      els.openFiltersButton.setAttribute("aria-expanded", String(els.filterDrawer.classList.contains("open")));
+      if (els.viewResultsButton) {
+        const count = state.filtered.length;
+        els.viewResultsButton.textContent = `View ${count} ${count === 1 ? "result" : "results"}`;
+      }
+    }
+
     function openDrawer() {
       els.filterDrawer.classList.add("open");
       els.filterDrawer.setAttribute("aria-hidden", "false");
+      els.openFiltersButton.setAttribute("aria-expanded", "true");
       document.body.style.overflow = "hidden";
+      requestAnimationFrame(() => els.filterDrawer.querySelector(".close-btn")?.focus());
     }
 
     function closeDrawer() {
       els.filterDrawer.classList.remove("open");
       els.filterDrawer.setAttribute("aria-hidden", "true");
+      els.openFiltersButton.setAttribute("aria-expanded", "false");
       document.body.style.overflow = "";
+      els.openFiltersButton.focus({ preventScroll: true });
     }
 
     function resetFilters() {
@@ -1297,28 +1369,29 @@
         button.addEventListener("click", () => {
           state.view = button.dataset.view;
           render();
+          document.querySelectorAll(".view-btn").forEach(viewButton => viewButton.setAttribute("aria-pressed", String(viewButton.dataset.view === state.view)));
         });
       });
       els.searchInput.addEventListener("input", () => {
         state.filters.search = els.searchInput.value;
-        applyFilters();
+        applyFilters({ preserveSelection: false });
       });
       els.sortSelect.addEventListener("change", () => {
         state.filters.sort = els.sortSelect.value;
-        applyFilters();
+        applyFilters({ preserveSelection: false });
       });
       els.openFiltersButton.addEventListener("click", openDrawer);
       els.filterDrawer.querySelectorAll("[data-close-drawer]").forEach(button => button.addEventListener("click", closeDrawer));
-      els.formatFilter.addEventListener("change", () => { state.filters.format = els.formatFilter.value; applyFilters(); });
-      els.yearFilter.addEventListener("change", () => { state.filters.year = els.yearFilter.value; applyFilters(); });
+      els.formatFilter.addEventListener("change", () => { state.filters.format = els.formatFilter.value; applyFilters({ preserveSelection: false }); });
+      els.yearFilter.addEventListener("change", () => { state.filters.year = els.yearFilter.value; applyFilters({ preserveSelection: false }); });
       els.scoreFilter.addEventListener("input", () => {
         state.filters.minScore = Number(els.scoreFilter.value) || 0;
         els.scoreFilterValue.textContent = String(state.filters.minScore);
-        applyFilters();
+        applyFilters({ preserveSelection: false });
       });
       els.publishedOnlyFilter.addEventListener("change", () => {
         state.filters.publishedOnly = els.publishedOnlyFilter.checked;
-        applyFilters();
+        applyFilters({ preserveSelection: false });
       });
       els.genreFilters.addEventListener("click", event => {
         const button = event.target.closest("[data-genre]");
@@ -1327,9 +1400,10 @@
         if (state.filters.genres.has(genre)) state.filters.genres.delete(genre);
         else state.filters.genres.add(genre);
         button.classList.toggle("active", state.filters.genres.has(genre));
-        applyFilters();
+        applyFilters({ preserveSelection: false });
       });
       els.resetFiltersButton.addEventListener("click", resetFilters);
+      els.emptyResetButton?.addEventListener("click", resetFilters);
       els.previousButton.addEventListener("click", () => shiftSelection(-1));
       els.nextButton.addEventListener("click", () => shiftSelection(1));
       els.flowViewport.addEventListener("keydown", event => {
