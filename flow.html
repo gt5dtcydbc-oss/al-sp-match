@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f2efe5" />
+  <meta name="color-scheme" content="light" />
+  <title>Manga Archive — AniList Cover Flow</title>
+  <style>
+    :root {
+      --paper: #f2efe5;
+      --paper-2: #faf8f1;
+      --ink: #111111;
+      --muted: #67645e;
+      --line: rgba(17, 17, 17, 0.22);
+      --red: #e3332d;
+      --blue: #1457d9;
+      --yellow: #f2c526;
+      --green: #0d8b61;
+      --shadow: 0 22px 60px rgba(17, 17, 17, 0.16);
+      --font: "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+      --accent-cover: var(--blue);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--paper); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, transparent calc(100% - 1px), rgba(17,17,17,.045) 1px) 0 0 / 8.333333% 100%,
+        var(--paper);
+      font-family: var(--font);
+      overflow-x: hidden;
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; }
+    ::selection { color: white; background: var(--blue); }
+
+    .app {
+      width: min(1600px, 100%);
+      margin: 0 auto;
+      padding: max(20px, env(safe-area-inset-top)) clamp(14px, 3vw, 44px) max(48px, env(safe-area-inset-bottom));
+    }
+
+    .masthead {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: clamp(10px, 1.2vw, 20px);
+      min-height: 210px;
+      padding: 18px 0 26px;
+      border-top: 10px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+      overflow: hidden;
+    }
+    .masthead::before {
+      content: "";
+      position: absolute;
+      width: clamp(90px, 11vw, 180px);
+      aspect-ratio: 1;
+      right: clamp(18px, 4vw, 70px);
+      top: -45%;
+      border-radius: 50%;
+      background: var(--blue);
+      opacity: .96;
+      pointer-events: none;
+    }
+    .masthead::after {
+      content: "";
+      position: absolute;
+      width: 28px;
+      height: 100%;
+      right: 0;
+      top: 0;
+      background: var(--yellow);
+      pointer-events: none;
+    }
+    .issue {
+      grid-column: 1 / span 2;
+      align-self: start;
+      font-size: .72rem;
+      line-height: 1.35;
+      letter-spacing: .14em;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .issue strong { display: block; font-size: 1.6rem; letter-spacing: -.05em; }
+    .hero-copy { grid-column: 3 / span 6; align-self: end; min-width: 0; }
+    .kicker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .kicker::before { content: ""; width: 42px; height: 10px; background: var(--red); }
+    h1 {
+      margin: 0;
+      font-size: clamp(3.2rem, 8.2vw, 9rem);
+      line-height: .76;
+      letter-spacing: -.085em;
+      text-transform: uppercase;
+      font-weight: 900;
+    }
+    h1 span { display: block; margin-left: .72em; color: transparent; -webkit-text-stroke: 2px var(--ink); }
+
+    .load-panel {
+      position: relative;
+      z-index: 2;
+      grid-column: 9 / span 4;
+      align-self: end;
+      display: grid;
+      gap: 12px;
+      padding-right: 44px;
+    }
+    .load-panel label,
+    .field-label {
+      font-size: .67rem;
+      font-weight: 900;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .load-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+    .text-input, .select-input, .search-input {
+      width: 100%;
+      min-width: 0;
+      border: 2px solid var(--ink);
+      border-radius: 0;
+      background: var(--paper-2);
+      color: var(--ink);
+      padding: 12px 13px;
+      outline: none;
+      font-weight: 700;
+    }
+    .text-input:focus, .select-input:focus, .search-input:focus { box-shadow: 5px 5px 0 var(--yellow); }
+    .action {
+      min-height: 46px;
+      border: 2px solid var(--ink);
+      border-radius: 0;
+      padding: 0 18px;
+      background: var(--ink);
+      color: white;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+    .action:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--red); }
+    .action:active { transform: translate(0,0); box-shadow: none; }
+    .action.secondary { color: var(--ink); background: transparent; }
+    .action.secondary:hover { box-shadow: 5px 5px 0 var(--blue); }
+    .action.small { min-height: 38px; padding: 0 13px; font-size: .72rem; }
+    .connection-settings summary {
+      cursor: pointer;
+      font-size: .69rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    .connection-settings .connection-body { display: grid; gap: 8px; margin-top: 8px; }
+    .connection-hint { margin: 0; font-size: .72rem; line-height: 1.45; color: var(--muted); }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0,1fr));
+      gap: clamp(10px, 1.2vw, 20px);
+      align-items: center;
+      min-height: 46px;
+      border-bottom: 1px solid var(--ink);
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .status-copy { grid-column: 1 / span 8; display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); flex: 0 0 auto; }
+    .status-dot.loading { background: var(--yellow); animation: blink .8s steps(2,end) infinite; }
+    .status-dot.error { background: var(--red); }
+    .status-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .status-mode { grid-column: 9 / span 4; text-align: right; padding-right: 4px; }
+    @keyframes blink { 50% { opacity: .2; } }
+
+    .control-deck {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0,1fr));
+      gap: clamp(10px, 1.2vw, 20px);
+      align-items: end;
+      padding: 22px 0 18px;
+      border-bottom: 2px solid var(--ink);
+    }
+    .view-switch { grid-column: 1 / span 3; display: flex; gap: 0; }
+    .view-btn {
+      min-height: 42px;
+      border: 2px solid var(--ink);
+      background: transparent;
+      padding: 0 16px;
+      font-size: .73rem;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .view-btn + .view-btn { border-left: 0; }
+    .view-btn.active { color: white; background: var(--blue); }
+    .search-field { grid-column: 4 / span 4; }
+    .sort-field { grid-column: 8 / span 3; }
+    .filter-open { grid-column: 11 / span 2; justify-self: stretch; }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0,1fr));
+      gap: clamp(10px, 1.2vw, 20px);
+      padding-top: 24px;
+    }
+
+    .library-stage { grid-column: 1 / span 8; min-width: 0; }
+    .detail-panel { grid-column: 9 / span 4; min-width: 0; }
+
+    .flow-shell {
+      position: relative;
+      min-height: clamp(500px, 66vh, 760px);
+      background: var(--ink);
+      overflow: hidden;
+      border: 2px solid var(--ink);
+      isolation: isolate;
+    }
+    .flow-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px) 0 0 / 12.5% 100%,
+        linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px) 0 0 / 100% 25%;
+      pointer-events: none;
+    }
+    .flow-shell::after {
+      content: "";
+      position: absolute;
+      left: 6%;
+      bottom: 7%;
+      width: 16%;
+      aspect-ratio: 1;
+      border: 16px solid var(--red);
+      border-radius: 50%;
+      opacity: .92;
+      pointer-events: none;
+    }
+    .flow-index {
+      position: absolute;
+      z-index: 4;
+      left: 18px;
+      top: 16px;
+      color: white;
+      font-size: clamp(2.2rem, 6vw, 5rem);
+      line-height: .8;
+      letter-spacing: -.08em;
+      font-weight: 900;
+    }
+    .flow-caption {
+      position: absolute;
+      z-index: 4;
+      right: 18px;
+      top: 18px;
+      color: rgba(255,255,255,.68);
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      writing-mode: vertical-rl;
+    }
+    .flow-viewport {
+      position: absolute;
+      inset: 0;
+      perspective: 1500px;
+      touch-action: pan-y;
+      cursor: grab;
+      user-select: none;
+    }
+    .flow-viewport.dragging { cursor: grabbing; }
+    .cover-card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: clamp(145px, 22vw, 285px);
+      aspect-ratio: 2 / 3;
+      padding: 0;
+      border: 0;
+      background: #222;
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      transition: transform .48s cubic-bezier(.18,.8,.18,1), opacity .35s ease, filter .35s ease;
+      box-shadow: 0 28px 54px rgba(0,0,0,.55);
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .cover-card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    .cover-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(255,255,255,.18);
+      pointer-events: none;
+    }
+    .cover-card.selected::after { border: 7px solid white; box-shadow: inset 0 0 0 2px var(--ink); }
+    .cover-card .cover-number {
+      position: absolute;
+      left: 9px;
+      top: 8px;
+      min-width: 30px;
+      min-height: 30px;
+      display: grid;
+      place-items: center;
+      padding: 0 6px;
+      background: var(--yellow);
+      color: var(--ink);
+      border: 2px solid var(--ink);
+      font-size: .68rem;
+      font-weight: 900;
+    }
+    .flow-nav {
+      position: absolute;
+      z-index: 5;
+      left: 18px;
+      bottom: 18px;
+      display: flex;
+      gap: 8px;
+    }
+    .flow-nav button {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid white;
+      color: white;
+      background: transparent;
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+    .flow-nav button:hover { color: var(--ink); background: white; }
+    .flow-help {
+      position: absolute;
+      z-index: 5;
+      right: 18px;
+      bottom: 18px;
+      color: rgba(255,255,255,.6);
+      font-size: .65rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .detail-card {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      min-height: 500px;
+      border: 2px solid var(--ink);
+      background: var(--paper-2);
+    }
+    .detail-accent {
+      height: 18px;
+      display: grid;
+      grid-template-columns: 42% 25% 1fr;
+    }
+    .detail-accent span:nth-child(1) { background: var(--red); }
+    .detail-accent span:nth-child(2) { background: var(--yellow); }
+    .detail-accent span:nth-child(3) { background: var(--accent-cover); }
+    .detail-body { padding: clamp(18px, 2vw, 30px); display: grid; align-content: start; gap: 20px; }
+    .detail-counter {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 12px;
+      font-size: .68rem;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .detail-title {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4.6rem);
+      line-height: .88;
+      letter-spacing: -.07em;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+    .detail-alt { margin: -10px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.45; }
+    .ratings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rating-box { border: 2px solid var(--ink); padding: 12px; min-height: 92px; }
+    .rating-box.user { background: var(--yellow); }
+    .rating-label { font-size: .63rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .rating-value { margin-top: 7px; font-size: 2.2rem; line-height: 1; font-weight: 900; letter-spacing: -.06em; }
+    .metadata { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+    .meta-cell { min-height: 72px; padding: 10px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .meta-label { display: block; margin-bottom: 6px; font-size: .6rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .meta-value { font-size: .86rem; line-height: 1.35; font-weight: 800; }
+    .genre-line { display: flex; flex-wrap: wrap; gap: 6px; }
+    .genre-tag { padding: 5px 7px; color: white; background: var(--blue); font-size: .62rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+    .detail-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: auto; }
+    .detail-link { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+    .mini-cover-color { width: 44px; border: 2px solid var(--ink); background: var(--accent-cover); }
+
+    .grid-view { display: none; }
+    .grid-view.active { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+    .grid-card {
+      position: relative;
+      border: 2px solid var(--ink);
+      background: var(--paper-2);
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .grid-card:hover, .grid-card.selected { transform: translate(-3px,-3px); box-shadow: 7px 7px 0 var(--blue); }
+    .grid-cover { position: relative; aspect-ratio: 2 / 3; background: #ddd; }
+    .grid-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .grid-score { position: absolute; left: 8px; top: 8px; min-width: 38px; padding: 7px 6px; border: 2px solid var(--ink); background: var(--yellow); text-align: center; font-weight: 900; }
+    .grid-info { min-height: 100px; padding: 11px; border-top: 2px solid var(--ink); }
+    .grid-title { font-size: .82rem; line-height: 1.15; font-weight: 900; text-transform: uppercase; }
+    .grid-meta { margin-top: 8px; color: var(--muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+    .empty-state[hidden] { display: none; }
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 500px;
+      padding: 40px;
+      border: 2px solid var(--ink);
+      background: var(--paper-2);
+      text-align: center;
+    }
+    .empty-state strong { display: block; font-size: clamp(2rem, 6vw, 5rem); line-height: .9; letter-spacing: -.06em; text-transform: uppercase; }
+    .empty-state p { max-width: 540px; color: var(--muted); line-height: 1.55; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0,1fr));
+      gap: 0;
+      margin-top: 34px;
+      border-top: 2px solid var(--ink);
+      border-left: 2px solid var(--ink);
+    }
+    .stat {
+      grid-column: span 3;
+      min-height: 130px;
+      padding: 16px;
+      border-right: 2px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+      background: var(--paper-2);
+    }
+    .stat:nth-child(2) { background: var(--red); color: white; }
+    .stat:nth-child(3) { background: var(--yellow); }
+    .stat-label { font-size: .64rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+    .stat-value { margin-top: 18px; font-size: clamp(2rem, 5vw, 4.4rem); line-height: .8; letter-spacing: -.08em; font-weight: 900; overflow-wrap: anywhere; }
+
+    .filter-drawer {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      pointer-events: none;
+    }
+    .filter-drawer.open { pointer-events: auto; }
+    .drawer-backdrop { position: absolute; inset: 0; background: rgba(17,17,17,.55); opacity: 0; transition: opacity .25s ease; }
+    .filter-drawer.open .drawer-backdrop { opacity: 1; }
+    .drawer-panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(520px, 100%);
+      height: 100%;
+      padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom));
+      overflow: auto;
+      background: var(--paper);
+      border-left: 3px solid var(--ink);
+      transform: translateX(102%);
+      transition: transform .3s cubic-bezier(.18,.8,.18,1);
+    }
+    .filter-drawer.open .drawer-panel { transform: translateX(0); }
+    .drawer-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 8px solid var(--ink); }
+    .drawer-title { margin: 0; font-size: 2.4rem; line-height: .9; letter-spacing: -.06em; text-transform: uppercase; }
+    .close-btn { width: 42px; height: 42px; border: 2px solid var(--ink); border-radius: 50%; background: transparent; font-size: 1.5rem; cursor: pointer; }
+    .filter-stack { display: grid; gap: 24px; margin-top: 24px; }
+    .filter-section { display: grid; gap: 10px; }
+    .range-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+    input[type="range"] { width: 100%; accent-color: var(--blue); }
+    .range-value { min-width: 50px; padding: 6px; border: 2px solid var(--ink); background: var(--yellow); text-align: center; font-weight: 900; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); font-size: .8rem; font-weight: 900; text-transform: uppercase; }
+    .switch { position: relative; width: 52px; height: 28px; flex: 0 0 auto; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch span { position: absolute; inset: 0; border: 2px solid var(--ink); background: transparent; cursor: pointer; }
+    .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: var(--ink); transition: transform .18s ease; }
+    .switch input:checked + span { background: var(--yellow); }
+    .switch input:checked + span::after { transform: translateX(24px); }
+    .genre-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .genre-filter {
+      border: 2px solid var(--ink);
+      background: transparent;
+      padding: 7px 9px;
+      font-size: .67rem;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .genre-filter.active { color: white; background: var(--blue); }
+    .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 28px; }
+
+    .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+
+    @media (max-width: 1000px) {
+      .masthead { min-height: 250px; }
+      .hero-copy { grid-column: 1 / span 7; grid-row: 2; }
+      .issue { grid-column: 1 / span 3; }
+      .load-panel { grid-column: 8 / span 5; grid-row: 2; }
+      .library-stage { grid-column: 1 / span 7; }
+      .detail-panel { grid-column: 8 / span 5; }
+      .grid-view.active { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      body { background: var(--paper); }
+      .app { padding-inline: 12px; }
+      .masthead { display: block; min-height: 0; padding-bottom: 18px; }
+      .masthead::before { width: 82px; top: 8px; right: 36px; }
+      .masthead::after { width: 12px; }
+      .issue { margin-bottom: 34px; }
+      .hero-copy { padding-right: 22px; }
+      h1 { font-size: clamp(3.4rem, 19vw, 6.4rem); }
+      .load-panel { margin-top: 28px; padding-right: 22px; }
+      .status-strip { display: flex; justify-content: space-between; gap: 12px; }
+      .status-copy { min-width: 0; }
+      .status-mode { flex: 0 0 auto; }
+      .control-deck { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .view-switch, .search-field, .sort-field, .filter-open { grid-column: auto; }
+      .view-switch { grid-column: 1 / -1; }
+      .search-field { grid-column: 1 / -1; }
+      .filter-open { align-self: stretch; }
+      .content-grid { display: block; }
+      .detail-panel { margin-top: 14px; }
+      .detail-card { position: static; min-height: 0; }
+      .flow-shell { min-height: min(72vh, 620px); }
+      .cover-card { width: clamp(140px, 48vw, 225px); }
+      .flow-help { display: none; }
+      .grid-view.active { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .stat { grid-column: span 6; min-height: 110px; }
+    }
+
+    @media (max-width: 430px) {
+      .load-row { grid-template-columns: 1fr; }
+      .action { width: 100%; }
+      .control-deck { grid-template-columns: 1fr; }
+      .sort-field, .filter-open { grid-column: 1; }
+      .grid-view.active { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .grid-info { min-height: 88px; padding: 8px; }
+      .grid-title { font-size: .7rem; }
+      .ratings { grid-template-columns: 1fr 1fr; }
+      .detail-title { font-size: 2.2rem; }
+      .flow-index { font-size: 2.4rem; }
+      .stat { grid-column: span 12; }
+      .drawer-actions { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <div class="issue"><strong>01</strong>Personal<br />Library Index</div>
+      <div class="hero-copy">
+        <div class="kicker">Completed editions</div>
+        <h1>Manga<span>Archive</span></h1>
+      </div>
+      <form class="load-panel" id="loadForm">
+        <label for="username">AniList username</label>
+        <div class="load-row">
+          <input class="text-input" id="username" name="username" type="text" autocomplete="username" spellcheck="false" placeholder="Enter username" />
+          <button class="action" id="loadButton" type="submit">Load</button>
+        </div>
+        <details class="connection-settings">
+          <summary>Connection settings</summary>
+          <div class="connection-body">
+            <label class="field-label" for="endpoint">AniList-compatible GraphQL endpoint</label>
+            <input class="text-input" id="endpoint" type="url" spellcheck="false" value="https://graphql.anilist.co" />
+            <p class="connection-hint">Leave the official endpoint unchanged, or enter your own relay endpoint if direct browser requests are unavailable.</p>
+            <button class="action secondary small" id="clearCacheButton" type="button">Clear local cache</button>
+          </div>
+        </details>
+      </form>
+    </header>
+
+    <section class="status-strip" aria-live="polite">
+      <div class="status-copy"><span class="status-dot" id="statusDot"></span><span class="status-text" id="statusText">Demo collection ready</span></div>
+      <div class="status-mode" id="statusMode">Demo / 12 works</div>
+    </section>
+
+    <section class="control-deck" aria-label="Library controls">
+      <div class="view-switch" role="group" aria-label="View mode">
+        <button class="view-btn active" type="button" data-view="flow">Cover flow</button>
+        <button class="view-btn" type="button" data-view="grid">Grid</button>
+      </div>
+      <div class="search-field">
+        <label class="field-label" for="searchInput">Search titles</label>
+        <input class="search-input" id="searchInput" type="search" placeholder="Search the archive" autocomplete="off" />
+      </div>
+      <div class="sort-field">
+        <label class="field-label" for="sortSelect">Sort</label>
+        <select class="select-input" id="sortSelect">
+          <option value="completed-desc">Recently completed</option>
+          <option value="score-desc">Your rating</option>
+          <option value="community-desc">Community rating</option>
+          <option value="title-asc">Title A–Z</option>
+          <option value="published-desc">Newest publication</option>
+          <option value="length-asc">Shortest first</option>
+        </select>
+      </div>
+      <button class="action secondary filter-open" id="openFiltersButton" type="button">Filters</button>
+    </section>
+
+    <section class="content-grid">
+      <div class="library-stage">
+        <section class="flow-shell" id="flowShell" aria-label="Cover flow">
+          <div class="flow-index" id="flowIndex">01</div>
+          <div class="flow-caption">Drag · Scroll · Arrow keys</div>
+          <div class="flow-viewport" id="flowViewport" tabindex="0" aria-label="Manga cover carousel"></div>
+          <div class="flow-nav">
+            <button id="previousButton" type="button" aria-label="Previous manga">←</button>
+            <button id="nextButton" type="button" aria-label="Next manga">→</button>
+          </div>
+          <div class="flow-help">Click a cover to select</div>
+        </section>
+        <section class="grid-view" id="gridView" aria-label="Manga grid"></section>
+        <section class="empty-state" id="emptyState" hidden>
+          <div><strong>No works match</strong><p>Reset the filters or include manga that are still publishing.</p></div>
+        </section>
+      </div>
+
+      <aside class="detail-panel" aria-live="polite">
+        <article class="detail-card" id="detailCard">
+          <div class="detail-accent" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="detail-body">
+            <div class="detail-counter"><span id="detailPosition">01 / 12</span><span id="detailStatus">Finished</span></div>
+            <h2 class="detail-title" id="detailTitle">Red Orbit</h2>
+            <p class="detail-alt" id="detailAlt">A geometric demo collection</p>
+            <div class="ratings">
+              <div class="rating-box user"><div class="rating-label">Your score</div><div class="rating-value" id="userScore">94</div></div>
+              <div class="rating-box"><div class="rating-label">Community</div><div class="rating-value" id="communityScore">87</div></div>
+            </div>
+            <div class="metadata">
+              <div class="meta-cell"><span class="meta-label">Format</span><span class="meta-value" id="detailFormat">Manga</span></div>
+              <div class="meta-cell"><span class="meta-label">Length</span><span class="meta-value" id="detailLength">12 vol · 84 ch</span></div>
+              <div class="meta-cell"><span class="meta-label">Published</span><span class="meta-value" id="detailPublished">2018–2022</span></div>
+              <div class="meta-cell"><span class="meta-label">Completed</span><span class="meta-value" id="detailCompleted">Aug 2024</span></div>
+            </div>
+            <div>
+              <div class="field-label" style="margin-bottom:8px">Genres</div>
+              <div class="genre-line" id="detailGenres"></div>
+            </div>
+            <div class="detail-actions">
+              <a class="action detail-link" id="anilistLink" href="#" target="_blank" rel="noopener">Open on AniList</a>
+              <div class="mini-cover-color" title="AniList cover accent" aria-hidden="true"></div>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="stats-grid" aria-label="Collection statistics">
+      <article class="stat"><div class="stat-label">Visible works</div><div class="stat-value" id="statWorks">12</div></article>
+      <article class="stat"><div class="stat-label">Known volumes</div><div class="stat-value" id="statVolumes">128</div></article>
+      <article class="stat"><div class="stat-label">Average score</div><div class="stat-value" id="statAverage">88</div></article>
+      <article class="stat"><div class="stat-label">Leading genre</div><div class="stat-value" id="statGenre">Drama</div></article>
+    </section>
+  </main>
+
+  <div class="filter-drawer" id="filterDrawer" aria-hidden="true">
+    <div class="drawer-backdrop" data-close-drawer></div>
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="filterTitle">
+      <header class="drawer-header">
+        <h2 class="drawer-title" id="filterTitle">Filter<br />Index</h2>
+        <button class="close-btn" type="button" data-close-drawer aria-label="Close filters">×</button>
+      </header>
+      <div class="filter-stack">
+        <section class="filter-section">
+          <label class="field-label" for="formatFilter">Format</label>
+          <select class="select-input" id="formatFilter"><option value="ALL">All formats</option></select>
+        </section>
+        <section class="filter-section">
+          <label class="field-label" for="yearFilter">Completion year</label>
+          <select class="select-input" id="yearFilter"><option value="ALL">All years</option></select>
+        </section>
+        <section class="filter-section">
+          <div class="range-row">
+            <label class="field-label" for="scoreFilter">Minimum personal rating</label>
+            <div class="range-value" id="scoreFilterValue">0</div>
+          </div>
+          <input id="scoreFilter" type="range" min="0" max="100" step="5" value="0" />
+        </section>
+        <section class="filter-section">
+          <div class="toggle-row">
+            <span>Only fully published manga</span>
+            <label class="switch"><input id="publishedOnlyFilter" type="checkbox" checked /><span aria-hidden="true"></span></label>
+          </div>
+        </section>
+        <section class="filter-section">
+          <div class="field-label">Genres — match any selected</div>
+          <div class="genre-list" id="genreFilters"></div>
+        </section>
+      </div>
+      <div class="drawer-actions">
+        <button class="action secondary" id="resetFiltersButton" type="button">Reset</button>
+        <button class="action" type="button" data-close-drawer>View results</button>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const DEFAULT_ENDPOINT = "https://graphql.anilist.co";
+    const SETTINGS_KEY = "manga-coverflow-settings-v1";
+    const CACHE_PREFIX = "manga-coverflow-cache-v1:";
+
+    const QUERY = `
+      query ($userName: String!) {
+        MediaListCollection(
+          userName: $userName
+          type: MANGA
+          status: COMPLETED
+          forceSingleCompletedList: true
+        ) {
+          lists {
+            entries {
+              score(format: POINT_100)
+              completedAt { year month day }
+              media {
+                id
+                siteUrl
+                status
+                format
+                chapters
+                volumes
+                averageScore
+                genres
+                startDate { year }
+                endDate { year }
+                title { userPreferred english romaji native }
+                coverImage { extraLarge large color }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const state = {
+      all: [],
+      filtered: [],
+      selectedIndex: 0,
+      selectedId: null,
+      view: "flow",
+      source: "demo",
+      userName: "",
+      filters: {
+        search: "",
+        format: "ALL",
+        year: "ALL",
+        minScore: 0,
+        publishedOnly: true,
+        genres: new Set(),
+        sort: "completed-desc"
+      }
+    };
+
+    const els = {
+      loadForm: document.getElementById("loadForm"),
+      username: document.getElementById("username"),
+      endpoint: document.getElementById("endpoint"),
+      loadButton: document.getElementById("loadButton"),
+      clearCacheButton: document.getElementById("clearCacheButton"),
+      statusDot: document.getElementById("statusDot"),
+      statusText: document.getElementById("statusText"),
+      statusMode: document.getElementById("statusMode"),
+      searchInput: document.getElementById("searchInput"),
+      sortSelect: document.getElementById("sortSelect"),
+      openFiltersButton: document.getElementById("openFiltersButton"),
+      filterDrawer: document.getElementById("filterDrawer"),
+      formatFilter: document.getElementById("formatFilter"),
+      yearFilter: document.getElementById("yearFilter"),
+      scoreFilter: document.getElementById("scoreFilter"),
+      scoreFilterValue: document.getElementById("scoreFilterValue"),
+      publishedOnlyFilter: document.getElementById("publishedOnlyFilter"),
+      genreFilters: document.getElementById("genreFilters"),
+      resetFiltersButton: document.getElementById("resetFiltersButton"),
+      flowShell: document.getElementById("flowShell"),
+      flowViewport: document.getElementById("flowViewport"),
+      flowIndex: document.getElementById("flowIndex"),
+      previousButton: document.getElementById("previousButton"),
+      nextButton: document.getElementById("nextButton"),
+      gridView: document.getElementById("gridView"),
+      emptyState: document.getElementById("emptyState"),
+      detailCard: document.getElementById("detailCard"),
+      detailPosition: document.getElementById("detailPosition"),
+      detailStatus: document.getElementById("detailStatus"),
+      detailTitle: document.getElementById("detailTitle"),
+      detailAlt: document.getElementById("detailAlt"),
+      userScore: document.getElementById("userScore"),
+      communityScore: document.getElementById("communityScore"),
+      detailFormat: document.getElementById("detailFormat"),
+      detailLength: document.getElementById("detailLength"),
+      detailPublished: document.getElementById("detailPublished"),
+      detailCompleted: document.getElementById("detailCompleted"),
+      detailGenres: document.getElementById("detailGenres"),
+      anilistLink: document.getElementById("anilistLink"),
+      statWorks: document.getElementById("statWorks"),
+      statVolumes: document.getElementById("statVolumes"),
+      statAverage: document.getElementById("statAverage"),
+      statGenre: document.getElementById("statGenre")
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function safeJsonParse(raw, fallback) {
+      if (raw == null || raw === "") return fallback;
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed == null ? fallback : parsed;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function storageGet(key) {
+      try { return localStorage.getItem(key); } catch (_) { return null; }
+    }
+
+    function storageSet(key, value) {
+      try { localStorage.setItem(key, value); return true; } catch (_) { return false; }
+    }
+
+    function storageRemove(key) {
+      try { localStorage.removeItem(key); } catch (_) {}
+    }
+
+    function saveSettings() {
+      try {
+        storageSet(SETTINGS_KEY, JSON.stringify({
+          userName: els.username.value.trim(),
+          endpoint: els.endpoint.value.trim() || DEFAULT_ENDPOINT,
+          view: state.view,
+          sort: state.filters.sort,
+          publishedOnly: state.filters.publishedOnly
+        }));
+      } catch (_) {}
+    }
+
+    function loadSettings() {
+      const settings = safeJsonParse(storageGet(SETTINGS_KEY), {});
+      if (settings.userName) els.username.value = settings.userName;
+      els.endpoint.value = settings.endpoint || DEFAULT_ENDPOINT;
+      if (["flow", "grid"].includes(settings.view)) state.view = settings.view;
+      if (settings.sort) state.filters.sort = settings.sort;
+      if (typeof settings.publishedOnly === "boolean") state.filters.publishedOnly = settings.publishedOnly;
+      els.sortSelect.value = state.filters.sort;
+      els.publishedOnlyFilter.checked = state.filters.publishedOnly;
+    }
+
+    function setStatus(message, mode = "ready") {
+      els.statusText.textContent = message;
+      els.statusDot.className = "status-dot" + (mode === "loading" ? " loading" : mode === "error" ? " error" : "");
+    }
+
+    function cacheKey(userName) {
+      return CACHE_PREFIX + String(userName || "").trim().toLowerCase();
+    }
+
+    function saveCache(userName, items) {
+      try {
+        storageSet(cacheKey(userName), JSON.stringify({ savedAt: Date.now(), items }));
+      } catch (_) {}
+    }
+
+    function loadCache(userName) {
+      const cached = safeJsonParse(storageGet(cacheKey(userName)), null);
+      return cached && Array.isArray(cached.items) ? cached : null;
+    }
+
+    function titleForMedia(media) {
+      return media?.title?.userPreferred || media?.title?.english || media?.title?.romaji || media?.title?.native || "Untitled";
+    }
+
+    function altTitleForMedia(media, primary) {
+      const candidates = [media?.title?.english, media?.title?.romaji, media?.title?.native].filter(Boolean);
+      return candidates.find(title => title !== primary) || "";
+    }
+
+    function dateValue(date) {
+      if (!date?.year) return 0;
+      return (Number(date.year) * 10000) + (Number(date.month || 1) * 100) + Number(date.day || 1);
+    }
+
+    function normalizeCollection(collection) {
+      const entries = (collection?.lists || []).flatMap(list => Array.isArray(list?.entries) ? list.entries : []);
+      const deduped = new Map();
+      for (const entry of entries) {
+        const media = entry?.media;
+        if (!media?.id) continue;
+        const title = titleForMedia(media);
+        const item = {
+          id: Number(media.id),
+          title,
+          altTitle: altTitleForMedia(media, title),
+          siteUrl: media.siteUrl || `https://anilist.co/manga/${media.id}`,
+          status: media.status || "UNKNOWN",
+          format: media.format || "MANGA",
+          chapters: Number(media.chapters) || null,
+          volumes: Number(media.volumes) || null,
+          score: Number(entry.score) || 0,
+          averageScore: Number(media.averageScore) || 0,
+          genres: Array.isArray(media.genres) ? media.genres.filter(Boolean) : [],
+          startYear: Number(media.startDate?.year) || null,
+          endYear: Number(media.endDate?.year) || null,
+          completedAt: entry.completedAt || null,
+          completedValue: dateValue(entry.completedAt),
+          cover: media.coverImage?.extraLarge || media.coverImage?.large || "",
+          accent: media.coverImage?.color || pickAccent(Number(media.id))
+        };
+        deduped.set(item.id, item);
+      }
+      return Array.from(deduped.values());
+    }
+
+    function pickAccent(seed) {
+      const palette = ["#e3332d", "#1457d9", "#f2c526", "#0d8b61"];
+      return palette[Math.abs(Number(seed) || 0) % palette.length];
+    }
+
+    function demoCover(title, index) {
+      const palettes = [
+        ["#e3332d", "#f2c526", "#111111"],
+        ["#1457d9", "#f2efe5", "#111111"],
+        ["#f2c526", "#e3332d", "#1457d9"],
+        ["#111111", "#f2efe5", "#e3332d"]
+      ];
+      const [a,b,c] = palettes[index % palettes.length];
+      const safeTitle = title.replace(/[&<>"']/g, "").toUpperCase();
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900"><rect width="600" height="900" fill="${b}"/><rect x="0" y="0" width="170" height="900" fill="${a}"/><circle cx="410" cy="235" r="128" fill="${c}"/><rect x="250" y="420" width="270" height="62" fill="${a}"/><path d="M240 780 L520 780 L380 540 Z" fill="${c}"/><text x="215" y="110" font-family="Arial,Helvetica,sans-serif" font-size="42" font-weight="900" fill="${c}">${String(index + 1).padStart(2,"0")}</text><text x="215" y="690" font-family="Arial,Helvetica,sans-serif" font-size="44" font-weight="900" fill="${c}">${safeTitle.slice(0,15)}</text><text x="215" y="742" font-family="Arial,Helvetica,sans-serif" font-size="44" font-weight="900" fill="${c}">${safeTitle.slice(15,30)}</text><text x="215" y="840" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="5" fill="${c}">MANGA ARCHIVE</text></svg>`;
+      return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+    }
+
+    function makeDemoItems() {
+      const titles = [
+        "Red Orbit", "Silent Grid", "Blue Interval", "Concrete Bloom",
+        "Yellow Signal", "Night Geometry", "Paper City", "Parallel Lives",
+        "Circle Theory", "After Image", "Modular Heart", "The Last Index"
+      ];
+      const genres = [
+        ["Drama", "Sci-Fi"], ["Mystery", "Psychological"], ["Romance", "Drama"],
+        ["Slice of Life", "Drama"], ["Adventure", "Fantasy"], ["Horror", "Mystery"],
+        ["Comedy", "Slice of Life"], ["Romance", "Psychological"], ["Sci-Fi", "Adventure"],
+        ["Drama", "Supernatural"], ["Sports", "Drama"], ["Mystery", "Thriller"]
+      ];
+      return titles.map((title, index) => ({
+        id: 900000 + index,
+        title,
+        altTitle: "A geometric demo collection",
+        siteUrl: "https://anilist.co",
+        status: index === 7 ? "RELEASING" : "FINISHED",
+        format: index % 5 === 0 ? "ONE_SHOT" : index % 7 === 0 ? "NOVEL" : "MANGA",
+        chapters: 18 + index * 11,
+        volumes: 2 + (index % 15),
+        score: 72 + ((index * 7) % 28),
+        averageScore: 68 + ((index * 9) % 26),
+        genres: genres[index],
+        startYear: 2004 + index,
+        endYear: 2010 + index,
+        completedAt: { year: 2015 + (index % 10), month: (index % 12) + 1, day: (index % 26) + 1 },
+        completedValue: (2015 + (index % 10)) * 10000 + ((index % 12) + 1) * 100 + ((index % 26) + 1),
+        cover: demoCover(title, index),
+        accent: pickAccent(index)
+      }));
+    }
+
+    async function fetchCollection(userName) {
+      const endpoint = els.endpoint.value.trim() || DEFAULT_ENDPOINT;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ query: QUERY, variables: { userName } })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.errors) {
+        const message = payload.errors?.map(error => error.message).join(" · ") || `AniList request failed (${response.status})`;
+        throw new Error(message);
+      }
+      return normalizeCollection(payload?.data?.MediaListCollection);
+    }
+
+    function uniqueSorted(values) {
+      return Array.from(new Set(values.filter(Boolean))).sort((a,b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+    }
+
+    function rebuildFilterOptions() {
+      const formats = uniqueSorted(state.all.map(item => item.format));
+      const years = uniqueSorted(state.all.map(item => item.completedAt?.year).filter(Boolean)).sort((a,b) => b-a);
+      const genres = uniqueSorted(state.all.flatMap(item => item.genres));
+
+      els.formatFilter.innerHTML = '<option value="ALL">All formats</option>' + formats.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(formatLabel(value))}</option>`).join("");
+      els.yearFilter.innerHTML = '<option value="ALL">All years</option>' + years.map(value => `<option value="${value}">${value}</option>`).join("");
+      els.genreFilters.innerHTML = genres.map(genre => `<button class="genre-filter" type="button" data-genre="${escapeHtml(genre)}">${escapeHtml(genre)}</button>`).join("");
+    }
+
+    function formatLabel(format) {
+      return String(format || "Unknown").replaceAll("_", " ").replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function applyFilters({ preserveSelection = true } = {}) {
+      const previousId = preserveSelection ? state.selectedId : null;
+      const search = state.filters.search.trim().toLowerCase();
+      let items = state.all.filter(item => {
+        if (state.filters.publishedOnly && item.status !== "FINISHED") return false;
+        if (state.filters.format !== "ALL" && item.format !== state.filters.format) return false;
+        if (state.filters.year !== "ALL" && String(item.completedAt?.year || "") !== String(state.filters.year)) return false;
+        if (item.score < state.filters.minScore) return false;
+        if (state.filters.genres.size && !item.genres.some(genre => state.filters.genres.has(genre))) return false;
+        if (search && ![item.title, item.altTitle, ...item.genres].some(value => String(value || "").toLowerCase().includes(search))) return false;
+        return true;
+      });
+
+      const sorters = {
+        "completed-desc": (a,b) => b.completedValue - a.completedValue || a.title.localeCompare(b.title),
+        "score-desc": (a,b) => b.score - a.score || b.averageScore - a.averageScore,
+        "community-desc": (a,b) => b.averageScore - a.averageScore || b.score - a.score,
+        "title-asc": (a,b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base", numeric: true }),
+        "published-desc": (a,b) => (b.endYear || b.startYear || 0) - (a.endYear || a.startYear || 0),
+        "length-asc": (a,b) => (a.chapters || Number.MAX_SAFE_INTEGER) - (b.chapters || Number.MAX_SAFE_INTEGER)
+      };
+      items.sort(sorters[state.filters.sort] || sorters["completed-desc"]);
+      state.filtered = items;
+
+      if (!items.length) {
+        state.selectedIndex = 0;
+        state.selectedId = null;
+      } else if (previousId && items.some(item => item.id === previousId)) {
+        state.selectedIndex = items.findIndex(item => item.id === previousId);
+        state.selectedId = previousId;
+      } else {
+        state.selectedIndex = Math.min(state.selectedIndex, items.length - 1);
+        state.selectedId = items[state.selectedIndex]?.id || null;
+      }
+      render();
+    }
+
+    function selectedItem() {
+      return state.filtered[state.selectedIndex] || null;
+    }
+
+    function selectIndex(index) {
+      const count = state.filtered.length;
+      if (!count) return;
+      state.selectedIndex = ((Number(index) % count) + count) % count;
+      state.selectedId = state.filtered[state.selectedIndex].id;
+      renderFlow();
+      renderGrid();
+      renderDetails();
+    }
+
+    function shiftSelection(delta) {
+      selectIndex(state.selectedIndex + delta);
+    }
+
+    function render() {
+      const hasItems = state.filtered.length > 0;
+      els.emptyState.hidden = hasItems;
+      els.flowShell.style.display = hasItems && state.view === "flow" ? "block" : "none";
+      els.gridView.classList.toggle("active", hasItems && state.view === "grid");
+      document.querySelectorAll(".view-btn").forEach(button => button.classList.toggle("active", button.dataset.view === state.view));
+      if (hasItems) {
+        renderFlow();
+        renderGrid();
+        renderDetails();
+      }
+      renderStats();
+      els.statusMode.textContent = `${state.source === "demo" ? "Demo" : state.userName || "Library"} / ${state.filtered.length} works`;
+      saveSettings();
+    }
+
+    function renderFlow() {
+      const count = state.filtered.length;
+      if (!count) { els.flowViewport.innerHTML = ""; return; }
+      els.flowIndex.textContent = String(state.selectedIndex + 1).padStart(2, "0");
+      const visibleRange = window.innerWidth < 600 ? 2 : 3;
+      const maxVisibleCards = Math.min(count, (visibleRange * 2) + 1);
+      const offsets = [0];
+      for (let step = 1; offsets.length < maxVisibleCards; step++) {
+        if (offsets.length < maxVisibleCards) offsets.push(-step);
+        if (offsets.length < maxVisibleCards) offsets.push(step);
+      }
+      offsets.sort((a, b) => a - b);
+      const cards = [];
+      for (const offset of offsets) {
+        const index = (state.selectedIndex + offset + count) % count;
+        const item = state.filtered[index];
+        const abs = Math.abs(offset);
+        const spread = window.innerWidth < 600 ? Math.min(window.innerWidth * .24, 92) : Math.min(window.innerWidth * .12, 210);
+        const x = offset * spread;
+        const scale = offset === 0 ? 1 : Math.max(.58, .82 - (abs - 1) * .09);
+        const rotate = offset === 0 ? 0 : offset < 0 ? 52 : -52;
+        const z = offset === 0 ? 90 : 30 - abs * 6;
+        const translateZ = offset === 0 ? 90 : -abs * 115;
+        const opacity = abs > visibleRange ? 0 : Math.max(.36, 1 - abs * .19);
+        cards.push(`
+          <button class="cover-card ${offset === 0 ? "selected" : ""}" type="button"
+            data-flow-index="${index}" aria-label="Select ${escapeHtml(item.title)}"
+            style="z-index:${z};opacity:${opacity};filter:${offset === 0 ? "none" : `saturate(.72) brightness(${.82 - abs*.06})`};transform:translate3d(calc(-50% + ${x}px),-50%,${translateZ}px) rotateY(${rotate}deg) scale(${scale})">
+            <img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.title)} cover" loading="${offset === 0 ? "eager" : "lazy"}" />
+            <span class="cover-number">${String(index + 1).padStart(2,"0")}</span>
+          </button>
+        `);
+      }
+      els.flowViewport.innerHTML = cards.join("");
+      els.flowViewport.querySelectorAll("[data-flow-index]").forEach(button => {
+        button.addEventListener("click", () => selectIndex(Number(button.dataset.flowIndex)));
+      });
+    }
+
+    function renderGrid() {
+      els.gridView.innerHTML = state.filtered.map((item, index) => `
+        <button class="grid-card ${index === state.selectedIndex ? "selected" : ""}" type="button" data-grid-index="${index}" aria-label="Select ${escapeHtml(item.title)}">
+          <div class="grid-cover"><img src="${escapeHtml(item.cover)}" alt="" loading="lazy" /><span class="grid-score">${item.score || "—"}</span></div>
+          <div class="grid-info"><div class="grid-title">${escapeHtml(item.title)}</div><div class="grid-meta">${escapeHtml(formatLabel(item.format))} · ${escapeHtml(item.completedAt?.year || "No date")}</div></div>
+        </button>
+      `).join("");
+      els.gridView.querySelectorAll("[data-grid-index]").forEach(button => {
+        button.addEventListener("click", () => selectIndex(Number(button.dataset.gridIndex)));
+      });
+    }
+
+    function formatCompletionDate(date) {
+      if (!date?.year) return "Not recorded";
+      const parts = [];
+      if (date.month) parts.push(new Intl.DateTimeFormat("en", { month: "short" }).format(new Date(2000, date.month - 1, 1)));
+      if (date.day) parts.push(String(date.day));
+      parts.push(String(date.year));
+      return parts.join(" ");
+    }
+
+    function publicationRange(item) {
+      if (item.startYear && item.endYear && item.startYear !== item.endYear) return `${item.startYear}–${item.endYear}`;
+      return String(item.startYear || item.endYear || "Unknown");
+    }
+
+    function lengthLabel(item) {
+      const pieces = [];
+      if (item.volumes) pieces.push(`${item.volumes} vol`);
+      if (item.chapters) pieces.push(`${item.chapters} ch`);
+      return pieces.length ? pieces.join(" · ") : "Unknown";
+    }
+
+    function renderDetails() {
+      const item = selectedItem();
+      if (!item) return;
+      document.documentElement.style.setProperty("--accent-cover", item.accent || pickAccent(item.id));
+      els.detailPosition.textContent = `${String(state.selectedIndex + 1).padStart(2,"0")} / ${String(state.filtered.length).padStart(2,"0")}`;
+      els.detailStatus.textContent = formatLabel(item.status);
+      els.detailTitle.textContent = item.title;
+      els.detailAlt.textContent = item.altTitle || "No alternate title";
+      els.userScore.textContent = item.score || "—";
+      els.communityScore.textContent = item.averageScore || "—";
+      els.detailFormat.textContent = formatLabel(item.format);
+      els.detailLength.textContent = lengthLabel(item);
+      els.detailPublished.textContent = publicationRange(item);
+      els.detailCompleted.textContent = formatCompletionDate(item.completedAt);
+      els.detailGenres.innerHTML = item.genres.length ? item.genres.map(genre => `<span class="genre-tag">${escapeHtml(genre)}</span>`).join("") : '<span class="genre-tag">Unclassified</span>';
+      els.anilistLink.href = item.siteUrl || "https://anilist.co";
+    }
+
+    function renderStats() {
+      const items = state.filtered;
+      const knownVolumes = items.reduce((sum, item) => sum + (item.volumes || 0), 0);
+      const scored = items.filter(item => item.score > 0);
+      const average = scored.length ? Math.round(scored.reduce((sum,item) => sum + item.score, 0) / scored.length) : 0;
+      const genreCounts = new Map();
+      items.forEach(item => item.genres.forEach(genre => genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1)));
+      const topGenre = Array.from(genreCounts.entries()).sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "—";
+      els.statWorks.textContent = String(items.length);
+      els.statVolumes.textContent = String(knownVolumes || "—");
+      els.statAverage.textContent = average ? String(average) : "—";
+      els.statGenre.textContent = topGenre;
+    }
+
+    function openDrawer() {
+      els.filterDrawer.classList.add("open");
+      els.filterDrawer.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer() {
+      els.filterDrawer.classList.remove("open");
+      els.filterDrawer.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    function resetFilters() {
+      state.filters.search = "";
+      state.filters.format = "ALL";
+      state.filters.year = "ALL";
+      state.filters.minScore = 0;
+      state.filters.publishedOnly = true;
+      state.filters.genres.clear();
+      els.searchInput.value = "";
+      els.formatFilter.value = "ALL";
+      els.yearFilter.value = "ALL";
+      els.scoreFilter.value = "0";
+      els.scoreFilterValue.textContent = "0";
+      els.publishedOnlyFilter.checked = true;
+      els.genreFilters.querySelectorAll(".genre-filter").forEach(button => button.classList.remove("active"));
+      applyFilters({ preserveSelection: false });
+    }
+
+    async function loadUser(userName) {
+      const cleanUserName = String(userName || "").trim();
+      if (!cleanUserName) return;
+      state.userName = cleanUserName;
+      saveSettings();
+      setStatus(`Loading ${cleanUserName}…`, "loading");
+      els.loadButton.disabled = true;
+      els.loadButton.textContent = "Loading";
+
+      const cached = loadCache(cleanUserName);
+      if (cached?.items?.length) {
+        state.all = cached.items;
+        state.source = "cache";
+        rebuildFilterOptions();
+        applyFilters({ preserveSelection: false });
+        setStatus(`Showing cached library while AniList refreshes`, "loading");
+      }
+
+      try {
+        const items = await fetchCollection(cleanUserName);
+        if (!items.length) throw new Error("No completed manga were found on this public AniList list.");
+        state.all = items;
+        state.source = "anilist";
+        state.selectedIndex = 0;
+        state.selectedId = null;
+        saveCache(cleanUserName, items);
+        rebuildFilterOptions();
+        applyFilters({ preserveSelection: false });
+        setStatus(`Loaded ${items.length} completed manga for ${cleanUserName}`);
+      } catch (error) {
+        if (cached?.items?.length) {
+          state.source = "cache";
+          setStatus(`AniList refresh failed — using saved library: ${error.message}`, "error");
+        } else {
+          state.all = makeDemoItems();
+          state.source = "demo";
+          state.userName = "";
+          rebuildFilterOptions();
+          applyFilters({ preserveSelection: false });
+          setStatus(`AniList load failed — demo retained: ${error.message}`, "error");
+        }
+      } finally {
+        els.loadButton.disabled = false;
+        els.loadButton.textContent = "Load";
+      }
+    }
+
+    function installEvents() {
+      els.loadForm.addEventListener("submit", event => {
+        event.preventDefault();
+        loadUser(els.username.value);
+      });
+      els.endpoint.addEventListener("change", saveSettings);
+      els.clearCacheButton.addEventListener("click", () => {
+        const userName = els.username.value.trim();
+        if (userName) storageRemove(cacheKey(userName));
+        setStatus(userName ? `Local cache cleared for ${userName}` : "No username selected");
+      });
+      document.querySelectorAll(".view-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.view = button.dataset.view;
+          render();
+        });
+      });
+      els.searchInput.addEventListener("input", () => {
+        state.filters.search = els.searchInput.value;
+        applyFilters();
+      });
+      els.sortSelect.addEventListener("change", () => {
+        state.filters.sort = els.sortSelect.value;
+        applyFilters();
+      });
+      els.openFiltersButton.addEventListener("click", openDrawer);
+      els.filterDrawer.querySelectorAll("[data-close-drawer]").forEach(button => button.addEventListener("click", closeDrawer));
+      els.formatFilter.addEventListener("change", () => { state.filters.format = els.formatFilter.value; applyFilters(); });
+      els.yearFilter.addEventListener("change", () => { state.filters.year = els.yearFilter.value; applyFilters(); });
+      els.scoreFilter.addEventListener("input", () => {
+        state.filters.minScore = Number(els.scoreFilter.value) || 0;
+        els.scoreFilterValue.textContent = String(state.filters.minScore);
+        applyFilters();
+      });
+      els.publishedOnlyFilter.addEventListener("change", () => {
+        state.filters.publishedOnly = els.publishedOnlyFilter.checked;
+        applyFilters();
+      });
+      els.genreFilters.addEventListener("click", event => {
+        const button = event.target.closest("[data-genre]");
+        if (!button) return;
+        const genre = button.dataset.genre;
+        if (state.filters.genres.has(genre)) state.filters.genres.delete(genre);
+        else state.filters.genres.add(genre);
+        button.classList.toggle("active", state.filters.genres.has(genre));
+        applyFilters();
+      });
+      els.resetFiltersButton.addEventListener("click", resetFilters);
+      els.previousButton.addEventListener("click", () => shiftSelection(-1));
+      els.nextButton.addEventListener("click", () => shiftSelection(1));
+      els.flowViewport.addEventListener("keydown", event => {
+        if (event.key === "ArrowLeft") { event.preventDefault(); shiftSelection(-1); }
+        if (event.key === "ArrowRight") { event.preventDefault(); shiftSelection(1); }
+        if (event.key === "Home") { event.preventDefault(); selectIndex(0); }
+        if (event.key === "End") { event.preventDefault(); selectIndex(state.filtered.length - 1); }
+      });
+
+      let wheelLocked = false;
+      els.flowViewport.addEventListener("wheel", event => {
+        if (Math.abs(event.deltaX) < 4 && Math.abs(event.deltaY) < 4) return;
+        event.preventDefault();
+        if (wheelLocked) return;
+        wheelLocked = true;
+        shiftSelection((event.deltaX || event.deltaY) > 0 ? 1 : -1);
+        setTimeout(() => { wheelLocked = false; }, 180);
+      }, { passive: false });
+
+      let pointerStart = null;
+      els.flowViewport.addEventListener("pointerdown", event => {
+        pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
+        els.flowViewport.setPointerCapture(event.pointerId);
+        els.flowViewport.classList.add("dragging");
+      });
+      els.flowViewport.addEventListener("pointerup", event => {
+        if (!pointerStart) return;
+        const dx = event.clientX - pointerStart.x;
+        const dy = event.clientY - pointerStart.y;
+        if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy)) shiftSelection(dx < 0 ? 1 : -1);
+        pointerStart = null;
+        els.flowViewport.classList.remove("dragging");
+      });
+      els.flowViewport.addEventListener("pointercancel", () => {
+        pointerStart = null;
+        els.flowViewport.classList.remove("dragging");
+      });
+      window.addEventListener("resize", () => { if (state.view === "flow") renderFlow(); });
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && els.filterDrawer.classList.contains("open")) closeDrawer();
+      });
+    }
+
+    function start() {
+      loadSettings();
+      state.all = makeDemoItems();
+      state.source = "demo";
+      rebuildFilterOptions();
+      installEvents();
+      applyFilters({ preserveSelection: false });
+      if (state.view === "grid") {
+        document.querySelector('[data-view="grid"]').click();
+      }
+
+      const lastUser = els.username.value.trim();
+      const cached = lastUser ? loadCache(lastUser) : null;
+      if (cached?.items?.length) {
+        state.userName = lastUser;
+        state.source = "cache";
+        state.all = cached.items;
+        rebuildFilterOptions();
+        applyFilters({ preserveSelection: false });
+        const savedLabel = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(cached.savedAt));
+        setStatus(`Saved library loaded for ${lastUser} · ${savedLabel}`);
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>
