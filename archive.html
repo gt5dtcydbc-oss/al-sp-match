@@ -95,6 +95,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
 .card.has-update:hover, .card.has-update:focus-within { border-color: rgba(168,176,255,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(139,150,255,.3), 0 0 28px rgba(139,150,255,.18); }
 .card.has-update > .card-main .thumb { box-shadow: 0 0 0 2px rgba(139,150,255,.65), 0 8px 20px rgba(0,0,0,.28); }
 .time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
+.update-marker { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-width: 0; }
+.update-date { color: var(--brand-strong); font-size: .68rem; font-weight: 850; letter-spacing: .01em; line-height: 1; white-space: nowrap; }
 .menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
 .menu[open] { z-index: 120; }
 .menu summary { list-style: none; }
@@ -256,6 +258,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-
   .folder .meta { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
   .folder .folder-completion { flex-shrink: 0; }
   .folder .badge.update { font-size: .62rem; padding: 3px 7px; }
+  .folder .update-marker { gap: 4px; }
+  .folder .update-date { font-size: .62rem; }
   .settings-toggle { min-height: 68px; padding: 16px; }
   .settings-toggle-copy small { font-size: .8rem; }
   .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); }
@@ -2519,6 +2523,58 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         if (d < 72 * 3600) return Math.floor(d / 3600) + "h ago";
         return Math.floor(d / 86400) + "d ago";
       }
+      function releaseUpdateAt(s) {
+        const release = defaultRelease(s?.releasesMoe);
+        return release.latestUpdated || release.updated || null;
+      }
+      function formatUpdateDate(v) {
+        const d = new Date(v || "");
+        if (!Number.isFinite(d.getTime())) return "";
+        const options = { month: "short", day: "numeric" };
+        if (d.getFullYear() !== new Date().getFullYear()) options.year = "numeric";
+        try {
+          return new Intl.DateTimeFormat(undefined, options).format(d);
+        } catch (e) {
+          return d.toLocaleDateString();
+        }
+      }
+      function formatUpdateTooltip(v) {
+        const d = new Date(v || "");
+        if (!Number.isFinite(d.getTime())) return "Update date unavailable";
+        let full;
+        try {
+          full = new Intl.DateTimeFormat(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(d);
+        } catch (e) {
+          full = d.toLocaleString();
+        }
+        return `Updated ${full} · ${fmtAgo(d.toISOString())}`;
+      }
+      function renderUpdateMarker(v) {
+        const shortDate = formatUpdateDate(v);
+        const tooltip = formatUpdateTooltip(v);
+        return `<span class="update-marker" title="${escapeAttr(tooltip)}"><span class="badge update">Updated</span>${shortDate ? `<span class="update-date">${escapeHtml(shortDate)}</span>` : ""}</span>`;
+      }
+      function newestPendingUpdateAt(shows) {
+        let newest = null;
+        let newestTime = 0;
+        (shows || []).forEach((s) => {
+          const release = defaultRelease(s?.releasesMoe);
+          if (!release.updateAvailable) return;
+          const value = releaseUpdateAt(s);
+          const time = Date.parse(value || "");
+          if (Number.isFinite(time) && time > newestTime) {
+            newest = value;
+            newestTime = time;
+          }
+        });
+        return newest;
+      }
       function releaseLink(s) {
         return s.anilistId && s.releasesMoe?.found
           ? `https://releases.moe/${s.anilistId}/`
@@ -2861,7 +2917,8 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
         const complete = allKids.filter((s) => s.allAvailableDownloaded).length;
         const folderComplete = isFolderComplete(g, allKids);
         const hasUpdate = allKids.some((s) => defaultRelease(s.releasesMoe).updateAvailable);
-        const updateBadge = hasUpdate ? '<span class="badge update">Updated</span>' : "";
+        const folderUpdateAt = hasUpdate ? newestPendingUpdateAt(allKids) : null;
+        const updateBadge = hasUpdate ? renderUpdateMarker(folderUpdateAt) : "";
         const folderCountText = allKids.length
           ? `${allKids.length} ${allKids.length === 1 ? "show" : "shows"}`
           : "Empty";
@@ -2888,11 +2945,12 @@ const ANILIST_ENDPOINT = "https://graphql.anilist.co";
           title = link
             ? `<a href="${escapeAttr(link)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a>`
             : escapeHtml(s.title);
+        const updateAt = showUpdateBadge ? releaseUpdateAt(s) : null;
         let badge =
           s.needsAnilist || !s.anilistId
             ? '<span class="badge need">Needs AniList</span>'
             : showUpdateBadge
-              ? '<span class="badge update">Updated</span>'
+              ? renderUpdateMarker(updateAt)
               : isDl
                 ? ""
                 : s.releasesMoe.found
