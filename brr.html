@@ -432,7 +432,7 @@
     <h1>AniList AutoBrr Filter Generator</h1>
     <p class="subtitle">
         Generate comma-separated AutoBrr wildcard filters from your AniList CURRENT list or from one AniList show.
-        Uses only AniList’s primary romaji, English, and preferred titles; no secondary metadata service is required.
+        Uses AniList’s primary romaji, English, and preferred titles, with an optional English/romaji synonym toggle; no secondary metadata service is required.
     </p>
 
     <div class="input-group">
@@ -463,6 +463,14 @@
             <span>
                 <strong>Include native / non-ASCII titles</strong>
                 <span>Off by default to avoid filters for Japanese-script release names.</span>
+            </span>
+        </label>
+
+        <label class="option">
+            <input type="checkbox" id="includeSynonyms">
+            <span>
+                <strong>Include English / romaji AniList synonyms</strong>
+                <span>Off by default. Adds AniList alternative titles only when they look Latin-script/romaji-friendly.</span>
             </span>
         </label>
 
@@ -504,7 +512,7 @@
 
     <p class="hint">
         When using a username, only AniList entries with status <strong>CURRENT</strong> are included.
-        Only primary AniList titles are used. Very short titles are emitted exactly instead of as broad wildcards.
+        AniList synonyms are excluded by default. When enabled, only Latin-script-looking English/romaji synonyms are added. Very short titles are emitted exactly instead of as broad wildcards.
     </p>
 
     <div id="log" class="log"></div>
@@ -522,6 +530,7 @@
         singleShowInput: document.getElementById('singleShowInput'),
         generateSingleBtn: document.getElementById('generateSingleBtn'),
         includeNonAscii: document.getElementById('includeNonAscii'),
+        includeSynonyms: document.getElementById('includeSynonyms'),
         shortDescriptorVariants: document.getElementById('shortDescriptorVariants'),
         showLog: document.getElementById('showLog'),
         status: document.getElementById('status'),
@@ -858,12 +867,29 @@
         return options.includeNonAscii ? unique : unique.filter(isEnglishFriendly);
     }
 
+    // AniList synonyms are plain strings and do not include a language tag.
+    // Keep only Latin-script-looking alternatives so native-script synonyms are never added by this toggle.
+    function isEnglishOrRomajiSynonym(value) {
+        const text = String(value || '').trim();
+        if (!text || !isEnglishFriendly(text)) return false;
+
+        // Reject common non-Latin scripts. Latin letters with accents/macrons remain allowed.
+        return !/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff\u0590-\u05ff\u0e00-\u0e7f]/.test(text);
+    }
+
+    function collectAniListSynonyms(media, options) {
+        if (!options.includeSynonyms) return [];
+        const synonyms = Array.isArray(media?.synonyms) ? media.synonyms : [];
+        return uniqueNonEmpty(synonyms).filter(isEnglishOrRomajiSynonym);
+    }
+
     function collectAniListTitles(media, options) {
         const titles = [
             media.title?.romaji,
             media.title?.english,
             media.title?.userPreferred,
-            ...(options.includeNonAscii ? [media.title?.native] : [])
+            ...(options.includeNonAscii ? [media.title?.native] : []),
+            ...collectAniListSynonyms(media, options)
         ];
         return filterTitleListForAscii(titles, options);
     }
@@ -905,6 +931,7 @@
                     media {
                       id
                       title { romaji english native userPreferred }
+                      synonyms
                     }
                   
                   }
@@ -975,8 +1002,8 @@
               Media(id: $id, type: ANIME) {
                 id
                 title { romaji english native userPreferred }
-         
-             }
+                synonyms
+              }
             }
         `;
         try {
@@ -1228,7 +1255,7 @@
             mediaList.forEach(media => {
                 const titles = collectAniListTitles(media, options);
                 mediaTitleMap.set(media.id, titles);
-                logLine(`${displayNameForMedia(media)}: ${titles.length} primary AniList title${titles.length === 1 ? '' : 's'}.`, 'ok');
+                logLine(`${displayNameForMedia(media)}: ${titles.length} usable AniList name${titles.length === 1 ? '' : 's'}.`, 'ok');
             });
         }
 
@@ -1310,7 +1337,7 @@
                 statusMessage += `. Ignored ${unmatchedPastedCount.toLocaleString()} pasted name${unmatchedPastedCount === 1 ? '' : 's'} not found in CURRENT`;
             }
         } else {
-            statusMessage += ', using primary AniList titles';
+            statusMessage += ', using AniList titles';
         }
 
         statusMessage += ` (${final.length.toLocaleString()} characters).`;
@@ -1344,6 +1371,7 @@
         const seasonalTruthTitles = parseSeasonalTruthInput(rawSeasonalTruth);
         const options = {
             includeNonAscii: els.includeNonAscii.checked,
+            includeSynonyms: els.includeSynonyms.checked,
             shortDescriptorVariants: els.shortDescriptorVariants.checked,
             seasonalTruthTitles
         };
@@ -1383,6 +1411,7 @@
 
         const options = {
             includeNonAscii: els.includeNonAscii.checked,
+            includeSynonyms: els.includeSynonyms.checked,
             shortDescriptorVariants: els.shortDescriptorVariants.checked
         };
         resetUi();
