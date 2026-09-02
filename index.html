@@ -132,6 +132,41 @@
 
     .config-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
 
+    .schedule-override-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.18);
+      overflow: hidden;
+    }
+    .schedule-override-panel > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    .schedule-override-panel > summary::-webkit-details-marker { display: none; }
+    .schedule-override-panel[open] .manager-toggle-icon { transform: rotate(180deg); }
+    .schedule-override-body {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .schedule-override-body textarea {
+      min-height: 210px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .schedule-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .schedule-status { color: var(--text-muted); font-size: 0.82rem; font-weight: 600; }
+    .schedule-status.ok { color: var(--ok); }
+    .schedule-status.warning { color: var(--warn); }
+
     @media (min-width: 768px) {
       .config-grid { grid-template-columns: repeat(2, 1fr); }
     }
@@ -151,7 +186,7 @@
       font-size: 1rem;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    input[type="text"]:focus, input[type="time"]:focus, select:focus {
+    input[type="text"]:focus, input[type="time"]:focus, select:focus, textarea:focus {
       border-color: rgba(255,255,255,0.4);
       box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
     }
@@ -677,6 +712,31 @@
             <label for="rssProxyTemplate">RSS Proxy (Optional)</label>
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
+
+          <details class="schedule-override-panel" id="scheduleOverridePanel" style="grid-column: 1 / -1;">
+            <summary>
+              <div>
+                <div style="font-weight: 800;">Pasted SubsPlease Timetable</div>
+                <div class="manager-toggle-copy">Emergency global schedule override when RSS access is unavailable.</div>
+              </div>
+              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+            </summary>
+            <div class="schedule-override-body">
+              <label class="toggle">
+                <input id="scheduleOverrideEnabled" type="checkbox" />
+                Use pasted timetable as the global automatic schedule
+              </label>
+              <div class="modal-note">
+                Paste the copied SubsPlease timetable with weekday headings and times. Individual show overrides still take priority; the existing RSS and AniList logic remains the fallback for unmatched shows.
+              </div>
+              <textarea id="scheduleOverrideText" rows="10" spellcheck="false" placeholder="Monday&#10;Show Name 18:30&#10;Another Show 20:00&#10;&#10;Tuesday&#10;Third Show 17:45"></textarea>
+              <div class="schedule-actions">
+                <button id="applyScheduleOverrideBtn" class="primary" type="button">Apply Timetable</button>
+                <button id="clearScheduleOverrideBtn" class="secondary" type="button">Clear Timetable</button>
+                <span id="scheduleOverrideStatus" class="schedule-status">No pasted timetable.</span>
+              </div>
+            </div>
+          </details>
         </div>
         
         <div id="message" class="message" aria-live="polite"></div>
@@ -1000,6 +1060,12 @@
       username: document.getElementById("username"),
       rssUrl: document.getElementById("rssUrl"),
       rssProxyTemplate: document.getElementById("rssProxyTemplate"),
+      scheduleOverridePanel: document.getElementById("scheduleOverridePanel"),
+      scheduleOverrideEnabled: document.getElementById("scheduleOverrideEnabled"),
+      scheduleOverrideText: document.getElementById("scheduleOverrideText"),
+      applyScheduleOverrideBtn: document.getElementById("applyScheduleOverrideBtn"),
+      clearScheduleOverrideBtn: document.getElementById("clearScheduleOverrideBtn"),
+      scheduleOverrideStatus: document.getElementById("scheduleOverrideStatus"),
       loadBtn: document.getElementById("loadBtn"),
       clearMemoryBtn: document.getElementById("clearMemoryBtn"),
       addShowSearch: document.getElementById("addShowSearch"),
@@ -1051,13 +1117,16 @@
       searchToken: 0,
       lastSuccessfulLoadAt: 0,
       lastRssReleaseAt: 0,
+      pastedScheduleEnabled: false,
+      pastedScheduleEntries: [],
+      pastedScheduleIgnoredLines: 0,
       isLoading: false,
       activeSettingsId: null,
       healthStatus: "healthy",
       lastNextSlotKey: null,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
       expandedDays: new Set(),
-      selectedDay: loadSelectedDay()
+      selectedDay: "Full Week"
     };
 
     showMessage("info", "Ready.");
@@ -1370,6 +1439,150 @@
       return Array.from(variants).filter(Boolean);
     }
 
+    function normalizeScheduleDay(value, fallback = null, timeZone = DEFAULT_TIMEZONE) {
+      const text = String(value || "").trim().toLowerCase();
+      if (!text) return fallback;
+      if (/\btoday\b/.test(text)) {
+        return new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(new Date());
+      }
+      const aliases = {
+        mon: "Monday", monday: "Monday",
+        tue: "Tuesday", tues: "Tuesday", tuesday: "Tuesday",
+        wed: "Wednesday", weds: "Wednesday", wednesday: "Wednesday",
+        thu: "Thursday", thur: "Thursday", thurs: "Thursday", thursday: "Thursday",
+        fri: "Friday", friday: "Friday",
+        sat: "Saturday", saturday: "Saturday",
+        sun: "Sunday", sunday: "Sunday"
+      };
+      const match = text.match(/\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i);
+      return match ? (aliases[match[1].toLowerCase()] || fallback) : fallback;
+    }
+
+    function normalizeScheduleTime(value) {
+      const text = String(value || "").trim().toLowerCase();
+      const match = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?\b/i);
+      if (!match) return null;
+      let hour = Number(match[1]);
+      const minute = Number(match[2]);
+      const meridiem = String(match[3] || "").toLowerCase();
+      if (meridiem) {
+        if (hour < 1 || hour > 12) return null;
+        if (meridiem === "am" && hour === 12) hour = 0;
+        if (meridiem === "pm" && hour !== 12) hour += 12;
+      }
+      if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23) return null;
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+
+    function isScheduleNoiseLine(value) {
+      const text = String(value || "").trim().toLowerCase();
+      if (!text) return true;
+      return /^(schedule|shows|packlist|irc|discord|rss|time|airtime|download|subsplease|dark mode|new and hot|see more)$/i.test(text) ||
+        /^(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(text);
+    }
+
+    function cleanScheduleTitle(value) {
+      return String(value || "")
+        .replace(/^[\s\-–—•·*|]+/u, "")
+        .replace(/[\s\-–—|]+$/u, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function parsePastedSchedule(rawText, timeZone = DEFAULT_TIMEZONE) {
+      const lines = String(rawText || "")
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map(line => line.replace(/\u00a0/g, " ").replace(/\t+/g, "  ").trim())
+        .filter(Boolean);
+
+      const entries = [];
+      let currentDay = null;
+      let pendingTitle = "";
+      let ignoredLines = 0;
+
+      for (const originalLine of lines) {
+        const line = originalLine.replace(/\s+/g, " ").trim();
+        const lineDay = normalizeScheduleDay(line, null, timeZone);
+        const timeMatch = line.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\s*(?:am|pm)?\b/i);
+        const normalizedTime = timeMatch ? normalizeScheduleTime(timeMatch[0]) : null;
+        const looksLikeHeading = Boolean(lineDay) && !normalizedTime &&
+          (line.length <= 24 || /schedule|airtime|today/i.test(line));
+
+        if (looksLikeHeading) {
+          currentDay = lineDay;
+          pendingTitle = "";
+          continue;
+        }
+
+        if (normalizedTime) {
+          const effectiveDay = lineDay || currentDay || normalizeScheduleDay("today", "Monday", timeZone);
+          let title = line.replace(timeMatch[0], " ");
+          if (lineDay) {
+            title = title.replace(/\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/ig, " ");
+          }
+          title = cleanScheduleTitle(title);
+          if (!title) title = cleanScheduleTitle(pendingTitle);
+
+          if (title && !isScheduleNoiseLine(title)) {
+            entries.push({
+              title,
+              day: effectiveDay,
+              time: normalizedTime,
+              variants: generateVariants([title]).map(prepareVariant)
+            });
+            pendingTitle = "";
+          } else {
+            ignoredLines++;
+          }
+          continue;
+        }
+
+        if (lineDay && /schedule|airtime|today/i.test(line)) {
+          currentDay = lineDay;
+          pendingTitle = "";
+          continue;
+        }
+
+        if (!isScheduleNoiseLine(line)) {
+          pendingTitle = cleanScheduleTitle(line);
+        } else {
+          ignoredLines++;
+        }
+      }
+
+      const deduped = new Map();
+      for (const entry of entries) {
+        const key = `${normalizeTitle(entry.title)}::${entry.day}`;
+        if (!deduped.has(key)) deduped.set(key, entry);
+      }
+
+      return { entries: Array.from(deduped.values()), ignoredLines };
+    }
+
+    function tryMatchPastedSchedule(media, scheduleEntries) {
+      if (!state.pastedScheduleEnabled || !Array.isArray(scheduleEntries) || !scheduleEntries.length) return null;
+      const variants = titleVariants(media);
+      let best = null;
+      let bestScore = 0;
+      for (const candidate of scheduleEntries) {
+        const score = scoreMatch(candidate, variants);
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+      if (!best || bestScore < 70 || !WEEKDAYS.includes(best.day) || !isValidTime(best.time)) return null;
+      return {
+        day: best.day,
+        time: best.time,
+        source: "schedule",
+        sampleCount: 1,
+        matchedTitle: best.title,
+        matchScore: bestScore
+      };
+    }
+
     function extractSeasonNumber(text) {
       const normalized = normalizeTitle(text);
       const match = normalized.match(/\bs(\d+)\b|\bseason\s*(\d+)\b/);
@@ -1630,11 +1843,75 @@
 
     function loadPageSettings() { return loadJSON(PAGE_SETTINGS_KEY, {}); }
 
+    function setPastedScheduleStatus(text, mode = "") {
+      if (!els.scheduleOverrideStatus) return;
+      els.scheduleOverrideStatus.textContent = text;
+      els.scheduleOverrideStatus.className = `schedule-status ${mode}`.trim();
+    }
+
+    function syncPastedScheduleStateFromInputs(options = {}) {
+      const rawText = String(els.scheduleOverrideText?.value || "");
+      const parsed = parsePastedSchedule(rawText, DEFAULT_TIMEZONE);
+      const enabled = options.forceEnable
+        ? parsed.entries.length > 0
+        : Boolean(els.scheduleOverrideEnabled?.checked);
+
+      if (els.scheduleOverrideEnabled && options.forceEnable) {
+        els.scheduleOverrideEnabled.checked = enabled;
+      }
+
+      state.pastedScheduleEnabled = enabled;
+      state.pastedScheduleEntries = parsed.entries;
+      state.pastedScheduleIgnoredLines = parsed.ignoredLines;
+      renderPastedScheduleStatus();
+      return parsed;
+    }
+
+    function renderPastedScheduleStatus() {
+      if (!els.scheduleOverrideStatus) return;
+      const parsedCount = state.pastedScheduleEntries.length;
+      const matchedCount = (state.items || []).filter(item => item.source === "schedule").length;
+
+      if (!String(els.scheduleOverrideText?.value || "").trim()) {
+        setPastedScheduleStatus("No pasted timetable.");
+      } else if (!parsedCount) {
+        setPastedScheduleStatus("No valid weekday/time rows found.", "warning");
+      } else if (!state.pastedScheduleEnabled) {
+        setPastedScheduleStatus(`Parsed ${parsedCount} rows · currently disabled.`);
+      } else {
+        const ignored = state.pastedScheduleIgnoredLines ? ` · ${state.pastedScheduleIgnoredLines} lines ignored` : "";
+        setPastedScheduleStatus(`Active · ${parsedCount} rows parsed · ${matchedCount} shows matched${ignored}`, "ok");
+      }
+    }
+
+    async function applyPastedScheduleOverride() {
+      const parsed = syncPastedScheduleStateFromInputs({ forceEnable: true });
+      savePageSettings();
+      if (!parsed.entries.length) {
+        showMessage("error", "No valid timetable rows were found. Include a weekday heading and a time such as 18:30.");
+        return;
+      }
+      if (state.userName) await refreshBoardFromState();
+      renderPastedScheduleStatus();
+      showMessage("info", `Pasted timetable enabled with ${parsed.entries.length} schedule rows.`);
+    }
+
+    async function clearPastedScheduleOverride() {
+      if (els.scheduleOverrideText) els.scheduleOverrideText.value = "";
+      if (els.scheduleOverrideEnabled) els.scheduleOverrideEnabled.checked = false;
+      syncPastedScheduleStateFromInputs();
+      savePageSettings();
+      if (state.userName) await refreshBoardFromState();
+      showMessage("info", "Pasted timetable cleared. Automatic schedule detection is active.");
+    }
+
     function savePageSettings() {
       saveJSON(PAGE_SETTINGS_KEY, {
         userName: els.username.value.trim(),
         rssUrl: els.rssUrl.value.trim(),
-        rssProxyTemplate: els.rssProxyTemplate.value.trim()
+        rssProxyTemplate: els.rssProxyTemplate.value.trim(),
+        pastedScheduleEnabled: Boolean(els.scheduleOverrideEnabled?.checked),
+        pastedScheduleText: String(els.scheduleOverrideText?.value || "")
       });
     }
 
@@ -1643,6 +1920,13 @@
       if (settings.userName) els.username.value = settings.userName;
       if (settings.rssUrl) els.rssUrl.value = settings.rssUrl;
       if (settings.rssProxyTemplate) els.rssProxyTemplate.value = settings.rssProxyTemplate;
+      if (els.scheduleOverrideText && typeof settings.pastedScheduleText === "string") {
+        els.scheduleOverrideText.value = settings.pastedScheduleText;
+      }
+      if (els.scheduleOverrideEnabled) {
+        els.scheduleOverrideEnabled.checked = Boolean(settings.pastedScheduleEnabled);
+      }
+      syncPastedScheduleStateFromInputs();
     }
 
     async function loadBoardSnapshot() { return await loadStateDB(BOARD_SNAPSHOT_KEY, null); }
@@ -1971,10 +2255,35 @@
       const rssFinalReleaseSeen = isFinalEpisode && usesRssFinalTiming &&
         Number(options.matchedEpisode) === totalEpisode;
 
+      // AniList advances nextAiringEpisode to the finale as soon as the penultimate
+      // episode airs. Keep showing the penultimate episode for the rest of that
+      // local calendar day, then reveal the finale starting the following day.
+      const matchedEpisode = Number(options.matchedEpisode);
+      const latestReleaseDateMs = Number(options.latestReleaseDate);
+      const penultimateReleaseSeen = isFinalEpisode &&
+        Number.isFinite(matchedEpisode) &&
+        matchedEpisode === (totalEpisode - 1) &&
+        Number.isFinite(latestReleaseDateMs) &&
+        latestReleaseDateMs > 0;
+      const penultimateReleaseDateKey = penultimateReleaseSeen
+        ? localDateKeyFromMs(latestReleaseDateMs, timeZone)
+        : "";
+      const todayDateKey = localDateKeyFromMs(nowSeconds * 1000, timeZone);
+      const holdBackFinalToday = Boolean(
+        penultimateReleaseSeen &&
+        penultimateReleaseDateKey &&
+        todayDateKey === penultimateReleaseDateKey &&
+        !finalAiringHasActuallyPassed
+      );
+      const isFinalDisplayActive = isFinalEpisode && !holdBackFinalToday;
+
       return {
-        displayEpisode: hasNextEpisode ? nextEpisode : "?",
-        episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
+        displayEpisode: hasNextEpisode
+          ? (holdBackFinalToday ? matchedEpisode : nextEpisode)
+          : "?",
+        episodeBasis: holdBackFinalToday ? "rss-penultimate-holdback" : (hasNextEpisode ? "anilist-next" : "unknown"),
         isFinalEpisode,
+        isFinalDisplayActive,
         isFinalAired: finalAiringHasActuallyPassed,
         isEnded: finalAiringHasActuallyPassed,
         finalAiredAtMs: Number.isFinite(finalAiredAtMs) ? finalAiredAtMs : null,
@@ -2097,6 +2406,7 @@
         const cover = coverForMedia(media);
         const shared = getSharedEpisodeAndScheduleState(media);
         const rssCandidateForFinal = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
+        const pastedSchedule = tryMatchPastedSchedule(media, state.pastedScheduleEntries);
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
@@ -2125,13 +2435,57 @@
             totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
             displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
             isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays, isUpcomingSeason: shared.isUpcomingSeason,
-            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
-            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
+            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
             matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
             latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
             latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
             latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
             isFreshRss: isFreshRss || false,
+            finalAiredAtMs: episodeState.finalAiredAtMs,
+            usesRssFinalTiming: episodeState.usesRssFinalTiming,
+            rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
+            nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
+          });
+          continue;
+        }
+
+        if (pastedSchedule) {
+          const isFreshRss = rssCandidateForFinal?.latestReleaseDate && (Date.now() - rssCandidateForFinal.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
+          const episodeState = resolveEpisodeDisplayState({
+            nextEpisodeNumber: shared.nextEpisodeNumber,
+            totalEpisodeNumber: shared.totalEpisodeNumber,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate,
+            day: pastedSchedule.day,
+            time: pastedSchedule.time,
+            finalTimingDay: pastedSchedule.day,
+            finalTimingTime: pastedSchedule.time,
+            nextAiringAt: shared.nextAiringAt,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isScheduleMoved: shared.isScheduleMoved,
+            useRssFinalTiming: true,
+            timeZone,
+            nowSeconds
+          });
+
+          items.push({
+            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: pastedSchedule.day, time: pastedSchedule.time,
+            format: media.format || "", source: "schedule", sampleCount: 1,
+            matchedTitle: pastedSchedule.matchedTitle || "", scheduleMatchScore: pastedSchedule.matchScore || 0,
+            matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
+            latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
+            latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
+            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
+            isFreshRss: isFreshRss || false,
+            isAdded: Boolean(state.addedShows[String(media.id)]),
+            hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
+            totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
+            displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
+            isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
+            isUpcomingSeason: shared.isUpcomingSeason,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
+            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
             finalAiredAtMs: episodeState.finalAiredAtMs,
             usesRssFinalTiming: episodeState.usesRssFinalTiming,
             rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
@@ -2175,8 +2529,8 @@
             displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
             isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
             isUpcomingSeason: shared.isUpcomingSeason,
-            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
-            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
+            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
             finalAiredAtMs: episodeState.finalAiredAtMs,
             usesRssFinalTiming: episodeState.usesRssFinalTiming,
             rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
@@ -2209,6 +2563,13 @@
         
         if (!item.isUpcomingSeason && item.diffDays < 7) {
           entry.wasDelayed = false;
+        }
+
+        if (item.source === "schedule") {
+          // Keep pasted timetable values transient so they override old RSS history
+          // without destroying that history when the timetable is disabled later.
+          output.push(item);
+          continue;
         }
 
         if (item.source === "rss") {
@@ -2508,28 +2869,13 @@
 
       const todayIdx = getNowContext(DEFAULT_TIMEZONE).dayIndex;
       const todayName = WEEKDAYS[todayIdx];
-      const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
-      const isFullWeek = effectiveDay === "Full Week";
-
-      const daysList = ["Full Week", "Today"];
-
-      const dayOptions = daysList.map(d => {
-          let val = d;
-          let display = d;
-          if (d === "Today") {
-              display = `Today <span class="sub">${todayName.slice(0,3)}</span>`;
-          }
-          const isSel = (state.selectedDay === val);
-          return `<button class="day-pill ${isSel ? 'active' : ''}" data-value="${escapeHtml(val)}">${display}</button>`;
-      }).join("");
+      const effectiveDay = "Full Week";
+      const isFullWeek = true;
 
       let html = `
         <div class="header-area">
-          <div class="header-top-row">
+          <div class="header-top-row" style="margin-bottom: 0;">
             <h1 class="title">Currently Airing</h1>
-          </div>
-          <div class="day-pills-container" id="daySelectContainer">
-              ${dayOptions}
           </div>
         </div>
       `;
@@ -2602,16 +2948,6 @@
       els.boardContainer.innerHTML = html;
       loadImagesToDOM();
 
-      const dayContainer = document.getElementById("daySelectContainer");
-      if (dayContainer) {
-        dayContainer.addEventListener("click", (e) => {
-          const btn = e.target.closest(".day-pill");
-          if (!btn) return;
-          state.selectedDay = btn.dataset.value;
-          saveSelectedDay(state.selectedDay);
-          renderBoard(state.items);
-        });
-      }
     }
 
     function topLeftBadgeHTML(item) {
@@ -2640,13 +2976,13 @@
       const coverUrl = item.cover || "";
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
-      const isFinal = Boolean(item.isFinalEpisode || item.isFinalAired || item.isFinalHoldover);
+      const isFinal = Boolean(item.isFinalDisplayActive || item.isFinalAired || item.isFinalHoldover);
       let isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
       if (item.isFinalHoldover) {
         isEnded = false;   // keep the card alive (no greying, episode still visible)
       }
 
-      const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
+      const showFinalDot = Boolean(item.isFinalDisplayActive && !isEnded);
       const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
       const episodeHTML = shouldShowEpisode
@@ -2851,6 +3187,7 @@
       state.items = [...cachedWithoutVisibleHoldovers, ...visibleFinalHoldovers].sort((a, b) =>
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
+      renderPastedScheduleStatus();
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
@@ -3184,6 +3521,7 @@
       if (state.isLoading) return false;
 
       state.isLoading = true;
+      syncPastedScheduleStateFromInputs();
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
@@ -3206,6 +3544,8 @@
         ]);
 
         const nextNotes = [];
+        const hasPastedScheduleOverride = state.pastedScheduleEnabled && state.pastedScheduleEntries.length > 0;
+        let pastedScheduleFallbackUsed = false;
         let nextCurrentEntries = state.currentEntries || [];
 
         if (aniListResult.status === "fulfilled") {
@@ -3223,7 +3563,8 @@
 
           for (const feed of rssResult.value || []) {
             if (!feed.ok) {
-              nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
+              if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
+              else nextNotes.push(`SubsPlease ${feed.url}: ${feed.error}`);
               continue;
             }
 
@@ -3249,11 +3590,13 @@
           
           const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
           if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
-            nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+            if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
+            else nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
           }
 
         } else {
-          nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
+          if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
+          else nextNotes.push(`SubsPlease: ${rssResult.reason?.message || "RSS request failed."}`);
         }
 
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
@@ -3291,6 +3634,7 @@
         showMessage(
           "info",
           `Found ${state.totalAniListEntries} AniList entries.` +
+          (pastedScheduleFallbackUsed ? `\n\nPasted timetable override is active; RSS availability did not affect the schedule.` : "") +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
         );
         return true;
@@ -3416,6 +3760,29 @@
     });
     els.loadBtn.addEventListener("click", async () => await loadBoard());
 
+    if (els.applyScheduleOverrideBtn) {
+      els.applyScheduleOverrideBtn.addEventListener("click", applyPastedScheduleOverride);
+    }
+    if (els.clearScheduleOverrideBtn) {
+      els.clearScheduleOverrideBtn.addEventListener("click", clearPastedScheduleOverride);
+    }
+    if (els.scheduleOverrideEnabled) {
+      els.scheduleOverrideEnabled.addEventListener("change", async () => {
+        syncPastedScheduleStateFromInputs();
+        savePageSettings();
+        if (state.userName) await refreshBoardFromState();
+      });
+    }
+    if (els.scheduleOverrideText) {
+      els.scheduleOverrideText.addEventListener("keydown", async event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          await applyPastedScheduleOverride();
+        }
+      });
+      els.scheduleOverrideText.addEventListener("blur", savePageSettings);
+    }
+
     if (els.clearMemoryBtn) {
       els.clearMemoryBtn.addEventListener("click", async () => {
         const scopedUser = state.userName || els.username.value.trim();
@@ -3449,6 +3816,10 @@
     });
 
     document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+    });
+
+    window.addEventListener("pageshow", () => {
       if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
     });
 
