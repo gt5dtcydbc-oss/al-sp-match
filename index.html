@@ -2292,6 +2292,43 @@
       };
     }
 
+    function updateFinaleTransitionDotState(item, cacheEntry, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      const nextEpisode = Number(item?.aniListNextEpisode);
+      const totalEpisodes = Number(item?.totalEpisodeNumber);
+      const previousNextEpisode = Number(cacheEntry?.lastAniListNextEpisode);
+      const todayDateKey = localDateKeyFromMs(nowMs, timeZone);
+      const isFinalEpisode = Number.isFinite(nextEpisode) && nextEpisode > 0 &&
+        Number.isFinite(totalEpisodes) && totalEpisodes > 0 &&
+        nextEpisode === totalEpisodes;
+
+      // Remember the local date on which AniList first advances into the finale.
+      // The render layer uses this to hide only the finale dot for that date.
+      if (
+        isFinalEpisode &&
+        Number.isFinite(previousNextEpisode) &&
+        previousNextEpisode > 0 &&
+        previousNextEpisode < totalEpisodes &&
+        todayDateKey
+      ) {
+        cacheEntry.finaleTransitionDateKey = todayDateKey;
+      } else if (!isFinalEpisode) {
+        delete cacheEntry.finaleTransitionDateKey;
+      }
+
+      if (cacheEntry.finaleTransitionDateKey && cacheEntry.finaleTransitionDateKey !== todayDateKey) {
+        delete cacheEntry.finaleTransitionDateKey;
+      }
+
+      if (Number.isFinite(nextEpisode) && nextEpisode > 0) {
+        cacheEntry.lastAniListNextEpisode = nextEpisode;
+      }
+
+      item.finaleTransitionDateKey = cacheEntry.finaleTransitionDateKey || "";
+      item.suppressFinalDotToday = Boolean(
+        isFinalEpisode && todayDateKey && cacheEntry.finaleTransitionDateKey === todayDateKey
+      );
+    }
+
     function overrideForMediaId(mediaId) {
       const override = state.overrides?.[String(mediaId)];
       if (!override) return null;
@@ -2551,6 +2588,8 @@
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
 
+        updateFinaleTransitionDotState(item, entry, DEFAULT_TIMEZONE);
+
         if (item.isUpcomingSeason) {
           entry.wasDelayed = false;
         } else if (item.diffDays > 7) {
@@ -2568,6 +2607,8 @@
         if (item.source === "schedule") {
           // Keep pasted timetable values transient so they override old RSS history
           // without destroying that history when the timetable is disabled later.
+          // Only the generic episode-transition fields above are persisted.
+          cache[key] = { ...entry };
           output.push(item);
           continue;
         }
@@ -2982,7 +3023,7 @@
         isEnded = false;   // keep the card alive (no greying, episode still visible)
       }
 
-      const showFinalDot = Boolean(item.isFinalDisplayActive && !isEnded);
+      const showFinalDot = Boolean(item.isFinalDisplayActive && !item.suppressFinalDotToday && !isEnded);
       const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
       const episodeHTML = shouldShowEpisode
