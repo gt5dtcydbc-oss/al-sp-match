@@ -2296,13 +2296,20 @@
       const nextEpisode = Number(item?.aniListNextEpisode);
       const totalEpisodes = Number(item?.totalEpisodeNumber);
       const previousNextEpisode = Number(cacheEntry?.lastAniListNextEpisode);
+      const matchedEpisode = Number(item?.matchedEpisode);
+      const latestReleaseDateMs = Number(item?.latestReleaseDate);
       const todayDateKey = localDateKeyFromMs(nowMs, timeZone);
       const isFinalEpisode = Number.isFinite(nextEpisode) && nextEpisode > 0 &&
         Number.isFinite(totalEpisodes) && totalEpisodes > 0 &&
         nextEpisode === totalEpisodes;
+      const penultimateReleaseDateKey = isFinalEpisode &&
+        Number.isFinite(matchedEpisode) && matchedEpisode === (totalEpisodes - 1) &&
+        Number.isFinite(latestReleaseDateMs) && latestReleaseDateMs > 0
+        ? localDateKeyFromMs(latestReleaseDateMs, timeZone)
+        : "";
 
-      // Remember the local date on which AniList first advances into the finale.
-      // The render layer uses this to hide only the finale dot for that date.
+      // Prefer the RSS date when it proves when the penultimate episode released.
+      // This avoids hiding the dot for an extra day when the app was closed during the transition.
       if (
         isFinalEpisode &&
         Number.isFinite(previousNextEpisode) &&
@@ -2310,7 +2317,7 @@
         previousNextEpisode < totalEpisodes &&
         todayDateKey
       ) {
-        cacheEntry.finaleTransitionDateKey = todayDateKey;
+        cacheEntry.finaleTransitionDateKey = penultimateReleaseDateKey || todayDateKey;
       } else if (!isFinalEpisode) {
         delete cacheEntry.finaleTransitionDateKey;
       }
@@ -2625,8 +2632,13 @@
           else trackerEp = "?";
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+          const ignoredRssEpisode = String(entry.ignoredRssEpisode || "");
+          const isIgnoredRssEpisode = Boolean(ignoredRssEpisode && ignoredRssEpisode === trackerEp);
+          if (ignoredRssEpisode && ignoredRssEpisode !== trackerEp) {
+            delete entry.ignoredRssEpisode;
+          }
 
-          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode && !isIgnoredRssEpisode) {
             entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
             if (entry.history.length > 3) entry.history.shift();
           }
@@ -2929,7 +2941,7 @@
           const hasVisibleFinalHoldover = dayItems.some(i => Boolean(i.isFinalHoldover || i.isFinalAired));
 
           let isAutoCollapsed = false;
-          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
+          if (dayBlock.day === todayName && !hasVisibleFinalHoldover && !state.expandedDays?.has(dayBlock.day)) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
             for (const slot of dayBlock.slots) {
@@ -3434,10 +3446,12 @@
 
       const history = entry.history.slice();
       const removedSample = history.pop();
+      const removedEpisode = String(removedSample?.episode || "");
 
       if (history.length) {
         entry.history = history;
         entry.sampleCount = history.length;
+        if (removedEpisode) entry.ignoredRssEpisode = removedEpisode;
 
         const validMinutes = history
           .map(sample => Number(sample?.mins))
@@ -3450,7 +3464,16 @@
         entry.updatedAt = new Date().toISOString();
         cache[id] = entry;
       } else {
-        delete cache[id];
+        const transitionState = {};
+        if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
+          transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
+        }
+        if (entry.finaleTransitionDateKey) {
+          transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
+        }
+        if (removedEpisode) transitionState.ignoredRssEpisode = removedEpisode;
+        if (Object.keys(transitionState).length) cache[id] = transitionState;
+        else delete cache[id];
       }
 
       await saveSlotCache(state.userName, cache);
@@ -3641,6 +3664,7 @@
         }
 
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
+        let removedFinishedAddedShow = false;
         if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
           try {
             const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
@@ -3650,7 +3674,12 @@
               if (m.status === "FINISHED" || m.status === "CANCELLED") {
                 delete nextAddedShows[String(m.id)];
                 delete nextOverrides[String(m.id)];
+                removedFinishedAddedShow = true;
               }
+            }
+            if (removedFinishedAddedShow) {
+              await saveAddedShows(userName, nextAddedShows);
+              await saveOverrides(userName, nextOverrides);
             }
           } catch(e) {
           }
@@ -3718,14 +3747,20 @@
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(async () => {
         const now = Date.now();
+        const todayDateKey = localDateKeyFromMs(now, DEFAULT_TIMEZONE);
         const finalDisplayNeedsRefresh = state.items.some(item => (
           item.isFinalEpisode &&
           !item.isFinalAired &&
           Number.isFinite(Number(item.finalAiredAtMs)) &&
           Number(item.finalAiredAtMs) <= now
         ));
+        const finaleDotDateRolledOver = state.items.some(item => (
+          item.suppressFinalDotToday &&
+          item.finaleTransitionDateKey &&
+          item.finaleTransitionDateKey !== todayDateKey
+        ));
 
-        if (finalDisplayNeedsRefresh) {
+        if (finalDisplayNeedsRefresh || finaleDotDateRolledOver) {
           await refreshBoardFromState();
         } else if (state.items.length) {
           updateBoardHighlights();
