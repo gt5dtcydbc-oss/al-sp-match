@@ -2256,8 +2256,8 @@
         Number(options.matchedEpisode) === totalEpisode;
 
       // AniList advances nextAiringEpisode to the finale as soon as the penultimate
-      // episode airs. Keep showing the penultimate episode for the rest of that
-      // local calendar day, then reveal the finale starting the following day.
+      // episode airs. Advance the episode counter immediately, but suppress only
+      // the finale dot for the rest of that local calendar day.
       const matchedEpisode = Number(options.matchedEpisode);
       const latestReleaseDateMs = Number(options.latestReleaseDate);
       const penultimateReleaseSeen = isFinalEpisode &&
@@ -2269,19 +2269,17 @@
         ? localDateKeyFromMs(latestReleaseDateMs, timeZone)
         : "";
       const todayDateKey = localDateKeyFromMs(nowSeconds * 1000, timeZone);
-      const holdBackFinalToday = Boolean(
+      const suppressFinalMarkerToday = Boolean(
         penultimateReleaseSeen &&
         penultimateReleaseDateKey &&
         todayDateKey === penultimateReleaseDateKey &&
         !finalAiringHasActuallyPassed
       );
-      const isFinalDisplayActive = isFinalEpisode && !holdBackFinalToday;
+      const isFinalDisplayActive = isFinalEpisode && !suppressFinalMarkerToday;
 
       return {
-        displayEpisode: hasNextEpisode
-          ? (holdBackFinalToday ? matchedEpisode : nextEpisode)
-          : "?",
-        episodeBasis: holdBackFinalToday ? "rss-penultimate-holdback" : (hasNextEpisode ? "anilist-next" : "unknown"),
+        displayEpisode: hasNextEpisode ? nextEpisode : "?",
+        episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
         isFinalEpisode,
         isFinalDisplayActive,
         isFinalAired: finalAiringHasActuallyPassed,
