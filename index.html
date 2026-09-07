@@ -822,6 +822,7 @@
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
+    const LEGACY_SLOT_CACHE_KEYS = ["anilist-subsplease-slot-cache-v2", "anilist-subsplease-slot-cache-v1"];
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const FINAL_HOLDOVERS_KEY = "airing-board-final-holdovers-v1";
@@ -903,10 +904,155 @@
     `;
 
     const DB_NAME = 'AiringBoardImages';
+    const DB_VERSION = 2;
     const STORE_NAME = 'covers';
     const STATE_STORE = 'appState';
     let dbPromise = null;
     let activeCoverObjectUrls = [];
+    let storagePersistenceRequested = false;
+
+    function makeStorageError(operation, key, cause) {
+      const detail = cause?.message || String(cause || "Unknown storage error");
+      const suffix = key ? ` for "${key}"` : "";
+      const error = new Error(`Browser storage ${operation} failed${suffix}: ${detail}`);
+      error.name = "AppStorageError";
+      error.operation = operation;
+      error.storageKey = key || "";
+      error.cause = cause;
+      return error;
+    }
+
+    function isStorageError(error) {
+      return error?.name === "AppStorageError";
+    }
+
+    function requestResult(request, operation, key = "") {
+      return new Promise((resolve, reject) => {
+        request.addEventListener("success", () => resolve(request.result), { once: true });
+        request.addEventListener("error", () => {
+          reject(makeStorageError(operation, key, request.error || new Error("Request failed.")));
+        }, { once: true });
+      });
+    }
+
+    function transactionDone(transaction, operation, key = "") {
+      return new Promise((resolve, reject) => {
+        transaction.addEventListener("complete", () => resolve(), { once: true });
+        transaction.addEventListener("abort", () => {
+          reject(makeStorageError(operation, key, transaction.error || new Error("Transaction aborted.")));
+        }, { once: true });
+      });
+    }
+
+    function getDB() {
+      if (!("indexedDB" in window)) {
+        return Promise.reject(makeStorageError("open", "", new Error("IndexedDB is unavailable in this browser context.")));
+      }
+
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          let settled = false;
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          const timeoutId = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            reject(makeStorageError("open", "", new Error("Opening IndexedDB timed out. Close other copies of this site and retry.")));
+          }, 12000);
+
+          const rejectOpen = (cause) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            reject(makeStorageError("open", "", cause));
+          };
+
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME);
+            }
+            if (!db.objectStoreNames.contains(STATE_STORE)) {
+              db.createObjectStore(STATE_STORE);
+            }
+          };
+
+          request.onblocked = () => {
+            rejectOpen(new Error("The database is blocked by another open copy of this site."));
+          };
+
+          request.onerror = () => {
+            rejectOpen(request.error || new Error("IndexedDB could not be opened."));
+          };
+
+          request.onsuccess = (event) => {
+            const db = event.target.result;
+            if (settled) {
+              db.close();
+              return;
+            }
+
+            settled = true;
+            clearTimeout(timeoutId);
+            db.onversionchange = () => {
+              db.close();
+              dbPromise = null;
+            };
+            resolve(db);
+          };
+        }).catch(error => {
+          dbPromise = null;
+          throw error;
+        });
+      }
+
+      return dbPromise;
+    }
+
+    async function readStoreValue(storeName, key, operation = "read") {
+      try {
+        const db = await getDB();
+        const transaction = db.transaction(storeName, "readonly");
+        const request = transaction.objectStore(storeName).get(key);
+        const [value] = await Promise.all([
+          requestResult(request, operation, key),
+          transactionDone(transaction, operation, key)
+        ]);
+        return { found: value !== undefined, value };
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError(operation, key, error);
+      }
+    }
+
+    async function writeStoreValue(storeName, key, value, operation = "write") {
+      try {
+        const db = await getDB();
+        const transaction = db.transaction(storeName, "readwrite");
+        const request = transaction.objectStore(storeName).put(value, key);
+        await Promise.all([
+          requestResult(request, operation, key),
+          transactionDone(transaction, operation, key)
+        ]);
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError(operation, key, error);
+      }
+    }
+
+    async function deleteStoreValue(storeName, key, operation = "delete") {
+      try {
+        const db = await getDB();
+        const transaction = db.transaction(storeName, "readwrite");
+        const request = transaction.objectStore(storeName).delete(key);
+        await Promise.all([
+          requestResult(request, operation, key),
+          transactionDone(transaction, operation, key)
+        ]);
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError(operation, key, error);
+      }
+    }
 
     function makeCachedCoverObjectUrl(blob) {
       const objectUrl = URL.createObjectURL(blob);
@@ -921,55 +1067,27 @@
       activeCoverObjectUrls = [];
     }
 
-    function getDB() {
-      if (!dbPromise) {
-        dbPromise = new Promise((resolve, reject) => {
-          const request = indexedDB.open(DB_NAME, 2);
-          request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-              db.createObjectStore(STORE_NAME);
-            }
-            if (!db.objectStoreNames.contains(STATE_STORE)) {
-              db.createObjectStore(STATE_STORE);
-            }
-          };
-          request.onsuccess = (e) => resolve(e.target.result);
-          request.onerror = (e) => reject(e.target.error);
-        });
-      }
-      return dbPromise;
-    }
-
     async function getCachedImage(id, url) {
       try {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const blob = await new Promise((resolve) => {
-          const req = store.get(id);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve(null);
-        });
-        if (blob) return makeCachedCoverObjectUrl(blob);
+        const cached = await readStoreValue(STORE_NAME, id, "read image cache");
+        if (cached.found && cached.value) return makeCachedCoverObjectUrl(cached.value);
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error();
-        const newBlob = await res.blob();
-        const txW = db.transaction(STORE_NAME, 'readwrite');
-        txW.objectStore(STORE_NAME).put(newBlob, id);
-        return makeCachedCoverObjectUrl(newBlob);
-      } catch (err) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Image request failed (${response.status}).`);
+        const blob = await response.blob();
+        await writeStoreValue(STORE_NAME, id, blob, "write image cache");
+        return makeCachedCoverObjectUrl(blob);
+      } catch (error) {
         return url;
       }
     }
 
     async function deleteCachedImage(id) {
       try {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).delete(id);
-      } catch (e) {}
+        await deleteStoreValue(STORE_NAME, id, "delete image cache");
+      } catch (error) {
+        console.warn("Could not delete cached cover image:", error);
+      }
     }
 
     async function loadImagesToDOM() {
@@ -985,51 +1103,126 @@
       }
     }
 
-    // STATE DB HELPERS
-    async function loadStateDB(key, fallback) {
+    function readLocalStorageCandidate(key) {
+      let raw = null;
       try {
-        const db = await getDB();
-        const tx = db.transaction(STATE_STORE, 'readonly');
-        const store = tx.objectStore(STATE_STORE);
-        const result = await new Promise((resolve) => {
-          const req = store.get(key);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve(undefined);
-        });
-        
-        if (result !== undefined) {
-          if (localStorage.getItem(key)) localStorage.removeItem(key);
-          return result;
-        }
-        
-        // Fallback to localStorage migration
-        const ls = localStorage.getItem(key);
-        if (ls) {
-          const parsed = JSON.parse(ls);
-          await saveStateDB(key, parsed);
-          localStorage.removeItem(key); 
-          return parsed;
-        }
-        return fallback;
-      } catch (e) {
-        return fallback;
+        raw = localStorage.getItem(key);
+      } catch (error) {
+        throw makeStorageError("read localStorage", key, error);
+      }
+
+      if (raw === null) return { found: false, value: undefined };
+
+      try {
+        return { found: true, value: JSON.parse(raw) };
+      } catch (error) {
+        // Keep malformed source data in place and stop before an empty fallback can replace it.
+        throw makeStorageError("parse localStorage", key, error);
       }
     }
 
-    async function saveStateDB(key, value) {
+    function removeLocalStorageKey(key, options = {}) {
       try {
-        const db = await getDB();
-        const tx = db.transaction(STATE_STORE, 'readwrite');
-        tx.objectStore(STATE_STORE).put(value, key);
-      } catch (e) {}
+        localStorage.removeItem(key);
+      } catch (error) {
+        const wrapped = makeStorageError("delete localStorage", key, error);
+        if (options.strict) throw wrapped;
+        console.warn(`Could not remove migrated localStorage key "${key}":`, wrapped);
+      }
+    }
+
+    async function readStateRecord(key) {
+      return await readStoreValue(STATE_STORE, key, "read state");
+    }
+
+    async function saveStateDB(key, value) {
+      await writeStoreValue(STATE_STORE, key, value, "write state");
     }
 
     async function deleteStateDB(key) {
+      await deleteStoreValue(STATE_STORE, key, "delete state");
+    }
+
+    async function commitMigratedState(targetKey, sourceKey, sourceKind, value) {
+      await saveStateDB(targetKey, value);
+      const verified = await readStateRecord(targetKey);
+      if (!verified.found) {
+        throw makeStorageError("verify migrated state", targetKey, new Error("The committed value could not be read back."));
+      }
+
+      if (sourceKind === "localStorage") {
+        removeLocalStorageKey(sourceKey);
+      } else if (sourceKind === "indexedDB" && sourceKey !== targetKey) {
+        try {
+          await deleteStateDB(sourceKey);
+        } catch (error) {
+          console.warn(`The legacy IndexedDB key "${sourceKey}" was retained after migration.`, error);
+        }
+      }
+
+      return verified.value;
+    }
+
+    // Missing keys use the supplied fallback. Actual read failures throw and must not
+    // be treated as empty state, preventing a transient storage error from overwriting saves.
+    async function loadStateDB(key, fallback, options = {}) {
+      const legacyKeys = Array.from(new Set(options.legacyKeys || []))
+        .map(value => String(value || "").trim())
+        .filter(value => value && value !== key);
+
+      const current = await readStateRecord(key);
+      if (current.found) {
+        // Cleanup is optional once the canonical IndexedDB value has been read successfully.
+        try {
+          if (readLocalStorageCandidate(key).found) removeLocalStorageKey(key);
+        } catch (error) {
+          console.warn(`Could not inspect obsolete localStorage key "${key}":`, error);
+        }
+        return current.value;
+      }
+
+      const currentLocal = readLocalStorageCandidate(key);
+      if (currentLocal.found) {
+        return await commitMigratedState(key, key, "localStorage", currentLocal.value);
+      }
+
+      for (const legacyKey of legacyKeys) {
+        const legacyRecord = await readStateRecord(legacyKey);
+        if (legacyRecord.found) {
+          return await commitMigratedState(key, legacyKey, "indexedDB", legacyRecord.value);
+        }
+
+        const legacyLocal = readLocalStorageCandidate(legacyKey);
+        if (legacyLocal.found) {
+          return await commitMigratedState(key, legacyKey, "localStorage", legacyLocal.value);
+        }
+      }
+
+      return fallback;
+    }
+
+    function requestPersistentStorage() {
+      if (storagePersistenceRequested) return;
+      if (!navigator.storage || typeof navigator.storage.persist !== "function") return;
+
+      storagePersistenceRequested = true;
       try {
-        const db = await getDB();
-        const tx = db.transaction(STATE_STORE, 'readwrite');
-        tx.objectStore(STATE_STORE).delete(key);
-      } catch (e) {}
+        Promise.resolve(navigator.storage.persist())
+          .then(granted => {
+            console.info(granted
+              ? "Persistent browser storage was granted."
+              : "Persistent browser storage was not granted; normal browser eviction rules still apply.");
+          })
+          .catch(error => console.warn("Persistent storage request failed:", error));
+      } catch (error) {
+        console.warn("Persistent storage request failed:", error);
+      }
+    }
+
+    function armPersistentStorageRequest() {
+      document.addEventListener("pointerdown", requestPersistentStorage, { once: true, capture: true, passive: true });
+      document.addEventListener("touchstart", requestPersistentStorage, { once: true, capture: true, passive: true });
+      document.addEventListener("keydown", requestPersistentStorage, { once: true, capture: true });
     }
 
     function loadJSON(key, fallback) {
@@ -1124,6 +1317,8 @@
       activeSettingsId: null,
       healthStatus: "healthy",
       lastNextSlotKey: null,
+      pendingAniListPruneSignature: "",
+      pendingAniListPruneCount: 0,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
       expandedDays: new Set(),
       selectedDay: "Full Week"
@@ -1140,6 +1335,20 @@
     function setUpdateIndicatorStatus(status = "ok") {
       if (!els.updateIndicator) return;
       els.updateIndicator.classList.toggle("error", status === "error");
+    }
+
+    function reportAppError(error, context = "Operation failed") {
+      const detail = error instanceof Error ? error.message : String(error || "Unknown error");
+      const message = isStorageError(error)
+        ? `${context}: browser storage could not be accessed. The app did not clear or replace the cache with an empty fallback. ${detail}`
+        : `${context}: ${detail}`;
+
+      console.error(context, error);
+      state.healthStatus = "unhealthy";
+      state.notes = [message];
+      setUpdateIndicatorStatus("error");
+      renderFooterStatus();
+      showMessage("error", message);
     }
 
     function timeAgo(ms) {
@@ -1929,7 +2138,14 @@
       syncPastedScheduleStateFromInputs();
     }
 
-    async function loadBoardSnapshot() { return await loadStateDB(BOARD_SNAPSHOT_KEY, null); }
+    async function loadBoardSnapshot() {
+      const snapshot = await loadStateDB(BOARD_SNAPSHOT_KEY, null);
+      if (snapshot !== null && (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot))) {
+        throw makeStorageError("validate state", BOARD_SNAPSHOT_KEY, new Error("Saved board snapshot has an unexpected format."));
+      }
+      return snapshot;
+    }
+
     async function saveBoardSnapshot() {
       const snapshot = {
         savedAt: Date.now(),
@@ -1947,7 +2163,10 @@
       await saveStateDB(BOARD_SNAPSHOT_KEY, snapshot);
       state.lastSuccessfulLoadAt = snapshot.savedAt;
     }
-    async function clearBoardSnapshot() { await deleteStateDB(BOARD_SNAPSHOT_KEY); }
+
+    async function clearBoardSnapshot() {
+      await deleteStateDB(BOARD_SNAPSHOT_KEY);
+    }
 
     async function hydrateBoardSnapshot() {
       const snapshot = await loadBoardSnapshot();
@@ -1974,30 +2193,73 @@
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       
       if (!Number.isFinite(snapshotSavedAt)) {
-        try {
-          const repairedSnapshot = { ...snapshot, savedAt: 0 };
-          await saveStateDB(BOARD_SNAPSHOT_KEY, repairedSnapshot);
-        } catch (_) {}
+        const repairedSnapshot = { ...snapshot, savedAt: 0 };
+        await saveStateDB(BOARD_SNAPSHOT_KEY, repairedSnapshot);
       }
       
-      await refreshBoardFromState();
+      // A cached snapshot is not proof of a complete current AniList response.
+      await refreshBoardFromState({ allowPrune: false });
       setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
 
-    async function loadSlotCache(userName) { return await loadStateDB(slotCacheScopeKey(userName), {}); }
-    async function saveSlotCache(userName, cache) { await saveStateDB(slotCacheScopeKey(userName), cache); }
-    async function clearSlotCache(userName) { await deleteStateDB(slotCacheScopeKey(userName)); }
-    
-    async function loadOverrides(userName) { return await loadStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), {}); }
-    async function saveOverrides(userName, overrides) { await saveStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides); }
-    
-    async function loadAddedShows(userName) { return await loadStateDB(scopedKey(ADDED_SHOWS_KEY, userName), {}); }
-    async function saveAddedShows(userName, addedShows) { await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
+    function legacySlotCacheKeys(userName) {
+      const scope = String(userName || "").trim().toLowerCase() || "default";
+      return Array.from(new Set([
+        SLOT_CACHE_KEY,
+        ...LEGACY_SLOT_CACHE_KEYS.flatMap(base => [`${base}:${scope}`, base])
+      ])).filter(key => key !== slotCacheScopeKey(userName));
+    }
 
-    async function loadFinalHoldovers(userName) { return await loadStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), {}); }
-    async function saveFinalHoldovers(userName, finalHoldovers) { await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers); }
+    async function loadObjectState(key, legacyKeys = []) {
+      const value = await loadStateDB(key, {}, { legacyKeys });
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw makeStorageError("validate state", key, new Error("Saved value has an unexpected format."));
+      }
+      return value;
+    }
+
+    async function loadSlotCache(userName) {
+      const key = slotCacheScopeKey(userName);
+      return await loadObjectState(key, legacySlotCacheKeys(userName));
+    }
+
+    async function saveSlotCache(userName, cache) {
+      if (!cache || typeof cache !== "object" || Array.isArray(cache)) {
+        throw makeStorageError("validate state", slotCacheScopeKey(userName), new Error("RSS cache must be an object."));
+      }
+      await saveStateDB(slotCacheScopeKey(userName), cache);
+    }
+
+    async function clearSlotCache(userName) {
+      const keys = [slotCacheScopeKey(userName), ...legacySlotCacheKeys(userName)];
+      for (const key of Array.from(new Set(keys))) {
+        await deleteStateDB(key);
+        removeLocalStorageKey(key, { strict: true });
+      }
+    }
+    
+    async function loadOverrides(userName) {
+      return await loadObjectState(scopedKey(MANUAL_OVERRIDE_KEY, userName));
+    }
+    async function saveOverrides(userName, overrides) {
+      await saveStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides);
+    }
+    
+    async function loadAddedShows(userName) {
+      return await loadObjectState(scopedKey(ADDED_SHOWS_KEY, userName));
+    }
+    async function saveAddedShows(userName, addedShows) {
+      await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows);
+    }
+
+    async function loadFinalHoldovers(userName) {
+      return await loadObjectState(scopedKey(FINAL_HOLDOVERS_KEY, userName));
+    }
+    async function saveFinalHoldovers(userName, finalHoldovers) {
+      await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers);
+    }
     
     function makeEntryFromMedia(media) { return { media }; }
 
@@ -2094,16 +2356,45 @@
       await saveSlotCache(state.userName, cache);
     }
 
+    function orphanedAtMs(value) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+      const parsed = Date.parse(String(value || ""));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
     async function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
+
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
+      const now = Date.now();
+      const expiredImageIds = [];
       const cache = await loadSlotCache(userName);
       let cacheChanged = false;
 
       for (const id of Object.keys(cache)) {
-        if (!validIds.has(id)) {
+        const rawEntry = cache[id];
+        const entry = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry)
+          ? { ...rawEntry }
+          : {};
+
+        if (validIds.has(id)) {
+          if (Object.prototype.hasOwnProperty.call(entry, "orphanedAt")) {
+            delete entry.orphanedAt;
+            cache[id] = entry;
+            cacheChanged = true;
+          }
+          continue;
+        }
+
+        const firstMissingAt = orphanedAtMs(entry.orphanedAt);
+        if (!firstMissingAt) {
+          entry.orphanedAt = now;
+          cache[id] = entry;
+          cacheChanged = true;
+        } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
           delete cache[id];
-          deleteCachedImage(id);
+          expiredImageIds.push(id);
           cacheChanged = true;
         }
       }
@@ -2114,7 +2405,26 @@
       let overridesChanged = false;
 
       for (const id of Object.keys(overrides)) {
-        if (!validIds.has(id)) {
+        const rawOverride = overrides[id];
+        const override = rawOverride && typeof rawOverride === "object" && !Array.isArray(rawOverride)
+          ? { ...rawOverride }
+          : {};
+
+        if (validIds.has(id)) {
+          if (Object.prototype.hasOwnProperty.call(override, "orphanedAt")) {
+            delete override.orphanedAt;
+            overrides[id] = override;
+            overridesChanged = true;
+          }
+          continue;
+        }
+
+        const firstMissingAt = orphanedAtMs(override.orphanedAt);
+        if (!firstMissingAt) {
+          override.orphanedAt = now;
+          overrides[id] = override;
+          overridesChanged = true;
+        } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
           delete overrides[id];
           overridesChanged = true;
         }
@@ -2123,6 +2433,10 @@
       if (overridesChanged) {
         state.overrides = overrides;
         await saveOverrides(userName, overrides);
+      }
+
+      if (expiredImageIds.length) {
+        await Promise.allSettled(expiredImageIds.map(id => deleteCachedImage(id)));
       }
     }
 
@@ -2134,6 +2448,31 @@
         if (!map.has(id)) map.set(id, entry);
       }
       return Array.from(map.values());
+    }
+
+    function evaluateAniListPruneSafety(userName, previousEntries, nextEntries) {
+      const previousIds = new Set((previousEntries || []).map(entry => String(entry?.media?.id || "")).filter(Boolean));
+      const nextIds = new Set((nextEntries || []).map(entry => String(entry?.media?.id || "")).filter(Boolean));
+      const drasticDrop = previousIds.size >= 4 && nextIds.size < Math.ceil(previousIds.size / 2);
+      const questionable = nextIds.size === 0 || drasticDrop;
+
+      if (!questionable) {
+        state.pendingAniListPruneSignature = "";
+        state.pendingAniListPruneCount = 0;
+        return true;
+      }
+
+      const signature = `${String(userName || "").trim().toLowerCase()}::${Array.from(nextIds).sort().join(",")}`;
+      if (state.pendingAniListPruneSignature === signature) {
+        state.pendingAniListPruneCount += 1;
+      } else {
+        state.pendingAniListPruneSignature = signature;
+        state.pendingAniListPruneCount = 1;
+      }
+
+      // Require the same empty or unusually small result twice. Even after confirmation,
+      // orphaned data is retained for ORPHAN_RETENTION_MS before deletion.
+      return state.pendingAniListPruneCount >= 2;
     }
 
     function isValidTime(value) {
@@ -3190,20 +3529,22 @@
       return output;
     }
 
-    async function refreshBoardFromState() {
+    async function refreshBoardFromState(options = {}) {
       await pruneExpiredFinalHoldovers();
 
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
-      await pruneOrphanedStoredState(
-        state.userName,
-        [
-          ...state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean),
-          ...finalHoldoverIds()
-        ]
-      );
+      if (options.allowPrune === true) {
+        await pruneOrphanedStoredState(
+          state.userName,
+          [
+            ...state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean),
+            ...finalHoldoverIds()
+          ]
+        );
+      }
 
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       const cachedRaw = await applyCache(built);
@@ -3583,20 +3924,25 @@
       if (state.isLoading) return false;
 
       state.isLoading = true;
+      els.loadBtn.disabled = true;
       syncPastedScheduleStateFromInputs();
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Syncing..." : "Loading...";
-      const nextOverrides = await loadOverrides(userName);
-      const nextAddedShows = await loadAddedShows(userName);
-      const nextFinalHoldovers = await loadFinalHoldovers(userName);
-      const rssUrls = getRssUrls();
-
-      els.loadBtn.disabled = true;
       showMessage("info", loadingText);
 
       try {
+        // Storage failures must stop the refresh before any empty fallback can be written.
+        const [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
+          loadOverrides(userName),
+          loadAddedShows(userName),
+          loadFinalHoldovers(userName)
+        ]);
+        const rssUrls = getRssUrls();
+        const sameUser = String(state.userName || "").trim().toLowerCase() === userName.toLowerCase();
+        const previousEntries = sameUser ? (state.currentEntries || []) : [];
+
         const [aniListResult, rssResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
           fetchRssFeedsWithOptionalProxy(
@@ -3608,17 +3954,22 @@
         const nextNotes = [];
         const hasPastedScheduleOverride = state.pastedScheduleEnabled && state.pastedScheduleEntries.length > 0;
         let pastedScheduleFallbackUsed = false;
-        let nextCurrentEntries = state.currentEntries || [];
+        let nextCurrentEntries = previousEntries;
+        let aniListPruneSafe = false;
 
         if (aniListResult.status === "fulfilled") {
           nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+          aniListPruneSafe = evaluateAniListPruneSafety(userName, previousEntries, nextCurrentEntries);
+          if (!aniListPruneSafe) {
+            nextNotes.push("AniList returned an empty or unusually small list. Stored RSS history was preserved pending confirmation.");
+          }
         } else {
           const reason = aniListResult.reason;
           const errMsg = reason instanceof Error ? reason.message : String(reason || "Request failed.");
           nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
         }
 
-        let nextPrimaryCandidates = [];
+        let nextPrimaryCandidates = state.primaryCandidates || [];
 
         if (rssResult.status === "fulfilled") {
           const allCandidates = [];
@@ -3643,17 +3994,17 @@
           nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
           
           let newest = 0;
-          for (const c of nextPrimaryCandidates) {
-            for (const item of c.items) {
+          for (const candidate of nextPrimaryCandidates) {
+            for (const item of candidate.items) {
               if (item.date.getTime() > newest) newest = item.date.getTime();
             }
           }
-          state.lastRssReleaseAt = newest;
+          if (newest > 0) state.lastRssReleaseAt = newest;
           
           const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
           if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
             if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
-            else nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+            else nextNotes.push("SubsPlease feed is stale (no updates in >24h).");
           }
 
         } else {
@@ -3668,10 +4019,10 @@
             const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
             const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
             const mediaList = statusData?.Page?.media || [];
-            for (const m of mediaList) {
-              if (m.status === "FINISHED" || m.status === "CANCELLED") {
-                delete nextAddedShows[String(m.id)];
-                delete nextOverrides[String(m.id)];
+            for (const media of mediaList) {
+              if (media.status === "FINISHED" || media.status === "CANCELLED") {
+                delete nextAddedShows[String(media.id)];
+                delete nextOverrides[String(media.id)];
                 removedFinishedAddedShow = true;
               }
             }
@@ -3679,7 +4030,8 @@
               await saveAddedShows(userName, nextAddedShows);
               await saveOverrides(userName, nextOverrides);
             }
-          } catch(e) {
+          } catch (error) {
+            console.warn("Could not verify manually added show statuses:", error);
           }
         }
 
@@ -3695,9 +4047,13 @@
         state.lastSuccessfulLoadAt = Date.now();
         setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
 
-        await refreshBoardFromState();
+        await refreshBoardFromState({ allowPrune: aniListPruneSafe });
         await saveBoardSnapshot();
         pulseUpdateIndicator();
+        if (!autoRefreshStarted) {
+          startAutoRefresh();
+          autoRefreshStarted = true;
+        }
 
         showMessage(
           "info",
@@ -3711,16 +4067,19 @@
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
+        const preservationNote = isStorageError(error)
+          ? " The app did not clear or replace the cache with an empty fallback."
+          : "";
 
         state.healthStatus = "unhealthy";
-        state.notes = [`Board update failed: ${message}`];
+        state.notes = [`Board update failed: ${message}${preservationNote}`];
         setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
         renderFooterStatus();
 
         if (!preserveBoard) renderSearchResults();
 
-        showMessage("error", `Could not refresh the board: ${message}.${fallbackTime}`.trim());
+        showMessage("error", `Could not refresh the board: ${message}.${preservationNote}${fallbackTime}`.trim());
         return false;
       } finally {
         state.isLoading = false;
@@ -3758,13 +4117,17 @@
           item.finaleTransitionDateKey !== todayDateKey
         ));
 
-        if (finalDisplayNeedsRefresh || finaleDotDateRolledOver) {
-          await refreshBoardFromState();
-        } else if (state.items.length) {
-          updateBoardHighlights();
-        }
+        try {
+          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver) {
+            await refreshBoardFromState({ allowPrune: false });
+          } else if (state.items.length) {
+            updateBoardHighlights();
+          }
 
-        renderFooterStatus();
+          renderFooterStatus();
+        } catch (error) {
+          reportAppError(error, "Automatic board refresh failed");
+        }
       }, COUNTDOWN_TICK_MS);
     }
 
@@ -3861,9 +4224,13 @@
       els.clearMemoryBtn.addEventListener("click", async () => {
         const scopedUser = state.userName || els.username.value.trim();
         if (!scopedUser) return;
-        await clearSlotCache(scopedUser);
-        showMessage("info", "MEMORY cleared.");
-        if (state.userName) await refreshBoardFromState();
+        try {
+          await clearSlotCache(scopedUser);
+          showMessage("info", "RSS memory cleared.");
+          if (state.userName) await refreshBoardFromState({ allowPrune: false });
+        } catch (error) {
+          reportAppError(error, "Could not clear RSS memory");
+        }
       });
     }
 
@@ -3897,6 +4264,14 @@
       if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
     });
 
+    armPersistentStorageRequest();
+
+    window.addEventListener("unhandledrejection", event => {
+      if (!isStorageError(event.reason)) return;
+      event.preventDefault();
+      reportAppError(event.reason, "Storage operation failed");
+    });
+
     let autoRefreshStarted = false;
     let bootCompleted = false;
 
@@ -3917,15 +4292,11 @@
           renderFooterStatus();
         }
       } catch (error) {
-        console.error("Boot failed:", error);
-        await clearBoardSnapshot();
-        state.lastSuccessfulLoadAt = 0;
-        state.healthStatus = "unhealthy";
-        state.notes = [`Startup: ${error.message}`];
-        setUpdateIndicatorStatus("error");
-        updateIndicatorTitle(0);
-        renderFooterStatus();
-        showMessage("error", `Startup failed: ${error.message}`);
+        // Never delete the snapshot in response to a read/open failure. A manual retry can
+        // recover after a transient browser-storage problem or a blocked database closes.
+        state.lastSuccessfulLoadAt = state.lastSuccessfulLoadAt || 0;
+        updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        reportAppError(error, "Startup failed");
       }
     }
 
