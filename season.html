@@ -122,38 +122,24 @@
     .day-pill .sub { font-weight: 400; opacity: 0.7; margin-left: 4px; }
 
 
-    /* ---------- Compact Next Up ---------- */
+    /* ---------- Ultra-Compact Next Up ---------- */
     .next-up-panel {
-      margin-top: 18px;
+      margin-top: 12px;
       background: linear-gradient(180deg, rgba(20,20,23,0.98), rgba(15,15,18,0.98));
       border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       overflow: hidden;
     }
 
-    .next-up-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 15px 16px 7px;
-    }
-
-    .next-up-title {
-      font-size: 1.05rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .next-up-list { padding: 0 16px 12px; }
+    .next-up-list { padding: 3px 12px; }
 
     .next-up-row {
       display: grid;
-      grid-template-columns: minmax(72px, auto) 1px minmax(0, 1fr) auto;
+      grid-template-columns: minmax(58px, auto) 1px minmax(0, 1fr) auto;
       align-items: center;
-      gap: 14px;
-      min-height: 58px;
-      padding: 8px 0;
+      gap: 10px;
+      min-height: 48px;
+      padding: 6px 0;
     }
 
     .next-up-row + .next-up-row { border-top: 1px solid rgba(255,255,255,0.055); }
@@ -161,26 +147,26 @@
     .next-up-time-wrap { min-width: 0; }
     .next-up-day {
       color: var(--text-muted);
-      font-size: 0.68rem;
+      font-size: 0.57rem;
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1;
       margin-bottom: 3px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
     .next-up-time {
       color: var(--text);
-      font-size: 1.3rem;
+      font-size: 1.08rem;
       font-weight: 800;
       line-height: 1;
       letter-spacing: -0.03em;
     }
-    .next-up-divider { width: 1px; height: 34px; background: var(--line); }
+    .next-up-divider { width: 1px; height: 28px; background: var(--line); }
     .next-up-copy { min-width: 0; }
     .next-up-show {
       color: var(--text);
-      font-size: 0.92rem;
-      line-height: 1.2;
+      font-size: 0.84rem;
+      line-height: 1.15;
       font-weight: 750;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -188,50 +174,50 @@
     }
     .next-up-episode {
       color: var(--text-muted);
-      font-size: 0.78rem;
+      font-size: 0.68rem;
       font-weight: 600;
-      margin-top: 4px;
+      margin-top: 3px;
+    }
+    .next-up-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
     }
     .next-up-countdown {
-      flex: 0 0 auto;
       border: 1px solid var(--line);
       background: var(--panel-2);
       border-radius: 999px;
       color: var(--text);
-      font-size: 0.75rem;
+      font-size: 0.68rem;
       font-weight: 700;
-      padding: 8px 11px;
+      padding: 6px 8px;
       white-space: nowrap;
     }
     .next-up-toggle {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 5px;
-      padding: 8px 0 2px;
+      min-width: 0;
+      padding: 5px 7px;
       background: transparent;
       color: var(--text-muted);
-      border-radius: 0;
-      font-size: 0.82rem;
-      font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 999px;
+      font-size: 0.66rem;
+      line-height: 1;
+      font-weight: 800;
+      white-space: nowrap;
     }
-    .next-up-toggle:hover { color: var(--text); background: transparent; }
-    .next-up-toggle:active { transform: none; }
-    .next-up-empty {
-      padding: 8px 16px 16px;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
+    .next-up-toggle:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .next-up-toggle:active { transform: scale(0.97); }
 
     @media (max-width: 480px) {
       .next-up-row {
-        grid-template-columns: minmax(62px, auto) 1px minmax(0, 1fr) auto;
-        gap: 10px;
+        grid-template-columns: minmax(54px, auto) 1px minmax(0, 1fr) auto;
+        gap: 8px;
       }
-      .next-up-time { font-size: 1.18rem; }
-      .next-up-show { font-size: 0.84rem; }
-      .next-up-countdown { font-size: 0.7rem; padding: 7px 9px; }
+      .next-up-time { font-size: 1rem; }
+      .next-up-show { font-size: 0.8rem; }
+      .next-up-countdown { font-size: 0.64rem; padding: 5px 7px; }
+      .next-up-toggle { font-size: 0.62rem; padding: 5px 6px; }
     }
 
     /* ---------- Input & Form Controls ---------- */
@@ -3325,38 +3311,37 @@
 
     function nextUpHTML(items, timeZone = DEFAULT_TIMEZONE) {
       const upcoming = getNextUpcomingItems(items, 3, timeZone);
-      if (!upcoming.length) {
-        return `
-          <section class="next-up-panel" aria-label="Next up">
-            <div class="next-up-head"><div class="next-up-title">Next up</div></div>
-            <div class="next-up-empty">No upcoming releases found.</div>
-          </section>`;
-      }
+      if (!upcoming.length) return "";
 
       const visible = state.nextUpExpanded ? upcoming : upcoming.slice(0, 1);
-      const rows = visible.map(({ item, status }) => `
-        <div class="next-up-row">
-          <div class="next-up-time-wrap">
-            <div class="next-up-day">${escapeHtml(formatNextUpDay(item.day, timeZone))}</div>
-            <div class="next-up-time">${escapeHtml(item.time)}</div>
-          </div>
-          <div class="next-up-divider" aria-hidden="true"></div>
-          <div class="next-up-copy">
-            <div class="next-up-show" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
-            <div class="next-up-episode">${escapeHtml(nextUpEpisodeLabel(item))}</div>
-          </div>
-          <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
-        </div>`).join("");
-
       const remaining = Math.max(0, upcoming.length - 1);
-      const toggle = upcoming.length > 1
-        ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up">${state.nextUpExpanded ? "Show less ↑" : `+ ${remaining} more ›`}</button>`
-        : "";
+
+      const rows = visible.map(({ item, status }, index) => {
+        const toggle = index === 0 && upcoming.length > 1
+          ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up" aria-label="${state.nextUpExpanded ? "Collapse upcoming releases" : `Show ${remaining} more upcoming releases`}">${state.nextUpExpanded ? "Less" : `+${remaining}`}</button>`
+          : "";
+
+        return `
+          <div class="next-up-row">
+            <div class="next-up-time-wrap">
+              <div class="next-up-day">${escapeHtml(formatNextUpDay(item.day, timeZone))}</div>
+              <div class="next-up-time">${escapeHtml(item.time)}</div>
+            </div>
+            <div class="next-up-divider" aria-hidden="true"></div>
+            <div class="next-up-copy">
+              <div class="next-up-show" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+              <div class="next-up-episode">${escapeHtml(nextUpEpisodeLabel(item))}</div>
+            </div>
+            <div class="next-up-actions">
+              <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
+              ${toggle}
+            </div>
+          </div>`;
+      }).join("");
 
       return `
-        <section class="next-up-panel" aria-label="Next up">
-          <div class="next-up-head"><div class="next-up-title">Next up</div></div>
-          <div class="next-up-list">${rows}${toggle}</div>
+        <section class="next-up-panel" aria-label="Upcoming releases">
+          <div class="next-up-list">${rows}</div>
         </section>`;
     }
 
