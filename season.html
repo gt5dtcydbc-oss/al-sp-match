@@ -134,8 +134,7 @@
     .next-up-list { padding: 3px 12px; }
 
     .next-up-row {
-      display: grid;
-      grid-template-columns: minmax(58px, auto) 1px minmax(0, 1fr) auto;
+      display: flex;
       align-items: center;
       gap: 10px;
       min-height: 48px;
@@ -161,28 +160,28 @@
       line-height: 1;
       letter-spacing: -0.03em;
     }
-    .next-up-divider { width: 1px; height: 28px; background: var(--line); }
-    .next-up-copy { min-width: 0; }
-    .next-up-show {
-      color: var(--text);
-      font-size: 0.84rem;
-      line-height: 1.15;
-      font-weight: 750;
+    .next-up-divider { width: 1px; height: 28px; background: var(--line); flex: 0 0 1px; }
+    .next-up-cover {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      border-radius: 8px;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,0.06);
     }
-    .next-up-episode {
-      color: var(--text-muted);
-      font-size: 0.68rem;
-      font-weight: 600;
-      margin-top: 3px;
+    .next-up-cover img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
     }
     .next-up-actions {
       display: flex;
       align-items: center;
       gap: 6px;
       flex: 0 0 auto;
+      margin-left: auto;
     }
     .next-up-countdown {
       border: 1px solid var(--line);
@@ -210,12 +209,9 @@
     .next-up-toggle:active { transform: scale(0.97); }
 
     @media (max-width: 480px) {
-      .next-up-row {
-        grid-template-columns: minmax(54px, auto) 1px minmax(0, 1fr) auto;
-        gap: 8px;
-      }
+      .next-up-row { gap: 8px; }
       .next-up-time { font-size: 1rem; }
-      .next-up-show { font-size: 0.8rem; }
+      .next-up-cover { width: 36px; height: 36px; flex-basis: 36px; border-radius: 7px; }
       .next-up-countdown { font-size: 0.64rem; padding: 5px 7px; }
       .next-up-toggle { font-size: 0.62rem; padding: 5px 6px; }
     }
@@ -3321,6 +3317,11 @@
           ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up" aria-label="${state.nextUpExpanded ? "Collapse upcoming releases" : `Show ${remaining} more upcoming releases`}">${state.nextUpExpanded ? "Less" : `+${remaining}`}</button>`
           : "";
 
+        const coverUrl = item.cover || "";
+        const cover = coverUrl
+          ? `<div class="next-up-cover" title="${escapeHtml(item.title)}"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-media-id="${escapeHtml(String(item.id))}" data-original-url="${escapeHtml(coverUrl)}" alt="${escapeHtml(item.title)}" loading="lazy"></div>`
+          : `<div class="next-up-cover" title="${escapeHtml(item.title)}" aria-label="${escapeHtml(item.title)}"></div>`;
+
         return `
           <div class="next-up-row">
             <div class="next-up-time-wrap">
@@ -3328,10 +3329,7 @@
               <div class="next-up-time">${escapeHtml(item.time)}</div>
             </div>
             <div class="next-up-divider" aria-hidden="true"></div>
-            <div class="next-up-copy">
-              <div class="next-up-show" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
-              <div class="next-up-episode">${escapeHtml(nextUpEpisodeLabel(item))}</div>
-            </div>
+            ${cover}
             <div class="next-up-actions">
               <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
               ${toggle}
