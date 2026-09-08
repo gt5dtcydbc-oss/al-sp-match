@@ -176,6 +176,17 @@
       display: block;
       object-fit: cover;
     }
+    .next-up-title {
+      min-width: 0;
+      flex: 1 1 auto;
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1.15;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .next-up-episode-badge {
       flex: 0 0 auto;
       border: 1px solid rgba(255,255,255,0.09);
@@ -221,12 +232,26 @@
     .next-up-toggle:active { transform: scale(0.97); }
 
     @media (max-width: 480px) {
-      .next-up-row { gap: 8px; min-height: 58px; }
+      .next-up-list { padding-left: 10px; padding-right: 10px; }
+      .next-up-row { gap: 7px; min-height: 58px; }
       .next-up-time { font-size: 1rem; }
       .next-up-cover { width: 44px; height: 44px; flex-basis: 44px; border-radius: 9px; }
-      .next-up-episode-badge { font-size: 0.58rem; padding: 4px 6px; }
-      .next-up-countdown { font-size: 0.64rem; padding: 5px 7px; }
-      .next-up-toggle { font-size: 0.62rem; padding: 5px 6px; }
+      .next-up-title { font-size: 0.76rem; }
+      .next-up-episode-badge { font-size: 0.56rem; padding: 4px 5px; }
+      .next-up-actions { gap: 4px; }
+      .next-up-countdown { font-size: 0.62rem; padding: 5px 6px; }
+      .next-up-toggle { font-size: 0.6rem; padding: 5px 5px; }
+    }
+
+    @media (max-width: 360px) {
+      .next-up-row { gap: 6px; }
+      .next-up-cover { width: 40px; height: 40px; flex-basis: 40px; }
+      .next-up-title { font-size: 0.72rem; }
+      .next-up-day { font-size: 0.52rem; }
+      .next-up-time { font-size: 0.94rem; }
+      .next-up-episode-badge { font-size: 0.53rem; padding: 4px; }
+      .next-up-countdown { font-size: 0.58rem; padding: 5px; }
+      .next-up-toggle { font-size: 0.56rem; padding: 5px 4px; }
     }
 
     /* ---------- Input & Form Controls ---------- */
@@ -3343,6 +3368,7 @@
             </div>
             <div class="next-up-divider" aria-hidden="true"></div>
             ${cover}
+            <div class="next-up-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
             <div class="next-up-episode-badge">${escapeHtml(nextUpEpisodeLabel(item))}</div>
             <div class="next-up-actions">
               <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
