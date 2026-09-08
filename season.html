@@ -137,8 +137,8 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      min-height: 48px;
-      padding: 6px 0;
+      min-height: 60px;
+      padding: 7px 0;
     }
 
     .next-up-row + .next-up-row { border-top: 1px solid rgba(255,255,255,0.055); }
@@ -160,12 +160,12 @@
       line-height: 1;
       letter-spacing: -0.03em;
     }
-    .next-up-divider { width: 1px; height: 28px; background: var(--line); flex: 0 0 1px; }
+    .next-up-divider { width: 1px; height: 34px; background: var(--line); flex: 0 0 1px; }
     .next-up-cover {
-      width: 38px;
-      height: 38px;
-      flex: 0 0 38px;
-      border-radius: 8px;
+      width: 46px;
+      height: 46px;
+      flex: 0 0 46px;
+      border-radius: 9px;
       overflow: hidden;
       background: var(--panel-2);
       border: 1px solid rgba(255,255,255,0.06);
@@ -175,6 +175,18 @@
       height: 100%;
       display: block;
       object-fit: cover;
+    }
+    .next-up-episode-badge {
+      flex: 0 0 auto;
+      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.045);
+      border-radius: 999px;
+      color: var(--text-muted);
+      font-size: 0.62rem;
+      font-weight: 800;
+      line-height: 1;
+      padding: 5px 7px;
+      white-space: nowrap;
     }
     .next-up-actions {
       display: flex;
@@ -209,9 +221,10 @@
     .next-up-toggle:active { transform: scale(0.97); }
 
     @media (max-width: 480px) {
-      .next-up-row { gap: 8px; }
+      .next-up-row { gap: 8px; min-height: 58px; }
       .next-up-time { font-size: 1rem; }
-      .next-up-cover { width: 36px; height: 36px; flex-basis: 36px; border-radius: 7px; }
+      .next-up-cover { width: 44px; height: 44px; flex-basis: 44px; border-radius: 9px; }
+      .next-up-episode-badge { font-size: 0.58rem; padding: 4px 6px; }
       .next-up-countdown { font-size: 0.64rem; padding: 5px 7px; }
       .next-up-toggle { font-size: 0.62rem; padding: 5px 6px; }
     }
@@ -3302,7 +3315,7 @@
         return `EP ${Number(displayEpisode)}/${Number(total)}`;
       }
       if (Number.isFinite(Number(displayEpisode))) return `EP ${Number(displayEpisode)}`;
-      return "Episode pending";
+      return "EP ?";
     }
 
     function nextUpHTML(items, timeZone = DEFAULT_TIMEZONE) {
@@ -3330,6 +3343,7 @@
             </div>
             <div class="next-up-divider" aria-hidden="true"></div>
             ${cover}
+            <div class="next-up-episode-badge">${escapeHtml(nextUpEpisodeLabel(item))}</div>
             <div class="next-up-actions">
               <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
               ${toggle}
