@@ -121,6 +121,119 @@
     }
     .day-pill .sub { font-weight: 400; opacity: 0.7; margin-left: 4px; }
 
+
+    /* ---------- Compact Next Up ---------- */
+    .next-up-panel {
+      margin-top: 18px;
+      background: linear-gradient(180deg, rgba(20,20,23,0.98), rgba(15,15,18,0.98));
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .next-up-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 16px 7px;
+    }
+
+    .next-up-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .next-up-list { padding: 0 16px 12px; }
+
+    .next-up-row {
+      display: grid;
+      grid-template-columns: minmax(72px, auto) 1px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      min-height: 58px;
+      padding: 8px 0;
+    }
+
+    .next-up-row + .next-up-row { border-top: 1px solid rgba(255,255,255,0.055); }
+
+    .next-up-time-wrap { min-width: 0; }
+    .next-up-day {
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .next-up-time {
+      color: var(--text);
+      font-size: 1.3rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .next-up-divider { width: 1px; height: 34px; background: var(--line); }
+    .next-up-copy { min-width: 0; }
+    .next-up-show {
+      color: var(--text);
+      font-size: 0.92rem;
+      line-height: 1.2;
+      font-weight: 750;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .next-up-episode {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .next-up-countdown {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 8px 11px;
+      white-space: nowrap;
+    }
+    .next-up-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 5px;
+      padding: 8px 0 2px;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 0;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .next-up-toggle:hover { color: var(--text); background: transparent; }
+    .next-up-toggle:active { transform: none; }
+    .next-up-empty {
+      padding: 8px 16px 16px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 480px) {
+      .next-up-row {
+        grid-template-columns: minmax(62px, auto) 1px minmax(0, 1fr) auto;
+        gap: 10px;
+      }
+      .next-up-time { font-size: 1.18rem; }
+      .next-up-show { font-size: 0.84rem; }
+      .next-up-countdown { font-size: 0.7rem; padding: 7px 9px; }
+    }
+
     /* ---------- Input & Form Controls ---------- */
     .panel {
       background: var(--panel);
@@ -822,6 +935,7 @@
   <script>
     const ENDPOINT = "https://graphql.anilist.co";
     const SLOT_CACHE_KEY = "anilist-subsplease-slot-cache-v3";
+    const LEGACY_SLOT_CACHE_KEYS = ["anilist-subsplease-slot-cache-v2", "anilist-subsplease-slot-cache-v1"];
     const MANUAL_OVERRIDE_KEY = "airing-board-manual-overrides-v1";
     const ADDED_SHOWS_KEY = "airing-board-added-shows-v1";
     const FINAL_HOLDOVERS_KEY = "airing-board-final-holdovers-v1";
@@ -903,10 +1017,155 @@
     `;
 
     const DB_NAME = 'AiringBoardImages';
+    const DB_VERSION = 2;
     const STORE_NAME = 'covers';
     const STATE_STORE = 'appState';
     let dbPromise = null;
     let activeCoverObjectUrls = [];
+    let storagePersistenceRequested = false;
+
+    function makeStorageError(operation, key, cause) {
+      const detail = cause?.message || String(cause || "Unknown storage error");
+      const suffix = key ? ` for "${key}"` : "";
+      const error = new Error(`Browser storage ${operation} failed${suffix}: ${detail}`);
+      error.name = "AppStorageError";
+      error.operation = operation;
+      error.storageKey = key || "";
+      error.cause = cause;
+      return error;
+    }
+
+    function isStorageError(error) {
+      return error?.name === "AppStorageError";
+    }
+
+    function requestResult(request, operation, key = "") {
+      return new Promise((resolve, reject) => {
+        request.addEventListener("success", () => resolve(request.result), { once: true });
+        request.addEventListener("error", () => {
+          reject(makeStorageError(operation, key, request.error || new Error("Request failed.")));
+        }, { once: true });
+      });
+    }
+
+    function transactionDone(transaction, operation, key = "") {
+      return new Promise((resolve, reject) => {
+        transaction.addEventListener("complete", () => resolve(), { once: true });
+        transaction.addEventListener("abort", () => {
+          reject(makeStorageError(operation, key, transaction.error || new Error("Transaction aborted.")));
+        }, { once: true });
+      });
+    }
+
+    function getDB() {
+      if (!("indexedDB" in window)) {
+        return Promise.reject(makeStorageError("open", "", new Error("IndexedDB is unavailable in this browser context.")));
+      }
+
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          let settled = false;
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          const timeoutId = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            reject(makeStorageError("open", "", new Error("Opening IndexedDB timed out. Close other copies of this site and retry.")));
+          }, 12000);
+
+          const rejectOpen = (cause) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            reject(makeStorageError("open", "", cause));
+          };
+
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME);
+            }
+            if (!db.objectStoreNames.contains(STATE_STORE)) {
+              db.createObjectStore(STATE_STORE);
+            }
+          };
+
+          request.onblocked = () => {
+            rejectOpen(new Error("The database is blocked by another open copy of this site."));
+          };
+
+          request.onerror = () => {
+            rejectOpen(request.error || new Error("IndexedDB could not be opened."));
+          };
+
+          request.onsuccess = (event) => {
+            const db = event.target.result;
+            if (settled) {
+              db.close();
+              return;
+            }
+
+            settled = true;
+            clearTimeout(timeoutId);
+            db.onversionchange = () => {
+              db.close();
+              dbPromise = null;
+            };
+            resolve(db);
+          };
+        }).catch(error => {
+          dbPromise = null;
+          throw error;
+        });
+      }
+
+      return dbPromise;
+    }
+
+    async function readStoreValue(storeName, key, operation = "read") {
+      try {
+        const db = await getDB();
+        const transaction = db.transaction(storeName, "readonly");
+        const request = transaction.objectStore(storeName).get(key);
+        const [value] = await Promise.all([
+          requestResult(request, operation, key),
+          transactionDone(transaction, operation, key)
+        ]);
+        return { found: value !== undefined, value };
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError(operation, key, error);
+      }
+    }
+
+    async function writeStoreValue(storeName, key, value, operation = "write") {
+      try {
+        const db = await getDB();
+        const transaction = db.transaction(storeName, "readwrite");
+        const request = transaction.objectStore(storeName).put(value, key);
+        await Promise.all([
+          requestResult(request, operation, key),
+          transactionDone(transaction, operation, key)
+        ]);
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError(operation, key, error);
+      }
+    }
+
+    async function deleteStoreValue(storeName, key, operation = "delete") {
+      try {
+        const db = await getDB();
+        const transaction = db.transaction(storeName, "readwrite");
+        const request = transaction.objectStore(storeName).delete(key);
+        await Promise.all([
+          requestResult(request, operation, key),
+          transactionDone(transaction, operation, key)
+        ]);
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError(operation, key, error);
+      }
+    }
 
     function makeCachedCoverObjectUrl(blob) {
       const objectUrl = URL.createObjectURL(blob);
@@ -921,55 +1180,27 @@
       activeCoverObjectUrls = [];
     }
 
-    function getDB() {
-      if (!dbPromise) {
-        dbPromise = new Promise((resolve, reject) => {
-          const request = indexedDB.open(DB_NAME, 2);
-          request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-              db.createObjectStore(STORE_NAME);
-            }
-            if (!db.objectStoreNames.contains(STATE_STORE)) {
-              db.createObjectStore(STATE_STORE);
-            }
-          };
-          request.onsuccess = (e) => resolve(e.target.result);
-          request.onerror = (e) => reject(e.target.error);
-        });
-      }
-      return dbPromise;
-    }
-
     async function getCachedImage(id, url) {
       try {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const blob = await new Promise((resolve) => {
-          const req = store.get(id);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve(null);
-        });
-        if (blob) return makeCachedCoverObjectUrl(blob);
+        const cached = await readStoreValue(STORE_NAME, id, "read image cache");
+        if (cached.found && cached.value) return makeCachedCoverObjectUrl(cached.value);
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error();
-        const newBlob = await res.blob();
-        const txW = db.transaction(STORE_NAME, 'readwrite');
-        txW.objectStore(STORE_NAME).put(newBlob, id);
-        return makeCachedCoverObjectUrl(newBlob);
-      } catch (err) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Image request failed (${response.status}).`);
+        const blob = await response.blob();
+        await writeStoreValue(STORE_NAME, id, blob, "write image cache");
+        return makeCachedCoverObjectUrl(blob);
+      } catch (error) {
         return url;
       }
     }
 
     async function deleteCachedImage(id) {
       try {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).delete(id);
-      } catch (e) {}
+        await deleteStoreValue(STORE_NAME, id, "delete image cache");
+      } catch (error) {
+        console.warn("Could not delete cached cover image:", error);
+      }
     }
 
     async function loadImagesToDOM() {
@@ -985,51 +1216,126 @@
       }
     }
 
-    // STATE DB HELPERS
-    async function loadStateDB(key, fallback) {
+    function readLocalStorageCandidate(key) {
+      let raw = null;
       try {
-        const db = await getDB();
-        const tx = db.transaction(STATE_STORE, 'readonly');
-        const store = tx.objectStore(STATE_STORE);
-        const result = await new Promise((resolve) => {
-          const req = store.get(key);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve(undefined);
-        });
-        
-        if (result !== undefined) {
-          if (localStorage.getItem(key)) localStorage.removeItem(key);
-          return result;
-        }
-        
-        // Fallback to localStorage migration
-        const ls = localStorage.getItem(key);
-        if (ls) {
-          const parsed = JSON.parse(ls);
-          await saveStateDB(key, parsed);
-          localStorage.removeItem(key); 
-          return parsed;
-        }
-        return fallback;
-      } catch (e) {
-        return fallback;
+        raw = localStorage.getItem(key);
+      } catch (error) {
+        throw makeStorageError("read localStorage", key, error);
+      }
+
+      if (raw === null) return { found: false, value: undefined };
+
+      try {
+        return { found: true, value: JSON.parse(raw) };
+      } catch (error) {
+        // Keep malformed source data in place and stop before an empty fallback can replace it.
+        throw makeStorageError("parse localStorage", key, error);
       }
     }
 
-    async function saveStateDB(key, value) {
+    function removeLocalStorageKey(key, options = {}) {
       try {
-        const db = await getDB();
-        const tx = db.transaction(STATE_STORE, 'readwrite');
-        tx.objectStore(STATE_STORE).put(value, key);
-      } catch (e) {}
+        localStorage.removeItem(key);
+      } catch (error) {
+        const wrapped = makeStorageError("delete localStorage", key, error);
+        if (options.strict) throw wrapped;
+        console.warn(`Could not remove migrated localStorage key "${key}":`, wrapped);
+      }
+    }
+
+    async function readStateRecord(key) {
+      return await readStoreValue(STATE_STORE, key, "read state");
+    }
+
+    async function saveStateDB(key, value) {
+      await writeStoreValue(STATE_STORE, key, value, "write state");
     }
 
     async function deleteStateDB(key) {
+      await deleteStoreValue(STATE_STORE, key, "delete state");
+    }
+
+    async function commitMigratedState(targetKey, sourceKey, sourceKind, value) {
+      await saveStateDB(targetKey, value);
+      const verified = await readStateRecord(targetKey);
+      if (!verified.found) {
+        throw makeStorageError("verify migrated state", targetKey, new Error("The committed value could not be read back."));
+      }
+
+      if (sourceKind === "localStorage") {
+        removeLocalStorageKey(sourceKey);
+      } else if (sourceKind === "indexedDB" && sourceKey !== targetKey) {
+        try {
+          await deleteStateDB(sourceKey);
+        } catch (error) {
+          console.warn(`The legacy IndexedDB key "${sourceKey}" was retained after migration.`, error);
+        }
+      }
+
+      return verified.value;
+    }
+
+    // Missing keys use the supplied fallback. Actual read failures throw and must not
+    // be treated as empty state, preventing a transient storage error from overwriting saves.
+    async function loadStateDB(key, fallback, options = {}) {
+      const legacyKeys = Array.from(new Set(options.legacyKeys || []))
+        .map(value => String(value || "").trim())
+        .filter(value => value && value !== key);
+
+      const current = await readStateRecord(key);
+      if (current.found) {
+        // Cleanup is optional once the canonical IndexedDB value has been read successfully.
+        try {
+          if (readLocalStorageCandidate(key).found) removeLocalStorageKey(key);
+        } catch (error) {
+          console.warn(`Could not inspect obsolete localStorage key "${key}":`, error);
+        }
+        return current.value;
+      }
+
+      const currentLocal = readLocalStorageCandidate(key);
+      if (currentLocal.found) {
+        return await commitMigratedState(key, key, "localStorage", currentLocal.value);
+      }
+
+      for (const legacyKey of legacyKeys) {
+        const legacyRecord = await readStateRecord(legacyKey);
+        if (legacyRecord.found) {
+          return await commitMigratedState(key, legacyKey, "indexedDB", legacyRecord.value);
+        }
+
+        const legacyLocal = readLocalStorageCandidate(legacyKey);
+        if (legacyLocal.found) {
+          return await commitMigratedState(key, legacyKey, "localStorage", legacyLocal.value);
+        }
+      }
+
+      return fallback;
+    }
+
+    function requestPersistentStorage() {
+      if (storagePersistenceRequested) return;
+      if (!navigator.storage || typeof navigator.storage.persist !== "function") return;
+
+      storagePersistenceRequested = true;
       try {
-        const db = await getDB();
-        const tx = db.transaction(STATE_STORE, 'readwrite');
-        tx.objectStore(STATE_STORE).delete(key);
-      } catch (e) {}
+        Promise.resolve(navigator.storage.persist())
+          .then(granted => {
+            console.info(granted
+              ? "Persistent browser storage was granted."
+              : "Persistent browser storage was not granted; normal browser eviction rules still apply.");
+          })
+          .catch(error => console.warn("Persistent storage request failed:", error));
+      } catch (error) {
+        console.warn("Persistent storage request failed:", error);
+      }
+    }
+
+    function armPersistentStorageRequest() {
+      document.addEventListener("pointerdown", requestPersistentStorage, { once: true, capture: true, passive: true });
+      document.addEventListener("touchstart", requestPersistentStorage, { once: true, capture: true, passive: true });
+      document.addEventListener("keydown", requestPersistentStorage, { once: true, capture: true });
     }
 
     function loadJSON(key, fallback) {
@@ -1124,9 +1430,12 @@
       activeSettingsId: null,
       healthStatus: "healthy",
       lastNextSlotKey: null,
+      pendingAniListPruneSignature: "",
+      pendingAniListPruneCount: 0,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
       expandedDays: new Set(),
-      selectedDay: loadSelectedDay()
+      selectedDay: "Full Week",
+      nextUpExpanded: false
     };
 
     showMessage("info", "Ready.");
@@ -1140,6 +1449,20 @@
     function setUpdateIndicatorStatus(status = "ok") {
       if (!els.updateIndicator) return;
       els.updateIndicator.classList.toggle("error", status === "error");
+    }
+
+    function reportAppError(error, context = "Operation failed") {
+      const detail = error instanceof Error ? error.message : String(error || "Unknown error");
+      const message = isStorageError(error)
+        ? `${context}: browser storage could not be accessed. The app did not clear or replace the cache with an empty fallback. ${detail}`
+        : `${context}: ${detail}`;
+
+      console.error(context, error);
+      state.healthStatus = "unhealthy";
+      state.notes = [message];
+      setUpdateIndicatorStatus("error");
+      renderFooterStatus();
+      showMessage("error", message);
     }
 
     function timeAgo(ms) {
@@ -1929,7 +2252,14 @@
       syncPastedScheduleStateFromInputs();
     }
 
-    async function loadBoardSnapshot() { return await loadStateDB(BOARD_SNAPSHOT_KEY, null); }
+    async function loadBoardSnapshot() {
+      const snapshot = await loadStateDB(BOARD_SNAPSHOT_KEY, null);
+      if (snapshot !== null && (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot))) {
+        throw makeStorageError("validate state", BOARD_SNAPSHOT_KEY, new Error("Saved board snapshot has an unexpected format."));
+      }
+      return snapshot;
+    }
+
     async function saveBoardSnapshot() {
       const snapshot = {
         savedAt: Date.now(),
@@ -1947,7 +2277,10 @@
       await saveStateDB(BOARD_SNAPSHOT_KEY, snapshot);
       state.lastSuccessfulLoadAt = snapshot.savedAt;
     }
-    async function clearBoardSnapshot() { await deleteStateDB(BOARD_SNAPSHOT_KEY); }
+
+    async function clearBoardSnapshot() {
+      await deleteStateDB(BOARD_SNAPSHOT_KEY);
+    }
 
     async function hydrateBoardSnapshot() {
       const snapshot = await loadBoardSnapshot();
@@ -1974,30 +2307,73 @@
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       
       if (!Number.isFinite(snapshotSavedAt)) {
-        try {
-          const repairedSnapshot = { ...snapshot, savedAt: 0 };
-          await saveStateDB(BOARD_SNAPSHOT_KEY, repairedSnapshot);
-        } catch (_) {}
+        const repairedSnapshot = { ...snapshot, savedAt: 0 };
+        await saveStateDB(BOARD_SNAPSHOT_KEY, repairedSnapshot);
       }
       
-      await refreshBoardFromState();
+      // A cached snapshot is not proof of a complete current AniList response.
+      await refreshBoardFromState({ allowPrune: false });
       setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
       updateIndicatorTitle(state.lastSuccessfulLoadAt);
       return true;
     }
 
-    async function loadSlotCache(userName) { return await loadStateDB(slotCacheScopeKey(userName), {}); }
-    async function saveSlotCache(userName, cache) { await saveStateDB(slotCacheScopeKey(userName), cache); }
-    async function clearSlotCache(userName) { await deleteStateDB(slotCacheScopeKey(userName)); }
-    
-    async function loadOverrides(userName) { return await loadStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), {}); }
-    async function saveOverrides(userName, overrides) { await saveStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides); }
-    
-    async function loadAddedShows(userName) { return await loadStateDB(scopedKey(ADDED_SHOWS_KEY, userName), {}); }
-    async function saveAddedShows(userName, addedShows) { await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows); }
+    function legacySlotCacheKeys(userName) {
+      const scope = String(userName || "").trim().toLowerCase() || "default";
+      return Array.from(new Set([
+        SLOT_CACHE_KEY,
+        ...LEGACY_SLOT_CACHE_KEYS.flatMap(base => [`${base}:${scope}`, base])
+      ])).filter(key => key !== slotCacheScopeKey(userName));
+    }
 
-    async function loadFinalHoldovers(userName) { return await loadStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), {}); }
-    async function saveFinalHoldovers(userName, finalHoldovers) { await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers); }
+    async function loadObjectState(key, legacyKeys = []) {
+      const value = await loadStateDB(key, {}, { legacyKeys });
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw makeStorageError("validate state", key, new Error("Saved value has an unexpected format."));
+      }
+      return value;
+    }
+
+    async function loadSlotCache(userName) {
+      const key = slotCacheScopeKey(userName);
+      return await loadObjectState(key, legacySlotCacheKeys(userName));
+    }
+
+    async function saveSlotCache(userName, cache) {
+      if (!cache || typeof cache !== "object" || Array.isArray(cache)) {
+        throw makeStorageError("validate state", slotCacheScopeKey(userName), new Error("RSS cache must be an object."));
+      }
+      await saveStateDB(slotCacheScopeKey(userName), cache);
+    }
+
+    async function clearSlotCache(userName) {
+      const keys = [slotCacheScopeKey(userName), ...legacySlotCacheKeys(userName)];
+      for (const key of Array.from(new Set(keys))) {
+        await deleteStateDB(key);
+        removeLocalStorageKey(key, { strict: true });
+      }
+    }
+    
+    async function loadOverrides(userName) {
+      return await loadObjectState(scopedKey(MANUAL_OVERRIDE_KEY, userName));
+    }
+    async function saveOverrides(userName, overrides) {
+      await saveStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides);
+    }
+    
+    async function loadAddedShows(userName) {
+      return await loadObjectState(scopedKey(ADDED_SHOWS_KEY, userName));
+    }
+    async function saveAddedShows(userName, addedShows) {
+      await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows);
+    }
+
+    async function loadFinalHoldovers(userName) {
+      return await loadObjectState(scopedKey(FINAL_HOLDOVERS_KEY, userName));
+    }
+    async function saveFinalHoldovers(userName, finalHoldovers) {
+      await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers);
+    }
     
     function makeEntryFromMedia(media) { return { media }; }
 
@@ -2094,16 +2470,45 @@
       await saveSlotCache(state.userName, cache);
     }
 
+    function orphanedAtMs(value) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+      const parsed = Date.parse(String(value || ""));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
     async function pruneOrphanedStoredState(userName, validMediaIds) {
       if (!userName) return;
+
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
+      const now = Date.now();
+      const expiredImageIds = [];
       const cache = await loadSlotCache(userName);
       let cacheChanged = false;
 
       for (const id of Object.keys(cache)) {
-        if (!validIds.has(id)) {
+        const rawEntry = cache[id];
+        const entry = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry)
+          ? { ...rawEntry }
+          : {};
+
+        if (validIds.has(id)) {
+          if (Object.prototype.hasOwnProperty.call(entry, "orphanedAt")) {
+            delete entry.orphanedAt;
+            cache[id] = entry;
+            cacheChanged = true;
+          }
+          continue;
+        }
+
+        const firstMissingAt = orphanedAtMs(entry.orphanedAt);
+        if (!firstMissingAt) {
+          entry.orphanedAt = now;
+          cache[id] = entry;
+          cacheChanged = true;
+        } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
           delete cache[id];
-          deleteCachedImage(id);
+          expiredImageIds.push(id);
           cacheChanged = true;
         }
       }
@@ -2114,7 +2519,26 @@
       let overridesChanged = false;
 
       for (const id of Object.keys(overrides)) {
-        if (!validIds.has(id)) {
+        const rawOverride = overrides[id];
+        const override = rawOverride && typeof rawOverride === "object" && !Array.isArray(rawOverride)
+          ? { ...rawOverride }
+          : {};
+
+        if (validIds.has(id)) {
+          if (Object.prototype.hasOwnProperty.call(override, "orphanedAt")) {
+            delete override.orphanedAt;
+            overrides[id] = override;
+            overridesChanged = true;
+          }
+          continue;
+        }
+
+        const firstMissingAt = orphanedAtMs(override.orphanedAt);
+        if (!firstMissingAt) {
+          override.orphanedAt = now;
+          overrides[id] = override;
+          overridesChanged = true;
+        } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
           delete overrides[id];
           overridesChanged = true;
         }
@@ -2123,6 +2547,10 @@
       if (overridesChanged) {
         state.overrides = overrides;
         await saveOverrides(userName, overrides);
+      }
+
+      if (expiredImageIds.length) {
+        await Promise.allSettled(expiredImageIds.map(id => deleteCachedImage(id)));
       }
     }
 
@@ -2134,6 +2562,31 @@
         if (!map.has(id)) map.set(id, entry);
       }
       return Array.from(map.values());
+    }
+
+    function evaluateAniListPruneSafety(userName, previousEntries, nextEntries) {
+      const previousIds = new Set((previousEntries || []).map(entry => String(entry?.media?.id || "")).filter(Boolean));
+      const nextIds = new Set((nextEntries || []).map(entry => String(entry?.media?.id || "")).filter(Boolean));
+      const drasticDrop = previousIds.size >= 4 && nextIds.size < Math.ceil(previousIds.size / 2);
+      const questionable = nextIds.size === 0 || drasticDrop;
+
+      if (!questionable) {
+        state.pendingAniListPruneSignature = "";
+        state.pendingAniListPruneCount = 0;
+        return true;
+      }
+
+      const signature = `${String(userName || "").trim().toLowerCase()}::${Array.from(nextIds).sort().join(",")}`;
+      if (state.pendingAniListPruneSignature === signature) {
+        state.pendingAniListPruneCount += 1;
+      } else {
+        state.pendingAniListPruneSignature = signature;
+        state.pendingAniListPruneCount = 1;
+      }
+
+      // Require the same empty or unusually small result twice. Even after confirmation,
+      // orphaned data is retained for ORPHAN_RETENTION_MS before deletion.
+      return state.pendingAniListPruneCount >= 2;
     }
 
     function isValidTime(value) {
@@ -2255,16 +2708,83 @@
       const rssFinalReleaseSeen = isFinalEpisode && usesRssFinalTiming &&
         Number(options.matchedEpisode) === totalEpisode;
 
+      // AniList advances nextAiringEpisode to the finale as soon as the penultimate
+      // episode airs. Advance the episode counter immediately, but suppress only
+      // the finale dot for the rest of that local calendar day.
+      const matchedEpisode = Number(options.matchedEpisode);
+      const latestReleaseDateMs = Number(options.latestReleaseDate);
+      const penultimateReleaseSeen = isFinalEpisode &&
+        Number.isFinite(matchedEpisode) &&
+        matchedEpisode === (totalEpisode - 1) &&
+        Number.isFinite(latestReleaseDateMs) &&
+        latestReleaseDateMs > 0;
+      const penultimateReleaseDateKey = penultimateReleaseSeen
+        ? localDateKeyFromMs(latestReleaseDateMs, timeZone)
+        : "";
+      const todayDateKey = localDateKeyFromMs(nowSeconds * 1000, timeZone);
+      const suppressFinalMarkerToday = Boolean(
+        penultimateReleaseSeen &&
+        penultimateReleaseDateKey &&
+        todayDateKey === penultimateReleaseDateKey &&
+        !finalAiringHasActuallyPassed
+      );
+      const isFinalDisplayActive = isFinalEpisode && !suppressFinalMarkerToday;
+
       return {
         displayEpisode: hasNextEpisode ? nextEpisode : "?",
         episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
         isFinalEpisode,
+        isFinalDisplayActive,
         isFinalAired: finalAiringHasActuallyPassed,
         isEnded: finalAiringHasActuallyPassed,
         finalAiredAtMs: Number.isFinite(finalAiredAtMs) ? finalAiredAtMs : null,
         usesRssFinalTiming: isFinalEpisode && usesRssFinalTiming,
         rssFinalReleaseSeen
       };
+    }
+
+    function updateFinaleTransitionDotState(item, cacheEntry, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      const nextEpisode = Number(item?.aniListNextEpisode);
+      const totalEpisodes = Number(item?.totalEpisodeNumber);
+      const previousNextEpisode = Number(cacheEntry?.lastAniListNextEpisode);
+      const matchedEpisode = Number(item?.matchedEpisode);
+      const latestReleaseDateMs = Number(item?.latestReleaseDate);
+      const todayDateKey = localDateKeyFromMs(nowMs, timeZone);
+      const isFinalEpisode = Number.isFinite(nextEpisode) && nextEpisode > 0 &&
+        Number.isFinite(totalEpisodes) && totalEpisodes > 0 &&
+        nextEpisode === totalEpisodes;
+      const penultimateReleaseDateKey = isFinalEpisode &&
+        Number.isFinite(matchedEpisode) && matchedEpisode === (totalEpisodes - 1) &&
+        Number.isFinite(latestReleaseDateMs) && latestReleaseDateMs > 0
+        ? localDateKeyFromMs(latestReleaseDateMs, timeZone)
+        : "";
+
+      // Prefer the RSS date when it proves when the penultimate episode released.
+      // This avoids hiding the dot for an extra day when the app was closed during the transition.
+      if (
+        isFinalEpisode &&
+        Number.isFinite(previousNextEpisode) &&
+        previousNextEpisode > 0 &&
+        previousNextEpisode < totalEpisodes &&
+        todayDateKey
+      ) {
+        cacheEntry.finaleTransitionDateKey = penultimateReleaseDateKey || todayDateKey;
+      } else if (!isFinalEpisode) {
+        delete cacheEntry.finaleTransitionDateKey;
+      }
+
+      if (cacheEntry.finaleTransitionDateKey && cacheEntry.finaleTransitionDateKey !== todayDateKey) {
+        delete cacheEntry.finaleTransitionDateKey;
+      }
+
+      if (Number.isFinite(nextEpisode) && nextEpisode > 0) {
+        cacheEntry.lastAniListNextEpisode = nextEpisode;
+      }
+
+      item.finaleTransitionDateKey = cacheEntry.finaleTransitionDateKey || "";
+      item.suppressFinalDotToday = Boolean(
+        isFinalEpisode && todayDateKey && cacheEntry.finaleTransitionDateKey === todayDateKey
+      );
     }
 
     function overrideForMediaId(mediaId) {
@@ -2410,8 +2930,8 @@
             totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
             displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
             isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays, isUpcomingSeason: shared.isUpcomingSeason,
-            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
-            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
+            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
             matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
             latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
             latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
@@ -2459,8 +2979,8 @@
             displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
             isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
             isUpcomingSeason: shared.isUpcomingSeason,
-            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
-            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
+            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
             finalAiredAtMs: episodeState.finalAiredAtMs,
             usesRssFinalTiming: episodeState.usesRssFinalTiming,
             rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
@@ -2504,8 +3024,8 @@
             displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
             isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
             isUpcomingSeason: shared.isUpcomingSeason,
-            isFinalEpisode: episodeState.isFinalEpisode, isFinalAired: episodeState.isFinalAired,
-            isEnded: episodeState.isEnded, isFinalHoldover: false,
+            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
+            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
             finalAiredAtMs: episodeState.finalAiredAtMs,
             usesRssFinalTiming: episodeState.usesRssFinalTiming,
             rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
@@ -2526,6 +3046,8 @@
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
 
+        updateFinaleTransitionDotState(item, entry, DEFAULT_TIMEZONE);
+
         if (item.isUpcomingSeason) {
           entry.wasDelayed = false;
         } else if (item.diffDays > 7) {
@@ -2543,6 +3065,8 @@
         if (item.source === "schedule") {
           // Keep pasted timetable values transient so they override old RSS history
           // without destroying that history when the timetable is disabled later.
+          // Only the generic episode-transition fields above are persisted.
+          cache[key] = { ...entry };
           output.push(item);
           continue;
         }
@@ -2559,8 +3083,13 @@
           else trackerEp = "?";
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
+          const ignoredRssEpisode = String(entry.ignoredRssEpisode || "");
+          const isIgnoredRssEpisode = Boolean(ignoredRssEpisode && ignoredRssEpisode === trackerEp);
+          if (ignoredRssEpisode && ignoredRssEpisode !== trackerEp) {
+            delete entry.ignoredRssEpisode;
+          }
 
-          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode) {
+          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode && !isIgnoredRssEpisode) {
             entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
             if (entry.history.length > 3) entry.history.shift();
           }
@@ -2751,6 +3280,103 @@
       return best;
     }
 
+
+    function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE) {
+      return (items || [])
+        .filter(item => isBoardActiveItem(item, timeZone) && isValidTime(item.time) && WEEKDAYS.includes(item.day))
+        .map(item => {
+          const status = getSlotStatus(item.day, item.time, timeZone);
+          return status ? { item, status } : null;
+        })
+        .filter(entry => entry && !entry.status.isNow && entry.status.minutesUntil > 0)
+        .sort((a, b) => a.status.minutesUntil - b.status.minutesUntil || sortByTime(a.item, b.item))
+        .slice(0, limit);
+    }
+
+    function formatNextUpDay(day, timeZone = DEFAULT_TIMEZONE) {
+      const offset = dayOffsetFromToday(day, timeZone);
+      if (offset === 0) return "Today";
+      if (offset === 1) return "Tomorrow";
+      return day;
+    }
+
+    function formatNextUpCountdown(minutes) {
+      const total = Math.max(0, Math.ceil(Number(minutes) || 0));
+      if (total < 60) return `in ${total}m`;
+      if (total < 1440) {
+        const hours = Math.floor(total / 60);
+        const mins = total % 60;
+        return mins ? `in ${hours}h ${mins}m` : `in ${hours}h`;
+      }
+      const days = Math.floor(total / 1440);
+      const hours = Math.floor((total % 1440) / 60);
+      return hours ? `in ${days}d ${hours}h` : `in ${days}d`;
+    }
+
+    function nextUpEpisodeLabel(item) {
+      const displayEpisode = item?.displayEpisode;
+      const total = item?.totalEpisodeNumber;
+      if (Number.isFinite(Number(displayEpisode)) && Number.isFinite(Number(total)) && Number(total) > 0) {
+        return `EP ${Number(displayEpisode)}/${Number(total)}`;
+      }
+      if (Number.isFinite(Number(displayEpisode))) return `EP ${Number(displayEpisode)}`;
+      return "Episode pending";
+    }
+
+    function nextUpHTML(items, timeZone = DEFAULT_TIMEZONE) {
+      const upcoming = getNextUpcomingItems(items, 3, timeZone);
+      if (!upcoming.length) {
+        return `
+          <section class="next-up-panel" aria-label="Next up">
+            <div class="next-up-head"><div class="next-up-title">Next up</div></div>
+            <div class="next-up-empty">No upcoming releases found.</div>
+          </section>`;
+      }
+
+      const visible = state.nextUpExpanded ? upcoming : upcoming.slice(0, 1);
+      const rows = visible.map(({ item, status }) => `
+        <div class="next-up-row">
+          <div class="next-up-time-wrap">
+            <div class="next-up-day">${escapeHtml(formatNextUpDay(item.day, timeZone))}</div>
+            <div class="next-up-time">${escapeHtml(item.time)}</div>
+          </div>
+          <div class="next-up-divider" aria-hidden="true"></div>
+          <div class="next-up-copy">
+            <div class="next-up-show" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+            <div class="next-up-episode">${escapeHtml(nextUpEpisodeLabel(item))}</div>
+          </div>
+          <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
+        </div>`).join("");
+
+      const remaining = Math.max(0, upcoming.length - 1);
+      const toggle = upcoming.length > 1
+        ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up">${state.nextUpExpanded ? "Show less ↑" : `+ ${remaining} more ›`}</button>`
+        : "";
+
+      return `
+        <section class="next-up-panel" aria-label="Next up">
+          <div class="next-up-head"><div class="next-up-title">Next up</div></div>
+          <div class="next-up-list">${rows}${toggle}</div>
+        </section>`;
+    }
+
+    function updateNextUpCountdowns(timeZone = DEFAULT_TIMEZONE) {
+      const entries = getNextUpcomingItems(state.items, 3, timeZone);
+      const byId = new Map(entries.map(entry => [String(entry.item.id), entry.status]));
+      let needsRerender = false;
+
+      document.querySelectorAll('[data-next-up-id]').forEach(el => {
+        const status = byId.get(String(el.dataset.nextUpId || ""));
+        if (!status) {
+          needsRerender = true;
+          return;
+        }
+        el.textContent = formatNextUpCountdown(status.minutesUntil);
+      });
+
+      if (needsRerender && state.items.length) renderBoard(state.items, true);
+    }
+
     function formatSavedAt(timestamp, timeZone = DEFAULT_TIMEZONE) {
       const safeTimestamp = Number(timestamp);
       if (!Number.isFinite(safeTimestamp)) return "";
@@ -2834,6 +3460,7 @@
         countEl.textContent = `${airedCount}/${totalCount}`;
       }
       state.lastNextSlotKey = newNextSlotKey;
+      updateNextUpCountdowns(DEFAULT_TIMEZONE);
     }
 
     function renderBoard(items, isTick = false) {
@@ -2844,31 +3471,18 @@
 
       const todayIdx = getNowContext(DEFAULT_TIMEZONE).dayIndex;
       const todayName = WEEKDAYS[todayIdx];
-      const effectiveDay = (state.selectedDay === "Today") ? todayName : state.selectedDay;
-      const isFullWeek = effectiveDay === "Full Week";
-
-      const daysList = ["Full Week", "Today"];
-
-      const dayOptions = daysList.map(d => {
-          let val = d;
-          let display = d;
-          if (d === "Today") {
-              display = `Today <span class="sub">${todayName.slice(0,3)}</span>`;
-          }
-          const isSel = (state.selectedDay === val);
-          return `<button class="day-pill ${isSel ? 'active' : ''}" data-value="${escapeHtml(val)}">${display}</button>`;
-      }).join("");
+      const effectiveDay = "Full Week";
+      const isFullWeek = true;
 
       let html = `
         <div class="header-area">
-          <div class="header-top-row">
+          <div class="header-top-row" style="margin-bottom: 0;">
             <h1 class="title">Currently Airing</h1>
-          </div>
-          <div class="day-pills-container" id="daySelectContainer">
-              ${dayOptions}
           </div>
         </div>
       `;
+
+      html += nextUpHTML(items, DEFAULT_TIMEZONE);
 
       if (isFullWeek) {
         html += `<div>`;
@@ -2878,7 +3492,7 @@
           const hasVisibleFinalHoldover = dayItems.some(i => Boolean(i.isFinalHoldover || i.isFinalAired));
 
           let isAutoCollapsed = false;
-          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
+          if (dayBlock.day === todayName && !hasVisibleFinalHoldover && !state.expandedDays?.has(dayBlock.day)) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
             for (const slot of dayBlock.slots) {
@@ -2938,16 +3552,6 @@
       els.boardContainer.innerHTML = html;
       loadImagesToDOM();
 
-      const dayContainer = document.getElementById("daySelectContainer");
-      if (dayContainer) {
-        dayContainer.addEventListener("click", (e) => {
-          const btn = e.target.closest(".day-pill");
-          if (!btn) return;
-          state.selectedDay = btn.dataset.value;
-          saveSelectedDay(state.selectedDay);
-          renderBoard(state.items);
-        });
-      }
     }
 
     function topLeftBadgeHTML(item) {
@@ -2976,13 +3580,13 @@
       const coverUrl = item.cover || "";
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
-      const isFinal = Boolean(item.isFinalEpisode || item.isFinalAired || item.isFinalHoldover);
+      const isFinal = Boolean(item.isFinalDisplayActive || item.isFinalAired || item.isFinalHoldover);
       let isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
       if (item.isFinalHoldover) {
         isEnded = false;   // keep the card alive (no greying, episode still visible)
       }
 
-      const showFinalDot = Boolean(item.isFinalEpisode && !isEnded);
+      const showFinalDot = Boolean(item.isFinalDisplayActive && !item.suppressFinalDotToday && !isEnded);
       const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
       const episodeHTML = shouldShowEpisode
@@ -3139,20 +3743,22 @@
       return output;
     }
 
-    async function refreshBoardFromState() {
+    async function refreshBoardFromState(options = {}) {
       await pruneExpiredFinalHoldovers();
 
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
 
-      await pruneOrphanedStoredState(
-        state.userName,
-        [
-          ...state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean),
-          ...finalHoldoverIds()
-        ]
-      );
+      if (options.allowPrune === true) {
+        await pruneOrphanedStoredState(
+          state.userName,
+          [
+            ...state.mergedEntries.map(entry => entry?.media?.id).filter(Boolean),
+            ...finalHoldoverIds()
+          ]
+        );
+      }
 
       const built = buildItems(state.mergedEntries, state.overrides, state.primaryCandidates, DEFAULT_TIMEZONE);
       const cachedRaw = await applyCache(built);
@@ -3393,10 +3999,12 @@
 
       const history = entry.history.slice();
       const removedSample = history.pop();
+      const removedEpisode = String(removedSample?.episode || "");
 
       if (history.length) {
         entry.history = history;
         entry.sampleCount = history.length;
+        if (removedEpisode) entry.ignoredRssEpisode = removedEpisode;
 
         const validMinutes = history
           .map(sample => Number(sample?.mins))
@@ -3409,7 +4017,16 @@
         entry.updatedAt = new Date().toISOString();
         cache[id] = entry;
       } else {
-        delete cache[id];
+        const transitionState = {};
+        if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
+          transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
+        }
+        if (entry.finaleTransitionDateKey) {
+          transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
+        }
+        if (removedEpisode) transitionState.ignoredRssEpisode = removedEpisode;
+        if (Object.keys(transitionState).length) cache[id] = transitionState;
+        else delete cache[id];
       }
 
       await saveSlotCache(state.userName, cache);
@@ -3521,20 +4138,25 @@
       if (state.isLoading) return false;
 
       state.isLoading = true;
+      els.loadBtn.disabled = true;
       syncPastedScheduleStateFromInputs();
       savePageSettings();
 
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Syncing..." : "Loading...";
-      const nextOverrides = await loadOverrides(userName);
-      const nextAddedShows = await loadAddedShows(userName);
-      const nextFinalHoldovers = await loadFinalHoldovers(userName);
-      const rssUrls = getRssUrls();
-
-      els.loadBtn.disabled = true;
       showMessage("info", loadingText);
 
       try {
+        // Storage failures must stop the refresh before any empty fallback can be written.
+        const [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
+          loadOverrides(userName),
+          loadAddedShows(userName),
+          loadFinalHoldovers(userName)
+        ]);
+        const rssUrls = getRssUrls();
+        const sameUser = String(state.userName || "").trim().toLowerCase() === userName.toLowerCase();
+        const previousEntries = sameUser ? (state.currentEntries || []) : [];
+
         const [aniListResult, rssResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
           fetchRssFeedsWithOptionalProxy(
@@ -3546,17 +4168,22 @@
         const nextNotes = [];
         const hasPastedScheduleOverride = state.pastedScheduleEnabled && state.pastedScheduleEntries.length > 0;
         let pastedScheduleFallbackUsed = false;
-        let nextCurrentEntries = state.currentEntries || [];
+        let nextCurrentEntries = previousEntries;
+        let aniListPruneSafe = false;
 
         if (aniListResult.status === "fulfilled") {
           nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
+          aniListPruneSafe = evaluateAniListPruneSafety(userName, previousEntries, nextCurrentEntries);
+          if (!aniListPruneSafe) {
+            nextNotes.push("AniList returned an empty or unusually small list. Stored RSS history was preserved pending confirmation.");
+          }
         } else {
           const reason = aniListResult.reason;
           const errMsg = reason instanceof Error ? reason.message : String(reason || "Request failed.");
           nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
         }
 
-        let nextPrimaryCandidates = [];
+        let nextPrimaryCandidates = state.primaryCandidates || [];
 
         if (rssResult.status === "fulfilled") {
           const allCandidates = [];
@@ -3581,17 +4208,17 @@
           nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
           
           let newest = 0;
-          for (const c of nextPrimaryCandidates) {
-            for (const item of c.items) {
+          for (const candidate of nextPrimaryCandidates) {
+            for (const item of candidate.items) {
               if (item.date.getTime() > newest) newest = item.date.getTime();
             }
           }
-          state.lastRssReleaseAt = newest;
+          if (newest > 0) state.lastRssReleaseAt = newest;
           
           const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
           if (newest > 0 && (Date.now() - newest) > STALE_THRESHOLD_MS) {
             if (hasPastedScheduleOverride) pastedScheduleFallbackUsed = true;
-            else nextNotes.push(`SubsPlease feed is stale (no updates in >24h).`);
+            else nextNotes.push("SubsPlease feed is stale (no updates in >24h).");
           }
 
         } else {
@@ -3600,18 +4227,25 @@
         }
 
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
+        let removedFinishedAddedShow = false;
         if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
           try {
             const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
             const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
             const mediaList = statusData?.Page?.media || [];
-            for (const m of mediaList) {
-              if (m.status === "FINISHED" || m.status === "CANCELLED") {
-                delete nextAddedShows[String(m.id)];
-                delete nextOverrides[String(m.id)];
+            for (const media of mediaList) {
+              if (media.status === "FINISHED" || media.status === "CANCELLED") {
+                delete nextAddedShows[String(media.id)];
+                delete nextOverrides[String(media.id)];
+                removedFinishedAddedShow = true;
               }
             }
-          } catch(e) {
+            if (removedFinishedAddedShow) {
+              await saveAddedShows(userName, nextAddedShows);
+              await saveOverrides(userName, nextOverrides);
+            }
+          } catch (error) {
+            console.warn("Could not verify manually added show statuses:", error);
           }
         }
 
@@ -3627,9 +4261,13 @@
         state.lastSuccessfulLoadAt = Date.now();
         setUpdateIndicatorStatus(state.healthStatus === "unhealthy" ? "error" : "ok");
 
-        await refreshBoardFromState();
+        await refreshBoardFromState({ allowPrune: aniListPruneSafe });
         await saveBoardSnapshot();
         pulseUpdateIndicator();
+        if (!autoRefreshStarted) {
+          startAutoRefresh();
+          autoRefreshStarted = true;
+        }
 
         showMessage(
           "info",
@@ -3643,16 +4281,19 @@
         const fallbackTime = state.lastSuccessfulLoadAt
           ? ` Showing last successful board from ${formatSavedAt(state.lastSuccessfulLoadAt)}.`
           : "";
+        const preservationNote = isStorageError(error)
+          ? " The app did not clear or replace the cache with an empty fallback."
+          : "";
 
         state.healthStatus = "unhealthy";
-        state.notes = [`Board update failed: ${message}`];
+        state.notes = [`Board update failed: ${message}${preservationNote}`];
         setUpdateIndicatorStatus("error");
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
         renderFooterStatus();
 
         if (!preserveBoard) renderSearchResults();
 
-        showMessage("error", `Could not refresh the board: ${message}.${fallbackTime}`.trim());
+        showMessage("error", `Could not refresh the board: ${message}.${preservationNote}${fallbackTime}`.trim());
         return false;
       } finally {
         state.isLoading = false;
@@ -3677,20 +4318,30 @@
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(async () => {
         const now = Date.now();
+        const todayDateKey = localDateKeyFromMs(now, DEFAULT_TIMEZONE);
         const finalDisplayNeedsRefresh = state.items.some(item => (
           item.isFinalEpisode &&
           !item.isFinalAired &&
           Number.isFinite(Number(item.finalAiredAtMs)) &&
           Number(item.finalAiredAtMs) <= now
         ));
+        const finaleDotDateRolledOver = state.items.some(item => (
+          item.suppressFinalDotToday &&
+          item.finaleTransitionDateKey &&
+          item.finaleTransitionDateKey !== todayDateKey
+        ));
 
-        if (finalDisplayNeedsRefresh) {
-          await refreshBoardFromState();
-        } else if (state.items.length) {
-          updateBoardHighlights();
+        try {
+          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver) {
+            await refreshBoardFromState({ allowPrune: false });
+          } else if (state.items.length) {
+            updateBoardHighlights();
+          }
+
+          renderFooterStatus();
+        } catch (error) {
+          reportAppError(error, "Automatic board refresh failed");
         }
-
-        renderFooterStatus();
       }, COUNTDOWN_TICK_MS);
     }
 
@@ -3713,6 +4364,9 @@
 
       if (action === "open-show-settings") {
         openSettingsModalForId(id);
+      } else if (action === "toggle-next-up") {
+        state.nextUpExpanded = !state.nextUpExpanded;
+        renderBoard(state.items);
       } else if (action === "toggle-day") {
         const day = actionElement.dataset.day;
         const isCurrentlyCollapsed = actionElement.textContent === 'Show';
@@ -3787,9 +4441,13 @@
       els.clearMemoryBtn.addEventListener("click", async () => {
         const scopedUser = state.userName || els.username.value.trim();
         if (!scopedUser) return;
-        await clearSlotCache(scopedUser);
-        showMessage("info", "MEMORY cleared.");
-        if (state.userName) await refreshBoardFromState();
+        try {
+          await clearSlotCache(scopedUser);
+          showMessage("info", "RSS memory cleared.");
+          if (state.userName) await refreshBoardFromState({ allowPrune: false });
+        } catch (error) {
+          reportAppError(error, "Could not clear RSS memory");
+        }
       });
     }
 
@@ -3819,6 +4477,18 @@
       if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
     });
 
+    window.addEventListener("pageshow", () => {
+      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+    });
+
+    armPersistentStorageRequest();
+
+    window.addEventListener("unhandledrejection", event => {
+      if (!isStorageError(event.reason)) return;
+      event.preventDefault();
+      reportAppError(event.reason, "Storage operation failed");
+    });
+
     let autoRefreshStarted = false;
     let bootCompleted = false;
 
@@ -3839,15 +4509,11 @@
           renderFooterStatus();
         }
       } catch (error) {
-        console.error("Boot failed:", error);
-        await clearBoardSnapshot();
-        state.lastSuccessfulLoadAt = 0;
-        state.healthStatus = "unhealthy";
-        state.notes = [`Startup: ${error.message}`];
-        setUpdateIndicatorStatus("error");
-        updateIndicatorTitle(0);
-        renderFooterStatus();
-        showMessage("error", `Startup failed: ${error.message}`);
+        // Never delete the snapshot in response to a read/open failure. A manual retry can
+        // recover after a transient browser-storage problem or a blocked database closes.
+        state.lastSuccessfulLoadAt = state.lastSuccessfulLoadAt || 0;
+        updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        reportAppError(error, "Startup failed");
       }
     }
 
