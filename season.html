@@ -992,6 +992,7 @@
     const SEARCH_DEBOUNCE_MS = 650;
     const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
+    const EPISODE_TICKER_GATE_MS = 60 * 60 * 1000;
     const RECENT_RELEASE_WINDOW_MS = 36 * 60 * 60 * 1000;
     const UPCOMING_EPISODE_PREVIEW_MS = 36 * 60 * 60 * 1000;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
@@ -2745,6 +2746,15 @@
       const rssFinalReleaseSeen = isFinalEpisode && usesRssFinalTiming &&
         Number(options.matchedEpisode) === totalEpisode;
 
+      // Episode ticker gate: AniList advances to the next episode at Japanese airtime,
+      // but SubsPlease releases commonly arrive later. Hold the visible counter for up
+      // to one hour after the just-aired AniList slot unless RSS confirms the release.
+      const tickerGateUntilMs = Number(options.tickerGateUntilMs);
+      const tickerHeldEpisode = Number(options.tickerHeldEpisode);
+      const tickerGateActive = hasNextEpisode &&
+        Number.isFinite(tickerGateUntilMs) && tickerGateUntilMs > (nowSeconds * 1000) &&
+        Number.isFinite(tickerHeldEpisode) && tickerHeldEpisode > 0 && tickerHeldEpisode < nextEpisode;
+
       // AniList advances nextAiringEpisode to the finale as soon as the penultimate
       // episode airs. Advance the episode counter immediately, but suppress only
       // the finale dot for the rest of that local calendar day.
@@ -2765,11 +2775,14 @@
         todayDateKey === penultimateReleaseDateKey &&
         !finalAiringHasActuallyPassed
       );
-      const isFinalDisplayActive = isFinalEpisode && !suppressFinalMarkerToday;
+      const isFinalDisplayActive = isFinalEpisode && !tickerGateActive && !suppressFinalMarkerToday;
 
       return {
-        displayEpisode: hasNextEpisode ? nextEpisode : "?",
-        episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
+        displayEpisode: hasNextEpisode ? (tickerGateActive ? tickerHeldEpisode : nextEpisode) : "?",
+        episodeBasis: hasNextEpisode ? (tickerGateActive ? "anilist-plus-60-gate" : "anilist-next") : "unknown",
+        tickerGateActive,
+        tickerGateUntilMs: tickerGateActive ? tickerGateUntilMs : null,
+        tickerHeldEpisode: tickerGateActive ? tickerHeldEpisode : null,
         isFinalEpisode,
         isFinalDisplayActive,
         isFinalAired: finalAiringHasActuallyPassed,
@@ -2778,6 +2791,76 @@
         usesRssFinalTiming: isFinalEpisode && usesRssFinalTiming,
         rssFinalReleaseSeen
       };
+    }
+
+    function latestConfirmedRssEpisode(item, cacheEntry) {
+      const candidates = [];
+      const directEpisode = Number(item?.matchedEpisode);
+      if (Number.isFinite(directEpisode) && directEpisode > 0) candidates.push(directEpisode);
+
+      const history = Array.isArray(cacheEntry?.history) ? cacheEntry.history : [];
+      for (const sample of history) {
+        const episode = Number(sample?.episode);
+        if (Number.isFinite(episode) && episode > 0) candidates.push(episode);
+      }
+
+      return candidates.length ? Math.max(...candidates) : null;
+    }
+
+    function updateEpisodeTickerGateState(item, cacheEntry, nowMs = Date.now()) {
+      const nextEpisode = Number(item?.aniListNextEpisode);
+      const nextAiringAt = Number(item?.nextAiringAt);
+      const previousNextEpisode = Number(cacheEntry?.lastAniListNextEpisode);
+      const previousNextAiringAt = Number(cacheEntry?.lastAniListNextAiringAt);
+      const latestRssEpisode = latestConfirmedRssEpisode(item, cacheEntry);
+
+      const observedForwardTransition =
+        Number.isFinite(nextEpisode) && nextEpisode > 0 &&
+        Number.isFinite(previousNextEpisode) && previousNextEpisode > 0 &&
+        nextEpisode > previousNextEpisode;
+
+      // The cached nextAiringAt is the exact AniList slot that just passed. Start the
+      // one-hour gate from that timestamp only when we actually observe the transition.
+      if (observedForwardTransition && Number.isFinite(previousNextAiringAt) && previousNextAiringAt > 0) {
+        const gateUntilMs = (previousNextAiringAt * 1000) + EPISODE_TICKER_GATE_MS;
+        const rssAlreadyConfirmed = Number.isFinite(latestRssEpisode) && latestRssEpisode >= previousNextEpisode;
+
+        if (!rssAlreadyConfirmed && gateUntilMs > nowMs) {
+          cacheEntry.tickerHeldEpisode = previousNextEpisode;
+          cacheEntry.tickerGateUntilMs = gateUntilMs;
+        } else {
+          delete cacheEntry.tickerHeldEpisode;
+          delete cacheEntry.tickerGateUntilMs;
+        }
+      }
+
+      const heldEpisode = Number(cacheEntry?.tickerHeldEpisode);
+      const gateUntilMs = Number(cacheEntry?.tickerGateUntilMs);
+      const rssConfirmedHeldEpisode =
+        Number.isFinite(heldEpisode) && heldEpisode > 0 &&
+        Number.isFinite(latestRssEpisode) && latestRssEpisode >= heldEpisode;
+      const gateExpired = Number.isFinite(gateUntilMs) && gateUntilMs <= nowMs;
+      const gateNoLongerMatches =
+        !Number.isFinite(nextEpisode) || nextEpisode <= 0 ||
+        (Number.isFinite(heldEpisode) && heldEpisode >= nextEpisode);
+
+      if (rssConfirmedHeldEpisode || gateExpired || gateNoLongerMatches) {
+        delete cacheEntry.tickerHeldEpisode;
+        delete cacheEntry.tickerGateUntilMs;
+      }
+
+      item.tickerHeldEpisode = Number.isFinite(Number(cacheEntry?.tickerHeldEpisode))
+        ? Number(cacheEntry.tickerHeldEpisode)
+        : null;
+      item.tickerGateUntilMs = Number.isFinite(Number(cacheEntry?.tickerGateUntilMs))
+        ? Number(cacheEntry.tickerGateUntilMs)
+        : null;
+
+      // Store the current AniList slot after transition detection so it becomes the
+      // exact previous-airing timestamp on the next episode change.
+      if (Number.isFinite(nextAiringAt) && nextAiringAt > 0) {
+        cacheEntry.lastAniListNextAiringAt = nextAiringAt;
+      }
     }
 
     function updateFinaleTransitionDotState(item, cacheEntry, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
@@ -3073,6 +3156,31 @@
       return items;
     }
 
+    function mostCommonRssHistoryDay(history, fallback = null) {
+      const samples = Array.isArray(history) ? history : [];
+      const counts = new Map();
+      for (const sample of samples) {
+        const day = String(sample?.day || "");
+        if (!WEEKDAYS.includes(day)) continue;
+        counts.set(day, (counts.get(day) || 0) + 1);
+      }
+      if (!counts.size) return WEEKDAYS.includes(fallback) ? fallback : null;
+
+      // Prefer the most common RSS weekday. On a tie, prefer the latest sample so
+      // a genuine schedule move can take effect without waiting for three weeks.
+      let bestDay = null;
+      let bestCount = -1;
+      for (const sample of [...samples].reverse()) {
+        const day = String(sample?.day || "");
+        const count = counts.get(day) || 0;
+        if (count > bestCount) {
+          bestDay = day;
+          bestCount = count;
+        }
+      }
+      return WEEKDAYS.includes(bestDay) ? bestDay : (WEEKDAYS.includes(fallback) ? fallback : null);
+    }
+
     async function applyCache(items) {
       const cache = await loadSlotCache(state.userName);
       const output = [];
@@ -3083,7 +3191,30 @@
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
 
+        // Read the previous cached AniList episode/time before the finale transition
+        // helper updates lastAniListNextEpisode. This keeps the ticker gate independent
+        // from finale-dot state while letting both observe the same AniList transition.
+        updateEpisodeTickerGateState(item, entry, Date.now());
         updateFinaleTransitionDotState(item, entry, DEFAULT_TIMEZONE);
+
+        const gatedEpisodeState = resolveEpisodeDisplayState({
+          nextEpisodeNumber: item.aniListNextEpisode,
+          totalEpisodeNumber: item.totalEpisodeNumber,
+          matchedEpisode: item.matchedEpisode,
+          latestReleaseDate: item.latestReleaseDate,
+          day: item.day,
+          time: item.time,
+          finalTimingDay: item.latestReleaseDay || item.day,
+          finalTimingTime: item.time,
+          nextAiringAt: item.nextAiringAt,
+          isUpcomingSeason: item.isUpcomingSeason,
+          isScheduleMoved: item.isScheduleMoved,
+          useRssFinalTiming: item.usesRssFinalTiming,
+          tickerGateUntilMs: item.tickerGateUntilMs,
+          tickerHeldEpisode: item.tickerHeldEpisode,
+          timeZone: DEFAULT_TIMEZONE
+        });
+        Object.assign(item, gatedEpisodeState);
 
         if (item.isUpcomingSeason) {
           entry.wasDelayed = false;
@@ -3142,6 +3273,11 @@
           const latestHistoryDay = entry.history.length
             ? entry.history[entry.history.length - 1]?.day
             : null;
+          const rssScheduleDay = mostCommonRssHistoryDay(
+            entry.history,
+            latestHistoryDay || item.latestReleaseDay || item.day
+          );
+          const rssScheduleTime = item.time;
 
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
@@ -3156,17 +3292,22 @@
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
             useRssFinalTiming: true,
+            tickerGateUntilMs: item.tickerGateUntilMs,
+            tickerHeldEpisode: item.tickerHeldEpisode,
             timeZone: DEFAULT_TIMEZONE
           });
 
           cache[key] = { 
             ...entry, day: item.day, time: item.time, sampleCount: item.sampleCount, 
             matchedTitle: item.matchedTitle || "", latestReleaseDate: item.latestReleaseDate || null,
+            rssScheduleDay, rssScheduleTime,
             origin: "rss", updatedAt: new Date().toISOString() 
           };
           output.push({
             ...item,
             ...episodeState,
+            rssScheduleDay,
+            rssScheduleTime,
             historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
           continue;
@@ -3187,6 +3328,12 @@
           const latestRememberedDay = rememberedHistory.length
             ? rememberedHistory[rememberedHistory.length - 1]?.day
             : null;
+          const rssScheduleDay = entry.origin === "rss"
+            ? mostCommonRssHistoryDay(rememberedHistory, entry.rssScheduleDay || latestRememberedDay || item.latestReleaseDay || item.day)
+            : null;
+          const rssScheduleTime = entry.origin === "rss"
+            ? (isValidTime(rememberedTime) ? rememberedTime : (isValidTime(entry.rssScheduleTime) ? entry.rssScheduleTime : null))
+            : null;
 
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
@@ -3201,6 +3348,8 @@
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
             useRssFinalTiming: entry.origin === "rss",
+            tickerGateUntilMs: item.tickerGateUntilMs,
+            tickerHeldEpisode: item.tickerHeldEpisode,
             timeZone: DEFAULT_TIMEZONE
           });
 
@@ -3209,12 +3358,19 @@
             matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
             matchedEpisode: latestRememberedEpisode || item.matchedEpisode || null,
             latestReleaseDate: entry.latestReleaseDate || item.latestReleaseDate || null,
+            rssScheduleDay,
+            rssScheduleTime,
             isFreshRss: isFreshRss || false,
             ...episodeState,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
 
-          cache[key] = { ...entry }; 
+          cache[key] = {
+            ...entry,
+            ...(entry.origin === "rss" && rssScheduleDay && rssScheduleTime
+              ? { rssScheduleDay, rssScheduleTime }
+              : {})
+          }; 
         } else {
           cache[key] = { ...entry };
           output.push(item);
@@ -3318,15 +3474,39 @@
     }
 
 
+    function resolveNextUpTiming(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item) return null;
+
+      // User-controlled schedules must always win. For automatically detected shows,
+      // prefer the weekday/time learned from actual RSS releases. Only fall back to
+      // the generic board slot (normally AniList + offset) when no RSS history exists.
+      const hasExplicitSchedule = item.source === "manual" || item.source === "schedule";
+      if (!hasExplicitSchedule) {
+        const rssBacked = item.source === "rss" || item.cacheOrigin === "rss";
+        const rssDay = String(item.rssScheduleDay || item.latestReleaseDay || "");
+        const rssTime = String(item.rssScheduleTime || (rssBacked ? item.time : "") || "");
+        if (rssBacked && WEEKDAYS.includes(rssDay) && isValidTime(rssTime)) {
+          return { day: rssDay, time: rssTime, source: "rss" };
+        }
+      }
+
+      if (WEEKDAYS.includes(item.day) && isValidTime(item.time)) {
+        return { day: item.day, time: item.time, source: hasExplicitSchedule ? item.source : "fallback" };
+      }
+      return null;
+    }
+
     function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE) {
       return (items || [])
-        .filter(item => isBoardActiveItem(item, timeZone) && isValidTime(item.time) && WEEKDAYS.includes(item.day))
+        .filter(item => isBoardActiveItem(item, timeZone))
         .map(item => {
-          const status = getSlotStatus(item.day, item.time, timeZone);
-          return status ? { item, status } : null;
+          const timing = resolveNextUpTiming(item, timeZone);
+          if (!timing) return null;
+          const status = getSlotStatus(timing.day, timing.time, timeZone);
+          return status ? { item, status, timing } : null;
         })
         .filter(entry => entry && !entry.status.isNow && entry.status.minutesUntil > 0)
-        .sort((a, b) => a.status.minutesUntil - b.status.minutesUntil || sortByTime(a.item, b.item))
+        .sort((a, b) => a.status.minutesUntil - b.status.minutesUntil || toMinutes(a.timing.time) - toMinutes(b.timing.time) || a.item.title.localeCompare(b.item.title))
         .slice(0, limit);
     }
 
@@ -3367,7 +3547,7 @@
       const visible = state.nextUpExpanded ? upcoming : upcoming.slice(0, 1);
       const remaining = Math.max(0, upcoming.length - 1);
 
-      const rows = visible.map(({ item, status }, index) => {
+      const rows = visible.map(({ item, status, timing }, index) => {
         const toggle = index === 0 && upcoming.length > 1
           ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up" aria-label="${state.nextUpExpanded ? "Collapse upcoming releases" : `Show ${remaining} more upcoming releases`}">${state.nextUpExpanded ? "Less" : `+${remaining}`}</button>`
           : "";
@@ -3380,8 +3560,8 @@
         return `
           <div class="next-up-row">
             <div class="next-up-time-wrap">
-              <div class="next-up-day">${escapeHtml(formatNextUpDay(item.day, timeZone))}</div>
-              <div class="next-up-time">${escapeHtml(item.time)}</div>
+              <div class="next-up-day">${escapeHtml(formatNextUpDay(timing.day, timeZone))}</div>
+              <div class="next-up-time">${escapeHtml(timing.time)}</div>
             </div>
             <div class="next-up-divider" aria-hidden="true"></div>
             ${cover}
@@ -3529,10 +3709,9 @@
         for (const dayBlock of grouped) {
           
           const dayItems = items.filter(i => i.day === dayBlock.day);
-          const hasVisibleFinalHoldover = dayItems.some(i => Boolean(i.isFinalHoldover || i.isFinalAired));
 
           let isAutoCollapsed = false;
-          if (dayBlock.day === todayName && !hasVisibleFinalHoldover && !state.expandedDays?.has(dayBlock.day)) {
+          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
             for (const slot of dayBlock.slots) {
@@ -4061,6 +4240,15 @@
         if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
           transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
         }
+        if (Number.isFinite(Number(entry.lastAniListNextAiringAt)) && Number(entry.lastAniListNextAiringAt) > 0) {
+          transitionState.lastAniListNextAiringAt = Number(entry.lastAniListNextAiringAt);
+        }
+        if (Number.isFinite(Number(entry.tickerHeldEpisode)) && Number(entry.tickerHeldEpisode) > 0) {
+          transitionState.tickerHeldEpisode = Number(entry.tickerHeldEpisode);
+        }
+        if (Number.isFinite(Number(entry.tickerGateUntilMs)) && Number(entry.tickerGateUntilMs) > 0) {
+          transitionState.tickerGateUntilMs = Number(entry.tickerGateUntilMs);
+        }
         if (entry.finaleTransitionDateKey) {
           transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
         }
@@ -4370,9 +4558,14 @@
           item.finaleTransitionDateKey &&
           item.finaleTransitionDateKey !== todayDateKey
         ));
+        const episodeTickerGateExpired = state.items.some(item => (
+          item.tickerGateActive &&
+          Number.isFinite(Number(item.tickerGateUntilMs)) &&
+          Number(item.tickerGateUntilMs) <= now
+        ));
 
         try {
-          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver) {
+          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver || episodeTickerGateExpired) {
             await refreshBoardFromState({ allowPrune: false });
           } else if (state.items.length) {
             updateBoardHighlights();
