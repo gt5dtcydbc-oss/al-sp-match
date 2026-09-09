@@ -1054,6 +1054,24 @@
       }
     `;
 
+    const ADDED_MEDIA_QUERY = `
+      query ($ids: [Int]) {
+        Page(page: 1, perPage: 50) {
+          media(id_in: $ids, type: ANIME) {
+            id
+            siteUrl
+            format
+            status
+            episodes
+            coverImage { large medium }
+            title { userPreferred english romaji native }
+            synonyms
+            nextAiringEpisode { episode airingAt }
+          }
+        }
+      }
+    `;
+
     const DB_NAME = 'AiringBoardImages';
     const DB_VERSION = 2;
     const STORE_NAME = 'covers';
@@ -1292,6 +1310,47 @@
 
     async function deleteStateDB(key) {
       await deleteStoreValue(STATE_STORE, key, "delete state");
+    }
+
+    async function mutateStateDB(key, mutator) {
+      if (typeof mutator !== "function") {
+        throw makeStorageError("mutate state", key, new Error("State mutator must be a function."));
+      }
+
+      try {
+        const db = await getDB();
+        return await new Promise((resolve, reject) => {
+          const transaction = db.transaction(STATE_STORE, "readwrite");
+          const store = transaction.objectStore(STATE_STORE);
+          const request = store.get(key);
+          let nextValue;
+          let mutationError = null;
+
+          request.addEventListener("success", () => {
+            try {
+              nextValue = mutator(request.result);
+              if (nextValue === undefined) store.delete(key);
+              else store.put(nextValue, key);
+            } catch (error) {
+              mutationError = error;
+              try { transaction.abort(); } catch (_) {}
+            }
+          }, { once: true });
+
+          request.addEventListener("error", () => {
+            mutationError = request.error || new Error("State read failed during mutation.");
+            try { transaction.abort(); } catch (_) {}
+          }, { once: true });
+
+          transaction.addEventListener("complete", () => resolve(nextValue), { once: true });
+          transaction.addEventListener("abort", () => {
+            reject(makeStorageError("mutate state", key, mutationError || transaction.error || new Error("Transaction aborted.")));
+          }, { once: true });
+        });
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError("mutate state", key, error);
+      }
     }
 
     async function commitMigratedState(targetKey, sourceKey, sourceKind, value) {
@@ -1601,6 +1660,17 @@
       return (data?.Page?.media || []).filter(media => media?.status === "RELEASING");
     }
 
+    async function fetchAniListMediaByIds(ids) {
+      const uniqueIds = Array.from(new Set((ids || []).map(Number).filter(id => Number.isFinite(id) && id > 0)));
+      const media = [];
+      for (let index = 0; index < uniqueIds.length; index += 50) {
+        const chunk = uniqueIds.slice(index, index + 50);
+        const data = await graphQLRequest(ADDED_MEDIA_QUERY, { ids: chunk });
+        media.push(...(data?.Page?.media || []));
+      }
+      return media;
+    }
+
     async function fetchTextWithOptionalProxy(url, proxyTemplate) {
       const targets = [];
       if (proxyTemplate) targets.push(proxyTemplate.replace("%URL%", encodeURIComponent(url)));
@@ -1789,8 +1859,8 @@
         [text, normalized, compact, stripped, strippedNormalized, strippedCompact].forEach(value => {
           if (value) variants.add(value);
         });
-        const seasonless = normalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
-        const strippedSeasonless = strippedNormalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
+        const seasonless = normalized.replace(/\bs\s*\d+\b/g, " ").replace(/\s+/g, " ").trim();
+        const strippedSeasonless = strippedNormalized.replace(/\bs\s*\d+\b/g, " ").replace(/\s+/g, " ").trim();
         const compactSeasonless = seasonless.replace(/\s+/g, "");
         const compactStrippedSeasonless = strippedSeasonless.replace(/\s+/g, "");
         [seasonless, strippedSeasonless, compactSeasonless, compactStrippedSeasonless].forEach(value => {
@@ -1946,7 +2016,7 @@
 
     function extractSeasonNumber(text) {
       const normalized = normalizeTitle(text);
-      const match = normalized.match(/\bs(\d+)\b|\bseason\s*(\d+)\b/);
+      const match = normalized.match(/\bs\s*(\d+)\b|\bseason\s*(\d+)\b/);
       const number = match ? Number(match[1] || match[2]) : null;
       return Number.isFinite(number) ? number : null;
     }
@@ -1975,6 +2045,18 @@
 
     function scoreMatch(candidate, variants) {
       if (!candidate || !Array.isArray(candidate.variants)) return 0;
+
+      // Seasonless variants are useful when one source omits the season label, but an
+      // explicit S2 vs S3 conflict must never become a perfect match through those variants.
+      const mediaSeasons = new Set((variants || [])
+        .map(variant => Number(variant?.season))
+        .filter(value => Number.isFinite(value) && value > 0));
+      const candidateSeason = extractSeasonNumber(candidate.title);
+      if (mediaSeasons.size === 1 && candidateSeason !== null) {
+        const [mediaSeason] = mediaSeasons;
+        if (mediaSeason !== candidateSeason) return 0;
+      }
+
       let best = 0;
       
       for (const v of variants) {
@@ -2372,6 +2454,22 @@
       return value;
     }
 
+    async function mutateObjectState(key, mutator, legacyKeys = []) {
+      await loadObjectState(key, legacyKeys);
+      return await mutateStateDB(key, current => {
+        const value = current === undefined ? {} : current;
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          throw new Error("Saved value has an unexpected format.");
+        }
+        const next = mutator(value);
+        const result = next === undefined ? value : next;
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error("State mutation produced an invalid value.");
+        }
+        return result;
+      });
+    }
+
     async function loadSlotCache(userName) {
       const key = slotCacheScopeKey(userName);
       return await loadObjectState(key, legacySlotCacheKeys(userName));
@@ -2382,6 +2480,25 @@
         throw makeStorageError("validate state", slotCacheScopeKey(userName), new Error("RSS cache must be an object."));
       }
       await saveStateDB(slotCacheScopeKey(userName), cache);
+    }
+
+    async function mutateSlotCache(userName, mutator) {
+      const key = slotCacheScopeKey(userName);
+      // Ensure legacy/localStorage data has been migrated and validated before opening
+      // the atomic read/write transaction on the canonical key.
+      await loadSlotCache(userName);
+      return await mutateStateDB(key, current => {
+        const cache = current === undefined ? {} : current;
+        if (!cache || typeof cache !== "object" || Array.isArray(cache)) {
+          throw new Error("RSS cache has an unexpected format.");
+        }
+        const next = mutator(cache);
+        const result = next === undefined ? cache : next;
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error("RSS cache mutation produced an invalid value.");
+        }
+        return result;
+      });
     }
 
     async function clearSlotCache(userName) {
@@ -2398,12 +2515,18 @@
     async function saveOverrides(userName, overrides) {
       await saveStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides);
     }
+    async function mutateOverrides(userName, mutator) {
+      return await mutateObjectState(scopedKey(MANUAL_OVERRIDE_KEY, userName), mutator);
+    }
     
     async function loadAddedShows(userName) {
       return await loadObjectState(scopedKey(ADDED_SHOWS_KEY, userName));
     }
     async function saveAddedShows(userName, addedShows) {
       await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows);
+    }
+    async function mutateAddedShows(userName, mutator) {
+      return await mutateObjectState(scopedKey(ADDED_SHOWS_KEY, userName), mutator);
     }
 
     async function loadFinalHoldovers(userName) {
@@ -2446,17 +2569,15 @@
       return todayKey > airDateKey;
     }
 
-    // ✅ RENAMED BACK + IMPROVED: isFinalHoldoverVisibleToday with fallback logic
-    function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
+    function finalHoldoverReleaseAtMs(holdover, timeZone = DEFAULT_TIMEZONE) {
       const item = holdover?.item || {};
       const usesRss = Boolean(holdover?.usesRssFinalTiming || item?.usesRssFinalTiming);
-
       const rawFinal = holdover?.finalAiredAtMs ?? item?.finalAiredAtMs;
-      let visibleAfterMs = Number(rawFinal);
+      let releaseAtMs = Number(rawFinal);
 
-      if (!Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) {
+      if (!Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
         if (usesRss) {
-          visibleAfterMs = getRssFinalAiringAtMs({
+          releaseAtMs = getRssFinalAiringAtMs({
             nextAiringAt: item?.nextAiringAt,
             day: item?.day,
             time: item?.time,
@@ -2465,18 +2586,26 @@
           }, timeZone);
         } else {
           const airingAtMs = Number(holdover?.airingAtMs);
-          visibleAfterMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
+          releaseAtMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
         }
       }
 
-      const storedAirDateKey = String(holdover?.airDateKey || "");
-      const visibleDateKey = Number.isFinite(visibleAfterMs) && visibleAfterMs > 0
-        ? localDateKeyFromMs(visibleAfterMs, timeZone)
-        : storedAirDateKey;
+      return Number.isFinite(releaseAtMs) && releaseAtMs > 0 ? releaseAtMs : null;
+    }
 
-      if (!visibleDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
-      if (Date.now() < visibleAfterMs) return false;
-      return localDateKeyFromMs(Date.now(), timeZone) === visibleDateKey;
+    function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
+      const releaseAtMs = finalHoldoverReleaseAtMs(holdover, timeZone);
+      const storedAirDateKey = String(holdover?.airDateKey || "");
+      const releaseDateKey = Number.isFinite(releaseAtMs)
+        ? localDateKeyFromMs(releaseAtMs, timeZone)
+        : storedAirDateKey;
+      if (!releaseDateKey) return false;
+      return localDateKeyFromMs(Date.now(), timeZone) === releaseDateKey;
+    }
+
+    function isFinalHoldoverReleased(holdover, timeZone = DEFAULT_TIMEZONE) {
+      const releaseAtMs = finalHoldoverReleaseAtMs(holdover, timeZone);
+      return Number.isFinite(releaseAtMs) && Date.now() >= releaseAtMs;
     }
 
     // ✅ RENAMED BACK: isFinalAiredItemExpired
@@ -2503,9 +2632,10 @@
     }
 
     async function clearCachedSlotForShow(showId) {
-      const cache = await loadSlotCache(state.userName);
-      delete cache[String(showId)];
-      await saveSlotCache(state.userName, cache);
+      await mutateSlotCache(state.userName, cache => {
+        delete cache[String(showId)];
+        return cache;
+      });
     }
 
     function orphanedAtMs(value) {
@@ -2521,37 +2651,32 @@
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
       const now = Date.now();
       const expiredImageIds = [];
-      const cache = await loadSlotCache(userName);
-      let cacheChanged = false;
+      await mutateSlotCache(userName, cache => {
+        for (const id of Object.keys(cache)) {
+          const rawEntry = cache[id];
+          const entry = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry)
+            ? { ...rawEntry }
+            : {};
 
-      for (const id of Object.keys(cache)) {
-        const rawEntry = cache[id];
-        const entry = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry)
-          ? { ...rawEntry }
-          : {};
-
-        if (validIds.has(id)) {
-          if (Object.prototype.hasOwnProperty.call(entry, "orphanedAt")) {
-            delete entry.orphanedAt;
-            cache[id] = entry;
-            cacheChanged = true;
+          if (validIds.has(id)) {
+            if (Object.prototype.hasOwnProperty.call(entry, "orphanedAt")) {
+              delete entry.orphanedAt;
+              cache[id] = entry;
+            }
+            continue;
           }
-          continue;
-        }
 
-        const firstMissingAt = orphanedAtMs(entry.orphanedAt);
-        if (!firstMissingAt) {
-          entry.orphanedAt = now;
-          cache[id] = entry;
-          cacheChanged = true;
-        } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
-          delete cache[id];
-          expiredImageIds.push(id);
-          cacheChanged = true;
+          const firstMissingAt = orphanedAtMs(entry.orphanedAt);
+          if (!firstMissingAt) {
+            entry.orphanedAt = now;
+            cache[id] = entry;
+          } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
+            delete cache[id];
+            expiredImageIds.push(id);
+          }
         }
-      }
-
-      if (cacheChanged) await saveSlotCache(userName, cache);
+        return cache;
+      });
 
       const overrides = state.overrides && typeof state.overrides === "object" ? { ...state.overrides } : {};
       let overridesChanged = false;
@@ -2948,6 +3073,21 @@
       };
     }
 
+    function offsetWeeklySlot(day, time, deltaMinutes) {
+      const dayIndex = WEEKDAYS.indexOf(day);
+      const startMinutes = toMinutes(time);
+      const delta = Number(deltaMinutes);
+      if (dayIndex < 0 || !Number.isFinite(startMinutes) || !Number.isFinite(delta)) return null;
+
+      const totalMinutes = startMinutes + delta;
+      const dayShift = Math.floor(totalMinutes / 1440);
+      const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+      return {
+        day: WEEKDAYS[(dayIndex + dayShift + 7 * 10) % 7],
+        time: minutesToHHMM(normalizedMinutes)
+      };
+    }
+
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
@@ -2977,7 +3117,7 @@
 
               if (rssDayIdx === expectedRssDayIdx) {
                 return {
-                  day: aniDay,
+                  day: primary.day,
                   time: primary.time,
                   source: "rss",
                   sampleCount: primary.sampleCount || 1,
@@ -2991,10 +3131,12 @@
             }
             
             // Out of bounds or wrong day. Reject and use fallback.
-            return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
+            const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
+            return { day: fallbackSlot?.day || aniDay, time: fallbackSlot?.time || aniTime, source: "fallback", sampleCount: 0, matchedTitle: "" };
           }
 
-          return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
+          const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
+          return { day: fallbackSlot?.day || aniDay, time: fallbackSlot?.time || aniTime, source: "fallback", sampleCount: 0, matchedTitle: "" };
         }
       }
 
@@ -3213,9 +3355,9 @@
     }
 
     async function applyCache(items) {
-      const cache = await loadSlotCache(state.userName);
       const output = [];
 
+      await mutateSlotCache(state.userName, cache => {
       for (const item of items) {
         const key = String(item.id);
 
@@ -3385,7 +3527,9 @@
         }
       }
 
-      await saveSlotCache(state.userName, cache);
+      return cache;
+      });
+
       return output.map(item => applyEpisodeTickerDisplay(item));
     }
 
@@ -3518,10 +3662,17 @@
       const nextAiringAt = Number(item.nextAiringAt);
       const nextAtMs = releaseOccurrenceForAiring(nextAiringAt, timing, timeZone);
       if (nextEpisode !== null && Number.isFinite(nextAtMs)) {
-        const candidates = [{ occurrenceAtMs: nextAtMs, episodeNumber: nextEpisode }];
         const previousEpisode = episodeNumberFromToken(item.tickerPreviousEpisode);
         const previousAiringAt = Number(item.tickerPreviousAiringAt);
         const confirmedEpisode = episodeNumberFromToken(item.tickerConfirmedRssEpisode);
+        const candidates = [];
+
+        // If RSS has already confirmed the episode AniList still calls "next", that
+        // release is no longer upcoming. Wait for AniList to provide the following
+        // episode/date instead of counting down to something that is already out.
+        if (confirmedEpisode === null || confirmedEpisode < nextEpisode) {
+          candidates.push({ occurrenceAtMs: nextAtMs, episodeNumber: nextEpisode });
+        }
         if (previousEpisode !== null && previousEpisode + 1 === nextEpisode &&
             Number.isFinite(previousAiringAt) && previousAiringAt > 0 &&
             previousAiringAt < nextAiringAt &&
@@ -4008,20 +4159,25 @@
       const seenIds = existingIds || new Set();
 
       for (const [id, holdover] of Object.entries(state.finalHoldovers || {})) {
-        if (seenIds.has(String(id))) continue;
         if (!isFinalHoldoverVisibleToday(holdover, DEFAULT_TIMEZONE)) continue;
         const item = holdover?.item;
         if (!item?.id) continue;
 
         const latestReleaseDate = item.latestReleaseDate || holdover.latestReleaseDate || null;
+        const released = isFinalHoldoverReleased(holdover, DEFAULT_TIMEZONE);
+        // Before release, prefer a still-live AniList card. The pending holdover is only
+        // a safety net for the gap after AniList removes the finished show. Once the
+        // release time passes, the holdover intentionally replaces the live card.
+        if (seenIds.has(String(id)) && !released) continue;
 
         output.push({
           ...item,
           isFinalEpisode: true,
-          isFinalAired: true,
-          isEnded: true,
-          isFinalHoldover: true,
-          hasNextAiring: false,
+          isFinalAired: released,
+          isEnded: released,
+          isFinalHoldover: released,
+          isPendingFinalHoldover: !released,
+          hasNextAiring: !released,
           displayEpisode: item.displayEpisode || item.totalEpisodes || "?",
           episodeBasis: item.episodeBasis || "final-holdover",
           totalEpisodeNumber: item.totalEpisodeNumber || null,
@@ -4084,7 +4240,7 @@
       }
       await saveFinalHoldovers(state.userName, state.finalHoldovers);
 
-      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
+      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set(cached.map(item => String(item.id))));
       const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
       const cachedWithoutVisibleHoldovers = cached.filter(item => !visibleFinalHoldoverIds.has(String(item.id)));
 
@@ -4287,61 +4443,67 @@
       const id = String(state.activeSettingsId || "");
       if (!id || !state.userName) return;
 
-      const cache = await loadSlotCache(state.userName);
-      const entry = cache[id];
+      let removedSample = null;
+      let foundHistory = false;
 
-      if (!entry || !Array.isArray(entry.history) || !entry.history.length) {
+      await mutateSlotCache(state.userName, cache => {
+        const entry = cache[id];
+        if (!entry || !Array.isArray(entry.history) || !entry.history.length) return cache;
+
+        foundHistory = true;
+        const history = entry.history.slice();
+        removedSample = history.pop();
+        const removedEpisode = String(removedSample?.episode || "");
+
+        if (history.length) {
+          entry.history = history;
+          entry.sampleCount = history.length;
+          if (removedEpisode) entry.ignoredRssEpisode = removedEpisode;
+
+          const validMinutes = history
+            .map(sample => Number(sample?.mins))
+            .filter(value => Number.isFinite(value));
+
+          if (validMinutes.length) {
+            entry.time = minutesToHHMM(medianTime(validMinutes));
+          }
+
+          entry.updatedAt = new Date().toISOString();
+          cache[id] = entry;
+        } else {
+          const transitionState = {};
+          if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
+            transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
+          }
+          if (Number.isFinite(Number(entry.lastAniListNextAiringAt)) && Number(entry.lastAniListNextAiringAt) > 0) {
+            transitionState.lastAniListNextAiringAt = Number(entry.lastAniListNextAiringAt);
+          }
+          if (Number.isFinite(Number(entry.tickerHeldEpisode)) && Number(entry.tickerHeldEpisode) > 0) {
+            transitionState.tickerHeldEpisode = Number(entry.tickerHeldEpisode);
+          }
+          if (Number.isFinite(Number(entry.tickerGateUntilMs)) && Number(entry.tickerGateUntilMs) > 0) {
+            transitionState.tickerGateUntilMs = Number(entry.tickerGateUntilMs);
+          }
+          for (const key of ["tickerPreviousEpisode", "tickerPreviousAiringAt"]) {
+            if (Number.isFinite(Number(entry[key])) && Number(entry[key]) > 0) {
+              transitionState[key] = Number(entry[key]);
+            }
+          }
+          if (entry.finaleTransitionDateKey) {
+            transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
+          }
+          if (removedEpisode) transitionState.ignoredRssEpisode = removedEpisode;
+          if (Object.keys(transitionState).length) cache[id] = transitionState;
+          else delete cache[id];
+        }
+        return cache;
+      });
+
+      if (!foundHistory) {
         populateShowSettingsModal();
         return;
       }
 
-      const history = entry.history.slice();
-      const removedSample = history.pop();
-      const removedEpisode = String(removedSample?.episode || "");
-
-      if (history.length) {
-        entry.history = history;
-        entry.sampleCount = history.length;
-        if (removedEpisode) entry.ignoredRssEpisode = removedEpisode;
-
-        const validMinutes = history
-          .map(sample => Number(sample?.mins))
-          .filter(value => Number.isFinite(value));
-
-        if (validMinutes.length) {
-          entry.time = minutesToHHMM(medianTime(validMinutes));
-        }
-
-        entry.updatedAt = new Date().toISOString();
-        cache[id] = entry;
-      } else {
-        const transitionState = {};
-        if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
-          transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
-        }
-        if (Number.isFinite(Number(entry.lastAniListNextAiringAt)) && Number(entry.lastAniListNextAiringAt) > 0) {
-          transitionState.lastAniListNextAiringAt = Number(entry.lastAniListNextAiringAt);
-        }
-        if (Number.isFinite(Number(entry.tickerHeldEpisode)) && Number(entry.tickerHeldEpisode) > 0) {
-          transitionState.tickerHeldEpisode = Number(entry.tickerHeldEpisode);
-        }
-        if (Number.isFinite(Number(entry.tickerGateUntilMs)) && Number(entry.tickerGateUntilMs) > 0) {
-          transitionState.tickerGateUntilMs = Number(entry.tickerGateUntilMs);
-        }
-        for (const key of ["tickerPreviousEpisode", "tickerPreviousAiringAt"]) {
-          if (Number.isFinite(Number(entry[key])) && Number(entry[key]) > 0) {
-            transitionState[key] = Number(entry[key]);
-          }
-        }
-        if (entry.finaleTransitionDateKey) {
-          transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
-        }
-        if (removedEpisode) transitionState.ignoredRssEpisode = removedEpisode;
-        if (Object.keys(transitionState).length) cache[id] = transitionState;
-        else delete cache[id];
-      }
-
-      await saveSlotCache(state.userName, cache);
       await refreshBoardFromState();
 
       if (String(state.activeSettingsId) === id) {
@@ -4460,7 +4622,7 @@
 
       try {
         // Storage failures must stop the refresh before any empty fallback can be written.
-        const [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
+        let [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
           loadOverrides(userName),
           loadAddedShows(userName),
           loadFinalHoldovers(userName)
@@ -4539,27 +4701,42 @@
         }
 
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
-        let removedFinishedAddedShow = false;
-        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
+        if (addedIds.length > 0) {
           try {
-            const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
-            const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
-            const mediaList = statusData?.Page?.media || [];
-            for (const media of mediaList) {
-              if (media.status === "FINISHED" || media.status === "CANCELLED") {
-                delete nextAddedShows[String(media.id)];
-                delete nextOverrides[String(media.id)];
-                removedFinishedAddedShow = true;
+            const mediaList = await fetchAniListMediaByIds(addedIds);
+            const finishedIds = mediaList
+              .filter(media => media?.status === "FINISHED" || media?.status === "CANCELLED")
+              .map(media => String(media.id));
+
+            await mutateAddedShows(userName, current => {
+              for (const media of mediaList) {
+                if (!media?.id) continue;
+                const id = String(media.id);
+                if (!Object.prototype.hasOwnProperty.call(current, id)) continue;
+                if (media.status === "FINISHED" || media.status === "CANCELLED") delete current[id];
+                else current[id] = media;
               }
-            }
-            if (removedFinishedAddedShow) {
-              await saveAddedShows(userName, nextAddedShows);
-              await saveOverrides(userName, nextOverrides);
+              return current;
+            });
+
+            if (finishedIds.length) {
+              await mutateOverrides(userName, current => {
+                for (const id of finishedIds) delete current[id];
+                return current;
+              });
             }
           } catch (error) {
-            console.warn("Could not verify manually added show statuses:", error);
+            console.warn("Could not refresh manually added show metadata:", error);
           }
         }
+
+        // The network requests above can take several seconds. Re-read user-editable state
+        // immediately before applying the result so an in-flight sync cannot resurrect a
+        // show or override that was changed while the request was running.
+        [nextOverrides, nextAddedShows] = await Promise.all([
+          loadOverrides(userName),
+          loadAddedShows(userName)
+        ]);
 
         state.userName = userName;
         state.overrides = nextOverrides;
