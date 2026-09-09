@@ -2746,15 +2746,6 @@
       const rssFinalReleaseSeen = isFinalEpisode && usesRssFinalTiming &&
         Number(options.matchedEpisode) === totalEpisode;
 
-      // Episode ticker gate: AniList advances to the next episode at Japanese airtime,
-      // but SubsPlease releases commonly arrive later. Hold the visible counter for up
-      // to one hour after the just-aired AniList slot unless RSS confirms the release.
-      const tickerGateUntilMs = Number(options.tickerGateUntilMs);
-      const tickerHeldEpisode = Number(options.tickerHeldEpisode);
-      const tickerGateActive = hasNextEpisode &&
-        Number.isFinite(tickerGateUntilMs) && tickerGateUntilMs > (nowSeconds * 1000) &&
-        Number.isFinite(tickerHeldEpisode) && tickerHeldEpisode > 0 && tickerHeldEpisode < nextEpisode;
-
       // AniList advances nextAiringEpisode to the finale as soon as the penultimate
       // episode airs. Advance the episode counter immediately, but suppress only
       // the finale dot for the rest of that local calendar day.
@@ -2775,14 +2766,11 @@
         todayDateKey === penultimateReleaseDateKey &&
         !finalAiringHasActuallyPassed
       );
-      const isFinalDisplayActive = isFinalEpisode && !tickerGateActive && !suppressFinalMarkerToday;
+      const isFinalDisplayActive = isFinalEpisode && !suppressFinalMarkerToday;
 
       return {
-        displayEpisode: hasNextEpisode ? (tickerGateActive ? tickerHeldEpisode : nextEpisode) : "?",
-        episodeBasis: hasNextEpisode ? (tickerGateActive ? "anilist-plus-60-gate" : "anilist-next") : "unknown",
-        tickerGateActive,
-        tickerGateUntilMs: tickerGateActive ? tickerGateUntilMs : null,
-        tickerHeldEpisode: tickerGateActive ? tickerHeldEpisode : null,
+        displayEpisode: hasNextEpisode ? nextEpisode : "?",
+        episodeBasis: hasNextEpisode ? "anilist-next" : "unknown",
         isFinalEpisode,
         isFinalDisplayActive,
         isFinalAired: finalAiringHasActuallyPassed,
@@ -2794,16 +2782,11 @@
     }
 
     function latestConfirmedRssEpisode(item, cacheEntry) {
-      const candidates = [];
-      const directEpisode = Number(item?.matchedEpisode);
-      if (Number.isFinite(directEpisode) && directEpisode > 0) candidates.push(directEpisode);
-
+      const ignoredEpisode = episodeNumberFromToken(cacheEntry?.ignoredRssEpisode);
       const history = Array.isArray(cacheEntry?.history) ? cacheEntry.history : [];
-      for (const sample of history) {
-        const episode = Number(sample?.episode);
-        if (Number.isFinite(episode) && episode > 0) candidates.push(episode);
-      }
-
+      const candidates = [item?.matchedEpisode, ...history.map(sample => sample?.episode)]
+        .map(episodeNumberFromToken)
+        .filter(episode => episode !== null && episode !== ignoredEpisode);
       return candidates.length ? Math.max(...candidates) : null;
     }
 
@@ -2813,54 +2796,102 @@
       const previousNextEpisode = Number(cacheEntry?.lastAniListNextEpisode);
       const previousNextAiringAt = Number(cacheEntry?.lastAniListNextAiringAt);
       const latestRssEpisode = latestConfirmedRssEpisode(item, cacheEntry);
+      const validEpisode = value => Number.isInteger(value) && value > 0;
+      const hasCurrentPair = validEpisode(nextEpisode) &&
+        Number.isFinite(nextAiringAt) && nextAiringAt > 0;
+      const episodeChanged = validEpisode(previousNextEpisode) && nextEpisode !== previousNextEpisode;
 
-      const observedForwardTransition =
-        Number.isFinite(nextEpisode) && nextEpisode > 0 &&
-        Number.isFinite(previousNextEpisode) && previousNextEpisode > 0 &&
-        nextEpisode > previousNextEpisode;
+      const clearGate = () => {
+        delete cacheEntry.tickerHeldEpisode;
+        delete cacheEntry.tickerGateUntilMs;
+      };
+      const clearPreviousRelease = () => {
+        delete cacheEntry.tickerPreviousEpisode;
+        delete cacheEntry.tickerPreviousAiringAt;
+      };
 
-      // The cached nextAiringAt is the exact AniList slot that just passed. Start the
-      // one-hour gate from that timestamp only when we actually observe the transition.
-      if (observedForwardTransition && Number.isFinite(previousNextAiringAt) && previousNextAiringAt > 0) {
-        const gateUntilMs = (previousNextAiringAt * 1000) + EPISODE_TICKER_GATE_MS;
-        const rssAlreadyConfirmed = Number.isFinite(latestRssEpisode) && latestRssEpisode >= previousNextEpisode;
+      if (episodeChanged) {
+        clearGate();
+        clearPreviousRelease();
 
-        if (!rssAlreadyConfirmed && gateUntilMs > nowMs) {
-          cacheEntry.tickerHeldEpisode = previousNextEpisode;
-          cacheEntry.tickerGateUntilMs = gateUntilMs;
-        } else {
-          delete cacheEntry.tickerHeldEpisode;
-          delete cacheEntry.tickerGateUntilMs;
+        // Only a single-step transition with a coherent, already-passed timestamp
+        // can start a hold. Corrections, missing timestamps and multi-episode jumps
+        // fail open: do not guess which episode aired or hold for days by accident.
+        const previousAiringMs = previousNextAiringAt * 1000;
+        const validTransition = hasCurrentPair && nextEpisode === previousNextEpisode + 1 &&
+          Number.isFinite(previousAiringMs) && previousAiringMs > 0 &&
+          previousAiringMs <= nowMs && nextAiringAt > previousNextAiringAt;
+        if (validTransition) {
+          // Keep this exact episode/date pair independently of the temporary hold.
+          // Next Up may still be counting down to this episode's later RSS slot.
+          cacheEntry.tickerPreviousEpisode = previousNextEpisode;
+          cacheEntry.tickerPreviousAiringAt = previousNextAiringAt;
+          const gateUntilMs = previousAiringMs + EPISODE_TICKER_GATE_MS;
+          const rssConfirmed = latestRssEpisode !== null && latestRssEpisode >= previousNextEpisode;
+          if (!rssConfirmed && nowMs < gateUntilMs) {
+            cacheEntry.tickerHeldEpisode = previousNextEpisode;
+            cacheEntry.tickerGateUntilMs = gateUntilMs;
+          }
         }
       }
 
       const heldEpisode = Number(cacheEntry?.tickerHeldEpisode);
       const gateUntilMs = Number(cacheEntry?.tickerGateUntilMs);
-      const rssConfirmedHeldEpisode =
-        Number.isFinite(heldEpisode) && heldEpisode > 0 &&
-        Number.isFinite(latestRssEpisode) && latestRssEpisode >= heldEpisode;
-      const gateExpired = Number.isFinite(gateUntilMs) && gateUntilMs <= nowMs;
-      const gateNoLongerMatches =
-        !Number.isFinite(nextEpisode) || nextEpisode <= 0 ||
-        (Number.isFinite(heldEpisode) && heldEpisode >= nextEpisode);
+      const gateStartMs = gateUntilMs - EPISODE_TICKER_GATE_MS;
+      const validGate = hasCurrentPair && validEpisode(heldEpisode) &&
+        heldEpisode + 1 === nextEpisode &&
+        Number.isFinite(gateUntilMs) && gateStartMs > 0 &&
+        gateStartMs <= nowMs && nowMs < gateUntilMs &&
+        nextAiringAt * 1000 > gateStartMs;
+      const rssConfirmedHeldEpisode = latestRssEpisode !== null && latestRssEpisode >= heldEpisode;
+      if (!validGate || rssConfirmedHeldEpisode) clearGate();
 
-      if (rssConfirmedHeldEpisode || gateExpired || gateNoLongerMatches) {
-        delete cacheEntry.tickerHeldEpisode;
-        delete cacheEntry.tickerGateUntilMs;
+      // An already-active, valid hold from the preceding version also carries an
+      // exact previous-airing timestamp. No database reset or schema migration.
+      if (validGate && !cacheEntry.tickerPreviousAiringAt) {
+        cacheEntry.tickerPreviousEpisode = heldEpisode;
+        cacheEntry.tickerPreviousAiringAt = gateStartMs / 1000;
+      }
+      const rememberedEpisode = Number(cacheEntry.tickerPreviousEpisode);
+      const rememberedAiringAt = Number(cacheEntry.tickerPreviousAiringAt);
+      if (!hasCurrentPair || !validEpisode(rememberedEpisode) ||
+          rememberedEpisode + 1 !== nextEpisode ||
+          !Number.isFinite(rememberedAiringAt) || rememberedAiringAt <= 0 ||
+          rememberedAiringAt * 1000 > nowMs || rememberedAiringAt >= nextAiringAt) {
+        clearPreviousRelease();
       }
 
-      item.tickerHeldEpisode = Number.isFinite(Number(cacheEntry?.tickerHeldEpisode))
-        ? Number(cacheEntry.tickerHeldEpisode)
-        : null;
-      item.tickerGateUntilMs = Number.isFinite(Number(cacheEntry?.tickerGateUntilMs))
-        ? Number(cacheEntry.tickerGateUntilMs)
-        : null;
+      item.tickerHeldEpisode = cacheEntry.tickerHeldEpisode ?? null;
+      item.tickerGateUntilMs = cacheEntry.tickerGateUntilMs ?? null;
+      item.tickerPreviousEpisode = cacheEntry.tickerPreviousEpisode ?? null;
+      item.tickerPreviousAiringAt = cacheEntry.tickerPreviousAiringAt ?? null;
+      item.tickerConfirmedRssEpisode = latestRssEpisode;
 
-      // Store the current AniList slot after transition detection so it becomes the
-      // exact previous-airing timestamp on the next episode change.
-      if (Number.isFinite(nextAiringAt) && nextAiringAt > 0) {
-        cacheEntry.lastAniListNextAiringAt = nextAiringAt;
+      // The finale helper records the episode number immediately after this call.
+      // Delete a missing time rather than pairing an old time with a new episode.
+      if (hasCurrentPair) cacheEntry.lastAniListNextAiringAt = nextAiringAt;
+      else delete cacheEntry.lastAniListNextAiringAt;
+    }
+
+    function applyEpisodeTickerDisplay(item, nowMs = Date.now()) {
+      const nextEpisode = Number(item.aniListNextEpisode);
+      const heldEpisode = Number(item.tickerHeldEpisode);
+      const untilMs = Number(item.tickerGateUntilMs);
+      const active = !item.isEnded && !item.isFinalAired && !item.isFinalHoldover &&
+        Number.isInteger(nextEpisode) && Number.isInteger(heldEpisode) && heldEpisode > 0 &&
+        heldEpisode + 1 === nextEpisode && Number.isFinite(untilMs) &&
+        untilMs - EPISODE_TICKER_GATE_MS <= nowMs && nowMs < untilMs;
+
+      // Presentation only: never recalculate finalAiredAtMs, isEnded, or holdovers.
+      item.tickerGateActive = active;
+      if (active) {
+        item.displayEpisode = heldEpisode;
+        item.episodeBasis = "anilist-plus-60-gate";
+      } else {
+        item.tickerHeldEpisode = null;
+        item.tickerGateUntilMs = null;
       }
+      return item;
     }
 
     function updateFinaleTransitionDotState(item, cacheEntry, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
@@ -3197,25 +3228,6 @@
         updateEpisodeTickerGateState(item, entry, Date.now());
         updateFinaleTransitionDotState(item, entry, DEFAULT_TIMEZONE);
 
-        const gatedEpisodeState = resolveEpisodeDisplayState({
-          nextEpisodeNumber: item.aniListNextEpisode,
-          totalEpisodeNumber: item.totalEpisodeNumber,
-          matchedEpisode: item.matchedEpisode,
-          latestReleaseDate: item.latestReleaseDate,
-          day: item.day,
-          time: item.time,
-          finalTimingDay: item.latestReleaseDay || item.day,
-          finalTimingTime: item.time,
-          nextAiringAt: item.nextAiringAt,
-          isUpcomingSeason: item.isUpcomingSeason,
-          isScheduleMoved: item.isScheduleMoved,
-          useRssFinalTiming: item.usesRssFinalTiming,
-          tickerGateUntilMs: item.tickerGateUntilMs,
-          tickerHeldEpisode: item.tickerHeldEpisode,
-          timeZone: DEFAULT_TIMEZONE
-        });
-        Object.assign(item, gatedEpisodeState);
-
         if (item.isUpcomingSeason) {
           entry.wasDelayed = false;
         } else if (item.diffDays > 7) {
@@ -3251,11 +3263,11 @@
           else trackerEp = "?";
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
-          const ignoredRssEpisode = String(entry.ignoredRssEpisode || "");
-          const isIgnoredRssEpisode = Boolean(ignoredRssEpisode && ignoredRssEpisode === trackerEp);
-          if (ignoredRssEpisode && ignoredRssEpisode !== trackerEp) {
-            delete entry.ignoredRssEpisode;
-          }
+          const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
+          const isIgnoredRssEpisode = ignoredRssEpisode !== null &&
+            ignoredRssEpisode === episodeNumberFromToken(trackerEp);
+          // Keep the rejection across stale/older feed responses, too. A later
+          // valid episode can be saved without making the discarded one valid again.
 
           if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode && !isIgnoredRssEpisode) {
             entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
@@ -3292,8 +3304,6 @@
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
             useRssFinalTiming: true,
-            tickerGateUntilMs: item.tickerGateUntilMs,
-            tickerHeldEpisode: item.tickerHeldEpisode,
             timeZone: DEFAULT_TIMEZONE
           });
 
@@ -3348,8 +3358,6 @@
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
             useRssFinalTiming: entry.origin === "rss",
-            tickerGateUntilMs: item.tickerGateUntilMs,
-            tickerHeldEpisode: item.tickerHeldEpisode,
             timeZone: DEFAULT_TIMEZONE
           });
 
@@ -3378,7 +3386,7 @@
       }
 
       await saveSlotCache(state.userName, cache);
-      return output;
+      return output.map(item => applyEpisodeTickerDisplay(item));
     }
 
     function sortByTime(a, b) {
@@ -3496,25 +3504,88 @@
       return null;
     }
 
-    function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE) {
+    function releaseOccurrenceForAiring(airingAt, timing, timeZone = DEFAULT_TIMEZONE) {
+      const airingMs = Number(airingAt) * 1000;
+      if (!Number.isFinite(airingMs) || airingMs <= 0 ||
+          !WEEKDAYS.includes(timing?.day) || !isValidTime(timing?.time)) return null;
+      const airDateKey = localDateKeyFromMs(airingMs, timeZone);
+      const releaseDateKey = closestDateKeyForWeekday(airDateKey, timing.day, timeZone);
+      return localTimestampFromDateKeyAndTime(releaseDateKey, timing.time, timeZone);
+    }
+
+    function resolveNextUpOccurrence(item, timing, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      const nextEpisode = episodeNumberFromToken(item.aniListNextEpisode);
+      const nextAiringAt = Number(item.nextAiringAt);
+      const nextAtMs = releaseOccurrenceForAiring(nextAiringAt, timing, timeZone);
+      if (nextEpisode !== null && Number.isFinite(nextAtMs)) {
+        const candidates = [{ occurrenceAtMs: nextAtMs, episodeNumber: nextEpisode }];
+        const previousEpisode = episodeNumberFromToken(item.tickerPreviousEpisode);
+        const previousAiringAt = Number(item.tickerPreviousAiringAt);
+        const confirmedEpisode = episodeNumberFromToken(item.tickerConfirmedRssEpisode);
+        if (previousEpisode !== null && previousEpisode + 1 === nextEpisode &&
+            Number.isFinite(previousAiringAt) && previousAiringAt > 0 &&
+            previousAiringAt < nextAiringAt &&
+            (confirmedEpisode === null || confirmedEpisode < previousEpisode)) {
+          const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, timing, timeZone);
+          if (Number.isFinite(previousAtMs)) {
+            candidates.push({ occurrenceAtMs: previousAtMs, episodeNumber: previousEpisode });
+          }
+        }
+        // Bind the badge to this particular release. Do not manufacture another
+        // weekly occurrence of an episode whose known release time has already passed.
+        return candidates
+          .filter(entry => entry.occurrenceAtMs > nowMs)
+          .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs)[0] || null;
+      }
+
+      // A usable weekly slot can exist without an exact AniList episode/date pair.
+      // Keep the countdown, but show EP ? instead of attaching a guessed episode.
+      const todayKey = localDateKeyFromMs(nowMs, timeZone);
+      const todayIndex = WEEKDAYS.indexOf(weekdayForLocalDateKey(todayKey, timeZone));
+      const targetIndex = WEEKDAYS.indexOf(timing.day);
+      if (todayIndex < 0 || targetIndex < 0 || !isValidTime(timing.time)) return null;
+      const dayOffset = (targetIndex - todayIndex + 7) % 7;
+      let dateKey = shiftLocalDateKey(todayKey, dayOffset);
+      let occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
+      if (!Number.isFinite(occurrenceAtMs)) return null;
+      if (occurrenceAtMs <= nowMs) {
+        if (nowMs - occurrenceAtMs < AIRING_NOW_WINDOW_MINUTES * 60000) return null;
+        dateKey = shiftLocalDateKey(dateKey, 7);
+        occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
+      }
+      return Number.isFinite(occurrenceAtMs) && occurrenceAtMs > nowMs
+        ? { occurrenceAtMs, episodeNumber: null }
+        : null;
+    }
+
+    function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
       return (items || [])
         .filter(item => isBoardActiveItem(item, timeZone))
         .map(item => {
           const timing = resolveNextUpTiming(item, timeZone);
           if (!timing) return null;
-          const status = getSlotStatus(timing.day, timing.time, timeZone);
-          return status ? { item, status, timing } : null;
+          const occurrence = resolveNextUpOccurrence(item, timing, timeZone, nowMs);
+          if (!occurrence) return null;
+          const status = { isNow: false, minutesUntil: (occurrence.occurrenceAtMs - nowMs) / 60000 };
+          return { item, status, timing, ...occurrence };
         })
-        .filter(entry => entry && !entry.status.isNow && entry.status.minutesUntil > 0)
-        .sort((a, b) => a.status.minutesUntil - b.status.minutesUntil || toMinutes(a.timing.time) - toMinutes(b.timing.time) || a.item.title.localeCompare(b.item.title))
+        .filter(Boolean)
+        .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs || a.item.title.localeCompare(b.item.title))
         .slice(0, limit);
     }
 
-    function formatNextUpDay(day, timeZone = DEFAULT_TIMEZONE) {
-      const offset = dayOffsetFromToday(day, timeZone);
-      if (offset === 0) return "Today";
-      if (offset === 1) return "Tmrw";
-      return day;
+    function formatNextUpDay(occurrenceAtMs, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      const dateKey = localDateKeyFromMs(occurrenceAtMs, timeZone);
+      const todayKey = localDateKeyFromMs(nowMs, timeZone);
+      if (dateKey === todayKey) return "Today";
+      if (dateKey === shiftLocalDateKey(todayKey, 1)) return "Tmrw";
+      const day = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone })
+        .format(new Date(occurrenceAtMs));
+      // A same-weekday occurrence next week must not read Today. A short date also
+      // fits the fixed-width time column (for example, Wed 16).
+      return dateKey >= shiftLocalDateKey(todayKey, 7)
+        ? `${day} ${Number(dateKey.slice(-2))}`
+        : day;
     }
 
     function formatNextUpCountdown(minutes) {
@@ -3530,24 +3601,31 @@
       return hours ? `in ${days}d ${hours}h` : `in ${days}d`;
     }
 
-    function nextUpEpisodeLabel(item) {
-      const displayEpisode = item?.displayEpisode;
-      const total = item?.totalEpisodeNumber;
-      if (Number.isFinite(Number(displayEpisode)) && Number.isFinite(Number(total)) && Number(total) > 0) {
-        return `EP ${Number(displayEpisode)}/${Number(total)}`;
-      }
-      if (Number.isFinite(Number(displayEpisode))) return `EP ${Number(displayEpisode)}`;
+    function nextUpEpisodeLabel(item, episodeNumber) {
+      const episode = episodeNumberFromToken(episodeNumber);
+      const total = episodeNumberFromToken(item?.totalEpisodeNumber);
+      if (episode !== null && total !== null) return `EP ${episode}/${total}`;
+      if (episode !== null) return `EP ${episode}`;
       return "EP ?";
     }
 
+    function nextUpSignature(entries, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      if (!entries.length) return "";
+      return JSON.stringify([Boolean(state.nextUpExpanded), entries.map(entry => [
+        String(entry.item.id), entry.occurrenceAtMs, entry.episodeNumber,
+        entry.timing.time, formatNextUpDay(entry.occurrenceAtMs, timeZone, nowMs)
+      ])]);
+    }
+
     function nextUpHTML(items, timeZone = DEFAULT_TIMEZONE) {
-      const upcoming = getNextUpcomingItems(items, 3, timeZone);
+      const nowMs = Date.now();
+      const upcoming = getNextUpcomingItems(items, 3, timeZone, nowMs);
       if (!upcoming.length) return "";
 
       const visible = state.nextUpExpanded ? upcoming : upcoming.slice(0, 1);
       const remaining = Math.max(0, upcoming.length - 1);
 
-      const rows = visible.map(({ item, status, timing }, index) => {
+      const rows = visible.map(({ item, status, timing, occurrenceAtMs, episodeNumber }, index) => {
         const toggle = index === 0 && upcoming.length > 1
           ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up" aria-label="${state.nextUpExpanded ? "Collapse upcoming releases" : `Show ${remaining} more upcoming releases`}">${state.nextUpExpanded ? "Less" : `+${remaining}`}</button>`
           : "";
@@ -3560,13 +3638,13 @@
         return `
           <div class="next-up-row">
             <div class="next-up-time-wrap">
-              <div class="next-up-day">${escapeHtml(formatNextUpDay(timing.day, timeZone))}</div>
+              <div class="next-up-day">${escapeHtml(formatNextUpDay(occurrenceAtMs, timeZone, nowMs))}</div>
               <div class="next-up-time">${escapeHtml(timing.time)}</div>
             </div>
             <div class="next-up-divider" aria-hidden="true"></div>
             ${cover}
             <div class="next-up-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
-            <div class="next-up-episode-badge">${escapeHtml(nextUpEpisodeLabel(item))}</div>
+            <div class="next-up-episode-badge">${escapeHtml(nextUpEpisodeLabel(item, episodeNumber))}</div>
             <div class="next-up-actions">
               <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
               ${toggle}
@@ -3575,26 +3653,27 @@
       }).join("");
 
       return `
-        <section class="next-up-panel" aria-label="Upcoming releases">
+        <section class="next-up-panel" aria-label="Upcoming releases" data-next-up-signature="${escapeHtml(nextUpSignature(upcoming, timeZone, nowMs))}">
           <div class="next-up-list">${rows}</div>
         </section>`;
     }
 
     function updateNextUpCountdowns(timeZone = DEFAULT_TIMEZONE) {
-      const entries = getNextUpcomingItems(state.items, 3, timeZone);
+      const nowMs = Date.now();
+      const entries = getNextUpcomingItems(state.items, 3, timeZone, nowMs);
+      const panel = els.boardContainer.querySelector(".next-up-panel");
+      const signature = nextUpSignature(entries, timeZone, nowMs);
+      if ((panel?.getAttribute("data-next-up-signature") || "") !== signature) {
+        // Refresh on occurrence, badge, order and midnight-label changes, including
+        // an empty strip becoming non-empty. A matching show ID alone is not enough.
+        renderBoard(state.items, true);
+        return;
+      }
       const byId = new Map(entries.map(entry => [String(entry.item.id), entry.status]));
-      let needsRerender = false;
-
-      document.querySelectorAll('[data-next-up-id]').forEach(el => {
+      els.boardContainer.querySelectorAll('[data-next-up-id]').forEach(el => {
         const status = byId.get(String(el.dataset.nextUpId || ""));
-        if (!status) {
-          needsRerender = true;
-          return;
-        }
-        el.textContent = formatNextUpCountdown(status.minutesUntil);
+        if (status) el.textContent = formatNextUpCountdown(status.minutesUntil);
       });
-
-      if (needsRerender && state.items.length) renderBoard(state.items, true);
     }
 
     function formatSavedAt(timestamp, timeZone = DEFAULT_TIMEZONE) {
@@ -3805,7 +3884,7 @@
         isEnded = false;   // keep the card alive (no greying, episode still visible)
       }
 
-      const showFinalDot = Boolean(item.isFinalDisplayActive && !item.suppressFinalDotToday && !isEnded);
+      const showFinalDot = Boolean(item.isFinalDisplayActive && !item.tickerGateActive && !item.suppressFinalDotToday && !isEnded);
       const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
       const episodeHTML = shouldShowEpisode
@@ -4248,6 +4327,11 @@
         }
         if (Number.isFinite(Number(entry.tickerGateUntilMs)) && Number(entry.tickerGateUntilMs) > 0) {
           transitionState.tickerGateUntilMs = Number(entry.tickerGateUntilMs);
+        }
+        for (const key of ["tickerPreviousEpisode", "tickerPreviousAiringAt"]) {
+          if (Number.isFinite(Number(entry[key])) && Number(entry[key]) > 0) {
+            transitionState[key] = Number(entry[key]);
+          }
         }
         if (entry.finaleTransitionDateKey) {
           transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
