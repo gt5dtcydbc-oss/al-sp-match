@@ -4764,6 +4764,7 @@
           (pastedScheduleFallbackUsed ? `\n\nPasted timetable override is active; RSS availability did not affect the schedule.` : "") +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
         );
+        clearStartupRecoveryState();
         return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
@@ -4968,11 +4969,23 @@
     });
 
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+      if (document.visibilityState !== "visible") return;
+      if (startupRecoveryNeeded) {
+        startupRecoveryAttempt = 0;
+        recoverStartupAfterStorageFailure("visibility");
+        return;
+      }
+      maybeRefreshBoard("refresh");
     });
 
     window.addEventListener("pageshow", () => {
-      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+      if (document.visibilityState !== "visible") return;
+      if (startupRecoveryNeeded) {
+        startupRecoveryAttempt = 0;
+        recoverStartupAfterStorageFailure("pageshow");
+        return;
+      }
+      maybeRefreshBoard("refresh");
     });
 
     armPersistentStorageRequest();
@@ -4985,29 +4998,110 @@
 
     let autoRefreshStarted = false;
     let bootCompleted = false;
+    let startupRecoveryNeeded = false;
+    let startupRecoveryInFlight = false;
+    let startupRecoveryTimer = null;
+    let startupRecoveryAttempt = 0;
+    const STARTUP_RECOVERY_DELAYS_MS = [350, 1200, 3000];
+
+    function clearStartupRecoveryState() {
+      startupRecoveryNeeded = false;
+      startupRecoveryAttempt = 0;
+      if (startupRecoveryTimer !== null) {
+        clearTimeout(startupRecoveryTimer);
+        startupRecoveryTimer = null;
+      }
+    }
+
+    function scheduleStartupRecovery() {
+      if (!startupRecoveryNeeded || startupRecoveryInFlight || startupRecoveryTimer !== null) return;
+      if (startupRecoveryAttempt >= STARTUP_RECOVERY_DELAYS_MS.length) return;
+      const delay = STARTUP_RECOVERY_DELAYS_MS[startupRecoveryAttempt++];
+      startupRecoveryTimer = setTimeout(() => {
+        startupRecoveryTimer = null;
+        recoverStartupAfterStorageFailure("timer");
+      }, delay);
+    }
+
+    async function recoverStartupAfterStorageFailure(trigger = "retry") {
+      if (!startupRecoveryNeeded || startupRecoveryInFlight) return false;
+      if (document.visibilityState === "hidden") {
+        scheduleStartupRecovery();
+        return false;
+      }
+
+      startupRecoveryInFlight = true;
+      try {
+        const hydrated = await hydrateBoardSnapshot();
+        clearStartupRecoveryState();
+
+        if (!els.username.value.trim()) els.username.value = "zrr";
+        if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
+
+        if (els.username.value.trim()) {
+          await loadBoard({ reason: hydrated ? "refresh" : "load" });
+        }
+        return true;
+      } catch (error) {
+        if (!isStorageError(error)) {
+          clearStartupRecoveryState();
+          reportAppError(error, "Startup recovery failed");
+          return false;
+        }
+
+        // Safari can temporarily reject IndexedDB immediately after restoring a suspended tab.
+        // Keep the saved snapshot untouched and retry automatically instead of requiring Load.
+        startupRecoveryNeeded = true;
+        state.lastSuccessfulLoadAt = state.lastSuccessfulLoadAt || 0;
+        updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        console.warn(`Startup storage recovery (${trigger}) will retry:`, error);
+        showMessage("info", "Saved board is temporarily unavailable. Retrying automatically…");
+        scheduleStartupRecovery();
+        return false;
+      } finally {
+        startupRecoveryInFlight = false;
+        if (startupRecoveryNeeded) scheduleStartupRecovery();
+      }
+    }
 
     async function bootPage() {
       if (bootCompleted) return;
       bootCompleted = true;
+      applySavedSettings();
+
+      let hydrated = false;
       try {
-        applySavedSettings();
-        const hydrated = await hydrateBoardSnapshot();
-        if (!els.username.value.trim()) els.username.value = "zrr";
-        if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
-        if (els.username.value.trim()) {
-          loadBoard({ reason: hydrated ? "refresh" : "load" });
-        } else {
-          state.healthStatus = "healthy";
-          setUpdateIndicatorStatus("ok");
-          updateIndicatorTitle(0);
-          renderFooterStatus();
-        }
+        hydrated = await hydrateBoardSnapshot();
       } catch (error) {
-        // Never delete the snapshot in response to a read/open failure. A manual retry can
-        // recover after a transient browser-storage problem or a blocked database closes.
+        if (!isStorageError(error)) {
+          reportAppError(error, "Startup failed");
+          return;
+        }
+
+        // Do not delete, replace, or synthesize an empty snapshot. Safari occasionally makes
+        // IndexedDB unavailable for a short period after restoring a suspended page.
+        startupRecoveryNeeded = true;
         state.lastSuccessfulLoadAt = state.lastSuccessfulLoadAt || 0;
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
-        reportAppError(error, "Startup failed");
+        console.warn("Cached board could not be opened during startup; automatic recovery armed.", error);
+        showMessage("info", "Saved board is temporarily unavailable. Retrying automatically…");
+      }
+
+      if (!els.username.value.trim()) els.username.value = "zrr";
+      if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
+
+      if (startupRecoveryNeeded) {
+        scheduleStartupRecovery();
+        return;
+      }
+
+      if (els.username.value.trim()) {
+        await loadBoard({ reason: hydrated ? "refresh" : "load" });
+      } else {
+        state.healthStatus = "healthy";
+        setUpdateIndicatorStatus("ok");
+        updateIndicatorTitle(0);
+        renderFooterStatus();
       }
     }
 
