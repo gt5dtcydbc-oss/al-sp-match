@@ -1001,7 +1001,7 @@
     // RSS time offset detection thresholds
     const RSS_OFFSET_MIN_OBSERVATIONS = 2;
     const RSS_OFFSET_APPLY_THRESHOLD_MS = 30 * 60 * 1000;
-    const RSS_OFFSET_SANITY_BOUND_MS = 12 * 60 * 60 * 1000;
+    const RSS_OFFSET_SANITY_BOUND_MS = 24 * 60 * 60 * 1000;
     const RSS_SUBS_LAG_HINT_MS = 60 * 60 * 1000;
     const RSS_MATCH_SCORE_MIN = 80;
 
@@ -2222,7 +2222,7 @@
 
         const expectedAirMs = (nextAt * 1000) - WEEK_MS;
         const expectedRssMs = expectedAirMs + RSS_SUBS_LAG_HINT_MS;
-        const observedMs = latest.date.getTime() - expectedRssMs;
+        const observedMs = expectedRssMs - latest.date.getTime();
 
         if (Math.abs(observedMs) <= RSS_OFFSET_SANITY_BOUND_MS) {
           observations.push(observedMs);
