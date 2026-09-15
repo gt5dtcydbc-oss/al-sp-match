@@ -121,6 +121,156 @@
     }
     .day-pill .sub { font-weight: 400; opacity: 0.7; margin-left: 4px; }
 
+
+    /* ---------- Ultra-Compact Next Up ---------- */
+    .next-up-panel {
+      margin-top: 12px;
+      background: linear-gradient(180deg, rgba(20,20,23,0.98), rgba(15,15,18,0.98));
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .next-up-list { padding: 3px 12px; }
+
+    .next-up-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 60px;
+      padding: 7px 0;
+    }
+
+    .next-up-row + .next-up-row { border-top: 1px solid rgba(255,255,255,0.055); }
+
+    .next-up-time-wrap {
+      width: 56px;
+      flex: 0 0 56px;
+      min-width: 56px;
+    }
+    .next-up-day {
+      color: var(--text-muted);
+      font-size: 0.57rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .next-up-time {
+      color: var(--text);
+      font-size: 1.08rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .next-up-divider {
+      width: 1px;
+      height: 34px;
+      background: var(--line);
+      flex: 0 0 1px;
+      margin-right: 3px;
+    }
+    .next-up-cover {
+      width: 46px;
+      height: 46px;
+      flex: 0 0 46px;
+      margin-left: 1px;
+      position: relative;
+      z-index: 1;
+      border-radius: 9px;
+      overflow: hidden;
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .next-up-cover img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    .next-up-title {
+      min-width: 0;
+      flex: 1 1 auto;
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1.15;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .next-up-episode-badge {
+      flex: 0 0 auto;
+      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.045);
+      border-radius: 999px;
+      color: var(--text-muted);
+      font-size: 0.62rem;
+      font-weight: 800;
+      line-height: 1;
+      padding: 5px 7px;
+      white-space: nowrap;
+    }
+    .next-up-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+    .next-up-countdown {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 6px 8px;
+      white-space: nowrap;
+    }
+    .next-up-toggle {
+      min-width: 0;
+      padding: 5px 7px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 999px;
+      font-size: 0.66rem;
+      line-height: 1;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .next-up-toggle:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .next-up-toggle:active { transform: scale(0.97); }
+
+    @media (max-width: 480px) {
+      .next-up-list { padding-left: 10px; padding-right: 10px; }
+      .next-up-row { gap: 7px; min-height: 58px; }
+      .next-up-time-wrap { width: 50px; flex-basis: 50px; min-width: 50px; }
+      .next-up-divider { margin-right: 2px; }
+      .next-up-time { font-size: 1rem; }
+      .next-up-cover { width: 44px; height: 44px; flex-basis: 44px; border-radius: 9px; }
+      .next-up-title { font-size: 0.76rem; }
+      .next-up-episode-badge { font-size: 0.56rem; padding: 4px 5px; }
+      .next-up-actions { gap: 4px; }
+      .next-up-countdown { font-size: 0.62rem; padding: 5px 6px; }
+      .next-up-toggle { font-size: 0.6rem; padding: 5px 5px; }
+    }
+
+    @media (max-width: 360px) {
+      .next-up-row { gap: 6px; }
+      .next-up-time-wrap { width: 47px; flex-basis: 47px; min-width: 47px; }
+      .next-up-divider { margin-right: 1px; }
+      .next-up-cover { width: 40px; height: 40px; flex-basis: 40px; }
+      .next-up-title { font-size: 0.72rem; }
+      .next-up-day { font-size: 0.52rem; }
+      .next-up-time { font-size: 0.94rem; }
+      .next-up-episode-badge { font-size: 0.53rem; padding: 4px; }
+      .next-up-countdown { font-size: 0.58rem; padding: 5px; }
+      .next-up-toggle { font-size: 0.56rem; padding: 5px 4px; }
+    }
+
     /* ---------- Input & Form Controls ---------- */
     .panel {
       background: var(--panel);
@@ -834,17 +984,27 @@
     const PAGE_SETTINGS_KEY = "airing-board-page-settings-v1";
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
     const COLLAPSED_DAYS_KEY = "airing-board-collapsed-days-v1";
+    const RSS_TIME_OFFSET_KEY = "airing-board-rss-time-offset-v1";
     
-    const REFRESH_STALE_MS = 5 * 60 * 1000;
+    const REFRESH_STALE_MS = 4 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
     
     const COUNTDOWN_TICK_MS = 30 * 1000;
     const SEARCH_DEBOUNCE_MS = 650;
     const SEARCH_MIN_LENGTH = 3;
     const AIRING_NOW_WINDOW_MINUTES = 15;
+    const EPISODE_TICKER_GATE_MS = 60 * 60 * 1000;
     const RECENT_RELEASE_WINDOW_MS = 36 * 60 * 60 * 1000;
     const UPCOMING_EPISODE_PREVIEW_MS = 36 * 60 * 60 * 1000;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
+    // RSS time offset detection thresholds. Large systematic feed-clock errors (such
+    // as the observed ~7h shift) are correctable, while ordinary release lag is ignored.
+    const RSS_OFFSET_MIN_OBSERVATIONS = 3;
+    const RSS_OFFSET_APPLY_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+    const RSS_OFFSET_SANITY_BOUND_MS = 8 * 60 * 60 * 1000;
+    const RSS_SUBS_LAG_HINT_MS = 60 * 60 * 1000;
+    const RSS_MATCH_SCORE_MIN = 80;
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -889,6 +1049,24 @@
       query ($search: String!) {
         Page(page: 1, perPage: 10) {
           media(search: $search, type: ANIME, status: RELEASING, sort: SEARCH_MATCH) {
+            id
+            siteUrl
+            format
+            status
+            episodes
+            coverImage { large medium }
+            title { userPreferred english romaji native }
+            synonyms
+            nextAiringEpisode { episode airingAt }
+          }
+        }
+      }
+    `;
+
+    const ADDED_MEDIA_QUERY = `
+      query ($ids: [Int]) {
+        Page(page: 1, perPage: 50) {
+          media(id_in: $ids, type: ANIME) {
             id
             siteUrl
             format
@@ -1143,6 +1321,47 @@
       await deleteStoreValue(STATE_STORE, key, "delete state");
     }
 
+    async function mutateStateDB(key, mutator) {
+      if (typeof mutator !== "function") {
+        throw makeStorageError("mutate state", key, new Error("State mutator must be a function."));
+      }
+
+      try {
+        const db = await getDB();
+        return await new Promise((resolve, reject) => {
+          const transaction = db.transaction(STATE_STORE, "readwrite");
+          const store = transaction.objectStore(STATE_STORE);
+          const request = store.get(key);
+          let nextValue;
+          let mutationError = null;
+
+          request.addEventListener("success", () => {
+            try {
+              nextValue = mutator(request.result);
+              if (nextValue === undefined) store.delete(key);
+              else store.put(nextValue, key);
+            } catch (error) {
+              mutationError = error;
+              try { transaction.abort(); } catch (_) {}
+            }
+          }, { once: true });
+
+          request.addEventListener("error", () => {
+            mutationError = request.error || new Error("State read failed during mutation.");
+            try { transaction.abort(); } catch (_) {}
+          }, { once: true });
+
+          transaction.addEventListener("complete", () => resolve(nextValue), { once: true });
+          transaction.addEventListener("abort", () => {
+            reject(makeStorageError("mutate state", key, mutationError || transaction.error || new Error("Transaction aborted.")));
+          }, { once: true });
+        });
+      } catch (error) {
+        if (isStorageError(error)) throw error;
+        throw makeStorageError("mutate state", key, error);
+      }
+    }
+
     async function commitMigratedState(targetKey, sourceKey, sourceKind, value) {
       await saveStateDB(targetKey, value);
       const verified = await readStateRecord(targetKey);
@@ -1238,6 +1457,23 @@
       try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
     }
 
+    function loadRssTimeOffset() {
+      try {
+        const raw = localStorage.getItem(RSS_TIME_OFFSET_KEY);
+        const numeric = Number(raw);
+        return Number.isFinite(numeric) ? numeric : 0;
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    function saveRssTimeOffset(offsetMs) {
+      try {
+        if (!offsetMs) localStorage.removeItem(RSS_TIME_OFFSET_KEY);
+        else localStorage.setItem(RSS_TIME_OFFSET_KEY, String(offsetMs));
+      } catch (_) {}
+    }
+
     function loadSelectedDay() {
       try { 
         const val = localStorage.getItem(SELECTED_DAY_KEY) || "Full Week"; 
@@ -1321,7 +1557,9 @@
       pendingAniListPruneCount: 0,
       collapsedDays: new Set(loadJSON(COLLAPSED_DAYS_KEY, [])),
       expandedDays: new Set(),
-      selectedDay: "Full Week"
+      selectedDay: "Full Week",
+      nextUpExpanded: false,
+      rssTimeOffsetMs: loadRssTimeOffset()
     };
 
     showMessage("info", "Ready.");
@@ -1377,6 +1615,11 @@
       if (state.lastRssReleaseAt) {
         const exactLocalTime = formatSavedAt(state.lastRssReleaseAt);
         extra += `<br/>Newest RSS release at ${exactLocalTime}`;
+      }
+
+      if (state.rssTimeOffsetMs) {
+        const hours = (state.rssTimeOffsetMs / 3600000).toFixed(1);
+        extra += `<br/>RSS timestamps auto-corrected by ${hours}h to match AniList.`;
       }
 
       if (isUnhealthy && state.notes.length) {
@@ -1447,6 +1690,17 @@
     async function searchAniListShows(search) {
       const data = await graphQLRequest(SEARCH_QUERY, { search });
       return (data?.Page?.media || []).filter(media => media?.status === "RELEASING");
+    }
+
+    async function fetchAniListMediaByIds(ids) {
+      const uniqueIds = Array.from(new Set((ids || []).map(Number).filter(id => Number.isFinite(id) && id > 0)));
+      const media = [];
+      for (let index = 0; index < uniqueIds.length; index += 50) {
+        const chunk = uniqueIds.slice(index, index + 50);
+        const data = await graphQLRequest(ADDED_MEDIA_QUERY, { ids: chunk });
+        media.push(...(data?.Page?.media || []));
+      }
+      return media;
     }
 
     async function fetchTextWithOptionalProxy(url, proxyTemplate) {
@@ -1637,8 +1891,8 @@
         [text, normalized, compact, stripped, strippedNormalized, strippedCompact].forEach(value => {
           if (value) variants.add(value);
         });
-        const seasonless = normalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
-        const strippedSeasonless = strippedNormalized.replace(/\bs\d+\b/g, " ").replace(/\s+/g, " ").trim();
+        const seasonless = normalized.replace(/\bs\s*\d+\b/g, " ").replace(/\s+/g, " ").trim();
+        const strippedSeasonless = strippedNormalized.replace(/\bs\s*\d+\b/g, " ").replace(/\s+/g, " ").trim();
         const compactSeasonless = seasonless.replace(/\s+/g, "");
         const compactStrippedSeasonless = strippedSeasonless.replace(/\s+/g, "");
         [seasonless, strippedSeasonless, compactSeasonless, compactStrippedSeasonless].forEach(value => {
@@ -1794,7 +2048,7 @@
 
     function extractSeasonNumber(text) {
       const normalized = normalizeTitle(text);
-      const match = normalized.match(/\bs(\d+)\b|\bseason\s*(\d+)\b/);
+      const match = normalized.match(/\bs\s*(\d+)\b|\bseason\s*(\d+)\b/);
       const number = match ? Number(match[1] || match[2]) : null;
       return Number.isFinite(number) ? number : null;
     }
@@ -1823,6 +2077,18 @@
 
     function scoreMatch(candidate, variants) {
       if (!candidate || !Array.isArray(candidate.variants)) return 0;
+
+      // Seasonless variants are useful when one source omits the season label, but an
+      // explicit S2 vs S3 conflict must never become a perfect match through those variants.
+      const mediaSeasons = new Set((variants || [])
+        .map(variant => Number(variant?.season))
+        .filter(value => Number.isFinite(value) && value > 0));
+      const candidateSeason = extractSeasonNumber(candidate.title);
+      if (mediaSeasons.size === 1 && candidateSeason !== null) {
+        const [mediaSeason] = mediaSeasons;
+        if (mediaSeason !== candidateSeason) return 0;
+      }
+
       let best = 0;
       
       for (const v of variants) {
@@ -1890,11 +2156,15 @@
         pubDate: item.querySelector("pubDate")?.textContent?.trim() || ""
       }));
       const deduped = new Map();
+      const offsetMs = Number(state.rssTimeOffsetMs) || 0;
       for (const item of rawItems) {
         const parsed = parseReleaseTitle(item.title);
         if (!parsed) continue;
-        const date = new Date(item.pubDate);
-        if (Number.isNaN(date.getTime())) continue;
+        const raw = new Date(item.pubDate);
+        if (Number.isNaN(raw.getTime())) continue;
+        // Apply the detected offset so RSS pubDate lines up with real-world time
+        // even if SubsPlease's feed stamps items in a shifted timezone.
+        const date = offsetMs ? new Date(raw.getTime() + offsetMs) : raw;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
         if (!existing || date.getTime() < existing.date.getTime()) {
@@ -1917,6 +2187,55 @@
       const trimmed = String(text || "").trim();
       if (!trimmed) return [];
       return parseXmlFeed(trimmed);
+    }
+
+    // Compare the RSS-derived release time for each show against AniList's known
+    // next-airing timestamp. When RSS released the episode that precedes AniList's
+    // "next" one, the two should be ~7 days apart. The median gap between that
+    // expectation and the observed RSS timestamp is the offset to correct for.
+    function detectRssTimeOffset(primaryCandidates, entries, timeZone = DEFAULT_TIMEZONE) {
+      const observations = [];
+      const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+      for (const candidate of primaryCandidates || []) {
+        const latest = candidate?.items?.[0];
+        if (!latest?.date || !latest?.episode) continue;
+
+        const rssEp = Number(String(latest.episode).replace(/v\d+$/i, ""));
+        if (!Number.isFinite(rssEp) || rssEp < 2) continue;
+
+        let matchedMedia = null;
+        let bestScore = 0;
+        for (const entry of entries || []) {
+          const media = entry?.media;
+          if (!media) continue;
+          const score = scoreMatch(candidate, titleVariants(media));
+          if (score > bestScore) { bestScore = score; matchedMedia = media; }
+        }
+        if (!matchedMedia || bestScore < RSS_MATCH_SCORE_MIN) continue;
+
+        const nextEp = Number(matchedMedia.nextAiringEpisode?.episode);
+        const nextAt = Number(matchedMedia.nextAiringEpisode?.airingAt);
+        if (!Number.isFinite(nextEp) || !Number.isFinite(nextAt)) continue;
+
+        // Only when RSS's latest release is the episode immediately before AniList's next.
+        if (rssEp !== nextEp - 1) continue;
+
+        const expectedAirMs = (nextAt * 1000) - WEEK_MS;
+        const expectedRssMs = expectedAirMs + RSS_SUBS_LAG_HINT_MS;
+        const observedMs = expectedRssMs - latest.date.getTime();
+
+        if (Math.abs(observedMs) <= RSS_OFFSET_SANITY_BOUND_MS) {
+          observations.push(observedMs);
+        }
+      }
+
+      if (observations.length < RSS_OFFSET_MIN_OBSERVATIONS) return null;
+
+      observations.sort((a, b) => a - b);
+      const median = observations[Math.floor(observations.length / 2)];
+      const HALF_HOUR = 30 * 60 * 1000;
+      return Math.round(median / HALF_HOUR) * HALF_HOUR;
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -2220,6 +2539,22 @@
       return value;
     }
 
+    async function mutateObjectState(key, mutator, legacyKeys = []) {
+      await loadObjectState(key, legacyKeys);
+      return await mutateStateDB(key, current => {
+        const value = current === undefined ? {} : current;
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          throw new Error("Saved value has an unexpected format.");
+        }
+        const next = mutator(value);
+        const result = next === undefined ? value : next;
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error("State mutation produced an invalid value.");
+        }
+        return result;
+      });
+    }
+
     async function loadSlotCache(userName) {
       const key = slotCacheScopeKey(userName);
       return await loadObjectState(key, legacySlotCacheKeys(userName));
@@ -2230,6 +2565,25 @@
         throw makeStorageError("validate state", slotCacheScopeKey(userName), new Error("RSS cache must be an object."));
       }
       await saveStateDB(slotCacheScopeKey(userName), cache);
+    }
+
+    async function mutateSlotCache(userName, mutator) {
+      const key = slotCacheScopeKey(userName);
+      // Ensure legacy/localStorage data has been migrated and validated before opening
+      // the atomic read/write transaction on the canonical key.
+      await loadSlotCache(userName);
+      return await mutateStateDB(key, current => {
+        const cache = current === undefined ? {} : current;
+        if (!cache || typeof cache !== "object" || Array.isArray(cache)) {
+          throw new Error("RSS cache has an unexpected format.");
+        }
+        const next = mutator(cache);
+        const result = next === undefined ? cache : next;
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error("RSS cache mutation produced an invalid value.");
+        }
+        return result;
+      });
     }
 
     async function clearSlotCache(userName) {
@@ -2246,12 +2600,18 @@
     async function saveOverrides(userName, overrides) {
       await saveStateDB(scopedKey(MANUAL_OVERRIDE_KEY, userName), overrides);
     }
+    async function mutateOverrides(userName, mutator) {
+      return await mutateObjectState(scopedKey(MANUAL_OVERRIDE_KEY, userName), mutator);
+    }
     
     async function loadAddedShows(userName) {
       return await loadObjectState(scopedKey(ADDED_SHOWS_KEY, userName));
     }
     async function saveAddedShows(userName, addedShows) {
       await saveStateDB(scopedKey(ADDED_SHOWS_KEY, userName), addedShows);
+    }
+    async function mutateAddedShows(userName, mutator) {
+      return await mutateObjectState(scopedKey(ADDED_SHOWS_KEY, userName), mutator);
     }
 
     async function loadFinalHoldovers(userName) {
@@ -2294,17 +2654,15 @@
       return todayKey > airDateKey;
     }
 
-    // ✅ RENAMED BACK + IMPROVED: isFinalHoldoverVisibleToday with fallback logic
-    function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
+    function finalHoldoverReleaseAtMs(holdover, timeZone = DEFAULT_TIMEZONE) {
       const item = holdover?.item || {};
       const usesRss = Boolean(holdover?.usesRssFinalTiming || item?.usesRssFinalTiming);
-
       const rawFinal = holdover?.finalAiredAtMs ?? item?.finalAiredAtMs;
-      let visibleAfterMs = Number(rawFinal);
+      let releaseAtMs = Number(rawFinal);
 
-      if (!Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) {
+      if (!Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
         if (usesRss) {
-          visibleAfterMs = getRssFinalAiringAtMs({
+          releaseAtMs = getRssFinalAiringAtMs({
             nextAiringAt: item?.nextAiringAt,
             day: item?.day,
             time: item?.time,
@@ -2313,18 +2671,26 @@
           }, timeZone);
         } else {
           const airingAtMs = Number(holdover?.airingAtMs);
-          visibleAfterMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
+          releaseAtMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
         }
       }
 
-      const storedAirDateKey = String(holdover?.airDateKey || "");
-      const visibleDateKey = Number.isFinite(visibleAfterMs) && visibleAfterMs > 0
-        ? localDateKeyFromMs(visibleAfterMs, timeZone)
-        : storedAirDateKey;
+      return Number.isFinite(releaseAtMs) && releaseAtMs > 0 ? releaseAtMs : null;
+    }
 
-      if (!visibleDateKey || !Number.isFinite(visibleAfterMs) || visibleAfterMs <= 0) return false;
-      if (Date.now() < visibleAfterMs) return false;
-      return localDateKeyFromMs(Date.now(), timeZone) === visibleDateKey;
+    function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
+      const releaseAtMs = finalHoldoverReleaseAtMs(holdover, timeZone);
+      const storedAirDateKey = String(holdover?.airDateKey || "");
+      const releaseDateKey = Number.isFinite(releaseAtMs)
+        ? localDateKeyFromMs(releaseAtMs, timeZone)
+        : storedAirDateKey;
+      if (!releaseDateKey) return false;
+      return localDateKeyFromMs(Date.now(), timeZone) === releaseDateKey;
+    }
+
+    function isFinalHoldoverReleased(holdover, timeZone = DEFAULT_TIMEZONE) {
+      const releaseAtMs = finalHoldoverReleaseAtMs(holdover, timeZone);
+      return Number.isFinite(releaseAtMs) && Date.now() >= releaseAtMs;
     }
 
     // ✅ RENAMED BACK: isFinalAiredItemExpired
@@ -2351,9 +2717,10 @@
     }
 
     async function clearCachedSlotForShow(showId) {
-      const cache = await loadSlotCache(state.userName);
-      delete cache[String(showId)];
-      await saveSlotCache(state.userName, cache);
+      await mutateSlotCache(state.userName, cache => {
+        delete cache[String(showId)];
+        return cache;
+      });
     }
 
     function orphanedAtMs(value) {
@@ -2369,37 +2736,32 @@
       const validIds = new Set((validMediaIds || []).map(id => String(id)).filter(Boolean));
       const now = Date.now();
       const expiredImageIds = [];
-      const cache = await loadSlotCache(userName);
-      let cacheChanged = false;
+      await mutateSlotCache(userName, cache => {
+        for (const id of Object.keys(cache)) {
+          const rawEntry = cache[id];
+          const entry = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry)
+            ? { ...rawEntry }
+            : {};
 
-      for (const id of Object.keys(cache)) {
-        const rawEntry = cache[id];
-        const entry = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry)
-          ? { ...rawEntry }
-          : {};
-
-        if (validIds.has(id)) {
-          if (Object.prototype.hasOwnProperty.call(entry, "orphanedAt")) {
-            delete entry.orphanedAt;
-            cache[id] = entry;
-            cacheChanged = true;
+          if (validIds.has(id)) {
+            if (Object.prototype.hasOwnProperty.call(entry, "orphanedAt")) {
+              delete entry.orphanedAt;
+              cache[id] = entry;
+            }
+            continue;
           }
-          continue;
-        }
 
-        const firstMissingAt = orphanedAtMs(entry.orphanedAt);
-        if (!firstMissingAt) {
-          entry.orphanedAt = now;
-          cache[id] = entry;
-          cacheChanged = true;
-        } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
-          delete cache[id];
-          expiredImageIds.push(id);
-          cacheChanged = true;
+          const firstMissingAt = orphanedAtMs(entry.orphanedAt);
+          if (!firstMissingAt) {
+            entry.orphanedAt = now;
+            cache[id] = entry;
+          } else if ((now - firstMissingAt) >= ORPHAN_RETENTION_MS) {
+            delete cache[id];
+            expiredImageIds.push(id);
+          }
         }
-      }
-
-      if (cacheChanged) await saveSlotCache(userName, cache);
+        return cache;
+      });
 
       const overrides = state.overrides && typeof state.overrides === "object" ? { ...state.overrides } : {};
       let overridesChanged = false;
@@ -2629,6 +2991,119 @@
       };
     }
 
+    function latestConfirmedRssEpisode(item, cacheEntry) {
+      const ignoredEpisode = episodeNumberFromToken(cacheEntry?.ignoredRssEpisode);
+      const history = Array.isArray(cacheEntry?.history) ? cacheEntry.history : [];
+      const candidates = [item?.matchedEpisode, ...history.map(sample => sample?.episode)]
+        .map(episodeNumberFromToken)
+        .filter(episode => episode !== null && episode !== ignoredEpisode);
+      return candidates.length ? Math.max(...candidates) : null;
+    }
+
+    function updateEpisodeTickerGateState(item, cacheEntry, nowMs = Date.now()) {
+      const nextEpisode = Number(item?.aniListNextEpisode);
+      const nextAiringAt = Number(item?.nextAiringAt);
+      const previousNextEpisode = Number(cacheEntry?.lastAniListNextEpisode);
+      const previousNextAiringAt = Number(cacheEntry?.lastAniListNextAiringAt);
+      const latestRssEpisode = latestConfirmedRssEpisode(item, cacheEntry);
+      const validEpisode = value => Number.isInteger(value) && value > 0;
+      const hasCurrentPair = validEpisode(nextEpisode) &&
+        Number.isFinite(nextAiringAt) && nextAiringAt > 0;
+      const episodeChanged = validEpisode(previousNextEpisode) && nextEpisode !== previousNextEpisode;
+
+      const clearGate = () => {
+        delete cacheEntry.tickerHeldEpisode;
+        delete cacheEntry.tickerGateUntilMs;
+      };
+      const clearPreviousRelease = () => {
+        delete cacheEntry.tickerPreviousEpisode;
+        delete cacheEntry.tickerPreviousAiringAt;
+      };
+
+      if (episodeChanged) {
+        clearGate();
+        clearPreviousRelease();
+
+        // Only a single-step transition with a coherent, already-passed timestamp
+        // can start a hold. Corrections, missing timestamps and multi-episode jumps
+        // fail open: do not guess which episode aired or hold for days by accident.
+        const previousAiringMs = previousNextAiringAt * 1000;
+        const validTransition = hasCurrentPair && nextEpisode === previousNextEpisode + 1 &&
+          Number.isFinite(previousAiringMs) && previousAiringMs > 0 &&
+          previousAiringMs <= nowMs && nextAiringAt > previousNextAiringAt;
+        if (validTransition) {
+          // Keep this exact episode/date pair independently of the temporary hold.
+          // Next Up may still be counting down to this episode's later RSS slot.
+          cacheEntry.tickerPreviousEpisode = previousNextEpisode;
+          cacheEntry.tickerPreviousAiringAt = previousNextAiringAt;
+          const gateUntilMs = previousAiringMs + EPISODE_TICKER_GATE_MS;
+          const rssConfirmed = latestRssEpisode !== null && latestRssEpisode >= previousNextEpisode;
+          if (!rssConfirmed && nowMs < gateUntilMs) {
+            cacheEntry.tickerHeldEpisode = previousNextEpisode;
+            cacheEntry.tickerGateUntilMs = gateUntilMs;
+          }
+        }
+      }
+
+      const heldEpisode = Number(cacheEntry?.tickerHeldEpisode);
+      const gateUntilMs = Number(cacheEntry?.tickerGateUntilMs);
+      const gateStartMs = gateUntilMs - EPISODE_TICKER_GATE_MS;
+      const validGate = hasCurrentPair && validEpisode(heldEpisode) &&
+        heldEpisode + 1 === nextEpisode &&
+        Number.isFinite(gateUntilMs) && gateStartMs > 0 &&
+        gateStartMs <= nowMs && nowMs < gateUntilMs &&
+        nextAiringAt * 1000 > gateStartMs;
+      const rssConfirmedHeldEpisode = latestRssEpisode !== null && latestRssEpisode >= heldEpisode;
+      if (!validGate || rssConfirmedHeldEpisode) clearGate();
+
+      // An already-active, valid hold from the preceding version also carries an
+      // exact previous-airing timestamp. No database reset or schema migration.
+      if (validGate && !cacheEntry.tickerPreviousAiringAt) {
+        cacheEntry.tickerPreviousEpisode = heldEpisode;
+        cacheEntry.tickerPreviousAiringAt = gateStartMs / 1000;
+      }
+      const rememberedEpisode = Number(cacheEntry.tickerPreviousEpisode);
+      const rememberedAiringAt = Number(cacheEntry.tickerPreviousAiringAt);
+      if (!hasCurrentPair || !validEpisode(rememberedEpisode) ||
+          rememberedEpisode + 1 !== nextEpisode ||
+          !Number.isFinite(rememberedAiringAt) || rememberedAiringAt <= 0 ||
+          rememberedAiringAt * 1000 > nowMs || rememberedAiringAt >= nextAiringAt) {
+        clearPreviousRelease();
+      }
+
+      item.tickerHeldEpisode = cacheEntry.tickerHeldEpisode ?? null;
+      item.tickerGateUntilMs = cacheEntry.tickerGateUntilMs ?? null;
+      item.tickerPreviousEpisode = cacheEntry.tickerPreviousEpisode ?? null;
+      item.tickerPreviousAiringAt = cacheEntry.tickerPreviousAiringAt ?? null;
+      item.tickerConfirmedRssEpisode = latestRssEpisode;
+
+      // The finale helper records the episode number immediately after this call.
+      // Delete a missing time rather than pairing an old time with a new episode.
+      if (hasCurrentPair) cacheEntry.lastAniListNextAiringAt = nextAiringAt;
+      else delete cacheEntry.lastAniListNextAiringAt;
+    }
+
+    function applyEpisodeTickerDisplay(item, nowMs = Date.now()) {
+      const nextEpisode = Number(item.aniListNextEpisode);
+      const heldEpisode = Number(item.tickerHeldEpisode);
+      const untilMs = Number(item.tickerGateUntilMs);
+      const active = !item.isEnded && !item.isFinalAired && !item.isFinalHoldover &&
+        Number.isInteger(nextEpisode) && Number.isInteger(heldEpisode) && heldEpisode > 0 &&
+        heldEpisode + 1 === nextEpisode && Number.isFinite(untilMs) &&
+        untilMs - EPISODE_TICKER_GATE_MS <= nowMs && nowMs < untilMs;
+
+      // Presentation only: never recalculate finalAiredAtMs, isEnded, or holdovers.
+      item.tickerGateActive = active;
+      if (active) {
+        item.displayEpisode = heldEpisode;
+        item.episodeBasis = "anilist-plus-60-gate";
+      } else {
+        item.tickerHeldEpisode = null;
+        item.tickerGateUntilMs = null;
+      }
+      return item;
+    }
+
     function updateFinaleTransitionDotState(item, cacheEntry, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
       const nextEpisode = Number(item?.aniListNextEpisode);
       const totalEpisodes = Number(item?.totalEpisodeNumber);
@@ -2683,6 +3158,21 @@
       };
     }
 
+    function offsetWeeklySlot(day, time, deltaMinutes) {
+      const dayIndex = WEEKDAYS.indexOf(day);
+      const startMinutes = toMinutes(time);
+      const delta = Number(deltaMinutes);
+      if (dayIndex < 0 || !Number.isFinite(startMinutes) || !Number.isFinite(delta)) return null;
+
+      const totalMinutes = startMinutes + delta;
+      const dayShift = Math.floor(totalMinutes / 1440);
+      const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+      return {
+        day: WEEKDAYS[(dayIndex + dayShift + 7 * 10) % 7],
+        time: minutesToHHMM(normalizedMinutes)
+      };
+    }
+
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
@@ -2712,7 +3202,7 @@
 
               if (rssDayIdx === expectedRssDayIdx) {
                 return {
-                  day: aniDay,
+                  day: primary.day,
                   time: primary.time,
                   source: "rss",
                   sampleCount: primary.sampleCount || 1,
@@ -2726,10 +3216,12 @@
             }
             
             // Out of bounds or wrong day. Reject and use fallback.
-            return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
+            const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
+            return { day: fallbackSlot?.day || aniDay, time: fallbackSlot?.time || aniTime, source: "fallback", sampleCount: 0, matchedTitle: "" };
           }
 
-          return { day: aniDay, time: minutesToHHMM(aniMinutes + 60), source: "fallback", sampleCount: 0, matchedTitle: "" };
+          const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
+          return { day: fallbackSlot?.day || aniDay, time: fallbackSlot?.time || aniTime, source: "fallback", sampleCount: 0, matchedTitle: "" };
         }
       }
 
@@ -2922,16 +3414,45 @@
       return items;
     }
 
+    function mostCommonRssHistoryDay(history, fallback = null) {
+      const samples = Array.isArray(history) ? history : [];
+      const counts = new Map();
+      for (const sample of samples) {
+        const day = String(sample?.day || "");
+        if (!WEEKDAYS.includes(day)) continue;
+        counts.set(day, (counts.get(day) || 0) + 1);
+      }
+      if (!counts.size) return WEEKDAYS.includes(fallback) ? fallback : null;
+
+      // Prefer the most common RSS weekday. On a tie, prefer the latest sample so
+      // a genuine schedule move can take effect without waiting for three weeks.
+      let bestDay = null;
+      let bestCount = -1;
+      for (const sample of [...samples].reverse()) {
+        const day = String(sample?.day || "");
+        const count = counts.get(day) || 0;
+        if (count > bestCount) {
+          bestDay = day;
+          bestCount = count;
+        }
+      }
+      return WEEKDAYS.includes(bestDay) ? bestDay : (WEEKDAYS.includes(fallback) ? fallback : null);
+    }
+
     async function applyCache(items) {
-      const cache = await loadSlotCache(state.userName);
       const output = [];
 
+      await mutateSlotCache(state.userName, cache => {
       for (const item of items) {
         const key = String(item.id);
 
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
 
+        // Read the previous cached AniList episode/time before the finale transition
+        // helper updates lastAniListNextEpisode. This keeps the ticker gate independent
+        // from finale-dot state while letting both observe the same AniList transition.
+        updateEpisodeTickerGateState(item, entry, Date.now());
         updateFinaleTransitionDotState(item, entry, DEFAULT_TIMEZONE);
 
         if (item.isUpcomingSeason) {
@@ -2969,11 +3490,11 @@
           else trackerEp = "?";
 
           const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
-          const ignoredRssEpisode = String(entry.ignoredRssEpisode || "");
-          const isIgnoredRssEpisode = Boolean(ignoredRssEpisode && ignoredRssEpisode === trackerEp);
-          if (ignoredRssEpisode && ignoredRssEpisode !== trackerEp) {
-            delete entry.ignoredRssEpisode;
-          }
+          const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
+          const isIgnoredRssEpisode = ignoredRssEpisode !== null &&
+            ignoredRssEpisode === episodeNumberFromToken(trackerEp);
+          // Keep the rejection across stale/older feed responses, too. A later
+          // valid episode can be saved without making the discarded one valid again.
 
           if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode && !isIgnoredRssEpisode) {
             entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
@@ -2991,6 +3512,11 @@
           const latestHistoryDay = entry.history.length
             ? entry.history[entry.history.length - 1]?.day
             : null;
+          const rssScheduleDay = mostCommonRssHistoryDay(
+            entry.history,
+            latestHistoryDay || item.latestReleaseDay || item.day
+          );
+          const rssScheduleTime = item.time;
 
           const episodeState = resolveEpisodeDisplayState({
             nextEpisodeNumber: item.aniListNextEpisode,
@@ -3011,11 +3537,14 @@
           cache[key] = { 
             ...entry, day: item.day, time: item.time, sampleCount: item.sampleCount, 
             matchedTitle: item.matchedTitle || "", latestReleaseDate: item.latestReleaseDate || null,
+            rssScheduleDay, rssScheduleTime,
             origin: "rss", updatedAt: new Date().toISOString() 
           };
           output.push({
             ...item,
             ...episodeState,
+            rssScheduleDay,
+            rssScheduleTime,
             historyLog: entry.history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
           continue;
@@ -3035,6 +3564,12 @@
             : item.matchedEpisode;
           const latestRememberedDay = rememberedHistory.length
             ? rememberedHistory[rememberedHistory.length - 1]?.day
+            : null;
+          const rssScheduleDay = entry.origin === "rss"
+            ? mostCommonRssHistoryDay(rememberedHistory, entry.rssScheduleDay || latestRememberedDay || item.latestReleaseDay || item.day)
+            : null;
+          const rssScheduleTime = entry.origin === "rss"
+            ? (isValidTime(rememberedTime) ? rememberedTime : (isValidTime(entry.rssScheduleTime) ? entry.rssScheduleTime : null))
             : null;
 
           const episodeState = resolveEpisodeDisplayState({
@@ -3058,20 +3593,29 @@
             matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
             matchedEpisode: latestRememberedEpisode || item.matchedEpisode || null,
             latestReleaseDate: entry.latestReleaseDate || item.latestReleaseDate || null,
+            rssScheduleDay,
+            rssScheduleTime,
             isFreshRss: isFreshRss || false,
             ...episodeState,
             historyLog: rememberedHistory.map(h => `EP ${h.episode} (${h.time})`).join(", ")
           });
 
-          cache[key] = { ...entry }; 
+          cache[key] = {
+            ...entry,
+            ...(entry.origin === "rss" && rssScheduleDay && rssScheduleTime
+              ? { rssScheduleDay, rssScheduleTime }
+              : {})
+          }; 
         } else {
           cache[key] = { ...entry };
           output.push(item);
         }
       }
 
-      await saveSlotCache(state.userName, cache);
-      return output;
+      return cache;
+      });
+
+      return output.map(item => applyEpisodeTickerDisplay(item));
     }
 
     function sortByTime(a, b) {
@@ -3166,6 +3710,208 @@
       return best;
     }
 
+
+    function resolveNextUpTiming(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item) return null;
+
+      // User-controlled schedules must always win. For automatically detected shows,
+      // prefer the weekday/time learned from actual RSS releases. Only fall back to
+      // the generic board slot (normally AniList + offset) when no RSS history exists.
+      const hasExplicitSchedule = item.source === "manual" || item.source === "schedule";
+      if (!hasExplicitSchedule) {
+        const rssBacked = item.source === "rss" || item.cacheOrigin === "rss";
+        const rssDay = String(item.rssScheduleDay || item.latestReleaseDay || "");
+        const rssTime = String(item.rssScheduleTime || (rssBacked ? item.time : "") || "");
+        if (rssBacked && WEEKDAYS.includes(rssDay) && isValidTime(rssTime)) {
+          return { day: rssDay, time: rssTime, source: "rss" };
+        }
+      }
+
+      if (WEEKDAYS.includes(item.day) && isValidTime(item.time)) {
+        return { day: item.day, time: item.time, source: hasExplicitSchedule ? item.source : "fallback" };
+      }
+      return null;
+    }
+
+    function releaseOccurrenceForAiring(airingAt, timing, timeZone = DEFAULT_TIMEZONE) {
+      const airingMs = Number(airingAt) * 1000;
+      if (!Number.isFinite(airingMs) || airingMs <= 0 ||
+          !WEEKDAYS.includes(timing?.day) || !isValidTime(timing?.time)) return null;
+      const airDateKey = localDateKeyFromMs(airingMs, timeZone);
+      const releaseDateKey = closestDateKeyForWeekday(airDateKey, timing.day, timeZone);
+      return localTimestampFromDateKeyAndTime(releaseDateKey, timing.time, timeZone);
+    }
+
+    function resolveNextUpOccurrence(item, timing, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      const nextEpisode = episodeNumberFromToken(item.aniListNextEpisode);
+      const nextAiringAt = Number(item.nextAiringAt);
+      const nextAtMs = releaseOccurrenceForAiring(nextAiringAt, timing, timeZone);
+      if (nextEpisode !== null && Number.isFinite(nextAtMs)) {
+        const previousEpisode = episodeNumberFromToken(item.tickerPreviousEpisode);
+        const previousAiringAt = Number(item.tickerPreviousAiringAt);
+        const confirmedEpisode = episodeNumberFromToken(item.tickerConfirmedRssEpisode);
+        const candidates = [];
+
+        // If RSS has already confirmed the episode AniList still calls "next", that
+        // release is no longer upcoming. Wait for AniList to provide the following
+        // episode/date instead of counting down to something that is already out.
+        if (confirmedEpisode === null || confirmedEpisode < nextEpisode) {
+          candidates.push({ occurrenceAtMs: nextAtMs, episodeNumber: nextEpisode });
+        }
+        if (previousEpisode !== null && previousEpisode + 1 === nextEpisode &&
+            Number.isFinite(previousAiringAt) && previousAiringAt > 0 &&
+            previousAiringAt < nextAiringAt &&
+            (confirmedEpisode === null || confirmedEpisode < previousEpisode)) {
+          const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, timing, timeZone);
+          if (Number.isFinite(previousAtMs)) {
+            candidates.push({ occurrenceAtMs: previousAtMs, episodeNumber: previousEpisode });
+          }
+        }
+        // Bind the badge to this particular release. Do not manufacture another
+        // weekly occurrence of an episode whose known release time has already passed.
+        return candidates
+          .filter(entry => entry.occurrenceAtMs > nowMs)
+          .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs)[0] || null;
+      }
+
+      // A usable weekly slot can exist without an exact AniList episode/date pair.
+      // Keep the countdown, but show EP ? instead of attaching a guessed episode.
+      const todayKey = localDateKeyFromMs(nowMs, timeZone);
+      const todayIndex = WEEKDAYS.indexOf(weekdayForLocalDateKey(todayKey, timeZone));
+      const targetIndex = WEEKDAYS.indexOf(timing.day);
+      if (todayIndex < 0 || targetIndex < 0 || !isValidTime(timing.time)) return null;
+      const dayOffset = (targetIndex - todayIndex + 7) % 7;
+      let dateKey = shiftLocalDateKey(todayKey, dayOffset);
+      let occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
+      if (!Number.isFinite(occurrenceAtMs)) return null;
+      if (occurrenceAtMs <= nowMs) {
+        if (nowMs - occurrenceAtMs < AIRING_NOW_WINDOW_MINUTES * 60000) return null;
+        dateKey = shiftLocalDateKey(dateKey, 7);
+        occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
+      }
+      return Number.isFinite(occurrenceAtMs) && occurrenceAtMs > nowMs
+        ? { occurrenceAtMs, episodeNumber: null }
+        : null;
+    }
+
+    function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      return (items || [])
+        .filter(item => isBoardActiveItem(item, timeZone))
+        .map(item => {
+          const timing = resolveNextUpTiming(item, timeZone);
+          if (!timing) return null;
+          const occurrence = resolveNextUpOccurrence(item, timing, timeZone, nowMs);
+          if (!occurrence) return null;
+          const status = { isNow: false, minutesUntil: (occurrence.occurrenceAtMs - nowMs) / 60000 };
+          return { item, status, timing, ...occurrence };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs || a.item.title.localeCompare(b.item.title))
+        .slice(0, limit);
+    }
+
+    function formatNextUpDay(occurrenceAtMs, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      const dateKey = localDateKeyFromMs(occurrenceAtMs, timeZone);
+      const todayKey = localDateKeyFromMs(nowMs, timeZone);
+      if (dateKey === todayKey) return "Today";
+      if (dateKey === shiftLocalDateKey(todayKey, 1)) return "Tmrw";
+      const day = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone })
+        .format(new Date(occurrenceAtMs));
+      // A same-weekday occurrence next week must not read Today. A short date also
+      // fits the fixed-width time column (for example, Wed 16).
+      return dateKey >= shiftLocalDateKey(todayKey, 7)
+        ? `${day} ${Number(dateKey.slice(-2))}`
+        : day;
+    }
+
+    function formatNextUpCountdown(minutes) {
+      const total = Math.max(0, Math.ceil(Number(minutes) || 0));
+      if (total < 60) return `in ${total}m`;
+      if (total < 1440) {
+        const hours = Math.floor(total / 60);
+        const mins = total % 60;
+        return mins ? `in ${hours}h ${mins}m` : `in ${hours}h`;
+      }
+      const days = Math.floor(total / 1440);
+      const hours = Math.floor((total % 1440) / 60);
+      return hours ? `in ${days}d ${hours}h` : `in ${days}d`;
+    }
+
+    function nextUpEpisodeLabel(item, episodeNumber) {
+      const episode = episodeNumberFromToken(episodeNumber);
+      const total = episodeNumberFromToken(item?.totalEpisodeNumber);
+      if (episode !== null && total !== null) return `EP ${episode}/${total}`;
+      if (episode !== null) return `EP ${episode}`;
+      return "EP ?";
+    }
+
+    function nextUpSignature(entries, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      if (!entries.length) return "";
+      return JSON.stringify([Boolean(state.nextUpExpanded), entries.map(entry => [
+        String(entry.item.id), entry.occurrenceAtMs, entry.episodeNumber,
+        entry.timing.time, formatNextUpDay(entry.occurrenceAtMs, timeZone, nowMs)
+      ])]);
+    }
+
+    function nextUpHTML(items, timeZone = DEFAULT_TIMEZONE) {
+      const nowMs = Date.now();
+      const upcoming = getNextUpcomingItems(items, 3, timeZone, nowMs);
+      if (!upcoming.length) return "";
+
+      const visible = state.nextUpExpanded ? upcoming : upcoming.slice(0, 1);
+      const remaining = Math.max(0, upcoming.length - 1);
+
+      const rows = visible.map(({ item, status, timing, occurrenceAtMs, episodeNumber }, index) => {
+        const toggle = index === 0 && upcoming.length > 1
+          ? `<button class="next-up-toggle" type="button" data-action="toggle-next-up" aria-label="${state.nextUpExpanded ? "Collapse upcoming releases" : `Show ${remaining} more upcoming releases`}">${state.nextUpExpanded ? "Less" : `+${remaining}`}</button>`
+          : "";
+
+        const coverUrl = item.cover || "";
+        const cover = coverUrl
+          ? `<div class="next-up-cover" title="${escapeHtml(item.title)}"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-media-id="${escapeHtml(String(item.id))}" data-original-url="${escapeHtml(coverUrl)}" alt="${escapeHtml(item.title)}" loading="lazy"></div>`
+          : `<div class="next-up-cover" title="${escapeHtml(item.title)}" aria-label="${escapeHtml(item.title)}"></div>`;
+
+        return `
+          <div class="next-up-row">
+            <div class="next-up-time-wrap">
+              <div class="next-up-day">${escapeHtml(formatNextUpDay(occurrenceAtMs, timeZone, nowMs))}</div>
+              <div class="next-up-time">${escapeHtml(timing.time)}</div>
+            </div>
+            <div class="next-up-divider" aria-hidden="true"></div>
+            ${cover}
+            <div class="next-up-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+            <div class="next-up-episode-badge">${escapeHtml(nextUpEpisodeLabel(item, episodeNumber))}</div>
+            <div class="next-up-actions">
+              <div class="next-up-countdown" data-next-up-id="${escapeHtml(String(item.id))}">${escapeHtml(formatNextUpCountdown(status.minutesUntil))}</div>
+              ${toggle}
+            </div>
+          </div>`;
+      }).join("");
+
+      return `
+        <section class="next-up-panel" aria-label="Upcoming releases" data-next-up-signature="${escapeHtml(nextUpSignature(upcoming, timeZone, nowMs))}">
+          <div class="next-up-list">${rows}</div>
+        </section>`;
+    }
+
+    function updateNextUpCountdowns(timeZone = DEFAULT_TIMEZONE) {
+      const nowMs = Date.now();
+      const entries = getNextUpcomingItems(state.items, 3, timeZone, nowMs);
+      const panel = els.boardContainer.querySelector(".next-up-panel");
+      const signature = nextUpSignature(entries, timeZone, nowMs);
+      if ((panel?.getAttribute("data-next-up-signature") || "") !== signature) {
+        // Refresh on occurrence, badge, order and midnight-label changes, including
+        // an empty strip becoming non-empty. A matching show ID alone is not enough.
+        renderBoard(state.items, true);
+        return;
+      }
+      const byId = new Map(entries.map(entry => [String(entry.item.id), entry.status]));
+      els.boardContainer.querySelectorAll('[data-next-up-id]').forEach(el => {
+        const status = byId.get(String(el.dataset.nextUpId || ""));
+        if (status) el.textContent = formatNextUpCountdown(status.minutesUntil);
+      });
+    }
+
     function formatSavedAt(timestamp, timeZone = DEFAULT_TIMEZONE) {
       const safeTimestamp = Number(timestamp);
       if (!Number.isFinite(safeTimestamp)) return "";
@@ -3249,6 +3995,7 @@
         countEl.textContent = `${airedCount}/${totalCount}`;
       }
       state.lastNextSlotKey = newNextSlotKey;
+      updateNextUpCountdowns(DEFAULT_TIMEZONE);
     }
 
     function renderBoard(items, isTick = false) {
@@ -3270,15 +4017,16 @@
         </div>
       `;
 
+      html += nextUpHTML(items, DEFAULT_TIMEZONE);
+
       if (isFullWeek) {
         html += `<div>`;
         for (const dayBlock of grouped) {
           
           const dayItems = items.filter(i => i.day === dayBlock.day);
-          const hasVisibleFinalHoldover = dayItems.some(i => Boolean(i.isFinalHoldover || i.isFinalAired));
 
           let isAutoCollapsed = false;
-          if (dayBlock.day === todayName && !hasVisibleFinalHoldover && !state.expandedDays?.has(dayBlock.day)) {
+          if (dayBlock.day === todayName && !state.expandedDays?.has(dayBlock.day)) {
             let allFinished = true;
             const now = getNowContext(DEFAULT_TIMEZONE);
             for (const slot of dayBlock.slots) {
@@ -3372,7 +4120,7 @@
         isEnded = false;   // keep the card alive (no greying, episode still visible)
       }
 
-      const showFinalDot = Boolean(item.isFinalDisplayActive && !item.suppressFinalDotToday && !isEnded);
+      const showFinalDot = Boolean(item.isFinalDisplayActive && !item.tickerGateActive && !item.suppressFinalDotToday && !isEnded);
       const shouldShowEpisode = !isEnded && (item.hasNextAiring || item.displayEpisode !== "?" || item.isFinalHoldover);
 
       const episodeHTML = shouldShowEpisode
@@ -3496,20 +4244,25 @@
       const seenIds = existingIds || new Set();
 
       for (const [id, holdover] of Object.entries(state.finalHoldovers || {})) {
-        if (seenIds.has(String(id))) continue;
         if (!isFinalHoldoverVisibleToday(holdover, DEFAULT_TIMEZONE)) continue;
         const item = holdover?.item;
         if (!item?.id) continue;
 
         const latestReleaseDate = item.latestReleaseDate || holdover.latestReleaseDate || null;
+        const released = isFinalHoldoverReleased(holdover, DEFAULT_TIMEZONE);
+        // Before release, prefer a still-live AniList card. The pending holdover is only
+        // a safety net for the gap after AniList removes the finished show. Once the
+        // release time passes, the holdover intentionally replaces the live card.
+        if (seenIds.has(String(id)) && !released) continue;
 
         output.push({
           ...item,
           isFinalEpisode: true,
-          isFinalAired: true,
-          isEnded: true,
-          isFinalHoldover: true,
-          hasNextAiring: false,
+          isFinalAired: released,
+          isEnded: released,
+          isFinalHoldover: released,
+          isPendingFinalHoldover: !released,
+          hasNextAiring: !released,
           displayEpisode: item.displayEpisode || item.totalEpisodes || "?",
           episodeBasis: item.episodeBasis || "final-holdover",
           totalEpisodeNumber: item.totalEpisodeNumber || null,
@@ -3572,7 +4325,7 @@
       }
       await saveFinalHoldovers(state.userName, state.finalHoldovers);
 
-      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set());
+      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set(cached.map(item => String(item.id))));
       const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
       const cachedWithoutVisibleHoldovers = cached.filter(item => !visibleFinalHoldoverIds.has(String(item.id)));
 
@@ -3775,47 +4528,67 @@
       const id = String(state.activeSettingsId || "");
       if (!id || !state.userName) return;
 
-      const cache = await loadSlotCache(state.userName);
-      const entry = cache[id];
+      let removedSample = null;
+      let foundHistory = false;
 
-      if (!entry || !Array.isArray(entry.history) || !entry.history.length) {
+      await mutateSlotCache(state.userName, cache => {
+        const entry = cache[id];
+        if (!entry || !Array.isArray(entry.history) || !entry.history.length) return cache;
+
+        foundHistory = true;
+        const history = entry.history.slice();
+        removedSample = history.pop();
+        const removedEpisode = String(removedSample?.episode || "");
+
+        if (history.length) {
+          entry.history = history;
+          entry.sampleCount = history.length;
+          if (removedEpisode) entry.ignoredRssEpisode = removedEpisode;
+
+          const validMinutes = history
+            .map(sample => Number(sample?.mins))
+            .filter(value => Number.isFinite(value));
+
+          if (validMinutes.length) {
+            entry.time = minutesToHHMM(medianTime(validMinutes));
+          }
+
+          entry.updatedAt = new Date().toISOString();
+          cache[id] = entry;
+        } else {
+          const transitionState = {};
+          if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
+            transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
+          }
+          if (Number.isFinite(Number(entry.lastAniListNextAiringAt)) && Number(entry.lastAniListNextAiringAt) > 0) {
+            transitionState.lastAniListNextAiringAt = Number(entry.lastAniListNextAiringAt);
+          }
+          if (Number.isFinite(Number(entry.tickerHeldEpisode)) && Number(entry.tickerHeldEpisode) > 0) {
+            transitionState.tickerHeldEpisode = Number(entry.tickerHeldEpisode);
+          }
+          if (Number.isFinite(Number(entry.tickerGateUntilMs)) && Number(entry.tickerGateUntilMs) > 0) {
+            transitionState.tickerGateUntilMs = Number(entry.tickerGateUntilMs);
+          }
+          for (const key of ["tickerPreviousEpisode", "tickerPreviousAiringAt"]) {
+            if (Number.isFinite(Number(entry[key])) && Number(entry[key]) > 0) {
+              transitionState[key] = Number(entry[key]);
+            }
+          }
+          if (entry.finaleTransitionDateKey) {
+            transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
+          }
+          if (removedEpisode) transitionState.ignoredRssEpisode = removedEpisode;
+          if (Object.keys(transitionState).length) cache[id] = transitionState;
+          else delete cache[id];
+        }
+        return cache;
+      });
+
+      if (!foundHistory) {
         populateShowSettingsModal();
         return;
       }
 
-      const history = entry.history.slice();
-      const removedSample = history.pop();
-      const removedEpisode = String(removedSample?.episode || "");
-
-      if (history.length) {
-        entry.history = history;
-        entry.sampleCount = history.length;
-        if (removedEpisode) entry.ignoredRssEpisode = removedEpisode;
-
-        const validMinutes = history
-          .map(sample => Number(sample?.mins))
-          .filter(value => Number.isFinite(value));
-
-        if (validMinutes.length) {
-          entry.time = minutesToHHMM(medianTime(validMinutes));
-        }
-
-        entry.updatedAt = new Date().toISOString();
-        cache[id] = entry;
-      } else {
-        const transitionState = {};
-        if (Number.isFinite(Number(entry.lastAniListNextEpisode)) && Number(entry.lastAniListNextEpisode) > 0) {
-          transitionState.lastAniListNextEpisode = Number(entry.lastAniListNextEpisode);
-        }
-        if (entry.finaleTransitionDateKey) {
-          transitionState.finaleTransitionDateKey = String(entry.finaleTransitionDateKey);
-        }
-        if (removedEpisode) transitionState.ignoredRssEpisode = removedEpisode;
-        if (Object.keys(transitionState).length) cache[id] = transitionState;
-        else delete cache[id];
-      }
-
-      await saveSlotCache(state.userName, cache);
       await refreshBoardFromState();
 
       if (String(state.activeSettingsId) === id) {
@@ -3934,7 +4707,7 @@
 
       try {
         // Storage failures must stop the refresh before any empty fallback can be written.
-        const [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
+        let [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
           loadOverrides(userName),
           loadAddedShows(userName),
           loadFinalHoldovers(userName)
@@ -3969,10 +4742,14 @@
           nextNotes.push(`AniList: ${errMsg} (Using cached shows)`);
         }
 
+        // Preserve previously learned RSS slots when a transient RSS failure would
+        // otherwise blank them out. Only replace them when at least one feed succeeded.
         let nextPrimaryCandidates = state.primaryCandidates || [];
 
         if (rssResult.status === "fulfilled") {
           const allCandidates = [];
+          let anyFeedParsed = false;
+          let anyUsableCandidates = false;
 
           for (const feed of rssResult.value || []) {
             if (!feed.ok) {
@@ -3985,13 +4762,24 @@
             if (!feedText) continue;
 
             try {
-              allCandidates.push(...parseGenericFeed(feedText));
+              const parsed = parseGenericFeed(feedText);
+              anyFeedParsed = true;
+              if (parsed.length) {
+                allCandidates.push(...parsed);
+                anyUsableCandidates = true;
+              }
             } catch (error) {
               nextNotes.push(`SubsPlease ${feed.url}: ${error.message}`);
             }
           }
 
-          nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+          if (anyUsableCandidates) {
+            nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+          } else {
+            nextNotes.push(anyFeedParsed
+              ? "RSS feeds returned no usable releases; keeping previous RSS slot data."
+              : "No RSS feed responded; keeping previous RSS slot data.");
+          }
           
           let newest = 0;
           for (const candidate of nextPrimaryCandidates) {
@@ -4013,25 +4801,90 @@
         }
 
         const addedIds = Object.keys(nextAddedShows).map(Number).filter(Boolean);
-        let removedFinishedAddedShow = false;
-        if (addedIds.length > 0 && aniListResult.status === "fulfilled") { 
+        if (addedIds.length > 0) {
           try {
-            const statusQuery = `query ($ids: [Int]) { Page { media(id_in: $ids) { id status } } }`;
-            const statusData = await graphQLRequest(statusQuery, { ids: addedIds });
-            const mediaList = statusData?.Page?.media || [];
-            for (const media of mediaList) {
-              if (media.status === "FINISHED" || media.status === "CANCELLED") {
-                delete nextAddedShows[String(media.id)];
-                delete nextOverrides[String(media.id)];
-                removedFinishedAddedShow = true;
+            const mediaList = await fetchAniListMediaByIds(addedIds);
+            const finishedIds = mediaList
+              .filter(media => media?.status === "FINISHED" || media?.status === "CANCELLED")
+              .map(media => String(media.id));
+
+            await mutateAddedShows(userName, current => {
+              for (const media of mediaList) {
+                if (!media?.id) continue;
+                const id = String(media.id);
+                if (!Object.prototype.hasOwnProperty.call(current, id)) continue;
+                if (media.status === "FINISHED" || media.status === "CANCELLED") delete current[id];
+                else current[id] = media;
               }
-            }
-            if (removedFinishedAddedShow) {
-              await saveAddedShows(userName, nextAddedShows);
-              await saveOverrides(userName, nextOverrides);
+              return current;
+            });
+
+            if (finishedIds.length) {
+              await mutateOverrides(userName, current => {
+                for (const id of finishedIds) delete current[id];
+                return current;
+              });
             }
           } catch (error) {
-            console.warn("Could not verify manually added show statuses:", error);
+            console.warn("Could not refresh manually added show metadata:", error);
+          }
+        }
+
+        // The network requests above can take several seconds. Re-read user-editable state
+        // immediately before applying the result so an in-flight sync cannot resurrect a
+        // show or override that was changed while the request was running.
+        [nextOverrides, nextAddedShows] = await Promise.all([
+          loadOverrides(userName),
+          loadAddedShows(userName)
+        ]);
+
+        // Detect and correct for a systematic RSS pubDate offset (e.g. SubsPlease
+        // stamping timestamps in a different timezone than +0000 claims). Uses AniList
+        // next-airing data as ground truth, so it self-corrects when their feed changes.
+        const residualOffset = detectRssTimeOffset(nextPrimaryCandidates, nextCurrentEntries, DEFAULT_TIMEZONE);
+        if (residualOffset !== null && Math.abs(residualOffset) >= RSS_OFFSET_APPLY_THRESHOLD_MS) {
+          const currentOffset = Number(state.rssTimeOffsetMs) || 0;
+          const proposedOffset = currentOffset + residualOffset;
+          // Bound the total correction, not only the latest residual. This still permits
+          // the observed ~7h feed-clock shift but prevents repeated adjustments from
+          // walking the persisted correction outside the intended safety window.
+          if (Math.abs(proposedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) {
+            state.rssTimeOffsetMs = proposedOffset;
+            saveRssTimeOffset(state.rssTimeOffsetMs);
+            // Re-parse the freshly fetched feeds with the corrected offset so this
+            // cycle already sees the fix, instead of waiting until the next fetch.
+            const correctedCandidates = [];
+            let correctedAny = false;
+            if (rssResult.status === "fulfilled") {
+              for (const feed of rssResult.value || []) {
+                if (!feed.ok) continue;
+                const feedText = String(feed.text || "").trim();
+                if (!feedText) continue;
+                try {
+                  const parsed = parseGenericFeed(feedText);
+                  if (parsed.length) {
+                    correctedCandidates.push(...parsed);
+                    correctedAny = true;
+                  }
+                } catch (_) {}
+              }
+            }
+            if (correctedAny) {
+              nextPrimaryCandidates = mergeFeedCandidates(correctedCandidates);
+              let newest = 0;
+              for (const candidate of nextPrimaryCandidates) {
+                for (const item of candidate.items) {
+                  if (item.date.getTime() > newest) newest = item.date.getTime();
+                }
+              }
+              if (newest > 0) state.lastRssReleaseAt = newest;
+            }
+            const hours = (state.rssTimeOffsetMs / 3600000).toFixed(1);
+            console.info(`RSS timestamps auto-corrected by ${hours}h to match AniList.`);
+          } else {
+            console.warn("Ignored RSS timestamp correction outside the +/-8h safety window.", {
+              currentOffset, residualOffset, proposedOffset
+            });
           }
         }
 
@@ -4061,6 +4914,7 @@
           (pastedScheduleFallbackUsed ? `\n\nPasted timetable override is active; RSS availability did not affect the schedule.` : "") +
           (state.notes.length ? `\n\n${state.notes.join("\n")}` : "")
         );
+        clearStartupRecoveryState();
         return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
@@ -4116,9 +4970,14 @@
           item.finaleTransitionDateKey &&
           item.finaleTransitionDateKey !== todayDateKey
         ));
+        const episodeTickerGateExpired = state.items.some(item => (
+          item.tickerGateActive &&
+          Number.isFinite(Number(item.tickerGateUntilMs)) &&
+          Number(item.tickerGateUntilMs) <= now
+        ));
 
         try {
-          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver) {
+          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver || episodeTickerGateExpired) {
             await refreshBoardFromState({ allowPrune: false });
           } else if (state.items.length) {
             updateBoardHighlights();
@@ -4150,6 +5009,9 @@
 
       if (action === "open-show-settings") {
         openSettingsModalForId(id);
+      } else if (action === "toggle-next-up") {
+        state.nextUpExpanded = !state.nextUpExpanded;
+        renderBoard(state.items);
       } else if (action === "toggle-day") {
         const day = actionElement.dataset.day;
         const isCurrentlyCollapsed = actionElement.textContent === 'Show';
@@ -4226,8 +5088,12 @@
         if (!scopedUser) return;
         try {
           await clearSlotCache(scopedUser);
-          showMessage("info", "RSS memory cleared.");
-          if (state.userName) await refreshBoardFromState({ allowPrune: false });
+          state.rssTimeOffsetMs = 0;
+          saveRssTimeOffset(0);
+          showMessage("info", "RSS memory and timestamp correction cleared. Refreshing feed...");
+          // A full network reload is required here: the in-memory candidates were parsed
+          // with the old offset, so a local board rebuild alone would keep shifted dates.
+          if (state.userName) await loadBoard({ reason: "refresh", userName: scopedUser });
         } catch (error) {
           reportAppError(error, "Could not clear RSS memory");
         }
@@ -4257,11 +5123,23 @@
     });
 
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+      if (document.visibilityState !== "visible") return;
+      if (startupRecoveryNeeded) {
+        startupRecoveryAttempt = 0;
+        recoverStartupAfterStorageFailure("visibility");
+        return;
+      }
+      maybeRefreshBoard("refresh");
     });
 
     window.addEventListener("pageshow", () => {
-      if (document.visibilityState === "visible") maybeRefreshBoard("refresh");
+      if (document.visibilityState !== "visible") return;
+      if (startupRecoveryNeeded) {
+        startupRecoveryAttempt = 0;
+        recoverStartupAfterStorageFailure("pageshow");
+        return;
+      }
+      maybeRefreshBoard("refresh");
     });
 
     armPersistentStorageRequest();
@@ -4274,29 +5152,110 @@
 
     let autoRefreshStarted = false;
     let bootCompleted = false;
+    let startupRecoveryNeeded = false;
+    let startupRecoveryInFlight = false;
+    let startupRecoveryTimer = null;
+    let startupRecoveryAttempt = 0;
+    const STARTUP_RECOVERY_DELAYS_MS = [350, 1200, 3000];
+
+    function clearStartupRecoveryState() {
+      startupRecoveryNeeded = false;
+      startupRecoveryAttempt = 0;
+      if (startupRecoveryTimer !== null) {
+        clearTimeout(startupRecoveryTimer);
+        startupRecoveryTimer = null;
+      }
+    }
+
+    function scheduleStartupRecovery() {
+      if (!startupRecoveryNeeded || startupRecoveryInFlight || startupRecoveryTimer !== null) return;
+      if (startupRecoveryAttempt >= STARTUP_RECOVERY_DELAYS_MS.length) return;
+      const delay = STARTUP_RECOVERY_DELAYS_MS[startupRecoveryAttempt++];
+      startupRecoveryTimer = setTimeout(() => {
+        startupRecoveryTimer = null;
+        recoverStartupAfterStorageFailure("timer");
+      }, delay);
+    }
+
+    async function recoverStartupAfterStorageFailure(trigger = "retry") {
+      if (!startupRecoveryNeeded || startupRecoveryInFlight) return false;
+      if (document.visibilityState === "hidden") {
+        scheduleStartupRecovery();
+        return false;
+      }
+
+      startupRecoveryInFlight = true;
+      try {
+        const hydrated = await hydrateBoardSnapshot();
+        clearStartupRecoveryState();
+
+        if (!els.username.value.trim()) els.username.value = "zrr";
+        if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
+
+        if (els.username.value.trim()) {
+          await loadBoard({ reason: hydrated ? "refresh" : "load" });
+        }
+        return true;
+      } catch (error) {
+        if (!isStorageError(error)) {
+          clearStartupRecoveryState();
+          reportAppError(error, "Startup recovery failed");
+          return false;
+        }
+
+        // Safari can temporarily reject IndexedDB immediately after restoring a suspended tab.
+        // Keep the saved snapshot untouched and retry automatically instead of requiring Load.
+        startupRecoveryNeeded = true;
+        state.lastSuccessfulLoadAt = state.lastSuccessfulLoadAt || 0;
+        updateIndicatorTitle(state.lastSuccessfulLoadAt);
+        console.warn(`Startup storage recovery (${trigger}) will retry:`, error);
+        showMessage("info", "Saved board is temporarily unavailable. Retrying automatically…");
+        scheduleStartupRecovery();
+        return false;
+      } finally {
+        startupRecoveryInFlight = false;
+        if (startupRecoveryNeeded) scheduleStartupRecovery();
+      }
+    }
 
     async function bootPage() {
       if (bootCompleted) return;
       bootCompleted = true;
+      applySavedSettings();
+
+      let hydrated = false;
       try {
-        applySavedSettings();
-        const hydrated = await hydrateBoardSnapshot();
-        if (!els.username.value.trim()) els.username.value = "zrr";
-        if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
-        if (els.username.value.trim()) {
-          loadBoard({ reason: hydrated ? "refresh" : "load" });
-        } else {
-          state.healthStatus = "healthy";
-          setUpdateIndicatorStatus("ok");
-          updateIndicatorTitle(0);
-          renderFooterStatus();
-        }
+        hydrated = await hydrateBoardSnapshot();
       } catch (error) {
-        // Never delete the snapshot in response to a read/open failure. A manual retry can
-        // recover after a transient browser-storage problem or a blocked database closes.
+        if (!isStorageError(error)) {
+          reportAppError(error, "Startup failed");
+          return;
+        }
+
+        // Do not delete, replace, or synthesize an empty snapshot. Safari occasionally makes
+        // IndexedDB unavailable for a short period after restoring a suspended page.
+        startupRecoveryNeeded = true;
         state.lastSuccessfulLoadAt = state.lastSuccessfulLoadAt || 0;
         updateIndicatorTitle(state.lastSuccessfulLoadAt);
-        reportAppError(error, "Startup failed");
+        console.warn("Cached board could not be opened during startup; automatic recovery armed.", error);
+        showMessage("info", "Saved board is temporarily unavailable. Retrying automatically…");
+      }
+
+      if (!els.username.value.trim()) els.username.value = "zrr";
+      if (!autoRefreshStarted) { startAutoRefresh(); autoRefreshStarted = true; }
+
+      if (startupRecoveryNeeded) {
+        scheduleStartupRecovery();
+        return;
+      }
+
+      if (els.username.value.trim()) {
+        await loadBoard({ reason: hydrated ? "refresh" : "load" });
+      } else {
+        state.healthStatus = "healthy";
+        setUpdateIndicatorStatus("ok");
+        updateIndicatorTitle(0);
+        renderFooterStatus();
       }
     }
 
