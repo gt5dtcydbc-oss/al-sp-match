@@ -985,7 +985,6 @@
     const BOARD_SNAPSHOT_KEY = "airing-board-snapshot-v1";
     const COLLAPSED_DAYS_KEY = "airing-board-collapsed-days-v1";
     const RSS_TIME_OFFSET_KEY = "airing-board-rss-time-offset-v1";
-    const SUBSPLEASE_SCHEDULE_CACHE_KEY = "airing-board-subsplease-schedule-v1";
     
     const REFRESH_STALE_MS = 4 * 60 * 1000;
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -998,14 +997,15 @@
     const RECENT_RELEASE_WINDOW_MS = 36 * 60 * 60 * 1000;
     const UPCOMING_EPISODE_PREVIEW_MS = 36 * 60 * 60 * 1000;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-    const SUBSPLEASE_SCHEDULE_FRESH_MS = 24 * 60 * 60 * 1000;
-    const SUBSPLEASE_SCHEDULE_CACHE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
-    // RSS time offset detection thresholds. Large systematic feed-clock errors (such
-    // as the observed ~7h shift) are correctable, while ordinary release lag is ignored.
+    // RSS feed-clock detection. The feed's pubDate can be systematically mislabeled
+    // by several hours. Learn an ABSOLUTE whole-hour correction from multiple shows,
+    // rather than accumulating half-hour residuals on top of an already-corrected time.
     const RSS_OFFSET_MIN_OBSERVATIONS = 3;
-    const RSS_OFFSET_APPLY_THRESHOLD_MS = 2 * 60 * 60 * 1000;
-    const RSS_OFFSET_SANITY_BOUND_MS = 8 * 60 * 60 * 1000;
+    const RSS_OFFSET_MIN_AGREEING = 2;
+    const RSS_OFFSET_EXISTING_CHANGE_SUPPORT = 3;
+    const RSS_OFFSET_INITIAL_MIN_ABS_MS = 2 * 60 * 60 * 1000;
+    const RSS_OFFSET_SANITY_BOUND_MS = 12 * 60 * 60 * 1000;
     const RSS_SUBS_LAG_HINT_MS = 60 * 60 * 1000;
     const RSS_MATCH_SCORE_MIN = 80;
 
@@ -1562,10 +1562,7 @@
       expandedDays: new Set(),
       selectedDay: "Full Week",
       nextUpExpanded: false,
-      rssTimeOffsetMs: loadRssTimeOffset(),
-      subsPleaseScheduleEntries: [],
-      subsPleaseScheduleSavedAt: 0,
-      subsPleaseScheduleMode: "none"
+      rssTimeOffsetMs: loadRssTimeOffset()
     };
 
     showMessage("info", "Ready.");
@@ -1623,15 +1620,10 @@
         extra += `<br/>Newest RSS release at ${exactLocalTime}`;
       }
 
-      if (state.subsPleaseScheduleEntries?.length) {
-        const mode = state.subsPleaseScheduleMode === "fresh" ? "live" : "cached";
-        const age = state.subsPleaseScheduleSavedAt ? ` · ${timeAgo(state.subsPleaseScheduleSavedAt)} old` : "";
-        extra += `<br/>SubsPlease schedule API: ${mode}${age}`;
-      }
-
       if (state.rssTimeOffsetMs) {
-        const hours = (state.rssTimeOffsetMs / 3600000).toFixed(1);
-        extra += `<br/>RSS feed-clock correction: ${hours}h.`;
+        const hours = state.rssTimeOffsetMs / 3600000;
+        const signed = `${hours > 0 ? "+" : ""}${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)}`;
+        extra += `<br/>RSS feed-clock correction: ${signed}h.`;
       }
 
       if (isUnhealthy && state.notes.length) {
@@ -1791,85 +1783,6 @@
       }));
 
       return results;
-    }
-
-    function subsPleaseScheduleApiUrl(timeZone = DEFAULT_TIMEZONE) {
-      const params = new URLSearchParams({ f: "schedule", tz: timeZone });
-      return `https://subsplease.org/api/?${params.toString()}&_cb=${Date.now()}`;
-    }
-
-    function parseSubsPleaseSchedulePayload(text, requestedTimeZone = DEFAULT_TIMEZONE) {
-      let data;
-      try { data = JSON.parse(String(text || "")); }
-      catch (error) { throw new Error(`SubsPlease schedule API returned invalid JSON: ${error.message}`); }
-      const responseTimeZone = String(data?.tz || "").trim();
-      if (responseTimeZone && responseTimeZone !== requestedTimeZone) {
-        throw new Error(`SubsPlease schedule API returned timezone ${responseTimeZone} instead of ${requestedTimeZone}.`);
-      }
-      const schedule = data?.schedule;
-      if (!schedule || typeof schedule !== "object" || Array.isArray(schedule)) {
-        throw new Error("SubsPlease schedule API returned an unexpected schedule format.");
-      }
-      const entries = [];
-      for (const day of WEEKDAYS) {
-        const rows = Array.isArray(schedule[day]) ? schedule[day] : [];
-        for (const row of rows) {
-          const title = String(row?.title || "").trim();
-          const time = normalizeScheduleTime(row?.time);
-          if (!title || !time) continue;
-          entries.push({
-            title, day, time, page: String(row?.page || ""),
-            variants: generateVariants([title]).map(prepareVariant)
-          });
-        }
-      }
-      if (!entries.length) throw new Error("SubsPlease schedule API returned no usable weekly entries.");
-      return { timeZone: responseTimeZone || requestedTimeZone, entries };
-    }
-
-    async function fetchSubsPleaseSchedule(timeZone = DEFAULT_TIMEZONE, proxyTemplate = "") {
-      const text = await fetchTextWithOptionalProxy(subsPleaseScheduleApiUrl(timeZone), proxyTemplate);
-      return parseSubsPleaseSchedulePayload(text, timeZone);
-    }
-
-    function subsPleaseScheduleCacheKey(timeZone = DEFAULT_TIMEZONE) {
-      return `${SUBSPLEASE_SCHEDULE_CACHE_KEY}:${String(timeZone || DEFAULT_TIMEZONE)}`;
-    }
-
-    async function loadSubsPleaseScheduleCache(timeZone = DEFAULT_TIMEZONE) {
-      const value = await loadStateDB(subsPleaseScheduleCacheKey(timeZone), null);
-      if (!value) return null;
-      if (typeof value !== "object" || Array.isArray(value) || !Array.isArray(value.entries)) {
-        throw makeStorageError("validate state", subsPleaseScheduleCacheKey(timeZone), new Error("Saved SubsPlease schedule cache has an unexpected format."));
-      }
-      return value;
-    }
-
-    async function saveSubsPleaseScheduleCache(timeZone, entries) {
-      const value = { savedAt: Date.now(), timeZone, entries: Array.isArray(entries) ? entries : [] };
-      await saveStateDB(subsPleaseScheduleCacheKey(timeZone), value);
-      return value;
-    }
-
-    function usableSubsPleaseScheduleCache(cache, nowMs = Date.now()) {
-      const savedAt = Number(cache?.savedAt);
-      return Boolean(cache && Array.isArray(cache.entries) && cache.entries.length &&
-        Number.isFinite(savedAt) && savedAt > 0 && (nowMs - savedAt) <= SUBSPLEASE_SCHEDULE_CACHE_MAX_AGE_MS);
-    }
-
-    function tryMatchSubsPleaseSchedule(media, scheduleEntries) {
-      const variants = titleVariants(media);
-      let best = null;
-      let bestScore = 0;
-      for (const candidate of Array.isArray(scheduleEntries) ? scheduleEntries : []) {
-        const score = scoreMatch(candidate, variants);
-        if (score > bestScore) { best = candidate; bestScore = score; }
-      }
-      if (!best || bestScore < 70 || !WEEKDAYS.includes(best.day) || !isValidTime(best.time)) return null;
-      return {
-        day: best.day, time: best.time, source: "subsplease-api", sampleCount: 1,
-        matchedTitle: best.title, matchScore: bestScore
-      };
     }
 
     function prepareVariant(text) {
@@ -2255,11 +2168,18 @@
         if (Number.isNaN(raw.getTime())) continue;
         // Apply the detected offset so RSS pubDate lines up with real-world time
         // even if SubsPlease's feed stamps items in a shifted timezone.
-        const date = offsetMs ? new Date(raw.getTime() + offsetMs) : raw;
+        const rawDateMs = raw.getTime();
+        const date = offsetMs ? new Date(rawDateMs + offsetMs) : raw;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
         if (!existing || date.getTime() < existing.date.getTime()) {
-          deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
+          deduped.set(key, {
+            rawTitle: item.title,
+            showTitle: parsed.showTitle,
+            episode: parsed.episode,
+            date,
+            rawDateMs
+          });
         }
       }
       const grouped = new Map();
@@ -2280,17 +2200,108 @@
       return parseXmlFeed(trimmed);
     }
 
-    // Compare the RSS-derived release time for each show against AniList's known
-    // next-airing timestamp. When RSS released the episode that precedes AniList's
-    // "next" one, the two should be ~7 days apart. The median gap between that
-    // expectation and the observed RSS timestamp is the offset to correct for.
+    function rawRssTimestampMs(item) {
+      const explicitRaw = Number(item?.rawDateMs);
+      if (Number.isFinite(explicitRaw) && explicitRaw > 0) return explicitRaw;
+      const corrected = item?.date instanceof Date ? item.date.getTime() : new Date(item?.date).getTime();
+      if (!Number.isFinite(corrected)) return null;
+      return corrected - (Number(state.rssTimeOffsetMs) || 0);
+    }
+
+    function summarizeWholeHourOffsetObservations(observations, basis) {
+      const HOUR_MS = 60 * 60 * 1000;
+      const safe = (observations || []).filter(value =>
+        Number.isFinite(value) && Math.abs(value) <= RSS_OFFSET_SANITY_BOUND_MS
+      );
+      if (safe.length < RSS_OFFSET_MIN_OBSERVATIONS) return null;
+
+      const buckets = new Map();
+      for (const value of safe) {
+        const hour = Math.round(value / HOUR_MS);
+        if (Math.abs(hour * HOUR_MS) > RSS_OFFSET_SANITY_BOUND_MS) continue;
+        buckets.set(hour, (buckets.get(hour) || 0) + 1);
+      }
+      if (!buckets.size) return null;
+
+      const sorted = [...safe].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const medianHour = Math.round(median / HOUR_MS);
+      let bestHour = null;
+      let bestCount = -1;
+      for (const [hour, count] of buckets.entries()) {
+        if (count > bestCount || (count === bestCount && Math.abs(hour - medianHour) < Math.abs((bestHour ?? hour) - medianHour))) {
+          bestHour = hour;
+          bestCount = count;
+        }
+      }
+      if (bestCount < RSS_OFFSET_MIN_AGREEING) return null;
+
+      return {
+        desiredOffsetMs: bestHour * HOUR_MS,
+        basis,
+        support: bestCount,
+        observationCount: safe.length
+      };
+    }
+
+    // Strongest fallback calibration: compare the raw feed clock with the schedule
+    // already learned from prior RSS episodes. This does not depend on AniList's release lag.
+    function detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone = DEFAULT_TIMEZONE) {
+      const observations = [];
+      const cache = slotCache && typeof slotCache === "object" ? slotCache : {};
+
+      for (const candidate of primaryCandidates || []) {
+        const latest = candidate?.items?.[0];
+        const rawMs = rawRssTimestampMs(latest);
+        if (!latest?.episode || !Number.isFinite(rawMs)) continue;
+
+        let matchedMedia = null;
+        let bestScore = 0;
+        for (const entry of entries || []) {
+          const media = entry?.media;
+          if (!media) continue;
+          const score = scoreMatch(candidate, titleVariants(media));
+          if (score > bestScore) { bestScore = score; matchedMedia = media; }
+        }
+        if (!matchedMedia || bestScore < RSS_MATCH_SCORE_MIN) continue;
+
+        const cached = cache[String(matchedMedia.id)];
+        const history = Array.isArray(cached?.history) ? cached.history : [];
+        if (history.length < 2) continue;
+
+        const expectedDay = WEEKDAYS.includes(cached?.rssScheduleDay)
+          ? cached.rssScheduleDay
+          : mostCommonRssHistoryDay(history, history[history.length - 1]?.day);
+        const historyMinutes = history.map(sample => Number(sample?.mins)).filter(Number.isFinite);
+        const expectedTime = isValidTime(cached?.rssScheduleTime)
+          ? cached.rssScheduleTime
+          : (historyMinutes.length ? minutesToHHMM(medianTime(historyMinutes)) : "");
+        if (!WEEKDAYS.includes(expectedDay) || !isValidTime(expectedTime)) continue;
+
+        const anchorDateKey = localDateKeyFromMs(rawMs, timeZone);
+        const expectedDateKey = closestDateKeyForWeekday(anchorDateKey, expectedDay, timeZone);
+        const expectedMs = localTimestampFromDateKeyAndTime(expectedDateKey, expectedTime, timeZone);
+        if (!Number.isFinite(expectedMs)) continue;
+
+        const observedOffset = expectedMs - rawMs;
+        if (Math.abs(observedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) observations.push(observedOffset);
+      }
+
+      return summarizeWholeHourOffsetObservations(observations, "rss-history");
+    }
+
+    // Secondary calibration for a fresh/empty history: the latest RSS episode should
+    // normally be the episode immediately before AniList's nextAiringEpisode. AniList
+    // gives the broadcast time; +60m is only a rough SubsPlease lag hint. Multiple shows
+    // plus whole-hour voting prevent ordinary release-lag noise becoming a clock offset.
     function detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone = DEFAULT_TIMEZONE) {
       const observations = [];
       const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
       for (const candidate of primaryCandidates || []) {
         const latest = candidate?.items?.[0];
-        if (!latest?.date || !latest?.episode) continue;
+        const rawMs = rawRssTimestampMs(latest);
+        if (!latest?.episode || !Number.isFinite(rawMs)) continue;
 
         const rssEp = Number(String(latest.episode).replace(/v\d+$/i, ""));
         if (!Number.isFinite(rssEp) || rssEp < 2) continue;
@@ -2307,68 +2318,22 @@
 
         const nextEp = Number(matchedMedia.nextAiringEpisode?.episode);
         const nextAt = Number(matchedMedia.nextAiringEpisode?.airingAt);
-        if (!Number.isFinite(nextEp) || !Number.isFinite(nextAt)) continue;
-
-        // Only when RSS's latest release is the episode immediately before AniList's next.
-        if (rssEp !== nextEp - 1) continue;
+        if (!Number.isFinite(nextEp) || !Number.isFinite(nextAt) || rssEp !== nextEp - 1) continue;
 
         const expectedAirMs = (nextAt * 1000) - WEEK_MS;
         const expectedRssMs = expectedAirMs + RSS_SUBS_LAG_HINT_MS;
-        const observedMs = expectedRssMs - latest.date.getTime();
-
-        if (Math.abs(observedMs) <= RSS_OFFSET_SANITY_BOUND_MS) {
-          observations.push(observedMs);
-        }
+        const observedOffset = expectedRssMs - rawMs;
+        if (Math.abs(observedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) observations.push(observedOffset);
       }
 
-      if (observations.length < RSS_OFFSET_MIN_OBSERVATIONS) return null;
-
-      observations.sort((a, b) => a - b);
-      const median = observations[Math.floor(observations.length / 2)];
-      const HALF_HOUR = 30 * 60 * 1000;
-      return Math.round(median / HALF_HOUR) * HALF_HOUR;
+      return summarizeWholeHourOffsetObservations(observations, "anilist");
     }
 
-    function detectRssTimeOffsetFromSchedule(primaryCandidates, scheduleEntries, timeZone = DEFAULT_TIMEZONE) {
-      const observations = [];
-      const safeSchedule = Array.isArray(scheduleEntries) ? scheduleEntries : [];
-      if (!safeSchedule.length) return null;
-
-      for (const candidate of primaryCandidates || []) {
-        const latest = candidate?.items?.[0];
-        if (!latest?.date) continue;
-        let best = null;
-        let bestScore = 0;
-        for (const scheduleEntry of safeSchedule) {
-          const score = scoreMatch(candidate, scheduleEntry.variants || []);
-          if (score > bestScore) { best = scheduleEntry; bestScore = score; }
-        }
-        if (!best || bestScore < RSS_MATCH_SCORE_MIN) continue;
-
-        const latestMs = latest.date instanceof Date ? latest.date.getTime() : new Date(latest.date).getTime();
-        if (!Number.isFinite(latestMs)) continue;
-        const anchorDateKey = localDateKeyFromMs(latestMs, timeZone);
-        const expectedDateKey = closestDateKeyForWeekday(anchorDateKey, best.day, timeZone);
-        const expectedMs = localTimestampFromDateKeyAndTime(expectedDateKey, best.time, timeZone);
-        if (!Number.isFinite(expectedMs)) continue;
-        const residual = expectedMs - latestMs;
-        if (Math.abs(residual) <= RSS_OFFSET_SANITY_BOUND_MS) observations.push(residual);
-      }
-
-      if (observations.length < RSS_OFFSET_MIN_OBSERVATIONS) return null;
-      observations.sort((a, b) => a - b);
-      const median = observations[Math.floor(observations.length / 2)];
-      const HALF_HOUR = 30 * 60 * 1000;
-      return Math.round(median / HALF_HOUR) * HALF_HOUR;
-    }
-
-    function detectRssTimeOffset(primaryCandidates, entries, scheduleEntries, scheduleCalibrationAllowed, timeZone = DEFAULT_TIMEZONE) {
-      if (scheduleCalibrationAllowed) {
-        const scheduleResidual = detectRssTimeOffsetFromSchedule(primaryCandidates, scheduleEntries, timeZone);
-        if (scheduleResidual !== null) return { offsetMs: scheduleResidual, basis: "schedule-api" };
-      }
-      const aniListResidual = detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone);
-      return aniListResidual === null ? null : { offsetMs: aniListResidual, basis: "anilist" };
+    function detectRssTimeOffset(primaryCandidates, entries, slotCache, allowAniListCalibration, timeZone = DEFAULT_TIMEZONE) {
+      const historyResult = detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone);
+      if (historyResult) return historyResult;
+      if (!allowAniListCalibration) return null;
+      return detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone);
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -2609,9 +2574,6 @@
         notes: state.notes,
         healthStatus: state.healthStatus,
         lastRssReleaseAt: state.lastRssReleaseAt,
-        subsPleaseScheduleEntries: state.subsPleaseScheduleEntries,
-        subsPleaseScheduleSavedAt: state.subsPleaseScheduleSavedAt,
-        subsPleaseScheduleMode: state.subsPleaseScheduleMode,
         rssUrl: els.rssUrl.value.trim(),
         rssProxyTemplate: els.rssProxyTemplate.value.trim()
       };
@@ -2644,16 +2606,6 @@
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
       state.lastRssReleaseAt = Number(snapshot.lastRssReleaseAt) || 0;
-      const scheduleCache = await loadSubsPleaseScheduleCache(DEFAULT_TIMEZONE);
-      if (usableSubsPleaseScheduleCache(scheduleCache)) {
-        state.subsPleaseScheduleEntries = scheduleCache.entries;
-        state.subsPleaseScheduleSavedAt = Number(scheduleCache.savedAt) || 0;
-        state.subsPleaseScheduleMode = "cache";
-      } else if (Array.isArray(snapshot.subsPleaseScheduleEntries) && snapshot.subsPleaseScheduleEntries.length) {
-        state.subsPleaseScheduleEntries = snapshot.subsPleaseScheduleEntries;
-        state.subsPleaseScheduleSavedAt = Number(snapshot.subsPleaseScheduleSavedAt) || 0;
-        state.subsPleaseScheduleMode = "cache";
-      }
       const snapshotSavedAt = Number(snapshot.savedAt);
       state.lastSuccessfulLoadAt = Number.isFinite(snapshotSavedAt) ? snapshotSavedAt : 0;
       
@@ -3319,16 +3271,6 @@
       };
     }
 
-    function weeklySlotDifferenceMinutes(dayA, timeA, dayB, timeB) {
-      const aDay = WEEKDAYS.indexOf(dayA);
-      const bDay = WEEKDAYS.indexOf(dayB);
-      if (aDay < 0 || bDay < 0 || !isValidTime(timeA) || !isValidTime(timeB)) return null;
-      let diff = (bDay * 1440 + toMinutes(timeB)) - (aDay * 1440 + toMinutes(timeA));
-      while (diff > 5040) diff -= 10080;
-      while (diff < -5040) diff += 10080;
-      return diff;
-    }
-
     function detectDefaultSlot(media, primaryCandidates, timeZone) {
       const primary = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
       const next = media?.nextAiringEpisode;
@@ -3371,14 +3313,22 @@
               }
             }
             
-            // Out of bounds or wrong day. Keep AniList +60 for display, but retain the
-            // matched RSS episode as an observation so the history/offset system can learn.
+            // Out of bounds or wrong day. Keep AniList +60 for the visible schedule,
+            // but DO NOT discard the correctly matched RSS episode. The episode remains
+            // a release confirmation while the global feed-clock detector learns the shift.
             const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
             return {
-              day: fallbackSlot?.day || aniDay, time: fallbackSlot?.time || aniTime, source: "fallback", sampleCount: 0, matchedTitle: "",
-              matchedEpisode: primary.matchedEpisode || null, latestReleaseDay: primary.latestReleaseDay || null,
-              latestReleaseTime: primary.latestReleaseTime || null, latestReleaseDate: primary.latestReleaseDate || null,
-              rssMatchedTitle: primary.matchedTitle || "", rssObservationRejectedForDisplay: true
+              day: fallbackSlot?.day || aniDay,
+              time: fallbackSlot?.time || aniTime,
+              source: "fallback",
+              sampleCount: 0,
+              matchedTitle: "",
+              matchedEpisode: primary.matchedEpisode || null,
+              latestReleaseDay: primary.latestReleaseDay || null,
+              latestReleaseTime: primary.latestReleaseTime || null,
+              latestReleaseDate: primary.latestReleaseDate || null,
+              rssMatchedTitle: primary.matchedTitle || "",
+              rssObservationRejectedForDisplay: true
             };
           }
 
@@ -3442,7 +3392,6 @@
         const shared = getSharedEpisodeAndScheduleState(media);
         const rssCandidateForFinal = tryMatchCandidateSet(media, primaryCandidates, timeZone, "rss");
         const pastedSchedule = tryMatchPastedSchedule(media, state.pastedScheduleEntries);
-        const apiSchedule = tryMatchSubsPleaseSchedule(media, state.subsPleaseScheduleEntries);
 
         const override = overrides?.[String(media.id)];
         if (override?.enabled && WEEKDAYS.includes(override.day) && isValidTime(override.time)) {
@@ -3509,56 +3458,6 @@
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: pastedSchedule.day, time: pastedSchedule.time,
             format: media.format || "", source: "schedule", sampleCount: 1,
             matchedTitle: pastedSchedule.matchedTitle || "", scheduleMatchScore: pastedSchedule.matchScore || 0,
-            matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
-            latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
-            latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
-            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
-            isFreshRss: isFreshRss || false,
-            isAdded: Boolean(state.addedShows[String(media.id)]),
-            hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
-            totalEpisodeNumber: shared.totalEpisodeNumber, aniListNextEpisode: shared.nextEpisodeNumber,
-            displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
-            isScheduleMoved: shared.isScheduleMoved, diffDays: shared.diffDays,
-            isUpcomingSeason: shared.isUpcomingSeason,
-            isFinalEpisode: episodeState.isFinalEpisode, isFinalDisplayActive: episodeState.isFinalDisplayActive,
-            isFinalAired: episodeState.isFinalAired, isEnded: episodeState.isEnded, isFinalHoldover: false,
-            finalAiredAtMs: episodeState.finalAiredAtMs,
-            usesRssFinalTiming: episodeState.usesRssFinalTiming,
-            rssFinalReleaseSeen: episodeState.rssFinalReleaseSeen,
-            nextAiringAt: Number.isFinite(shared.nextAiringAt) ? shared.nextAiringAt : null
-          });
-          continue;
-        }
-
-        if (apiSchedule) {
-          const isFreshRss = rssCandidateForFinal?.latestReleaseDate && (Date.now() - rssCandidateForFinal.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
-          const apiRssDiff = rssCandidateForFinal
-            ? weeklySlotDifferenceMinutes(apiSchedule.day, apiSchedule.time, rssCandidateForFinal.latestReleaseDay, rssCandidateForFinal.latestReleaseTime)
-            : null;
-          const rssTimestampTrusted = apiRssDiff === null || Math.abs(apiRssDiff) <= 210;
-          const episodeState = resolveEpisodeDisplayState({
-            nextEpisodeNumber: shared.nextEpisodeNumber,
-            totalEpisodeNumber: shared.totalEpisodeNumber,
-            matchedEpisode: rssCandidateForFinal?.matchedEpisode,
-            latestReleaseDate: rssCandidateForFinal?.latestReleaseDate,
-            day: apiSchedule.day,
-            time: apiSchedule.time,
-            finalTimingDay: apiSchedule.day,
-            finalTimingTime: apiSchedule.time,
-            nextAiringAt: shared.nextAiringAt,
-            isUpcomingSeason: shared.isUpcomingSeason,
-            isScheduleMoved: shared.isScheduleMoved,
-            useRssFinalTiming: true,
-            timeZone,
-            nowSeconds
-          });
-
-          items.push({
-            id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: apiSchedule.day, time: apiSchedule.time,
-            format: media.format || "", source: "subsplease-api", sampleCount: 1,
-            matchedTitle: apiSchedule.matchedTitle || "", scheduleApiMode: state.subsPleaseScheduleMode,
-            scheduleMatchScore: apiSchedule.matchScore || 0, rssMatchedTitle: rssCandidateForFinal?.matchedTitle || "",
-            rssTimestampTrusted,
             matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
             latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
             latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
@@ -3652,34 +3551,6 @@
       return WEEKDAYS.includes(bestDay) ? bestDay : (WEEKDAYS.includes(fallback) ? fallback : null);
     }
 
-    function updateRssHistoryFromObservation(entry, item) {
-      entry.history = Array.isArray(entry.history) ? entry.history : [];
-      const currentDay = String(item?.latestReleaseDay || "");
-      const currentTime = String(item?.latestReleaseTime || "");
-      const episodeNumber = episodeNumberFromToken(item?.matchedEpisode);
-      if (episodeNumber === null || !WEEKDAYS.includes(currentDay) || !isValidTime(currentTime)) return false;
-
-      const ignoredEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
-      if (ignoredEpisode !== null && ignoredEpisode === episodeNumber) return false;
-      const trackerEp = String(episodeNumber).padStart(2, "0");
-      const sample = {
-        day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp,
-        trusted: item?.rssTimestampTrusted !== false && item?.rssObservationRejectedForDisplay !== true
-      };
-      const existingIndex = entry.history.findIndex(h => episodeNumberFromToken(h?.episode) === episodeNumber);
-      if (existingIndex >= 0) {
-        const existing = entry.history[existingIndex];
-        if (existing.day === sample.day && existing.time === sample.time && (existing.trusted !== false || sample.trusted === false)) return false;
-        // Same RSS episode after a feed-clock correction: rebase the stored sample instead
-        // of forcing the app to wait several weeks for the median to recover.
-        entry.history[existingIndex] = sample;
-        return true;
-      }
-      entry.history.push(sample);
-      if (entry.history.length > 3) entry.history.shift();
-      return true;
-    }
-
     async function applyCache(items) {
       const output = [];
 
@@ -3710,9 +3581,6 @@
           entry.wasDelayed = false;
         }
 
-        const hasRssObservation = updateRssHistoryFromObservation(entry, item);
-        if (hasRssObservation && item.source !== "manual") entry.origin = "rss";
-
         if (item.source === "schedule") {
           // Keep pasted timetable values transient so they override old RSS history
           // without destroying that history when the timetable is disabled later.
@@ -3726,20 +3594,58 @@
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
-          const trustedHistory = entry.history.filter(sample => sample?.trusted !== false);
-          if (trustedHistory.length > 0) {
-            const medMins = medianTime(trustedHistory.map(h => h.mins));
+          const currentDay = item.latestReleaseDay;
+          const currentTime = item.latestReleaseTime;
+          let trackerEp = item.matchedEpisode; 
+          if (trackerEp) trackerEp = String(trackerEp).padStart(2, "0");
+          else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) trackerEp = String(Math.max(1, item.displayEpisode - 1)).padStart(2, "0");
+          else trackerEp = "?";
+
+          const existingHistoryIndex = entry.history.findIndex(h => h.episode === trackerEp);
+          const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
+          const isIgnoredRssEpisode = ignoredRssEpisode !== null &&
+            ignoredRssEpisode === episodeNumberFromToken(trackerEp);
+          // Keep the rejection across stale/older feed responses, too. A later
+          // valid episode can be saved without making the discarded one valid again.
+
+          if (currentDay && isValidTime(currentTime) && !isIgnoredRssEpisode) {
+            const sample = {
+              day: currentDay,
+              time: currentTime,
+              mins: toMinutes(currentTime),
+              episode: trackerEp,
+              releaseAtMs: Number(item.latestReleaseDate) || null,
+              offsetMs: Number(state.rssTimeOffsetMs) || 0
+            };
+            if (existingHistoryIndex >= 0) {
+              // If a feed-clock correction changed after this episode was first seen,
+              // replace the old sample instead of letting the duplicate guard freeze
+              // the previously wrong timestamp forever.
+              const existing = entry.history[existingHistoryIndex] || {};
+              if (existing.day !== sample.day || existing.time !== sample.time ||
+                  Number(existing.releaseAtMs) !== Number(sample.releaseAtMs) ||
+                  Number(existing.offsetMs || 0) !== Number(sample.offsetMs || 0)) {
+                entry.history[existingHistoryIndex] = sample;
+              }
+            } else {
+              entry.history.push(sample);
+              if (entry.history.length > 3) entry.history.shift();
+            }
+          }
+
+          if (entry.history.length > 0) {
+            const medMins = medianTime(entry.history.map(h => h.mins));
             item.time = minutesToHHMM(medMins);
-            item.sampleCount = trustedHistory.length;
+            item.sampleCount = entry.history.length;
           } else {
             item.sampleCount = Math.min(item.sampleCount || 1, 3);
           }
 
-          const latestHistoryDay = trustedHistory.length
-            ? trustedHistory[trustedHistory.length - 1]?.day
+          const latestHistoryDay = entry.history.length
+            ? entry.history[entry.history.length - 1]?.day
             : null;
           const rssScheduleDay = mostCommonRssHistoryDay(
-            trustedHistory,
+            entry.history,
             latestHistoryDay || item.latestReleaseDay || item.day
           );
           const rssScheduleTime = item.time;
@@ -3776,31 +3682,11 @@
           continue;
         }
 
-        if (item.source === "subsplease-api") {
-          const history = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
-          const trustedHistory = history.filter(sample => sample?.trusted !== false);
-          const rssScheduleDay = trustedHistory.length ? mostCommonRssHistoryDay(trustedHistory, trustedHistory[trustedHistory.length - 1]?.day) : null;
-          const rssScheduleTime = trustedHistory.length ? minutesToHHMM(medianTime(trustedHistory.map(h => h.mins))) : null;
-          cache[key] = {
-            ...entry,
-            ...(history.length ? { origin: "rss", rssScheduleDay, rssScheduleTime } : {}),
-            matchedTitle: item.rssMatchedTitle || entry.matchedTitle || "",
-            latestReleaseDate: item.latestReleaseDate || entry.latestReleaseDate || null,
-            updatedAt: new Date().toISOString()
-          };
-          output.push({
-            ...item, rssScheduleDay, rssScheduleTime,
-            historyLog: history.map(h => `EP ${h.episode} (${h.time})`).join(", ")
-          });
-          continue;
-        }
-
         if (item.source === "manual") {
           cache[key] = { ...entry, day: item.day, time: item.time, sampleCount: 1, origin: "manual", updatedAt: new Date().toISOString() };
           output.push(item);
-        } else if (entry.origin && (isValidTime(entry.time) || (Array.isArray(entry.history) && entry.history.some(sample => sample?.trusted !== false)))) {
-          const allRememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
-          const rememberedHistory = allRememberedHistory.filter(sample => sample?.trusted !== false);
+        } else if (entry.origin && (isValidTime(entry.time) || Array.isArray(entry.history))) {
+          const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
           const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
           
           const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
@@ -3963,7 +3849,7 @@
       // User-controlled schedules must always win. For automatically detected shows,
       // prefer the weekday/time learned from actual RSS releases. Only fall back to
       // the generic board slot (normally AniList + offset) when no RSS history exists.
-      const hasExplicitSchedule = item.source === "manual" || item.source === "schedule" || item.source === "subsplease-api";
+      const hasExplicitSchedule = item.source === "manual" || item.source === "schedule";
       if (!hasExplicitSchedule) {
         const rssBacked = item.source === "rss" || item.cacheOrigin === "rss";
         const rssDay = String(item.rssScheduleDay || item.latestReleaseDay || "");
@@ -4400,7 +4286,6 @@
 
     function renderSummary(items, primaryCount) {
       const manualCount = items.filter(item => item.source === "manual").length;
-      const apiCount = items.filter(item => item.source === "subsplease-api").length;
       const rssCount = items.filter(item => item.source === "rss" || item.source === "cache").length;
       const addedCount = items.filter(item => item.isAdded).length;
       const fallbackCount = items.filter(item => item.source === "fallback").length;
@@ -4408,7 +4293,6 @@
         { label: "Visible Shows", value: String(items.length) },
         { label: "Custom Slots", value: String(manualCount) },
         { label: "Manually Added", value: String(addedCount) },
-        { label: "SubsPlease API", value: String(apiCount) },
         { label: "Matched via RSS", value: String(rssCount) },
         { label: "Fallback Data", value: String(fallbackCount) },
         { label: "Parsed RSS Feed", value: String(primaryCount) }
@@ -4955,23 +4839,22 @@
 
       try {
         // Storage failures must stop the refresh before any empty fallback can be written.
-        let [nextOverrides, nextAddedShows, nextFinalHoldovers, cachedSchedule] = await Promise.all([
+        let [nextOverrides, nextAddedShows, nextFinalHoldovers, nextSlotCache] = await Promise.all([
           loadOverrides(userName),
           loadAddedShows(userName),
           loadFinalHoldovers(userName),
-          loadSubsPleaseScheduleCache(DEFAULT_TIMEZONE)
+          loadSlotCache(userName)
         ]);
         const rssUrls = getRssUrls();
         const sameUser = String(state.userName || "").trim().toLowerCase() === userName.toLowerCase();
         const previousEntries = sameUser ? (state.currentEntries || []) : [];
 
-        const [aniListResult, rssResult, scheduleApiResult] = await Promise.allSettled([
+        const [aniListResult, rssResult] = await Promise.allSettled([
           fetchAniListWatching(userName),
           fetchRssFeedsWithOptionalProxy(
             rssUrls,
             els.rssProxyTemplate.value.trim()
-          ),
-          fetchSubsPleaseSchedule(DEFAULT_TIMEZONE, els.rssProxyTemplate.value.trim())
+          )
         ]);
 
         const nextNotes = [];
@@ -4979,28 +4862,6 @@
         let pastedScheduleFallbackUsed = false;
         let nextCurrentEntries = previousEntries;
         let aniListPruneSafe = false;
-        const stateScheduleCache = {
-          entries: sameUser ? state.subsPleaseScheduleEntries : [],
-          savedAt: sameUser ? state.subsPleaseScheduleSavedAt : 0
-        };
-        const fallbackScheduleCache = usableSubsPleaseScheduleCache(cachedSchedule)
-          ? cachedSchedule
-          : (usableSubsPleaseScheduleCache(stateScheduleCache) ? stateScheduleCache : null);
-        let nextScheduleEntries = fallbackScheduleCache?.entries || [];
-        let nextScheduleSavedAt = Number(fallbackScheduleCache?.savedAt) || 0;
-        let nextScheduleMode = nextScheduleEntries.length ? "cache" : "none";
-
-        if (scheduleApiResult.status === "fulfilled") {
-          const apiEntries = scheduleApiResult.value?.entries || [];
-          if (apiEntries.length) {
-            const savedSchedule = await saveSubsPleaseScheduleCache(DEFAULT_TIMEZONE, apiEntries);
-            nextScheduleEntries = savedSchedule.entries;
-            nextScheduleSavedAt = savedSchedule.savedAt;
-            nextScheduleMode = "fresh";
-          }
-        } else {
-          console.warn("SubsPlease schedule API unavailable; using cached/RSS fallback schedule.", scheduleApiResult.reason);
-        }
 
         if (aniListResult.status === "fulfilled") {
           nextCurrentEntries = dedupeEntriesById(aniListResult.value || []);
@@ -5017,6 +4878,7 @@
         // Preserve previously learned RSS slots when a transient RSS failure would
         // otherwise blank them out. Only replace them when at least one feed succeeded.
         let nextPrimaryCandidates = state.primaryCandidates || [];
+        let freshRssCandidatesAvailable = false;
 
         if (rssResult.status === "fulfilled") {
           const allCandidates = [];
@@ -5047,6 +4909,7 @@
 
           if (anyUsableCandidates) {
             nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+            freshRssCandidatesAvailable = true;
           } else {
             nextNotes.push(anyFeedParsed
               ? "RSS feeds returned no usable releases; keeping previous RSS slot data."
@@ -5110,31 +4973,39 @@
           loadAddedShows(userName)
         ]);
 
-        // Detect and correct for a systematic RSS pubDate offset (e.g. SubsPlease
-        // stamping timestamps in a different timezone than +0000 claims). Uses AniList
-        // next-airing data as ground truth, so it self-corrects when their feed changes.
-        const scheduleCalibrationAllowed = nextScheduleEntries.length > 0 && (
-          nextScheduleMode === "fresh" ||
-          (nextScheduleSavedAt > 0 && (Date.now() - nextScheduleSavedAt) <= SUBSPLEASE_SCHEDULE_FRESH_MS)
-        );
-        const offsetDetection = detectRssTimeOffset(
-          nextPrimaryCandidates, nextCurrentEntries, nextScheduleEntries, scheduleCalibrationAllowed, DEFAULT_TIMEZONE
-        );
-        const residualOffset = Number(offsetDetection?.offsetMs);
-        const offsetThreshold = offsetDetection?.basis === "schedule-api"
-          ? 30 * 60 * 1000
-          : RSS_OFFSET_APPLY_THRESHOLD_MS;
-        if (Number.isFinite(residualOffset) && Math.abs(residualOffset) >= offsetThreshold) {
+        // Detect a systematic RSS feed-clock error from FRESH feed data only.
+        // Prefer previously learned RSS schedules; use AniList as a bootstrap fallback.
+        // The detector returns the desired ABSOLUTE whole-hour correction, so it cannot
+        // drift by repeatedly adding residuals (the old +7 -> +7.5 failure mode).
+        const offsetDetection = freshRssCandidatesAvailable
+          ? detectRssTimeOffset(
+              nextPrimaryCandidates,
+              nextCurrentEntries,
+              nextSlotCache,
+              aniListResult.status === "fulfilled",
+              DEFAULT_TIMEZONE
+            )
+          : null;
+
+        if (offsetDetection) {
+          const desiredOffset = Number(offsetDetection.desiredOffsetMs);
           const currentOffset = Number(state.rssTimeOffsetMs) || 0;
-          const proposedOffset = currentOffset + residualOffset;
-          // Bound the total correction, not only the latest residual. This still permits
-          // the observed ~7h feed-clock shift but prevents repeated adjustments from
-          // walking the persisted correction outside the intended safety window.
-          if (Math.abs(proposedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) {
-            state.rssTimeOffsetMs = proposedOffset;
-            saveRssTimeOffset(state.rssTimeOffsetMs);
-            // Re-parse the freshly fetched feeds with the corrected offset so this
-            // cycle already sees the fix, instead of waiting until the next fetch.
+          const currentIsWholeHour = currentOffset % (60 * 60 * 1000) === 0;
+          const isInitialCorrection = currentOffset === 0;
+          const largeEnoughInitial = !isInitialCorrection || Math.abs(desiredOffset) >= RSS_OFFSET_INITIAL_MIN_ABS_MS;
+          const requiredSupport = isInitialCorrection
+            ? RSS_OFFSET_MIN_AGREEING
+            : (currentIsWholeHour ? RSS_OFFSET_EXISTING_CHANGE_SUPPORT : RSS_OFFSET_MIN_AGREEING);
+          const enoughSupport = Number(offsetDetection.support) >= requiredSupport;
+          const changed = Number.isFinite(desiredOffset) && desiredOffset !== currentOffset;
+
+          if (changed && largeEnoughInitial && enoughSupport && Math.abs(desiredOffset) <= RSS_OFFSET_SANITY_BOUND_MS) {
+            state.rssTimeOffsetMs = desiredOffset;
+            saveRssTimeOffset(desiredOffset);
+
+            // Re-parse this same network response immediately with the new correction.
+            // This makes the board and history correct in the current sync rather than
+            // waiting for the next 5-minute poll.
             const correctedCandidates = [];
             let correctedAny = false;
             if (rssResult.status === "fulfilled") {
@@ -5161,12 +5032,12 @@
               }
               if (newest > 0) state.lastRssReleaseAt = newest;
             }
-            const hours = (state.rssTimeOffsetMs / 3600000).toFixed(1);
-            console.info(`RSS timestamps auto-corrected by ${hours}h using ${offsetDetection?.basis || "fallback"} evidence.`);
-          } else {
-            console.warn("Ignored RSS timestamp correction outside the +/-8h safety window.", {
-              currentOffset, residualOffset, proposedOffset
-            });
+
+            const hours = desiredOffset / 3600000;
+            console.info(
+              `RSS feed-clock correction set to ${hours > 0 ? "+" : ""}${hours}h ` +
+              `from ${offsetDetection.support}/${offsetDetection.observationCount} ${offsetDetection.basis} observations.`
+            );
           }
         }
 
@@ -5177,9 +5048,6 @@
         state.currentEntries = nextCurrentEntries;
         state.totalAniListEntries = nextCurrentEntries.length;
         state.primaryCandidates = nextPrimaryCandidates;
-        state.subsPleaseScheduleEntries = nextScheduleEntries;
-        state.subsPleaseScheduleSavedAt = nextScheduleSavedAt;
-        state.subsPleaseScheduleMode = nextScheduleMode;
         state.notes = nextNotes;
         state.healthStatus = nextNotes.length ? "unhealthy" : "healthy";
         state.lastSuccessfulLoadAt = Date.now();
