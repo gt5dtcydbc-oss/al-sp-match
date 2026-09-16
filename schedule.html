@@ -3894,13 +3894,25 @@
             Number.isFinite(previousAiringAt) && previousAiringAt > 0 &&
             previousAiringAt < nextAiringAt &&
             (confirmedEpisode === null || confirmedEpisode < previousEpisode)) {
-          const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, timing, timeZone);
+          // AniList may advance before SubsPlease releases the episode. When we have
+          // learned RSS history, keep that just-aired episode in Next Up until the
+          // show's exact median RSS slot. No grace is added in either direction.
+          const learnedRssDay = String(item.rssScheduleDay || "");
+          const learnedRssTime = String(item.rssScheduleTime || "");
+          const previousTiming = WEEKDAYS.includes(learnedRssDay) && isValidTime(learnedRssTime)
+            ? { day: learnedRssDay, time: learnedRssTime, source: "rss" }
+            : timing;
+          const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, previousTiming, timeZone);
           if (Number.isFinite(previousAtMs)) {
-            candidates.push({ occurrenceAtMs: previousAtMs, episodeNumber: previousEpisode });
+            candidates.push({
+              occurrenceAtMs: previousAtMs,
+              episodeNumber: previousEpisode,
+              timing: previousTiming
+            });
           }
         }
-        // Bind the badge to this particular release. Do not manufacture another
-        // weekly occurrence of an episode whose known release time has already passed.
+        // Bind the badge to this particular release. The just-aired AniList episode
+        // remains eligible only until its learned RSS slot, or until RSS confirms it.
         return candidates
           .filter(entry => entry.occurrenceAtMs > nowMs)
           .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs)[0] || null;
