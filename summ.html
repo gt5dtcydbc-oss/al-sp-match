@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Video Summagator — Space-Time Cube</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#000;
+    --fg:#f5f5f5;
+    --muted:rgba(255,255,255,.54);
+    --line:rgba(255,255,255,.18);
+    --panel:rgba(8,8,8,.88);
+    --cube-w:620px;
+    --cube-h:349px;
+    --cube-d:520px;
+    --cube-w-half:310px;
+    --cube-w-neg-half:-310px;
+    --cube-h-half:174.5px;
+    --cube-h-neg-half:-174.5px;
+    --cube-d-half:260px;
+    --cube-d-neg-half:-260px;
+    --zoom:1;
+    --perspective:1150px;
+    --side-opacity:.98;
+    --start-opacity:0;
+    --end-opacity:1;
+    --slice-opacity:1;
+    --wire-alpha:.88;
+    --slice-z:260px;
+  }
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#000;color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  button,input,select{font:inherit}
+  button,select,input{color:inherit}
+  #app{position:relative;width:100%;height:100%;background:#000;user-select:none;overflow:hidden}
+
+  #viewport{position:absolute;inset:0;perspective:var(--perspective);perspective-origin:50% 50%;touch-action:none;cursor:grab;overflow:hidden}
+  #viewport.dragging{cursor:grabbing}
+  #cube{position:absolute;left:50%;top:50%;width:var(--cube-w);height:var(--cube-h);transform-style:preserve-3d;will-change:transform;transform:translate(-50%,-50%) translate3d(0px,0px,0px) scale(var(--zoom)) rotateX(0deg) rotateY(0deg);}
+  .face,.slice{position:absolute;left:50%;top:50%;transform-style:preserve-3d;backface-visibility:hidden;outline:1px solid rgba(255,255,255,var(--wire-alpha));overflow:hidden;background:#000;contain:paint}
+  .face canvas,.slice video{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none}
+  .time-face{cursor:crosshair}
+  .front,.back{width:var(--cube-w);height:var(--cube-h)}
+  .front{transform:translate(-50%,-50%) translateZ(var(--cube-d-half));opacity:var(--start-opacity)}
+  .back{transform:translate(-50%,-50%) translateZ(var(--cube-d-neg-half)) rotateY(180deg);opacity:var(--end-opacity)}
+  .right,.left{width:var(--cube-d);height:var(--cube-h);opacity:var(--side-opacity);backface-visibility:visible}
+  .right.near-side-hidden,.left.near-side-hidden{opacity:0!important;visibility:hidden;pointer-events:none}
+  .right{transform:translate(-50%,-50%) translateX(var(--cube-w-half)) rotateY(90deg)}
+  .left{transform:translate(-50%,-50%) translateX(var(--cube-w-neg-half)) rotateY(-90deg)}
+  .topFace,.bottomFace{width:var(--cube-w);height:var(--cube-d);opacity:var(--side-opacity)}
+  .topFace{transform:translate(-50%,-50%) translateY(var(--cube-h-neg-half)) rotateX(90deg)}
+  .bottomFace{transform:translate(-50%,-50%) translateY(var(--cube-h-half)) rotateX(-90deg)}
+  .slice{width:var(--cube-w);height:var(--cube-h);transform:translate(-50%,-50%) translateZ(var(--slice-z));opacity:var(--slice-opacity);z-index:2;box-shadow:0 0 0 1px rgba(255,255,255,.45)}
+  .slice::after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.76);pointer-events:none}
+  .sliceLabel{position:absolute;left:8px;top:8px;z-index:3;padding:4px 6px;border-radius:4px;background:rgba(0,0,0,.58);font-size:10px;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85);pointer-events:none}
+  #ghostPlane{position:absolute;left:50%;top:50%;width:var(--cube-w);height:var(--cube-h);transform:translate(-50%,-50%) translateZ(var(--ghost-z));outline:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.025);pointer-events:none;display:none;backface-visibility:hidden}
+
+  .topbar{position:absolute;z-index:20;left:18px;right:18px;top:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none}
+  .brand,.actions{pointer-events:auto}
+  .brand strong{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+  .brand span{display:block;margin-top:6px;font-size:10px;color:var(--muted)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .btn,.fileBtn{height:34px;border:1px solid var(--line);border-radius:999px;background:rgba(8,8,8,.78);color:#fff;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;backdrop-filter:blur(10px);white-space:nowrap}
+  .btn:hover,.fileBtn:hover{border-color:rgba(255,255,255,.42);background:rgba(24,24,24,.88)}
+  .btn:disabled{opacity:.34;cursor:default}
+  .fileBtn input{display:none}
+
+  #empty{position:absolute;z-index:15;inset:0;display:grid;place-items:center;pointer-events:none}
+  #empty.hidden{display:none}
+  .emptyCard{pointer-events:auto;width:min(520px,calc(100vw - 34px));padding:28px;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:rgba(8,8,8,.84);text-align:center;backdrop-filter:blur(14px)}
+  .emptyCard h1{font-size:18px;margin:0 0 9px;font-weight:650}
+  .emptyCard p{font-size:11px;line-height:1.55;color:var(--muted);margin:0 auto 18px;max-width:430px}
+
+  #loading{position:absolute;z-index:25;left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,calc(100vw - 36px));padding:14px 15px;border:1px solid var(--line);border-radius:10px;background:rgba(5,5,5,.93);display:none;backdrop-filter:blur(12px)}
+  #loading.show{display:block}
+  #loadingHead{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:rgba(255,255,255,.75);margin-bottom:9px}
+  .bar{height:3px;border-radius:99px;background:rgba(255,255,255,.11);overflow:hidden}.bar i{display:block;height:100%;width:0;background:#fff}
+  #loadingHint{margin-top:9px;font-size:9px;color:rgba(255,255,255,.38);line-height:1.45}
+
+  #controls{position:absolute;z-index:18;right:16px;top:66px;width:286px;max-height:calc(100% - 148px);overflow:auto;padding:12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:var(--panel);backdrop-filter:blur(14px);transition:opacity .15s,transform .15s;scrollbar-width:thin}
+  #controls.closed{opacity:0;pointer-events:none;transform:translateX(12px)}
+  .section{padding:10px 0;border-top:1px solid rgba(255,255,255,.09)}
+  .section:first-child{border-top:0;padding-top:0}
+  .section:last-child{padding-bottom:0}
+  .section h2{font-size:9px;line-height:1;margin:0 0 10px;text-transform:uppercase;letter-spacing:.13em;color:rgba(255,255,255,.45);font-weight:700}
+  .row{display:grid;grid-template-columns:94px minmax(0,1fr) 42px;gap:8px;align-items:center;margin:8px 0}
+  .row label,.check label{font-size:10px;color:rgba(255,255,255,.72)}
+  .row output{font-size:9px;text-align:right;color:rgba(255,255,255,.48);font-variant-numeric:tabular-nums}
+  .row input[type=range]{width:100%;accent-color:#fff;min-width:0}
+  .selectRow{display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px;align-items:center;margin:8px 0}
+  .selectRow label{font-size:10px;color:rgba(255,255,255,.72)}
+  select{height:30px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:#111;padding:0 8px;font-size:10px;min-width:0}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:8px}
+  .check{display:flex;align-items:center;gap:7px;min-width:0}
+  .check input{accent-color:#fff}
+  .miniActions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .miniActions .btn{height:30px;border-radius:7px;padding:0 8px;font-size:10px}
+
+  #transport{position:absolute;z-index:19;left:50%;bottom:16px;transform:translateX(-50%);width:min(820px,calc(100vw - 32px));display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid rgba(255,255,255,.17);border-radius:12px;background:rgba(7,7,7,.86);backdrop-filter:blur(14px);opacity:0;pointer-events:none;transition:opacity .15s}
+  #transport.ready{opacity:1;pointer-events:auto}
+  .round{width:36px;height:36px;padding:0;flex:0 0 auto}
+  #timeReadout{width:104px;flex:0 0 auto;text-align:center;font-size:10px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums}
+  #timeline{min-width:90px;flex:1;accent-color:#fff}
+  .tbtn{height:30px;border-radius:7px;padding:0 9px;font-size:10px}
+
+  #help{position:absolute;z-index:10;left:18px;bottom:68px;font-size:9px;line-height:1.6;color:rgba(255,255,255,.36);pointer-events:none}
+  #hoverTime{position:absolute;z-index:30;display:none;pointer-events:none;padding:5px 7px;border:1px solid rgba(255,255,255,.18);border-radius:5px;background:rgba(0,0,0,.86);font-size:9px;color:rgba(255,255,255,.82);font-variant-numeric:tabular-nums;white-space:nowrap}
+  #toast{position:absolute;z-index:31;top:64px;left:50%;transform:translateX(-50%);padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(5,5,5,.86);font-size:9px;color:rgba(255,255,255,.72);opacity:0;pointer-events:none;transition:opacity .15s}#toast.show{opacity:1}
+  #bufferState{font-size:9px;color:rgba(255,255,255,.42);white-space:nowrap}
+
+  @media(max-width:850px){
+    #controls{right:10px;top:58px;width:min(280px,calc(100vw - 20px));max-height:calc(100% - 132px)}
+    .topbar{left:10px;right:10px;top:10px}.brand span{display:none}
+    #help{display:none}
+    #transport{bottom:8px;gap:6px;padding:8px}.tbtn:nth-of-type(2),#bufferState{display:none}#timeReadout{width:88px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewport" aria-label="Interactive space-time video cube">
+    <div id="cube">
+      <div class="face front time-face" data-face="front"><canvas id="frontCanvas"></canvas></div>
+      <div class="face back time-face" data-face="back"><canvas id="backCanvas"></canvas></div>
+      <div class="face left time-face" data-face="left"><canvas id="leftCanvas"></canvas></div>
+      <div class="face right time-face" data-face="right"><canvas id="rightCanvas"></canvas></div>
+      <div class="face topFace time-face" data-face="top"><canvas id="topCanvas"></canvas></div>
+      <div class="face bottomFace time-face" data-face="bottom"><canvas id="bottomCanvas"></canvas></div>
+      <div id="ghostPlane"></div>
+      <div class="slice" id="slicePlane" data-face="slice">
+        <video id="video" playsinline preload="auto"></video>
+        <div class="sliceLabel" id="sliceLabel">0:00.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div class="brand"><strong>Video Summagator</strong><span id="meta">space × space × time</span></div>
+    <div class="actions">
+      <button class="btn" id="toggleControls" type="button">Controls</button>
+      <button class="btn" id="frontView" type="button" disabled>Front view</button>
+      <button class="btn" id="resetView" type="button" disabled>Reset view</button>
+      <label class="fileBtn">Open video<input id="fileTop" type="file" accept="video/*"></label>
+    </div>
+  </div>
+
+  <div id="empty">
+    <div class="emptyCard">
+      <h1>Open a video as a full 3D time cube</h1>
+      <p>The entire video remains visible as one fixed space-time volume. Pick a moment on a time wall and the live frame moves to that position inside the cube.</p>
+      <label class="fileBtn">Choose video<input id="fileHero" type="file" accept="video/*"></label>
+    </div>
+  </div>
+
+  <div id="loading" role="status" aria-live="polite">
+    <div id="loadingHead"><span id="loadingText">Preparing full-video time surfaces…</span><span id="loadingPct">0%</span></div>
+    <div class="bar"><i id="loadingBar"></i></div>
+    <div id="loadingHint">The side textures are cached once. They are not rebuilt during playback.</div>
+  </div>
+
+  <aside id="controls" aria-label="Video cube controls">
+    <div class="section">
+      <h2>Playback</h2>
+      <div class="miniActions">
+        <button class="btn" id="prevFrame" type="button">− Frame</button>
+        <button class="btn" id="playPanel" type="button">Play</button>
+        <button class="btn" id="nextFrame" type="button">+ Frame</button>
+      </div>
+      <div class="selectRow"><label for="rate">Speed</label><select id="rate"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+      <div class="selectRow"><label for="stepFps">Frame step</label><select id="stepFps"><option>24</option><option>25</option><option selected>30</option><option>50</option><option>60</option></select></div>
+      <div class="row"><label for="timeCut">Time plane</label><input id="timeCut" type="range" min="0" max="1000" step="1" value="0"><output id="timeCutOut">0:00.00</output></div>
+      <div class="checks"><div class="check"><input id="loop" type="checkbox"><label for="loop">Loop video</label></div><div class="check"><input id="clickPlay" type="checkbox" checked><label for="clickPlay">Click slice plays</label></div></div>
+    </div>
+
+    <div class="section">
+      <h2>Cube geometry</h2>
+      <div class="row"><label for="depth">Time depth</label><input id="depth" type="range" min="180" max="900" step="10" value="520"><output id="depthOut">520</output></div>
+      <div class="row"><label for="zoom">Zoom</label><input id="zoom" type="range" min="45" max="180" step="1" value="100"><output id="zoomOut">100%</output></div>
+      <div class="row"><label for="perspective">Perspective</label><input id="perspective" type="range" min="650" max="1900" step="25" value="1150"><output id="perspectiveOut">1150</output></div>
+      <div class="row"><label for="yaw">Rotate Y</label><input id="yaw" type="range" min="-180" max="180" step="1" value="0"><output id="yawOut">0°</output></div>
+      <div class="row"><label for="pitch">Rotate X</label><input id="pitch" type="range" min="-82" max="82" step="1" value="0"><output id="pitchOut">0°</output></div>
+      <div class="row"><label for="panX">Position X</label><input id="panX" type="range" min="-500" max="500" step="1" value="0"><output id="panXOut">0</output></div>
+      <div class="row"><label for="panY">Position Y</label><input id="panY" type="range" min="-350" max="350" step="1" value="0"><output id="panYOut">0</output></div>
+      <div class="miniActions"><button class="btn" id="fitView" type="button">Fit</button><button class="btn" id="viewLeft" type="button">Left</button><button class="btn" id="viewRight" type="button">Right</button></div>
+    </div>
+
+    <div class="section">
+      <h2>Appearance</h2>
+      <div class="row"><label for="sideOpacity">Side opacity</label><input id="sideOpacity" type="range" min="0" max="100" value="98"><output id="sideOpacityOut">98%</output></div>
+      <div class="row"><label for="startOpacity">Start frame</label><input id="startOpacity" type="range" min="0" max="100" value="0"><output id="startOpacityOut">0%</output></div>
+      <div class="row"><label for="endOpacity">End frame</label><input id="endOpacity" type="range" min="0" max="100" value="100"><output id="endOpacityOut">100%</output></div>
+      <div class="row"><label for="sliceOpacity">Frame opacity</label><input id="sliceOpacity" type="range" min="10" max="100" value="100"><output id="sliceOpacityOut">100%</output></div>
+      <div class="row"><label for="wireOpacity">Outline</label><input id="wireOpacity" type="range" min="0" max="100" value="88"><output id="wireOpacityOut">88%</output></div>
+      <div class="checks"><div class="check"><input id="showEnds" type="checkbox" checked><label for="showEnds">Show end frames</label></div><div class="check"><input id="showSlice" type="checkbox" checked><label for="showSlice">Show live frame</label></div></div>
+      <div class="checks"><div class="check"><input id="hideNearSide" type="checkbox" checked><label for="hideNearSide">Hide near side</label></div><div class="check"><input id="showTimeLabel" type="checkbox" checked><label for="showTimeLabel">Frame time</label></div></div>
+    </div>
+
+    <div class="section">
+      <h2>Time-surface sampling</h2>
+      <div class="selectRow"><label for="samples">Samples</label><select id="samples"><option value="64">64 — fast</option><option value="96" selected>96 — balanced</option><option value="144">144 — detailed</option><option value="192">192 — high</option></select></div>
+      <div class="row"><label for="edgeStrip">Edge strip</label><input id="edgeStrip" type="range" min="1" max="20" step="1" value="6"><output id="edgeStripOut">6%</output></div>
+      <button class="btn" id="rebuild" type="button" style="width:100%;height:30px;border-radius:7px;margin-top:6px" disabled>Rebuild side textures</button>
+    </div>
+  </aside>
+
+  <div id="help">DRAG rotate · SHIFT/RIGHT-DRAG move · WHEEL zoom<br>CLICK a side/top/bottom wall to select time · SPACE play/pause · ←/→ frame step</div>
+  <div id="hoverTime"></div>
+  <div id="toast"></div>
+
+  <div id="transport">
+    <button class="btn round" id="play" type="button" aria-label="Play or pause">▶</button>
+    <button class="btn tbtn" id="prev" type="button" aria-label="Previous frame">−1f</button>
+    <div id="timeReadout">0:00.00 / 0:00.00</div>
+    <input id="timeline" type="range" min="0" max="1" step="0.0001" value="0" aria-label="Video time">
+    <button class="btn tbtn" id="next" type="button" aria-label="Next frame">+1f</button>
+    <span id="bufferState">local file</span>
+  </div>
+
+  <video id="samplerVideo" playsinline preload="auto" style="display:none"></video>
+  <canvas id="sampleCanvas" style="display:none"></canvas>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const root = document.documentElement;
+  const viewport = $('#viewport');
+  const cube = $('#cube');
+  const video = $('#video');
+  const samplerVideo = $('#samplerVideo');
+  const sampleCanvas = $('#sampleCanvas');
+  const sampleCtx = sampleCanvas.getContext('2d', {alpha:false});
+  const empty = $('#empty');
+  const loading = $('#loading');
+  const loadingText = $('#loadingText');
+  const loadingPct = $('#loadingPct');
+  const loadingBar = $('#loadingBar');
+  const transport = $('#transport');
+  const controls = $('#controls');
+  const meta = $('#meta');
+  const timeline = $('#timeline');
+  const timeReadout = $('#timeReadout');
+  const sliceLabel = $('#sliceLabel');
+  const slicePlane = $('#slicePlane');
+  const hoverTime = $('#hoverTime');
+  const ghostPlane = $('#ghostPlane');
+  const toast = $('#toast');
+  const bufferState = $('#bufferState');
+  const frontViewBtn = $('#frontView');
+  const resetViewBtn = $('#resetView');
+  const rebuildBtn = $('#rebuild');
+
+  const canvases = {
+    front: $('#frontCanvas'), back: $('#backCanvas'), left: $('#leftCanvas'), right: $('#rightCanvas'), top: $('#topCanvas'), bottom: $('#bottomCanvas')
+  };
+
+  let currentFile = null;
+  let objectURL = null;
+  let ready = false;
+  let building = false;
+  let duration = 0;
+  let videoAspect = 16/9;
+  let cubeW = 620;
+  let cubeH = 349;
+  let cubeD = 520;
+  let selectedNorm = 0;
+  let pendingSeek = null;
+  let hoverNorm = null;
+  let toastTimer = null;
+  let frameCallbackHandle = 0;
+  let lastUiSecond = -1;
+
+  const view = {yaw:0, pitch:0, panX:0, panY:0, zoom:1};
+  const defaultView = {yaw:0, pitch:0, panX:0, panY:0, zoom:1};
+  const pointer = {down:false,id:null,x:0,y:0,sx:0,sy:0,moved:false,mode:'rotate',face:null,u:0,v:0,slice:false};
+
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function fmt(sec){
+    if(!Number.isFinite(sec)) sec=0;
+    sec=Math.max(0,sec); const m=Math.floor(sec/60); const s=sec-m*60;
+    return `${m}:${s.toFixed(2).padStart(5,'0')}`;
+  }
+  function showToast(msg,ms=1500){
+    clearTimeout(toastTimer); toast.textContent=msg; toast.classList.add('show');
+    toastTimer=setTimeout(()=>toast.classList.remove('show'),ms);
+  }
+  function waitEvent(el,name,timeout=20000){
+    return new Promise((resolve,reject)=>{
+      let timer;
+      const cleanup=()=>{clearTimeout(timer);el.removeEventListener(name,ok);el.removeEventListener('error',bad)};
+      const ok=()=>{cleanup();resolve()};
+      const bad=()=>{cleanup();reject(new Error('Video decode failed'))};
+      el.addEventListener(name,ok,{once:true}); el.addEventListener('error',bad,{once:true});
+      timer=setTimeout(()=>{cleanup();reject(new Error(`Timed out waiting for ${name}`))},timeout);
+    });
+  }
+  async function seekSampler(t){
+    const target=clamp(t,0,Math.max(0,(samplerVideo.duration||0)-0.003));
+    if(samplerVideo.readyState>=2 && Math.abs(samplerVideo.currentTime-target)<0.004) return;
+    const p=waitEvent(samplerVideo,'seeked',20000);
+    if(typeof samplerVideo.fastSeek==='function') samplerVideo.fastSeek(target); else samplerVideo.currentTime=target;
+    await p;
+  }
+
+  function setVar(name,val){ root.style.setProperty(name,val); }
+  function syncViewControls(){
+    const pairs=[['#yaw',view.yaw,'#yawOut',`${Math.round(view.yaw)}°`],['#pitch',view.pitch,'#pitchOut',`${Math.round(view.pitch)}°`],['#panX',view.panX,'#panXOut',`${Math.round(view.panX)}`],['#panY',view.panY,'#panYOut',`${Math.round(view.panY)}`]];
+    for(const [id,val,outId,label] of pairs){ const el=$(id),out=$(outId); if(el) el.value=String(Math.round(val)); if(out) out.textContent=label; }
+  }
+  function updateSideVisibility(){
+    const left=document.querySelector('.left');
+    const right=document.querySelector('.right');
+    if(!left || !right) return;
+    left.classList.remove('near-side-hidden');
+    right.classList.remove('near-side-hidden');
+    const control=$('#hideNearSide');
+    if(control && !control.checked) return;
+
+    // The Summagator view is an open volume: remove the wall closest to the
+    // viewer and keep the opposite wall visible as the time-color backdrop.
+    // Positive Y rotation exposes the cube's left side; negative exposes right.
+    const sideAmount=Math.sin(view.yaw*Math.PI/180);
+    if(sideAmount>0.025) left.classList.add('near-side-hidden');
+    else if(sideAmount<-0.025) right.classList.add('near-side-hidden');
+  }
+  function updateCubeTransform(){
+    cube.style.transform=`translate(-50%,-50%) translate3d(${view.panX}px,${view.panY}px,0) scale(${view.zoom}) rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)`;
+    updateSideVisibility();
+    syncViewControls();
+  }
+  function fitGeometry(){
+    const maxW=Math.max(300,window.innerWidth-(window.innerWidth>850?350:60));
+    const maxH=Math.max(190,window.innerHeight-190);
+    cubeW=Math.min(720,maxW,Math.max(320,maxH*videoAspect));
+    cubeH=cubeW/videoAspect;
+    if(cubeH>maxH){ cubeH=maxH; cubeW=cubeH*videoAspect; }
+    setVar('--cube-w',`${cubeW}px`); setVar('--cube-h',`${cubeH}px`);
+    setVar('--cube-w-half',`${cubeW/2}px`); setVar('--cube-w-neg-half',`${-cubeW/2}px`);
+    setVar('--cube-h-half',`${cubeH/2}px`); setVar('--cube-h-neg-half',`${-cubeH/2}px`);
+  }
+  function applyView(){
+    setVar('--cube-d',`${cubeD}px`); setVar('--cube-d-half',`${cubeD/2}px`); setVar('--cube-d-neg-half',`${-cubeD/2}px`); setVar('--zoom',view.zoom); updateCubeTransform(); updateSlicePosition();
+  }
+  function updateSlicePosition(norm=selectedNorm){
+    selectedNorm=clamp(norm,0,1);
+    const z=cubeD/2-selectedNorm*cubeD;
+    setVar('--slice-z',`${z}px`);
+    timeline.value=String(selectedNorm);
+    const cut=$('#timeCut'); if(cut) cut.value=String(Math.round(selectedNorm*1000));
+    const cutOut=$('#timeCutOut'); if(cutOut) cutOut.textContent=fmt(selectedNorm*duration);
+    sliceLabel.textContent=fmt(selectedNorm*duration);
+  }
+  function updateGhost(norm){
+    if(norm==null){ ghostPlane.style.display='none'; return; }
+    const z=cubeD/2-clamp(norm,0,1)*cubeD;
+    ghostPlane.style.setProperty('--ghost-z',`${z}px`);
+    ghostPlane.style.display='block';
+  }
+  function updateTimeUI(force=false){
+    const cur=Number.isFinite(video.currentTime)?video.currentTime:0;
+    const norm=duration?clamp(cur/duration,0,1):0;
+    updateSlicePosition(norm);
+    const quant=Math.floor(cur*20);
+    if(force || quant!==lastUiSecond){
+      lastUiSecond=quant;
+      timeReadout.textContent=`${fmt(cur)} / ${fmt(duration)}`;
+    }
+  }
+  function setReady(on){
+    ready=on;
+    transport.classList.toggle('ready',on);
+    frontViewBtn.disabled=!on; resetViewBtn.disabled=!on; rebuildBtn.disabled=!on;
+  }
+
+  function surfaceContexts(){
+    const n=Number($('#samples').value)||96;
+    const maxW=420;
+    const scale=Math.min(1,maxW/Math.max(1,samplerVideo.videoWidth));
+    const w=Math.max(120,Math.round(samplerVideo.videoWidth*scale));
+    const h=Math.max(68,Math.round(samplerVideo.videoHeight*scale));
+    canvases.front.width=w; canvases.front.height=h;
+    canvases.back.width=w; canvases.back.height=h;
+    canvases.left.width=n; canvases.left.height=h;
+    canvases.right.width=n; canvases.right.height=h;
+    canvases.top.width=w; canvases.top.height=n;
+    canvases.bottom.width=w; canvases.bottom.height=n;
+    sampleCanvas.width=w; sampleCanvas.height=h;
+    const out={n,w,h};
+    for(const [k,c] of Object.entries(canvases)){
+      out[k]=c.getContext('2d',{alpha:false});
+      out[k].imageSmoothingEnabled=true;
+      out[k].fillStyle='#000'; out[k].fillRect(0,0,c.width,c.height);
+    }
+    return out;
+  }
+
+  async function buildSurfaces(preserveTime=true){
+    if(!currentFile || building) return;
+    building=true;
+    const oldTime=preserveTime?video.currentTime:0;
+    const wasPlaying=!video.paused;
+    video.pause();
+    setReady(false);
+    loading.classList.add('show');
+    loadingText.textContent='Preparing full-video side textures…'; loadingBar.style.width='0%'; loadingPct.textContent='0%';
+    try{
+      if(samplerVideo.readyState<1) await waitEvent(samplerVideo,'loadedmetadata');
+      if(samplerVideo.readyState<2) await waitEvent(samplerVideo,'loadeddata');
+      const c=surfaceContexts();
+      const edgeFrac=(Number($('#edgeStrip').value)||6)/100;
+      const edgeX=Math.max(1,Math.round(c.w*edgeFrac));
+      const edgeY=Math.max(1,Math.round(c.h*edgeFrac));
+      const samplerDuration=samplerVideo.duration||duration;
+
+      for(let i=0;i<c.n;i++){
+        const t=samplerDuration*(i/Math.max(1,c.n-1));
+        await seekSampler(t);
+        sampleCtx.drawImage(samplerVideo,0,0,c.w,c.h);
+        if(i===0) c.front.drawImage(sampleCanvas,0,0);
+        if(i===c.n-1) c.back.drawImage(sampleCanvas,0,0);
+
+        // Every time sample contributes a real color strip to all four temporal walls.
+        // Left texture is reversed so time=0 remains at the cube's front after its CSS rotation.
+        c.left.drawImage(sampleCanvas,0,0,edgeX,c.h,c.n-1-i,0,1,c.h);
+        c.right.drawImage(sampleCanvas,c.w-edgeX,0,edgeX,c.h,i,0,1,c.h);
+        c.top.drawImage(sampleCanvas,0,0,c.w,edgeY,0,c.n-1-i,c.w,1);
+        c.bottom.drawImage(sampleCanvas,0,c.h-edgeY,c.w,edgeY,0,i,c.w,1);
+
+        const pct=Math.round((i/Math.max(1,c.n-1))*100);
+        loadingBar.style.width=`${pct}%`; loadingPct.textContent=`${pct}%`;
+        if((i&3)===0) await new Promise(requestAnimationFrame);
+      }
+
+      video.currentTime=clamp(oldTime,0,Math.max(0,duration-.003));
+      updateTimeUI(true);
+      meta.textContent=`${video.videoWidth}×${video.videoHeight} · ${fmt(duration)} · ${c.n} cached time samples`;
+      loading.classList.remove('show'); setReady(true);
+      bufferState.textContent='surfaces cached';
+      if(wasPlaying) video.play().catch(()=>{});
+    }catch(err){
+      console.error(err); loading.classList.remove('show'); setReady(false); empty.classList.remove('hidden');
+      showToast(err.message||'Could not prepare this video.',3000);
+    }finally{ building=false; }
+  }
+
+  async function loadFile(file){
+    if(!file || !file.type.startsWith('video/')){ showToast('Choose a video file.'); return; }
+    currentFile=file;
+    if(objectURL) URL.revokeObjectURL(objectURL);
+    objectURL=URL.createObjectURL(file);
+    setReady(false); empty.classList.add('hidden'); loading.classList.add('show'); loadingText.textContent=`Opening ${file.name}…`; loadingPct.textContent='0%'; loadingBar.style.width='2%';
+    video.src=objectURL; samplerVideo.src=objectURL; video.load(); samplerVideo.load();
+    try{
+      if(video.readyState<1) await waitEvent(video,'loadedmetadata');
+      if(samplerVideo.readyState<1) await waitEvent(samplerVideo,'loadedmetadata');
+      duration=video.duration||0; videoAspect=video.videoWidth/Math.max(1,video.videoHeight);
+      fitGeometry();
+      video.currentTime=0; samplerVideo.currentTime=0;
+      meta.textContent=`${video.videoWidth}×${video.videoHeight} · ${fmt(duration)}`;
+      bufferState.textContent='local file';
+      await buildSurfaces(false);
+      showToast('Full cube cached. Click any time wall to select a frame.',2200);
+    }catch(err){
+      console.error(err); loading.classList.remove('show'); empty.classList.remove('hidden'); showToast('This browser could not decode that video.',3000);
+    }
+  }
+
+  function queueSeek(norm,immediate=false){
+    if(!ready || !duration) return;
+    const n=clamp(norm,0,1); updateSlicePosition(n);
+    clearTimeout(pendingSeek);
+    const apply=()=>{ video.currentTime=clamp(n*duration,0,Math.max(0,duration-.003)); };
+    if(immediate) apply(); else pendingSeek=setTimeout(apply,45);
+  }
+  function selectTime(norm,announce=true){
+    video.pause(); queueSeek(norm,true); updateTimeUI(true);
+    if(announce) showToast(`Selected ${fmt(clamp(norm,0,1)*duration)} — press Space to play`,1200);
+  }
+  function togglePlay(){
+    if(!ready) return;
+    if(video.paused || video.ended){
+      if(video.ended || video.currentTime>=duration-.01) video.currentTime=0;
+      video.play().catch(()=>showToast('Playback was blocked by the browser.'));
+    } else video.pause();
+  }
+  function stepFrame(dir){
+    if(!ready) return;
+    video.pause();
+    const fps=Number($('#stepFps').value)||30;
+    const t=clamp(video.currentTime+dir/fps,0,Math.max(0,duration-.003));
+    video.currentTime=t; updateSlicePosition(duration?t/duration:0); updateTimeUI(true);
+  }
+
+  function localTimeFromFace(face,u,v){
+    switch(face){
+      case 'right': return clamp(u,0,1);
+      case 'left': return clamp(1-u,0,1);
+      case 'top': return clamp(1-v,0,1);
+      case 'bottom': return clamp(v,0,1);
+      case 'front': return 0;
+      case 'back': return 1;
+      default: return null;
+    }
+  }
+  function faceAndLocal(e){
+    const faceEl=e.target.closest?.('.time-face');
+    if(!faceEl) return null;
+    const rect=faceEl.getBoundingClientRect();
+    // offsetX/offsetY stay in the element's pre-transform local coordinate space in modern browsers.
+    let u=Number.isFinite(e.offsetX)?e.offsetX/Math.max(1,faceEl.clientWidth):(e.clientX-rect.left)/Math.max(1,rect.width);
+    let v=Number.isFinite(e.offsetY)?e.offsetY/Math.max(1,faceEl.clientHeight):(e.clientY-rect.top)/Math.max(1,rect.height);
+    return {el:faceEl,face:faceEl.dataset.face,u:clamp(u,0,1),v:clamp(v,0,1)};
+  }
+
+  viewport.addEventListener('contextmenu',e=>e.preventDefault());
+  viewport.addEventListener('pointerdown',e=>{
+    if(!ready) return;
+    const hit=faceAndLocal(e);
+    pointer.down=true; pointer.id=e.pointerId; pointer.x=pointer.sx=e.clientX; pointer.y=pointer.sy=e.clientY; pointer.moved=false;
+    pointer.mode=(e.button===2||e.shiftKey)?'pan':'rotate';
+    pointer.face=hit?.face||null; pointer.u=hit?.u||0; pointer.v=hit?.v||0; pointer.slice=!!e.target.closest?.('#slicePlane');
+    viewport.setPointerCapture(e.pointerId); viewport.classList.add('dragging'); updateGhost(null); hoverTime.style.display='none';
+  });
+  viewport.addEventListener('pointermove',e=>{
+    if(pointer.down && e.pointerId===pointer.id){
+      const dx=e.clientX-pointer.x, dy=e.clientY-pointer.y; pointer.x=e.clientX; pointer.y=e.clientY;
+      if(Math.hypot(e.clientX-pointer.sx,e.clientY-pointer.sy)>4) pointer.moved=true;
+      if(pointer.mode==='rotate'){
+        view.yaw+=dx*.42; view.pitch=clamp(view.pitch-dy*.36,-82,82); updateCubeTransform();
+      } else { view.panX+=dx; view.panY+=dy; updateCubeTransform(); }
+      return;
+    }
+    if(!ready || !video.paused){ hoverTime.style.display='none'; updateGhost(null); return; }
+    const hit=faceAndLocal(e);
+    if(hit){
+      const n=localTimeFromFace(hit.face,hit.u,hit.v);
+      if(n!=null){
+        hoverNorm=n; updateGhost(n); hoverTime.style.display='block'; hoverTime.style.left=`${e.clientX+12}px`; hoverTime.style.top=`${e.clientY+12}px`; hoverTime.textContent=`${fmt(n*duration)} · click to select`;
+        return;
+      }
+    }
+    hoverNorm=null; hoverTime.style.display='none'; updateGhost(null);
+  });
+  viewport.addEventListener('pointerup',e=>{
+    if(!pointer.down || e.pointerId!==pointer.id) return;
+    const moved=pointer.moved; pointer.down=false; viewport.classList.remove('dragging');
+    try{viewport.releasePointerCapture(e.pointerId)}catch(_){ }
+    if(!moved && e.button===0){
+      if(pointer.face){
+        const n=localTimeFromFace(pointer.face,pointer.u,pointer.v);
+        if(n!=null) selectTime(n,true);
+      } else if(pointer.slice && $('#clickPlay').checked){ togglePlay(); }
+    }
+  });
+  viewport.addEventListener('pointercancel',()=>{pointer.down=false;viewport.classList.remove('dragging')});
+  viewport.addEventListener('wheel',e=>{
+    if(!ready) return; e.preventDefault();
+    view.zoom=clamp(view.zoom*Math.exp(-e.deltaY*.001),.45,1.8); $('#zoom').value=String(Math.round(view.zoom*100)); $('#zoomOut').textContent=`${Math.round(view.zoom*100)}%`; updateCubeTransform();
+  },{passive:false});
+
+  function frameLoop(){
+    updateTimeUI(false);
+    if(!video.paused && typeof video.requestVideoFrameCallback==='function') frameCallbackHandle=video.requestVideoFrameCallback(frameLoop);
+  }
+  video.addEventListener('play',()=>{
+    $('#play').textContent='❚❚'; $('#playPanel').textContent='Pause';
+    if(typeof video.requestVideoFrameCallback==='function') frameCallbackHandle=video.requestVideoFrameCallback(frameLoop);
+  });
+  video.addEventListener('pause',()=>{ $('#play').textContent='▶'; $('#playPanel').textContent='Play'; updateTimeUI(true); });
+  video.addEventListener('ended',()=>{ $('#play').textContent='▶'; $('#playPanel').textContent='Play'; updateTimeUI(true); });
+  video.addEventListener('timeupdate',()=>{ if(typeof video.requestVideoFrameCallback!=='function') updateTimeUI(false); });
+  video.addEventListener('seeking',()=>{bufferState.textContent='seeking…'});
+  video.addEventListener('seeked',()=>{bufferState.textContent='ready'; updateTimeUI(true)});
+  video.addEventListener('waiting',()=>{bufferState.textContent='decoding…'});
+  video.addEventListener('playing',()=>{bufferState.textContent='smooth mode'});
+
+  $('#play').addEventListener('click',togglePlay); $('#playPanel').addEventListener('click',togglePlay);
+  $('#prev').addEventListener('click',()=>stepFrame(-1)); $('#next').addEventListener('click',()=>stepFrame(1));
+  $('#prevFrame').addEventListener('click',()=>stepFrame(-1)); $('#nextFrame').addEventListener('click',()=>stepFrame(1));
+  timeline.addEventListener('input',()=>{video.pause();queueSeek(Number(timeline.value),false)});
+  timeline.addEventListener('change',()=>queueSeek(Number(timeline.value),true));
+  $('#timeCut').addEventListener('input',()=>{video.pause();queueSeek(Number($('#timeCut').value)/1000,false)});
+  $('#timeCut').addEventListener('change',()=>queueSeek(Number($('#timeCut').value)/1000,true));
+  $('#rate').addEventListener('change',()=>{video.playbackRate=Number($('#rate').value)||1});
+  $('#loop').addEventListener('change',()=>{video.loop=$('#loop').checked});
+
+  function bindRange(id,outId,apply,format=v=>v){
+    const el=$(id), out=$(outId); const fn=()=>{ const v=Number(el.value); apply(v); out.textContent=format(v); };
+    el.addEventListener('input',fn); fn();
+  }
+  bindRange('#depth','#depthOut',v=>{cubeD=v;setVar('--cube-d',`${v}px`);setVar('--cube-d-half',`${v/2}px`);setVar('--cube-d-neg-half',`${-v/2}px`);updateSlicePosition();},v=>String(v));
+  bindRange('#zoom','#zoomOut',v=>{view.zoom=v/100;updateCubeTransform();},v=>`${v}%`);
+  bindRange('#perspective','#perspectiveOut',v=>setVar('--perspective',`${v}px`),v=>String(v));
+  bindRange('#yaw','#yawOut',v=>{view.yaw=v;updateCubeTransform();},v=>`${Math.round(v)}°`);
+  bindRange('#pitch','#pitchOut',v=>{view.pitch=v;updateCubeTransform();},v=>`${Math.round(v)}°`);
+  bindRange('#panX','#panXOut',v=>{view.panX=v;updateCubeTransform();},v=>`${Math.round(v)}`);
+  bindRange('#panY','#panYOut',v=>{view.panY=v;updateCubeTransform();},v=>`${Math.round(v)}`);
+  bindRange('#sideOpacity','#sideOpacityOut',v=>setVar('--side-opacity',v/100),v=>`${v}%`);
+  bindRange('#startOpacity','#startOpacityOut',v=>setVar('--start-opacity',v/100),v=>`${v}%`);
+  bindRange('#endOpacity','#endOpacityOut',v=>setVar('--end-opacity',v/100),v=>`${v}%`);
+  bindRange('#sliceOpacity','#sliceOpacityOut',v=>setVar('--slice-opacity',v/100),v=>`${v}%`);
+  bindRange('#wireOpacity','#wireOpacityOut',v=>setVar('--wire-alpha',v/100),v=>`${v}%`);
+  bindRange('#edgeStrip','#edgeStripOut',()=>{},v=>`${v}%`);
+
+  $('#showEnds').addEventListener('change',()=>{
+    const on=$('#showEnds').checked; document.querySelector('.front').style.display=on?'block':'none'; document.querySelector('.back').style.display=on?'block':'none';
+  });
+  $('#showSlice').addEventListener('change',()=>{slicePlane.style.display=$('#showSlice').checked?'block':'none'});
+  $('#hideNearSide').addEventListener('change',()=>updateSideVisibility());
+  $('#showTimeLabel').addEventListener('change',()=>{sliceLabel.style.display=$('#showTimeLabel').checked?'block':'none'});
+  $('#samples').addEventListener('change',()=>{ if(ready) showToast('Press “Rebuild side textures” to apply the new sample count.',1900); });
+  $('#edgeStrip').addEventListener('change',()=>{ if(ready) showToast('Press “Rebuild side textures” to apply the new edge strip.',1900); });
+  rebuildBtn.addEventListener('click',()=>buildSurfaces(true));
+
+  function resetView(){ Object.assign(view,defaultView); $('#zoom').value='100'; $('#zoomOut').textContent='100%'; updateCubeTransform(); }
+  resetViewBtn.addEventListener('click',resetView);
+  frontViewBtn.addEventListener('click',()=>{view.yaw=0;view.pitch=0;view.panX=0;view.panY=0;updateCubeTransform()});
+  $('#fitView').addEventListener('click',()=>{fitGeometry();view.zoom=1;$('#zoom').value='100';$('#zoomOut').textContent='100%';applyView()});
+  $('#viewLeft').addEventListener('click',()=>{view.yaw=58;view.pitch=-12;updateCubeTransform()});
+  $('#viewRight').addEventListener('click',()=>{view.yaw=-58;view.pitch=-12;updateCubeTransform()});
+  $('#toggleControls').addEventListener('click',()=>controls.classList.toggle('closed'));
+
+  $('#fileTop').addEventListener('change',e=>loadFile(e.target.files?.[0]));
+  $('#fileHero').addEventListener('change',e=>loadFile(e.target.files?.[0]));
+  window.addEventListener('dragover',e=>e.preventDefault());
+  window.addEventListener('drop',e=>{e.preventDefault();const f=[...(e.dataTransfer?.files||[])].find(x=>x.type.startsWith('video/'));if(f)loadFile(f)});
+  window.addEventListener('resize',()=>{if(ready){fitGeometry();applyView()}});
+  window.addEventListener('keydown',e=>{
+    if(!ready || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')) return;
+    if(e.code==='Space'){e.preventDefault();togglePlay()}
+    else if(e.code==='ArrowLeft'||e.code==='ArrowRight'){e.preventDefault();stepFrame(e.code==='ArrowLeft'?-1:1)}
+    else if(e.key==='r'||e.key==='R') resetView();
+    else if(e.key==='Home') selectTime(0,false);
+    else if(e.key==='End') selectTime(1,false);
+  });
+
+  fitGeometry(); applyView();
+})();
+</script>
+</body>
+</html>
