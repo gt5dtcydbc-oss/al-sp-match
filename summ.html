@@ -46,12 +46,17 @@
   .front{transform:translate(-50%,-50%) translateZ(var(--cube-d-half));opacity:var(--start-opacity)}
   .back{transform:translate(-50%,-50%) translateZ(var(--cube-d-neg-half)) rotateY(180deg);opacity:var(--end-opacity)}
   .right,.left{width:var(--cube-d);height:var(--cube-h);opacity:var(--side-opacity);backface-visibility:visible}
-  .right.near-side-hidden,.left.near-side-hidden{opacity:0!important;visibility:hidden;pointer-events:none}
+  .left.near-side-hidden,.right.near-side-hidden,.topFace.near-side-hidden,.bottomFace.near-side-hidden{opacity:0!important;visibility:hidden;pointer-events:none}
+  .wall-disabled{display:none!important}
   .right{transform:translate(-50%,-50%) translateX(var(--cube-w-half)) rotateY(90deg)}
   .left{transform:translate(-50%,-50%) translateX(var(--cube-w-neg-half)) rotateY(-90deg)}
-  .topFace,.bottomFace{width:var(--cube-w);height:var(--cube-d);opacity:var(--side-opacity)}
+  .topFace,.bottomFace{width:var(--cube-w);height:var(--cube-d);opacity:var(--side-opacity);backface-visibility:visible}
   .topFace{transform:translate(-50%,-50%) translateY(var(--cube-h-neg-half)) rotateX(90deg)}
   .bottomFace{transform:translate(-50%,-50%) translateY(var(--cube-h-half)) rotateX(-90deg)}
+  #cube.time-reversed .left canvas,#cube.time-reversed .right canvas{transform:scaleX(-1)}
+  #cube.time-reversed .topFace canvas,#cube.time-reversed .bottomFace canvas{transform:scaleY(-1)}
+  #cube.time-reversed .front{opacity:var(--end-opacity)}
+  #cube.time-reversed .back{opacity:var(--start-opacity)}
   .slice{width:var(--cube-w);height:var(--cube-h);transform:translate(-50%,-50%) translateZ(var(--slice-z));opacity:var(--slice-opacity);z-index:2;box-shadow:0 0 0 1px rgba(255,255,255,.45)}
   .slice::after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.76);pointer-events:none}
   .sliceLabel{position:absolute;left:8px;top:8px;z-index:3;padding:4px 6px;border-radius:4px;background:rgba(0,0,0,.58);font-size:10px;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85);pointer-events:none}
@@ -109,6 +114,9 @@
   #hoverTime{position:absolute;z-index:30;display:none;pointer-events:none;padding:5px 7px;border:1px solid rgba(255,255,255,.18);border-radius:5px;background:rgba(0,0,0,.86);font-size:9px;color:rgba(255,255,255,.82);font-variant-numeric:tabular-nums;white-space:nowrap}
   #toast{position:absolute;z-index:31;top:64px;left:50%;transform:translateX(-50%);padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(5,5,5,.86);font-size:9px;color:rgba(255,255,255,.72);opacity:0;pointer-events:none;transition:opacity .15s}#toast.show{opacity:1}
   #bufferState{font-size:9px;color:rgba(255,255,255,.42);white-space:nowrap}
+  .exportActions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .exportActions .btn{height:30px;border-radius:7px;padding:0 8px;font-size:10px}
+  #exportStatus{margin-top:8px;font-size:9px;line-height:1.45;color:rgba(255,255,255,.45);min-height:13px}
 
   @media(max-width:850px){
     #controls{right:10px;top:58px;width:min(280px,calc(100vw - 20px));max-height:calc(100% - 132px)}
@@ -170,6 +178,8 @@
       </div>
       <div class="selectRow"><label for="rate">Speed</label><select id="rate"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       <div class="selectRow"><label for="stepFps">Frame step</label><select id="stepFps"><option>24</option><option>25</option><option selected>30</option><option>50</option><option>60</option></select></div>
+      <div class="selectRow"><label for="timeDirection">Time axis</label><select id="timeDirection"><option value="front-back" selected>Start front → end back</option><option value="back-front">Start back → end front</option></select></div>
+      <div class="selectRow"><label for="playDirection">Playback</label><select id="playDirection"><option value="forward" selected>Forward</option><option value="reverse">Reverse</option></select></div>
       <div class="row"><label for="timeCut">Time plane</label><input id="timeCut" type="range" min="0" max="1000" step="1" value="0"><output id="timeCutOut">0:00.00</output></div>
       <div class="checks"><div class="check"><input id="loop" type="checkbox"><label for="loop">Loop video</label></div><div class="check"><input id="clickPlay" type="checkbox" checked><label for="clickPlay">Click slice plays</label></div></div>
     </div>
@@ -194,7 +204,8 @@
       <div class="row"><label for="sliceOpacity">Frame opacity</label><input id="sliceOpacity" type="range" min="10" max="100" value="100"><output id="sliceOpacityOut">100%</output></div>
       <div class="row"><label for="wireOpacity">Outline</label><input id="wireOpacity" type="range" min="0" max="100" value="88"><output id="wireOpacityOut">88%</output></div>
       <div class="checks"><div class="check"><input id="showEnds" type="checkbox" checked><label for="showEnds">Show end frames</label></div><div class="check"><input id="showSlice" type="checkbox" checked><label for="showSlice">Show live frame</label></div></div>
-      <div class="checks"><div class="check"><input id="hideNearSide" type="checkbox" checked><label for="hideNearSide">Hide near side</label></div><div class="check"><input id="showTimeLabel" type="checkbox" checked><label for="showTimeLabel">Frame time</label></div></div>
+      <div class="checks"><div class="check"><input id="hideNearSide" type="checkbox" checked><label for="hideNearSide">Hide near wall</label></div><div class="check"><input id="showTimeLabel" type="checkbox" checked><label for="showTimeLabel">Frame time</label></div></div>
+      <div class="checks"><div class="check"><input id="showSideWalls" type="checkbox" checked><label for="showSideWalls">Left / right</label></div><div class="check"><input id="showVerticalWalls" type="checkbox" checked><label for="showVerticalWalls">Top / bottom</label></div></div>
     </div>
 
     <div class="section">
@@ -202,6 +213,18 @@
       <div class="selectRow"><label for="samples">Samples</label><select id="samples"><option value="64">64 — fast</option><option value="96" selected>96 — balanced</option><option value="144">144 — detailed</option><option value="192">192 — high</option></select></div>
       <div class="row"><label for="edgeStrip">Edge strip</label><input id="edgeStrip" type="range" min="1" max="20" step="1" value="6"><output id="edgeStripOut">6%</output></div>
       <button class="btn" id="rebuild" type="button" style="width:100%;height:30px;border-radius:7px;margin-top:6px" disabled>Rebuild side textures</button>
+    </div>
+
+    <div class="section">
+      <h2>Export</h2>
+      <div class="selectRow"><label for="exportMode">Content</label><select id="exportMode"><option value="playback" selected>Video playback</option><option value="frame">Selected frame</option></select></div>
+      <div class="selectRow"><label for="cameraMove">Camera</label><select id="cameraMove"><option value="left-right" selected>Left → right</option><option value="right-left">Right → left</option><option value="none">No movement</option></select></div>
+      <div class="row"><label for="exportSweep">Sweep</label><input id="exportSweep" type="range" min="0" max="30" step="1" value="10"><output id="exportSweepOut">10°</output></div>
+      <div class="row"><label for="exportDuration">Duration</label><input id="exportDuration" type="range" min="3" max="30" step="1" value="10"><output id="exportDurationOut">10 s</output></div>
+      <div class="selectRow"><label for="exportResolution">Resolution</label><select id="exportResolution"><option value="1280x720">1280×720</option><option value="1920x1080" selected>1920×1080</option></select></div>
+      <div class="selectRow"><label for="exportFps">Frame rate</label><select id="exportFps"><option value="24">24 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></div>
+      <div class="exportActions"><button class="btn" id="previewExport" type="button" disabled>Preview move</button><button class="btn" id="exportVideo" type="button" disabled>Export WebM</button></div>
+      <div id="exportStatus">Exports the current cube appearance, centered in frame. Default duration: 10 seconds.</div>
     </div>
   </aside>
 
@@ -220,6 +243,7 @@
 
   <video id="samplerVideo" playsinline preload="auto" style="display:none"></video>
   <canvas id="sampleCanvas" style="display:none"></canvas>
+  <canvas id="exportCanvas" style="display:none"></canvas>
 </div>
 
 <script>
@@ -233,6 +257,12 @@
   const samplerVideo = $('#samplerVideo');
   const sampleCanvas = $('#sampleCanvas');
   const sampleCtx = sampleCanvas.getContext('2d', {alpha:false});
+  const exportCanvas = $('#exportCanvas');
+  const exportStatus = $('#exportStatus');
+  const previewExportBtn = $('#previewExport');
+  const exportVideoBtn = $('#exportVideo');
+  const firstFrameStore = document.createElement('canvas');
+  const lastFrameStore = document.createElement('canvas');
   const empty = $('#empty');
   const loading = $('#loading');
   const loadingText = $('#loadingText');
@@ -272,6 +302,13 @@
   let toastTimer = null;
   let frameCallbackHandle = 0;
   let lastUiSecond = -1;
+  let reversePlaying = false;
+  let reverseRaf = 0;
+  let reverseLastTs = 0;
+  let reverseAccumulator = 0;
+  let previewState = null;
+  let previewRaf = 0;
+  let exporting = false;
 
   const view = {yaw:0, pitch:0, panX:0, panY:0, zoom:1};
   const defaultView = {yaw:0, pitch:0, panX:0, panY:0, zoom:1};
@@ -310,25 +347,64 @@
     const pairs=[['#yaw',view.yaw,'#yawOut',`${Math.round(view.yaw)}°`],['#pitch',view.pitch,'#pitchOut',`${Math.round(view.pitch)}°`],['#panX',view.panX,'#panXOut',`${Math.round(view.panX)}`],['#panY',view.panY,'#panYOut',`${Math.round(view.panY)}`]];
     for(const [id,val,outId,label] of pairs){ const el=$(id),out=$(outId); if(el) el.value=String(Math.round(val)); if(out) out.textContent=label; }
   }
-  function updateSideVisibility(){
+  function isTimeReversed(){ return $('#timeDirection')?.value==='back-front'; }
+  function spatialNormFromTime(norm){ return isTimeReversed()?1-clamp(norm,0,1):clamp(norm,0,1); }
+  function timeNormFromSpatial(norm){ return isTimeReversed()?1-clamp(norm,0,1):clamp(norm,0,1); }
+
+  function updateWallVisibility(){
     const left=document.querySelector('.left');
     const right=document.querySelector('.right');
-    if(!left || !right) return;
-    left.classList.remove('near-side-hidden');
-    right.classList.remove('near-side-hidden');
+    const top=document.querySelector('.topFace');
+    const bottom=document.querySelector('.bottomFace');
+    if(!left || !right || !top || !bottom) return;
+    const walls=[left,right,top,bottom];
+    for(const wall of walls){ wall.classList.remove('near-side-hidden','wall-disabled'); }
+
+    const sideOn=$('#showSideWalls')?.checked!==false;
+    const verticalOn=$('#showVerticalWalls')?.checked!==false;
+    if(!sideOn){ left.classList.add('wall-disabled'); right.classList.add('wall-disabled'); }
+    if(!verticalOn){ top.classList.add('wall-disabled'); bottom.classList.add('wall-disabled'); }
+
     const control=$('#hideNearSide');
     if(control && !control.checked) return;
 
-    // The Summagator view is an open volume: remove the wall closest to the
-    // viewer and keep the opposite wall visible as the time-color backdrop.
-    // Positive Y rotation exposes the cube's left side; negative exposes right.
+    // Open the wall nearest the viewer so the moving frame can be seen inside
+    // the volume, while keeping the opposite temporal wall visible.
     const sideAmount=Math.sin(view.yaw*Math.PI/180);
-    if(sideAmount>0.025) left.classList.add('near-side-hidden');
-    else if(sideAmount<-0.025) right.classList.add('near-side-hidden');
+    if(sideOn){
+      if(sideAmount>0.025) left.classList.add('near-side-hidden');
+      else if(sideAmount<-0.025) right.classList.add('near-side-hidden');
+    }
+    if(verticalOn){
+      if(view.pitch<-2.5) top.classList.add('near-side-hidden');
+      else if(view.pitch>2.5) bottom.classList.add('near-side-hidden');
+    }
+  }
+
+  function paintEndCaps(){
+    if(!firstFrameStore.width || !lastFrameStore.width) return;
+    const front=canvases.front.getContext('2d',{alpha:false});
+    const back=canvases.back.getContext('2d',{alpha:false});
+    front.clearRect(0,0,canvases.front.width,canvases.front.height);
+    back.clearRect(0,0,canvases.back.width,canvases.back.height);
+    if(isTimeReversed()){
+      front.drawImage(lastFrameStore,0,0,canvases.front.width,canvases.front.height);
+      back.drawImage(firstFrameStore,0,0,canvases.back.width,canvases.back.height);
+    }else{
+      front.drawImage(firstFrameStore,0,0,canvases.front.width,canvases.front.height);
+      back.drawImage(lastFrameStore,0,0,canvases.back.width,canvases.back.height);
+    }
+  }
+
+  function applyTimeDirection(){
+    cube.classList.toggle('time-reversed',isTimeReversed());
+    paintEndCaps();
+    updateSlicePosition();
+    updateGhost(hoverNorm);
   }
   function updateCubeTransform(){
     cube.style.transform=`translate(-50%,-50%) translate3d(${view.panX}px,${view.panY}px,0) scale(${view.zoom}) rotateX(${view.pitch}deg) rotateY(${view.yaw}deg)`;
-    updateSideVisibility();
+    updateWallVisibility();
     syncViewControls();
   }
   function fitGeometry(){
@@ -346,7 +422,7 @@
   }
   function updateSlicePosition(norm=selectedNorm){
     selectedNorm=clamp(norm,0,1);
-    const z=cubeD/2-selectedNorm*cubeD;
+    const z=cubeD/2-spatialNormFromTime(selectedNorm)*cubeD;
     setVar('--slice-z',`${z}px`);
     timeline.value=String(selectedNorm);
     const cut=$('#timeCut'); if(cut) cut.value=String(Math.round(selectedNorm*1000));
@@ -355,7 +431,7 @@
   }
   function updateGhost(norm){
     if(norm==null){ ghostPlane.style.display='none'; return; }
-    const z=cubeD/2-clamp(norm,0,1)*cubeD;
+    const z=cubeD/2-spatialNormFromTime(norm)*cubeD;
     ghostPlane.style.setProperty('--ghost-z',`${z}px`);
     ghostPlane.style.display='block';
   }
@@ -373,6 +449,7 @@
     ready=on;
     transport.classList.toggle('ready',on);
     frontViewBtn.disabled=!on; resetViewBtn.disabled=!on; rebuildBtn.disabled=!on;
+    previewExportBtn.disabled=!on; exportVideoBtn.disabled=!on;
   }
 
   function surfaceContexts(){
@@ -383,6 +460,8 @@
     const h=Math.max(68,Math.round(samplerVideo.videoHeight*scale));
     canvases.front.width=w; canvases.front.height=h;
     canvases.back.width=w; canvases.back.height=h;
+    firstFrameStore.width=w; firstFrameStore.height=h;
+    lastFrameStore.width=w; lastFrameStore.height=h;
     canvases.left.width=n; canvases.left.height=h;
     canvases.right.width=n; canvases.right.height=h;
     canvases.top.width=w; canvases.top.height=n;
@@ -401,7 +480,9 @@
     if(!currentFile || building) return;
     building=true;
     const oldTime=preserveTime?video.currentTime:0;
+    const wasReverse=reversePlaying;
     const wasPlaying=!video.paused;
+    if(wasReverse) stopReversePlayback(false);
     video.pause();
     setReady(false);
     loading.classList.add('show');
@@ -419,8 +500,8 @@
         const t=samplerDuration*(i/Math.max(1,c.n-1));
         await seekSampler(t);
         sampleCtx.drawImage(samplerVideo,0,0,c.w,c.h);
-        if(i===0) c.front.drawImage(sampleCanvas,0,0);
-        if(i===c.n-1) c.back.drawImage(sampleCanvas,0,0);
+        if(i===0) firstFrameStore.getContext('2d',{alpha:false}).drawImage(sampleCanvas,0,0);
+        if(i===c.n-1) lastFrameStore.getContext('2d',{alpha:false}).drawImage(sampleCanvas,0,0);
 
         // Every time sample contributes a real color strip to all four temporal walls.
         // Left texture is reversed so time=0 remains at the cube's front after its CSS rotation.
@@ -434,12 +515,14 @@
         if((i&3)===0) await new Promise(requestAnimationFrame);
       }
 
+      paintEndCaps();
       video.currentTime=clamp(oldTime,0,Math.max(0,duration-.003));
       updateTimeUI(true);
       meta.textContent=`${video.videoWidth}×${video.videoHeight} · ${fmt(duration)} · ${c.n} cached time samples`;
       loading.classList.remove('show'); setReady(true);
       bufferState.textContent='surfaces cached';
-      if(wasPlaying) video.play().catch(()=>{});
+      if(wasReverse) startReversePlayback();
+      else if(wasPlaying) video.play().catch(()=>{});
     }catch(err){
       console.error(err); loading.classList.remove('show'); setReady(false); empty.classList.remove('hidden');
       showToast(err.message||'Could not prepare this video.',3000);
@@ -448,6 +531,8 @@
 
   async function loadFile(file){
     if(!file || !file.type.startsWith('video/')){ showToast('Choose a video file.'); return; }
+    if(previewState) finishPreview(false);
+    stopPlayback();
     currentFile=file;
     if(objectURL) URL.revokeObjectURL(objectURL);
     objectURL=URL.createObjectURL(file);
@@ -475,35 +560,78 @@
     const apply=()=>{ video.currentTime=clamp(n*duration,0,Math.max(0,duration-.003)); };
     if(immediate) apply(); else pendingSeek=setTimeout(apply,45);
   }
+  function setPlayUi(playing){
+    $('#play').textContent=playing?'❚❚':'▶';
+    $('#playPanel').textContent=playing?'Pause':'Play';
+  }
+  function isPlaybackActive(){ return reversePlaying || !video.paused; }
+  function stopReversePlayback(updateUi=true){
+    reversePlaying=false; reverseAccumulator=0; reverseLastTs=0;
+    if(reverseRaf){ cancelAnimationFrame(reverseRaf); reverseRaf=0; }
+    if(updateUi) setPlayUi(false);
+  }
+  function startReversePlayback(){
+    if(!ready || !duration) return;
+    video.pause();
+    if(video.currentTime<=0.01) video.currentTime=Math.max(0,duration-.003);
+    reversePlaying=true; reverseAccumulator=0; reverseLastTs=performance.now();
+    setPlayUi(true); bufferState.textContent='reverse seek mode';
+    const tick=ts=>{
+      if(!reversePlaying) return;
+      const dt=Math.min(.1,Math.max(0,(ts-reverseLastTs)/1000));
+      reverseLastTs=ts; reverseAccumulator+=dt;
+      const fps=Math.min(30,Number($('#stepFps').value)||30);
+      const interval=1/fps;
+      if(reverseAccumulator>=interval && !video.seeking){
+        reverseAccumulator%=interval;
+        const rate=Number($('#rate').value)||1;
+        let next=video.currentTime-rate/fps;
+        if(next<=0){
+          if($('#loop').checked) next=Math.max(0,duration-.003);
+          else { video.currentTime=0; updateTimeUI(true); stopReversePlayback(true); bufferState.textContent='ready'; return; }
+        }
+        video.currentTime=clamp(next,0,Math.max(0,duration-.003));
+      }
+      reverseRaf=requestAnimationFrame(tick);
+    };
+    reverseRaf=requestAnimationFrame(tick);
+  }
+  function stopPlayback(){
+    if(reversePlaying) stopReversePlayback(true);
+    if(!video.paused) video.pause();
+  }
   function selectTime(norm,announce=true){
-    video.pause(); queueSeek(norm,true); updateTimeUI(true);
+    stopPlayback(); queueSeek(norm,true); updateTimeUI(true);
     if(announce) showToast(`Selected ${fmt(clamp(norm,0,1)*duration)} — press Space to play`,1200);
   }
   function togglePlay(){
-    if(!ready) return;
-    if(video.paused || video.ended){
-      if(video.ended || video.currentTime>=duration-.01) video.currentTime=0;
-      video.play().catch(()=>showToast('Playback was blocked by the browser.'));
-    } else video.pause();
+    if(!ready || exporting) return;
+    if(isPlaybackActive()){ stopPlayback(); return; }
+    if($('#playDirection').value==='reverse'){ startReversePlayback(); return; }
+    if(video.ended || video.currentTime>=duration-.01) video.currentTime=0;
+    video.playbackRate=Number($('#rate').value)||1;
+    video.play().catch(()=>showToast('Playback was blocked by the browser.'));
   }
   function stepFrame(dir){
     if(!ready) return;
-    video.pause();
+    stopPlayback();
     const fps=Number($('#stepFps').value)||30;
     const t=clamp(video.currentTime+dir/fps,0,Math.max(0,duration-.003));
     video.currentTime=t; updateSlicePosition(duration?t/duration:0); updateTimeUI(true);
   }
 
   function localTimeFromFace(face,u,v){
+    let spatial=null;
     switch(face){
-      case 'right': return clamp(u,0,1);
-      case 'left': return clamp(1-u,0,1);
-      case 'top': return clamp(1-v,0,1);
-      case 'bottom': return clamp(v,0,1);
-      case 'front': return 0;
-      case 'back': return 1;
+      case 'right': spatial=clamp(u,0,1); break;
+      case 'left': spatial=clamp(1-u,0,1); break;
+      case 'top': spatial=clamp(1-v,0,1); break;
+      case 'bottom': spatial=clamp(v,0,1); break;
+      case 'front': spatial=0; break;
+      case 'back': spatial=1; break;
       default: return null;
     }
+    return timeNormFromSpatial(spatial);
   }
   function faceAndLocal(e){
     const faceEl=e.target.closest?.('.time-face');
@@ -533,7 +661,7 @@
       } else { view.panX+=dx; view.panY+=dy; updateCubeTransform(); }
       return;
     }
-    if(!ready || !video.paused){ hoverTime.style.display='none'; updateGhost(null); return; }
+    if(!ready || isPlaybackActive()){ hoverTime.style.display='none'; updateGhost(null); return; }
     const hit=faceAndLocal(e);
     if(hit){
       const n=localTimeFromFace(hit.face,hit.u,hit.v);
@@ -566,11 +694,12 @@
     if(!video.paused && typeof video.requestVideoFrameCallback==='function') frameCallbackHandle=video.requestVideoFrameCallback(frameLoop);
   }
   video.addEventListener('play',()=>{
-    $('#play').textContent='❚❚'; $('#playPanel').textContent='Pause';
+    if(reversePlaying) stopReversePlayback(false);
+    setPlayUi(true);
     if(typeof video.requestVideoFrameCallback==='function') frameCallbackHandle=video.requestVideoFrameCallback(frameLoop);
   });
-  video.addEventListener('pause',()=>{ $('#play').textContent='▶'; $('#playPanel').textContent='Play'; updateTimeUI(true); });
-  video.addEventListener('ended',()=>{ $('#play').textContent='▶'; $('#playPanel').textContent='Play'; updateTimeUI(true); });
+  video.addEventListener('pause',()=>{ if(!reversePlaying) setPlayUi(false); updateTimeUI(true); });
+  video.addEventListener('ended',()=>{ if(!reversePlaying) setPlayUi(false); updateTimeUI(true); });
   video.addEventListener('timeupdate',()=>{ if(typeof video.requestVideoFrameCallback!=='function') updateTimeUI(false); });
   video.addEventListener('seeking',()=>{bufferState.textContent='seeking…'});
   video.addEventListener('seeked',()=>{bufferState.textContent='ready'; updateTimeUI(true)});
@@ -580,12 +709,277 @@
   $('#play').addEventListener('click',togglePlay); $('#playPanel').addEventListener('click',togglePlay);
   $('#prev').addEventListener('click',()=>stepFrame(-1)); $('#next').addEventListener('click',()=>stepFrame(1));
   $('#prevFrame').addEventListener('click',()=>stepFrame(-1)); $('#nextFrame').addEventListener('click',()=>stepFrame(1));
-  timeline.addEventListener('input',()=>{video.pause();queueSeek(Number(timeline.value),false)});
+  timeline.addEventListener('input',()=>{stopPlayback();queueSeek(Number(timeline.value),false)});
   timeline.addEventListener('change',()=>queueSeek(Number(timeline.value),true));
-  $('#timeCut').addEventListener('input',()=>{video.pause();queueSeek(Number($('#timeCut').value)/1000,false)});
+  $('#timeCut').addEventListener('input',()=>{stopPlayback();queueSeek(Number($('#timeCut').value)/1000,false)});
   $('#timeCut').addEventListener('change',()=>queueSeek(Number($('#timeCut').value)/1000,true));
   $('#rate').addEventListener('change',()=>{video.playbackRate=Number($('#rate').value)||1});
+  $('#playDirection').addEventListener('change',()=>{ if(isPlaybackActive()) stopPlayback(); });
   $('#loop').addEventListener('change',()=>{video.loop=$('#loop').checked});
+
+  function easeInOut(t){ t=clamp(t,0,1); return .5-.5*Math.cos(Math.PI*t); }
+  function sweepYaw(baseYaw,progress){
+    const move=$('#cameraMove').value;
+    if(move==='none') return baseYaw;
+    const amount=Number($('#exportSweep').value)||0;
+    const eased=easeInOut(progress);
+    const a=amount/2;
+    const from=move==='left-right'?baseYaw+a:baseYaw-a;
+    const to=move==='left-right'?baseYaw-a:baseYaw+a;
+    return from+(to-from)*eased;
+  }
+
+  function finishPreview(restore=true){
+    if(!previewState) return;
+    if(previewRaf){ cancelAnimationFrame(previewRaf); previewRaf=0; }
+    const saved=previewState; previewState=null;
+    stopPlayback();
+    previewExportBtn.textContent='Preview move';
+    if(restore){
+      view.yaw=saved.yaw; view.pitch=saved.pitch; updateCubeTransform();
+      video.currentTime=clamp(saved.time,0,Math.max(0,duration-.003)); updateTimeUI(true);
+      if(saved.wasReverse) startReversePlayback();
+      else if(saved.wasNative) video.play().catch(()=>{});
+    }
+  }
+
+  function startPreview(){
+    if(!ready || exporting) return;
+    if(previewState){ finishPreview(true); return; }
+    const seconds=Number($('#exportDuration').value)||10;
+    previewState={yaw:view.yaw,pitch:view.pitch,time:video.currentTime,wasNative:!video.paused,wasReverse:reversePlaying};
+    stopPlayback();
+    previewExportBtn.textContent='Stop preview';
+    const mode=$('#exportMode').value;
+    const playDir=$('#playDirection').value;
+    if(mode==='playback'){
+      if(playDir==='reverse') startReversePlayback();
+      else { video.playbackRate=Number($('#rate').value)||1; video.play().catch(()=>{}); }
+    }
+    const baseYaw=previewState.yaw;
+    const start=performance.now();
+    const tick=now=>{
+      if(!previewState) return;
+      const p=clamp((now-start)/(seconds*1000),0,1);
+      view.yaw=sweepYaw(baseYaw,p); updateCubeTransform();
+      if(p>=1){ finishPreview(true); return; }
+      previewRaf=requestAnimationFrame(tick);
+    };
+    previewRaf=requestAnimationFrame(tick);
+  }
+
+  function m4mul(a,b){
+    const o=new Float32Array(16);
+    for(let c=0;c<4;c++) for(let r=0;r<4;r++) o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];
+    return o;
+  }
+  function m4perspective(fovy,aspect,near,far){
+    const f=1/Math.tan(fovy/2), nf=1/(near-far);
+    return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+  }
+  function m4translation(x,y,z){ return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]); }
+  function m4rx(a){ const c=Math.cos(a),q=Math.sin(a); return new Float32Array([1,0,0,0, 0,c,q,0, 0,-q,c,0, 0,0,0,1]); }
+  function m4ry(a){ const c=Math.cos(a),q=Math.sin(a); return new Float32Array([c,0,-q,0, 0,1,0,0, q,0,c,0, 0,0,0,1]); }
+  function transformPoint(m,p){
+    const [x,y,z]=p;
+    return [m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14]];
+  }
+  function compileShader(gl,type,src){
+    const sh=gl.createShader(type); gl.shaderSource(sh,src); gl.compileShader(sh);
+    if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){ const msg=gl.getShaderInfoLog(sh)||'Shader error'; gl.deleteShader(sh); throw new Error(msg); }
+    return sh;
+  }
+  function makeProgram(gl,vsSrc,fsSrc){
+    const p=gl.createProgram(),vs=compileShader(gl,gl.VERTEX_SHADER,vsSrc),fs=compileShader(gl,gl.FRAGMENT_SHADER,fsSrc);
+    gl.attachShader(p,vs); gl.attachShader(p,fs); gl.linkProgram(p); gl.deleteShader(vs); gl.deleteShader(fs);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)){ const msg=gl.getProgramInfoLog(p)||'Program link error'; gl.deleteProgram(p); throw new Error(msg); }
+    return p;
+  }
+  function quadData(p0,p1,p2,p3,uv0,uv1,uv2,uv3){
+    const out=[];
+    const push=(p,uv)=>out.push(p[0],p[1],p[2],uv[0],uv[1]);
+    push(p0,uv0);push(p1,uv1);push(p2,uv2);push(p0,uv0);push(p2,uv2);push(p3,uv3);
+    return new Float32Array(out);
+  }
+
+  function createExportRenderer(width,height){
+    const gl=exportCanvas.getContext('webgl',{alpha:false,antialias:true,preserveDrawingBuffer:false});
+    if(!gl) throw new Error('WebGL export is not available in this browser.');
+    exportCanvas.width=width; exportCanvas.height=height; gl.viewport(0,0,width,height);
+    const texProgram=makeProgram(gl,
+      'attribute vec3 aPos;attribute vec2 aUv;uniform mat4 uMVP;varying vec2 vUv;void main(){vUv=aUv;gl_Position=uMVP*vec4(aPos,1.0);}',
+      'precision mediump float;varying vec2 vUv;uniform sampler2D uTex;uniform float uAlpha;void main(){vec4 c=texture2D(uTex,vUv);gl_FragColor=vec4(c.rgb,c.a*uAlpha);}'
+    );
+    const lineProgram=makeProgram(gl,
+      'attribute vec3 aPos;uniform mat4 uMVP;void main(){gl_Position=uMVP*vec4(aPos,1.0);}',
+      'precision mediump float;uniform vec4 uColor;void main(){gl_FragColor=uColor;}'
+    );
+    const faceBuffer=gl.createBuffer(), lineBuffer=gl.createBuffer();
+    const tLoc={pos:gl.getAttribLocation(texProgram,'aPos'),uv:gl.getAttribLocation(texProgram,'aUv'),mvp:gl.getUniformLocation(texProgram,'uMVP'),tex:gl.getUniformLocation(texProgram,'uTex'),alpha:gl.getUniformLocation(texProgram,'uAlpha')};
+    const lLoc={pos:gl.getAttribLocation(lineProgram,'aPos'),mvp:gl.getUniformLocation(lineProgram,'uMVP'),color:gl.getUniformLocation(lineProgram,'uColor')};
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    const textureSources={front:canvases.front,back:canvases.back,left:canvases.left,right:canvases.right,top:canvases.top,bottom:canvases.bottom};
+    const textures={};
+    function newTexture(source){
+      const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);
+      return t;
+    }
+    for(const [k,src] of Object.entries(textureSources)) textures[k]=newTexture(src);
+    textures.slice=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,textures.slice);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+
+    gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+
+    function render(yawDeg,pitchDeg,timeNorm){
+      gl.viewport(0,0,width,height); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      const w=2*view.zoom, h=w/Math.max(.1,videoAspect), d=w*(cubeD/Math.max(1,cubeW));
+      const hx=w/2,hy=h/2,hz=d/2;
+      const fov=45*Math.PI/180; const radius=Math.sqrt(hx*hx+hy*hy+hz*hz); const cameraDist=Math.max(2.8,radius/Math.sin(fov/2)*1.16);
+      const model=m4mul(m4rx(-pitchDeg*Math.PI/180),m4ry(yawDeg*Math.PI/180));
+      const mv=m4mul(m4translation(0,0,-cameraDist),model);
+      const mvp=m4mul(m4perspective(fov,width/height,.05,100),mv);
+      const reversed=isTimeReversed();
+      const sideAlpha=(Number($('#sideOpacity').value)||0)/100;
+      const startAlpha=(Number($('#startOpacity').value)||0)/100;
+      const endAlpha=(Number($('#endOpacity').value)||0)/100;
+      const sliceAlpha=(Number($('#sliceOpacity').value)||0)/100;
+      const showEnds=$('#showEnds').checked, showSlice=$('#showSlice').checked;
+      const sideOn=$('#showSideWalls').checked, verticalOn=$('#showVerticalWalls').checked, hideNear=$('#hideNearSide').checked;
+      const hidden=new Set();
+      if(hideNear){
+        if(yawDeg>2.5) hidden.add('left'); else if(yawDeg<-2.5) hidden.add('right');
+        if(pitchDeg<-2.5) hidden.add('top'); else if(pitchDeg>2.5) hidden.add('bottom');
+      }
+      const faces=[];
+      const add=(name,data,alpha,center)=>{ if(alpha>.001) faces.push({name,data,alpha,center,z:transformPoint(mv,center)[2]}); };
+      if(showEnds){
+        add('front',quadData([-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz],[0,0],[1,0],[1,1],[0,1]),reversed?endAlpha:startAlpha,[0,0,hz]);
+        add('back',quadData([-hx,-hy,-hz],[hx,-hy,-hz],[hx,hy,-hz],[-hx,hy,-hz],[0,0],[1,0],[1,1],[0,1]),reversed?startAlpha:endAlpha,[0,0,-hz]);
+      }
+      if(sideOn && !hidden.has('right')){
+        const fu=reversed?1:0,bu=reversed?0:1;
+        add('right',quadData([hx,-hy,hz],[hx,-hy,-hz],[hx,hy,-hz],[hx,hy,hz],[fu,0],[bu,0],[bu,1],[fu,1]),sideAlpha,[hx,0,0]);
+      }
+      if(sideOn && !hidden.has('left')){
+        const fu=reversed?0:1,bu=reversed?1:0;
+        add('left',quadData([-hx,-hy,hz],[-hx,-hy,-hz],[-hx,hy,-hz],[-hx,hy,hz],[fu,0],[bu,0],[bu,1],[fu,1]),sideAlpha,[-hx,0,0]);
+      }
+      if(verticalOn && !hidden.has('top')){
+        const fv=reversed?1:0,bv=reversed?0:1;
+        add('top',quadData([-hx,hy,hz],[hx,hy,hz],[hx,hy,-hz],[-hx,hy,-hz],[0,fv],[1,fv],[1,bv],[0,bv]),sideAlpha,[0,hy,0]);
+      }
+      if(verticalOn && !hidden.has('bottom')){
+        const fv=reversed?0:1,bv=reversed?1:0;
+        add('bottom',quadData([-hx,-hy,hz],[hx,-hy,hz],[hx,-hy,-hz],[-hx,-hy,-hz],[0,fv],[1,fv],[1,bv],[0,bv]),sideAlpha,[0,-hy,0]);
+      }
+      if(showSlice){
+        const sz=hz-spatialNormFromTime(timeNorm)*d;
+        add('slice',quadData([-hx,-hy,sz],[hx,-hy,sz],[hx,hy,sz],[-hx,hy,sz],[0,0],[1,0],[1,1],[0,1]),sliceAlpha,[0,0,sz]);
+      }
+      faces.sort((a,b)=>a.z-b.z);
+      gl.useProgram(texProgram); gl.uniformMatrix4fv(tLoc.mvp,false,mvp); gl.uniform1i(tLoc.tex,0);
+      gl.bindBuffer(gl.ARRAY_BUFFER,faceBuffer); gl.enableVertexAttribArray(tLoc.pos); gl.enableVertexAttribArray(tLoc.uv);
+      gl.vertexAttribPointer(tLoc.pos,3,gl.FLOAT,false,20,0); gl.vertexAttribPointer(tLoc.uv,2,gl.FLOAT,false,20,12);
+      for(const face of faces){
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,textures[face.name]);
+        if(face.name==='slice'){
+          try{ if(video.readyState>=2) gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,video); else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,firstFrameStore); }catch(_){ }
+        }
+        gl.uniform1f(tLoc.alpha,face.alpha); gl.bufferData(gl.ARRAY_BUFFER,face.data,gl.STREAM_DRAW); gl.drawArrays(gl.TRIANGLES,0,6);
+      }
+
+      const wire=(Number($('#wireOpacity').value)||0)/100;
+      if(wire>.001){
+        const c=[[-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz],[-hx,-hy,-hz],[hx,-hy,-hz],[hx,hy,-hz],[-hx,hy,-hz]];
+        const e=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+        const pts=[]; for(const [a,b] of e) pts.push(...c[a],...c[b]);
+        if(showSlice){ const z=hz-spatialNormFromTime(timeNorm)*d, q=[[-hx,-hy,z],[hx,-hy,z],[hx,hy,z],[-hx,hy,z]]; for(const [a,b] of [[0,1],[1,2],[2,3],[3,0]]) pts.push(...q[a],...q[b]); }
+        gl.disable(gl.DEPTH_TEST); gl.useProgram(lineProgram); gl.uniformMatrix4fv(lLoc.mvp,false,mvp); gl.uniform4f(lLoc.color,1,1,1,wire);
+        gl.bindBuffer(gl.ARRAY_BUFFER,lineBuffer); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pts),gl.STREAM_DRAW); gl.enableVertexAttribArray(lLoc.pos); gl.vertexAttribPointer(lLoc.pos,3,gl.FLOAT,false,0,0); gl.drawArrays(gl.LINES,0,pts.length/3); gl.enable(gl.DEPTH_TEST);
+      }
+    }
+    function destroy(){
+      for(const t of Object.values(textures)) gl.deleteTexture(t); gl.deleteBuffer(faceBuffer); gl.deleteBuffer(lineBuffer); gl.deleteProgram(texProgram); gl.deleteProgram(lineProgram);
+    }
+    return {render,destroy};
+  }
+
+  function pickRecorderMime(){
+    if(typeof MediaRecorder==='undefined') return '';
+    const types=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+    return types.find(t=>!MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(t))||'';
+  }
+
+  async function exportCubeVideo(){
+    if(!ready || exporting) return;
+    if(previewState) finishPreview(true);
+    if(!exportCanvas.captureStream || typeof MediaRecorder==='undefined'){ showToast('This browser cannot record canvas video.',2600); return; }
+    const [width,height]=$('#exportResolution').value.split('x').map(Number);
+    const fps=Number($('#exportFps').value)||30;
+    const seconds=Number($('#exportDuration').value)||10;
+    const mime=pickRecorderMime();
+    exporting=true; exportVideoBtn.disabled=true; previewExportBtn.disabled=true; rebuildBtn.disabled=true;
+    exportStatus.textContent='Preparing export…';
+    const saved={time:video.currentTime,wasNative:!video.paused,wasReverse:reversePlaying,loop:video.loop,rate:video.playbackRate};
+    stopPlayback();
+    let renderer=null, recorder=null, stream=null, audioCapture=null, raf=0;
+    try{
+      renderer=createExportRenderer(width,height);
+      const chunks=[];
+      stream=exportCanvas.captureStream(fps);
+      if($('#exportMode').value==='playback' && typeof video.captureStream==='function'){
+        try{ audioCapture=video.captureStream(); for(const track of audioCapture.getAudioTracks()) stream.addTrack(track); }catch(_){ audioCapture=null; }
+      }
+      const opts=mime?{mimeType:mime,videoBitsPerSecond:width>=1920?12000000:6500000}:{videoBitsPerSecond:width>=1920?12000000:6500000};
+      recorder=new MediaRecorder(stream,opts); recorder.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+      const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(recorder.error||new Error('Recording failed'));});
+      const mode=$('#exportMode').value, playDir=$('#playDirection').value;
+      const baseYaw=view.yaw, startMediaTime=video.currentTime;
+      const currentNorm=()=>duration?clamp(video.currentTime/duration,0,1):0;
+      renderer.render(sweepYaw(baseYaw,0),view.pitch,currentNorm());
+      recorder.start(250);
+      video.loop=$('#loop').checked; video.playbackRate=Number($('#rate').value)||1;
+      if(mode==='playback' && playDir==='forward') await video.play().catch(()=>{});
+      const start=performance.now(); let lastReverseSeek=0;
+      await new Promise(resolve=>{
+        const tick=now=>{
+          const elapsed=(now-start)/1000, p=clamp(elapsed/seconds,0,1);
+          if(mode==='playback' && playDir==='reverse' && now-lastReverseSeek>=1000/fps && !video.seeking){
+            lastReverseSeek=now;
+            let target=startMediaTime-elapsed*(Number($('#rate').value)||1);
+            if(target<0){ target=$('#loop').checked?((target%duration)+duration)%duration:0; }
+            video.currentTime=clamp(target,0,Math.max(0,duration-.003));
+          }
+          renderer.render(sweepYaw(baseYaw,p),view.pitch,currentNorm());
+          exportStatus.textContent=`Recording ${Math.min(seconds,elapsed).toFixed(1)} / ${seconds}s · ${width}×${height} · ${fps} fps`;
+          if(p>=1){ resolve(); return; }
+          raf=requestAnimationFrame(tick);
+        };
+        raf=requestAnimationFrame(tick);
+      });
+      if(raf) cancelAnimationFrame(raf);
+      video.pause(); recorder.stop(); await stopped;
+      const blob=new Blob(chunks,{type:recorder.mimeType||mime||'video/webm'});
+      const ext=(recorder.mimeType||mime).includes('mp4')?'mp4':'webm';
+      const base=(currentFile?.name||'video').replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]+/gi,'_');
+      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${base}_time_cube.${ext}`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),20000);
+      exportStatus.textContent=`Export complete · ${(blob.size/1024/1024).toFixed(1)} MB · ${seconds}s`;
+      showToast('Cube export finished.',1800);
+    }catch(err){
+      console.error(err); exportStatus.textContent=err.message||'Export failed.'; showToast(err.message||'Export failed.',2800);
+      try{ if(recorder&&recorder.state!=='inactive') recorder.stop(); }catch(_){ }
+    }finally{
+      if(raf) cancelAnimationFrame(raf); try{renderer?.destroy()}catch(_){ }
+      try{stream?.getTracks().forEach(t=>t.stop())}catch(_){ } try{audioCapture?.getTracks().forEach(t=>t.stop())}catch(_){ }
+      video.loop=saved.loop; video.playbackRate=saved.rate; video.currentTime=clamp(saved.time,0,Math.max(0,duration-.003)); updateTimeUI(true);
+      exporting=false; exportVideoBtn.disabled=!ready; previewExportBtn.disabled=!ready; rebuildBtn.disabled=!ready;
+      if(saved.wasReverse) startReversePlayback(); else if(saved.wasNative) video.play().catch(()=>{});
+    }
+  }
 
   function bindRange(id,outId,apply,format=v=>v){
     const el=$(id), out=$(outId); const fn=()=>{ const v=Number(el.value); apply(v); out.textContent=format(v); };
@@ -604,16 +998,25 @@
   bindRange('#sliceOpacity','#sliceOpacityOut',v=>setVar('--slice-opacity',v/100),v=>`${v}%`);
   bindRange('#wireOpacity','#wireOpacityOut',v=>setVar('--wire-alpha',v/100),v=>`${v}%`);
   bindRange('#edgeStrip','#edgeStripOut',()=>{},v=>`${v}%`);
+  bindRange('#exportSweep','#exportSweepOut',()=>{},v=>`${v}°`);
+  bindRange('#exportDuration','#exportDurationOut',()=>{},v=>`${v} s`);
 
   $('#showEnds').addEventListener('change',()=>{
     const on=$('#showEnds').checked; document.querySelector('.front').style.display=on?'block':'none'; document.querySelector('.back').style.display=on?'block':'none';
   });
   $('#showSlice').addEventListener('change',()=>{slicePlane.style.display=$('#showSlice').checked?'block':'none'});
-  $('#hideNearSide').addEventListener('change',()=>updateSideVisibility());
+  $('#hideNearSide').addEventListener('change',()=>updateWallVisibility());
+  $('#showSideWalls').addEventListener('change',()=>updateWallVisibility());
+  $('#showVerticalWalls').addEventListener('change',()=>updateWallVisibility());
+  $('#timeDirection').addEventListener('change',()=>{ if(previewState) finishPreview(true); applyTimeDirection(); });
   $('#showTimeLabel').addEventListener('change',()=>{sliceLabel.style.display=$('#showTimeLabel').checked?'block':'none'});
   $('#samples').addEventListener('change',()=>{ if(ready) showToast('Press “Rebuild side textures” to apply the new sample count.',1900); });
   $('#edgeStrip').addEventListener('change',()=>{ if(ready) showToast('Press “Rebuild side textures” to apply the new edge strip.',1900); });
   rebuildBtn.addEventListener('click',()=>buildSurfaces(true));
+  previewExportBtn.addEventListener('click',startPreview);
+  exportVideoBtn.addEventListener('click',exportCubeVideo);
+  $('#cameraMove').addEventListener('change',()=>{ if(previewState) finishPreview(true); });
+  $('#exportMode').addEventListener('change',()=>{ if(previewState) finishPreview(true); });
 
   function resetView(){ Object.assign(view,defaultView); $('#zoom').value='100'; $('#zoomOut').textContent='100%'; updateCubeTransform(); }
   resetViewBtn.addEventListener('click',resetView);
@@ -637,7 +1040,7 @@
     else if(e.key==='End') selectTime(1,false);
   });
 
-  fitGeometry(); applyView();
+  applyTimeDirection(); fitGeometry(); applyView();
 })();
 </script>
 </body>
