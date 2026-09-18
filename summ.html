@@ -187,7 +187,7 @@
     <div class="section">
       <h2>Cube geometry</h2>
       <div class="row"><label for="depth">Time depth</label><input id="depth" type="range" min="180" max="900" step="10" value="520"><output id="depthOut">520</output></div>
-      <div class="row"><label for="zoom">Zoom</label><input id="zoom" type="range" min="45" max="180" step="1" value="100"><output id="zoomOut">100%</output></div>
+      <div class="row"><label for="zoom">Zoom</label><input id="zoom" type="range" min="0" max="180" step="1" value="100"><output id="zoomOut">100%</output></div>
       <div class="row"><label for="perspective">Perspective</label><input id="perspective" type="range" min="650" max="1900" step="25" value="1150"><output id="perspectiveOut">1150</output></div>
       <div class="row"><label for="yaw">Rotate Y</label><input id="yaw" type="range" min="-180" max="180" step="1" value="0"><output id="yawOut">0°</output></div>
       <div class="row"><label for="pitch">Rotate X</label><input id="pitch" type="range" min="-82" max="82" step="1" value="0"><output id="pitchOut">0°</output></div>
@@ -686,7 +686,7 @@
   viewport.addEventListener('pointercancel',()=>{pointer.down=false;viewport.classList.remove('dragging')});
   viewport.addEventListener('wheel',e=>{
     if(!ready) return; e.preventDefault();
-    view.zoom=clamp(view.zoom*Math.exp(-e.deltaY*.001),.45,1.8); $('#zoom').value=String(Math.round(view.zoom*100)); $('#zoomOut').textContent=`${Math.round(view.zoom*100)}%`; updateCubeTransform();
+    view.zoom=clamp(Math.max(view.zoom,.01)*Math.exp(-e.deltaY*.001),0,1.8); $('#zoom').value=String(Math.round(view.zoom*100)); $('#zoomOut').textContent=`${Math.round(view.zoom*100)}%`; updateCubeTransform();
   },{passive:false});
 
   function frameLoop(){
