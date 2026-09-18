@@ -476,6 +476,46 @@
     return out;
   }
 
+  async function detectVerticalContentBounds(c,samplerDuration){
+    // Detect permanent horizontal letterbox bars before building the top/bottom
+    // temporal walls. Sampling the literal first/last rows turns those walls
+    // black for letterboxed videos, even though the active picture contains color.
+    const times=samplerDuration>0?[.08,.28,.50,.72,.92]:[0];
+    const activity=new Float32Array(c.h);
+    const probes=28;
+    const xs=Array.from({length:probes},(_,i)=>Math.max(0,Math.min(c.w-1,Math.round((i+.5)*c.w/probes))));
+    for(const f of times){
+      await seekSampler(Math.max(0,Math.min(samplerDuration-.002,samplerDuration*f)));
+      sampleCtx.drawImage(samplerVideo,0,0,c.w,c.h);
+      const data=sampleCtx.getImageData(0,0,c.w,c.h).data;
+      for(let y=0;y<c.h;y++){
+        let lit=0;
+        for(const x of xs){
+          const o=(y*c.w+x)*4;
+          const l=.2126*data[o]+.7152*data[o+1]+.0722*data[o+2];
+          if(l>9) lit++;
+        }
+        activity[y]=Math.max(activity[y],lit/probes);
+      }
+    }
+    const rowOn=y=>activity[y]>.30;
+    const run=3;
+    let top=0,bottom=c.h-1,foundTop=false,foundBottom=false;
+    for(let y=0;y<=c.h-run;y++){
+      let ok=true; for(let k=0;k<run;k++) if(!rowOn(y+k)){ok=false;break;}
+      if(ok){top=y;foundTop=true;break;}
+    }
+    for(let y=c.h-1;y>=run-1;y--){
+      let ok=true; for(let k=0;k<run;k++) if(!rowOn(y-k)){ok=false;break;}
+      if(ok){bottom=y;foundBottom=true;break;}
+    }
+    if(!foundTop||!foundBottom||bottom-top<c.h*.28) return {top:0,bottom:c.h};
+    // Step a couple of pixels into the picture so antialiased bar edges don't
+    // tint the temporal surface black.
+    const pad=Math.max(1,Math.round(c.h*.004));
+    return {top:Math.min(bottom-1,top+pad),bottom:Math.max(top+2,bottom+1-pad)};
+  }
+
   async function buildSurfaces(preserveTime=true){
     if(!currentFile || building) return;
     building=true;
@@ -493,8 +533,12 @@
       const c=surfaceContexts();
       const edgeFrac=(Number($('#edgeStrip').value)||6)/100;
       const edgeX=Math.max(1,Math.round(c.w*edgeFrac));
-      const edgeY=Math.max(1,Math.round(c.h*edgeFrac));
       const samplerDuration=samplerVideo.duration||duration;
+      loadingText.textContent='Detecting active picture area…';
+      const activeY=await detectVerticalContentBounds(c,samplerDuration);
+      const activeH=Math.max(2,activeY.bottom-activeY.top);
+      const edgeY=Math.max(1,Math.round(activeH*edgeFrac));
+      loadingText.textContent='Preparing full-video side textures…';
 
       for(let i=0;i<c.n;i++){
         const t=samplerDuration*(i/Math.max(1,c.n-1));
@@ -507,8 +551,10 @@
         // Left texture is reversed so time=0 remains at the cube's front after its CSS rotation.
         c.left.drawImage(sampleCanvas,0,0,edgeX,c.h,c.n-1-i,0,1,c.h);
         c.right.drawImage(sampleCanvas,c.w-edgeX,0,edgeX,c.h,i,0,1,c.h);
-        c.top.drawImage(sampleCanvas,0,0,c.w,edgeY,0,c.n-1-i,c.w,1);
-        c.bottom.drawImage(sampleCanvas,0,c.h-edgeY,c.w,edgeY,0,i,c.w,1);
+        // Top/bottom sample the active picture rather than literal frame edges.
+        // This preserves the temporal frame colors on letterboxed footage.
+        c.top.drawImage(sampleCanvas,0,activeY.top,c.w,Math.min(edgeY,activeH),0,c.n-1-i,c.w,1);
+        c.bottom.drawImage(sampleCanvas,0,Math.max(activeY.top,activeY.bottom-edgeY),c.w,Math.min(edgeY,activeH),0,i,c.w,1);
 
         const pct=Math.round((i/Math.max(1,c.n-1))*100);
         loadingBar.style.width=`${pct}%`; loadingPct.textContent=`${pct}%`;
