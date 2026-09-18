@@ -2739,12 +2739,13 @@
         : "";
     }
 
-    // ✅ RENAMED BACK: isFinalHoldoverExpired
+    // Final holdovers live through the local day of the board's predicted release.
+    // Use the visible/learned slot rather than raw AniList airtime so RSS history,
+    // manual schedules and the AniList +60 fallback all agree on the cutoff.
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
-      const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
-      const finalAiredAtMs = Number(rawFinal);
-      const airDateKey = Number.isFinite(finalAiredAtMs) && finalAiredAtMs > 0
-        ? localDateKeyFromMs(finalAiredAtMs, timeZone)
+      const releaseAtMs = finalHoldoverReleaseAtMs(holdover, timeZone);
+      const airDateKey = Number.isFinite(releaseAtMs) && releaseAtMs > 0
+        ? localDateKeyFromMs(releaseAtMs, timeZone)
         : String(holdover?.airDateKey || "");
 
       if (!airDateKey) return true;
@@ -2754,26 +2755,28 @@
 
     function finalHoldoverReleaseAtMs(holdover, timeZone = DEFAULT_TIMEZONE) {
       const item = holdover?.item || {};
-      const usesRss = Boolean(holdover?.usesRssFinalTiming || item?.usesRssFinalTiming);
-      const rawFinal = holdover?.finalAiredAtMs ?? item?.finalAiredAtMs;
-      let releaseAtMs = Number(rawFinal);
 
-      if (!Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
-        if (usesRss) {
-          releaseAtMs = getRssFinalAiringAtMs({
-            nextAiringAt: item?.nextAiringAt,
-            day: item?.day,
-            time: item?.time,
-            finalTimingDay: item?.latestReleaseDay || item?.day,
-            finalTimingTime: item?.time
-          }, timeZone);
-        } else {
-          const airingAtMs = Number(holdover?.airingAtMs);
-          releaseAtMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
-        }
+      // The board slot is the release prediction the user actually sees. Anchor that
+      // weekday/time to AniList's final-episode week, regardless of whether the slot
+      // came from RSS history, a manual/pasted schedule, or the AniList +60 fallback.
+      const scheduledReleaseAtMs = getRssFinalAiringAtMs({
+        nextAiringAt: item?.nextAiringAt,
+        day: item?.day,
+        time: item?.time,
+        finalTimingDay: item?.day,
+        finalTimingTime: item?.time
+      }, timeZone);
+      if (Number.isFinite(scheduledReleaseAtMs) && scheduledReleaseAtMs > 0) {
+        return scheduledReleaseAtMs;
       }
 
-      return Number.isFinite(releaseAtMs) && releaseAtMs > 0 ? releaseAtMs : null;
+      // Legacy/incomplete holdovers may not have a usable slot. Preserve the old
+      // fallback chain so existing stored state remains recoverable.
+      const rawFinal = Number(holdover?.finalAiredAtMs ?? item?.finalAiredAtMs);
+      if (Number.isFinite(rawFinal) && rawFinal > 0) return rawFinal;
+
+      const airingAtMs = Number(holdover?.airingAtMs);
+      return Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
     }
 
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
@@ -4383,9 +4386,9 @@
       }
     }
 
-    function getVisibleFinalHoldoverItems(existingIds) {
+    function getVisibleFinalHoldoverItems(existingItemsById) {
       const output = [];
-      const seenIds = existingIds || new Set();
+      const existingItems = existingItemsById instanceof Map ? existingItemsById : new Map();
 
       for (const [id, holdover] of Object.entries(state.finalHoldovers || {})) {
         if (!isFinalHoldoverVisibleToday(holdover, DEFAULT_TIMEZONE)) continue;
@@ -4394,10 +4397,20 @@
 
         const latestReleaseDate = item.latestReleaseDate || holdover.latestReleaseDate || null;
         const released = isFinalHoldoverReleased(holdover, DEFAULT_TIMEZONE);
-        // Before release, prefer a still-live AniList card. The pending holdover is only
-        // a safety net for the gap after AniList removes the finished show. Once the
-        // release time passes, the holdover intentionally replaces the live card.
-        if (seenIds.has(String(id)) && !released) continue;
+        const existingItem = existingItems.get(String(id));
+        const existingHasLiveFinal = Boolean(
+          existingItem &&
+          !existingItem.isEnded &&
+          existingItem.isFinalEpisode &&
+          episodeNumberFromToken(existingItem.aniListNextEpisode) !== null &&
+          Number.isFinite(Number(existingItem.nextAiringAt)) &&
+          Number(existingItem.nextAiringAt) > 0
+        );
+
+        // Keep a genuinely live AniList final before the predicted release. If AniList
+        // has already ended/cleared the finale, let the pending holdover take over so the
+        // card and Next Up survive until the board's predicted release time.
+        if (existingHasLiveFinal && !released) continue;
 
         output.push({
           ...item,
@@ -4469,7 +4482,9 @@
       }
       await saveFinalHoldovers(state.userName, state.finalHoldovers);
 
-      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set(cached.map(item => String(item.id))));
+      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(
+        new Map(cached.map(item => [String(item.id), item]))
+      );
       const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
       const cachedWithoutVisibleHoldovers = cached.filter(item => !visibleFinalHoldoverIds.has(String(item.id)));
 
