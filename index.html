@@ -998,11 +998,14 @@
     const UPCOMING_EPISODE_PREVIEW_MS = 36 * 60 * 60 * 1000;
     const ORPHAN_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
-    // RSS time offset detection thresholds. Large systematic feed-clock errors (such
-    // as the observed ~7h shift) are correctable, while ordinary release lag is ignored.
+    // RSS feed-clock detection. The feed's pubDate can be systematically mislabeled
+    // by several hours. Learn an ABSOLUTE whole-hour correction from multiple shows,
+    // rather than accumulating half-hour residuals on top of an already-corrected time.
     const RSS_OFFSET_MIN_OBSERVATIONS = 3;
-    const RSS_OFFSET_APPLY_THRESHOLD_MS = 2 * 60 * 60 * 1000;
-    const RSS_OFFSET_SANITY_BOUND_MS = 8 * 60 * 60 * 1000;
+    const RSS_OFFSET_MIN_AGREEING = 2;
+    const RSS_OFFSET_EXISTING_CHANGE_SUPPORT = 3;
+    const RSS_OFFSET_INITIAL_MIN_ABS_MS = 2 * 60 * 60 * 1000;
+    const RSS_OFFSET_SANITY_BOUND_MS = 12 * 60 * 60 * 1000;
     const RSS_SUBS_LAG_HINT_MS = 60 * 60 * 1000;
     const RSS_MATCH_SCORE_MIN = 80;
 
@@ -1618,8 +1621,9 @@
       }
 
       if (state.rssTimeOffsetMs) {
-        const hours = (state.rssTimeOffsetMs / 3600000).toFixed(1);
-        extra += `<br/>RSS timestamps auto-corrected by ${hours}h to match AniList.`;
+        const hours = state.rssTimeOffsetMs / 3600000;
+        const signed = `${hours > 0 ? "+" : ""}${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)}`;
+        extra += `<br/>RSS feed-clock correction: ${signed}h.`;
       }
 
       if (isUnhealthy && state.notes.length) {
@@ -2164,11 +2168,18 @@
         if (Number.isNaN(raw.getTime())) continue;
         // Apply the detected offset so RSS pubDate lines up with real-world time
         // even if SubsPlease's feed stamps items in a shifted timezone.
-        const date = offsetMs ? new Date(raw.getTime() + offsetMs) : raw;
+        const rawDateMs = raw.getTime();
+        const date = offsetMs ? new Date(rawDateMs + offsetMs) : raw;
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
         if (!existing || date.getTime() < existing.date.getTime()) {
-          deduped.set(key, { rawTitle: item.title, showTitle: parsed.showTitle, episode: parsed.episode, date });
+          deduped.set(key, {
+            rawTitle: item.title,
+            showTitle: parsed.showTitle,
+            episode: parsed.episode,
+            date,
+            rawDateMs
+          });
         }
       }
       const grouped = new Map();
@@ -2189,17 +2200,108 @@
       return parseXmlFeed(trimmed);
     }
 
-    // Compare the RSS-derived release time for each show against AniList's known
-    // next-airing timestamp. When RSS released the episode that precedes AniList's
-    // "next" one, the two should be ~7 days apart. The median gap between that
-    // expectation and the observed RSS timestamp is the offset to correct for.
-    function detectRssTimeOffset(primaryCandidates, entries, timeZone = DEFAULT_TIMEZONE) {
+    function rawRssTimestampMs(item) {
+      const explicitRaw = Number(item?.rawDateMs);
+      if (Number.isFinite(explicitRaw) && explicitRaw > 0) return explicitRaw;
+      const corrected = item?.date instanceof Date ? item.date.getTime() : new Date(item?.date).getTime();
+      if (!Number.isFinite(corrected)) return null;
+      return corrected - (Number(state.rssTimeOffsetMs) || 0);
+    }
+
+    function summarizeWholeHourOffsetObservations(observations, basis) {
+      const HOUR_MS = 60 * 60 * 1000;
+      const safe = (observations || []).filter(value =>
+        Number.isFinite(value) && Math.abs(value) <= RSS_OFFSET_SANITY_BOUND_MS
+      );
+      if (safe.length < RSS_OFFSET_MIN_OBSERVATIONS) return null;
+
+      const buckets = new Map();
+      for (const value of safe) {
+        const hour = Math.round(value / HOUR_MS);
+        if (Math.abs(hour * HOUR_MS) > RSS_OFFSET_SANITY_BOUND_MS) continue;
+        buckets.set(hour, (buckets.get(hour) || 0) + 1);
+      }
+      if (!buckets.size) return null;
+
+      const sorted = [...safe].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const medianHour = Math.round(median / HOUR_MS);
+      let bestHour = null;
+      let bestCount = -1;
+      for (const [hour, count] of buckets.entries()) {
+        if (count > bestCount || (count === bestCount && Math.abs(hour - medianHour) < Math.abs((bestHour ?? hour) - medianHour))) {
+          bestHour = hour;
+          bestCount = count;
+        }
+      }
+      if (bestCount < RSS_OFFSET_MIN_AGREEING) return null;
+
+      return {
+        desiredOffsetMs: bestHour * HOUR_MS,
+        basis,
+        support: bestCount,
+        observationCount: safe.length
+      };
+    }
+
+    // Strongest fallback calibration: compare the raw feed clock with the schedule
+    // already learned from prior RSS episodes. This does not depend on AniList's release lag.
+    function detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone = DEFAULT_TIMEZONE) {
+      const observations = [];
+      const cache = slotCache && typeof slotCache === "object" ? slotCache : {};
+
+      for (const candidate of primaryCandidates || []) {
+        const latest = candidate?.items?.[0];
+        const rawMs = rawRssTimestampMs(latest);
+        if (!latest?.episode || !Number.isFinite(rawMs)) continue;
+
+        let matchedMedia = null;
+        let bestScore = 0;
+        for (const entry of entries || []) {
+          const media = entry?.media;
+          if (!media) continue;
+          const score = scoreMatch(candidate, titleVariants(media));
+          if (score > bestScore) { bestScore = score; matchedMedia = media; }
+        }
+        if (!matchedMedia || bestScore < RSS_MATCH_SCORE_MIN) continue;
+
+        const cached = cache[String(matchedMedia.id)];
+        const history = Array.isArray(cached?.history) ? cached.history : [];
+        if (history.length < 2) continue;
+
+        const expectedDay = WEEKDAYS.includes(cached?.rssScheduleDay)
+          ? cached.rssScheduleDay
+          : mostCommonRssHistoryDay(history, history[history.length - 1]?.day);
+        const historyMinutes = history.map(sample => Number(sample?.mins)).filter(Number.isFinite);
+        const expectedTime = isValidTime(cached?.rssScheduleTime)
+          ? cached.rssScheduleTime
+          : (historyMinutes.length ? minutesToHHMM(medianTime(historyMinutes)) : "");
+        if (!WEEKDAYS.includes(expectedDay) || !isValidTime(expectedTime)) continue;
+
+        const anchorDateKey = localDateKeyFromMs(rawMs, timeZone);
+        const expectedDateKey = closestDateKeyForWeekday(anchorDateKey, expectedDay, timeZone);
+        const expectedMs = localTimestampFromDateKeyAndTime(expectedDateKey, expectedTime, timeZone);
+        if (!Number.isFinite(expectedMs)) continue;
+
+        const observedOffset = expectedMs - rawMs;
+        if (Math.abs(observedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) observations.push(observedOffset);
+      }
+
+      return summarizeWholeHourOffsetObservations(observations, "rss-history");
+    }
+
+    // Secondary calibration for a fresh/empty history: the latest RSS episode should
+    // normally be the episode immediately before AniList's nextAiringEpisode. AniList
+    // gives the broadcast time; +60m is only a rough SubsPlease lag hint. Multiple shows
+    // plus whole-hour voting prevent ordinary release-lag noise becoming a clock offset.
+    function detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone = DEFAULT_TIMEZONE) {
       const observations = [];
       const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
       for (const candidate of primaryCandidates || []) {
         const latest = candidate?.items?.[0];
-        if (!latest?.date || !latest?.episode) continue;
+        const rawMs = rawRssTimestampMs(latest);
+        if (!latest?.episode || !Number.isFinite(rawMs)) continue;
 
         const rssEp = Number(String(latest.episode).replace(/v\d+$/i, ""));
         if (!Number.isFinite(rssEp) || rssEp < 2) continue;
@@ -2216,26 +2318,22 @@
 
         const nextEp = Number(matchedMedia.nextAiringEpisode?.episode);
         const nextAt = Number(matchedMedia.nextAiringEpisode?.airingAt);
-        if (!Number.isFinite(nextEp) || !Number.isFinite(nextAt)) continue;
-
-        // Only when RSS's latest release is the episode immediately before AniList's next.
-        if (rssEp !== nextEp - 1) continue;
+        if (!Number.isFinite(nextEp) || !Number.isFinite(nextAt) || rssEp !== nextEp - 1) continue;
 
         const expectedAirMs = (nextAt * 1000) - WEEK_MS;
         const expectedRssMs = expectedAirMs + RSS_SUBS_LAG_HINT_MS;
-        const observedMs = expectedRssMs - latest.date.getTime();
-
-        if (Math.abs(observedMs) <= RSS_OFFSET_SANITY_BOUND_MS) {
-          observations.push(observedMs);
-        }
+        const observedOffset = expectedRssMs - rawMs;
+        if (Math.abs(observedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) observations.push(observedOffset);
       }
 
-      if (observations.length < RSS_OFFSET_MIN_OBSERVATIONS) return null;
+      return summarizeWholeHourOffsetObservations(observations, "anilist");
+    }
 
-      observations.sort((a, b) => a - b);
-      const median = observations[Math.floor(observations.length / 2)];
-      const HALF_HOUR = 30 * 60 * 1000;
-      return Math.round(median / HALF_HOUR) * HALF_HOUR;
+    function detectRssTimeOffset(primaryCandidates, entries, slotCache, allowAniListCalibration, timeZone = DEFAULT_TIMEZONE) {
+      const historyResult = detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone);
+      if (historyResult) return historyResult;
+      if (!allowAniListCalibration) return null;
+      return detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone);
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -2641,12 +2739,13 @@
         : "";
     }
 
-    // ✅ RENAMED BACK: isFinalHoldoverExpired
+    // Final holdovers live through the local day of the board's predicted release.
+    // Use the visible/learned slot rather than raw AniList airtime so RSS history,
+    // manual schedules and the AniList +60 fallback all agree on the cutoff.
     function isFinalHoldoverExpired(holdover, timeZone = DEFAULT_TIMEZONE) {
-      const rawFinal = holdover?.finalAiredAtMs ?? holdover?.item?.finalAiredAtMs;
-      const finalAiredAtMs = Number(rawFinal);
-      const airDateKey = Number.isFinite(finalAiredAtMs) && finalAiredAtMs > 0
-        ? localDateKeyFromMs(finalAiredAtMs, timeZone)
+      const releaseAtMs = finalHoldoverReleaseAtMs(holdover, timeZone);
+      const airDateKey = Number.isFinite(releaseAtMs) && releaseAtMs > 0
+        ? localDateKeyFromMs(releaseAtMs, timeZone)
         : String(holdover?.airDateKey || "");
 
       if (!airDateKey) return true;
@@ -2656,26 +2755,28 @@
 
     function finalHoldoverReleaseAtMs(holdover, timeZone = DEFAULT_TIMEZONE) {
       const item = holdover?.item || {};
-      const usesRss = Boolean(holdover?.usesRssFinalTiming || item?.usesRssFinalTiming);
-      const rawFinal = holdover?.finalAiredAtMs ?? item?.finalAiredAtMs;
-      let releaseAtMs = Number(rawFinal);
 
-      if (!Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
-        if (usesRss) {
-          releaseAtMs = getRssFinalAiringAtMs({
-            nextAiringAt: item?.nextAiringAt,
-            day: item?.day,
-            time: item?.time,
-            finalTimingDay: item?.latestReleaseDay || item?.day,
-            finalTimingTime: item?.time
-          }, timeZone);
-        } else {
-          const airingAtMs = Number(holdover?.airingAtMs);
-          releaseAtMs = Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
-        }
+      // The board slot is the release prediction the user actually sees. Anchor that
+      // weekday/time to AniList's final-episode week, regardless of whether the slot
+      // came from RSS history, a manual/pasted schedule, or the AniList +60 fallback.
+      const scheduledReleaseAtMs = getRssFinalAiringAtMs({
+        nextAiringAt: item?.nextAiringAt,
+        day: item?.day,
+        time: item?.time,
+        finalTimingDay: item?.day,
+        finalTimingTime: item?.time
+      }, timeZone);
+      if (Number.isFinite(scheduledReleaseAtMs) && scheduledReleaseAtMs > 0) {
+        return scheduledReleaseAtMs;
       }
 
-      return Number.isFinite(releaseAtMs) && releaseAtMs > 0 ? releaseAtMs : null;
+      // Legacy/incomplete holdovers may not have a usable slot. Preserve the old
+      // fallback chain so existing stored state remains recoverable.
+      const rawFinal = Number(holdover?.finalAiredAtMs ?? item?.finalAiredAtMs);
+      if (Number.isFinite(rawFinal) && rawFinal > 0) return rawFinal;
+
+      const airingAtMs = Number(holdover?.airingAtMs);
+      return Number.isFinite(airingAtMs) && airingAtMs > 0 ? airingAtMs : null;
     }
 
     function isFinalHoldoverVisibleToday(holdover, timeZone = DEFAULT_TIMEZONE) {
@@ -3215,9 +3316,23 @@
               }
             }
             
-            // Out of bounds or wrong day. Reject and use fallback.
+            // Out of bounds or wrong day. Keep AniList +60 for the visible schedule,
+            // but DO NOT discard the correctly matched RSS episode. The episode remains
+            // a release confirmation while the global feed-clock detector learns the shift.
             const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
-            return { day: fallbackSlot?.day || aniDay, time: fallbackSlot?.time || aniTime, source: "fallback", sampleCount: 0, matchedTitle: "" };
+            return {
+              day: fallbackSlot?.day || aniDay,
+              time: fallbackSlot?.time || aniTime,
+              source: "fallback",
+              sampleCount: 0,
+              matchedTitle: "",
+              matchedEpisode: primary.matchedEpisode || null,
+              latestReleaseDay: primary.latestReleaseDay || null,
+              latestReleaseTime: primary.latestReleaseTime || null,
+              latestReleaseDate: primary.latestReleaseDate || null,
+              rssMatchedTitle: primary.matchedTitle || "",
+              rssObservationRejectedForDisplay: true
+            };
           }
 
           const fallbackSlot = offsetWeeklySlot(aniDay, aniTime, 60);
@@ -3439,6 +3554,90 @@
       return WEEKDAYS.includes(bestDay) ? bestDay : (WEEKDAYS.includes(fallback) ? fallback : null);
     }
 
+    function rssEpisodeToken(value) {
+      const episode = episodeNumberFromToken(value);
+      if (episode === null) return null;
+      return Number.isInteger(episode) ? String(episode).padStart(2, "0") : String(episode);
+    }
+
+    function recordMatchedRssObservation(item, entry) {
+      const episode = episodeNumberFromToken(item?.matchedEpisode);
+      const currentDay = String(item?.latestReleaseDay || "");
+      const currentTime = String(item?.latestReleaseTime || "");
+      const releaseAtMs = Number(item?.latestReleaseDate);
+
+      // Observation trust is deliberately separate from display-source trust. A release
+      // can fail the AniList-vs-RSS timing sanity check and still be a valid sample when
+      // the title/episode match itself is confident and the feed timestamp is usable.
+      if (episode === null || !WEEKDAYS.includes(currentDay) || !isValidTime(currentTime) ||
+          !Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
+        return { saved: false, changed: false, reason: "incomplete" };
+      }
+
+      const totalEpisode = episodeNumberFromToken(item?.totalEpisodeNumber);
+      if (totalEpisode !== null && episode > totalEpisode) {
+        return { saved: false, changed: false, reason: "beyond-total" };
+      }
+
+      const nextEpisode = episodeNumberFromToken(item?.aniListNextEpisode);
+      // AniList can itself lag briefly around an airing transition, so allow a small
+      // one/two-episode cushion while still rejecting obviously unrelated episode numbers.
+      if (nextEpisode !== null && episode > nextEpisode + 2) {
+        return { saved: false, changed: false, reason: "implausibly-ahead-of-anilist" };
+      }
+
+      entry.history = Array.isArray(entry.history) ? entry.history : [];
+      const historyEpisodes = entry.history
+        .map(sample => episodeNumberFromToken(sample?.episode))
+        .filter(value => value !== null);
+      const newestHistoryEpisode = historyEpisodes.length ? Math.max(...historyEpisodes) : null;
+      if (newestHistoryEpisode !== null && episode < newestHistoryEpisode) {
+        return { saved: false, changed: false, reason: "older-than-history" };
+      }
+
+      const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
+      if (ignoredRssEpisode !== null && ignoredRssEpisode === episode) {
+        return { saved: false, changed: false, reason: "ignored" };
+      }
+
+      const episodeToken = rssEpisodeToken(episode);
+      const sample = {
+        day: currentDay,
+        time: currentTime,
+        mins: toMinutes(currentTime),
+        episode: episodeToken,
+        releaseAtMs,
+        offsetMs: Number(state.rssTimeOffsetMs) || 0
+      };
+      const existingHistoryIndex = entry.history.findIndex(
+        historySample => episodeNumberFromToken(historySample?.episode) === episode
+      );
+
+      let changed = false;
+      if (existingHistoryIndex >= 0) {
+        // Rebase an already-seen episode if the learned feed-clock correction changes.
+        const existing = entry.history[existingHistoryIndex] || {};
+        if (existing.day !== sample.day || existing.time !== sample.time ||
+            Number(existing.releaseAtMs) !== Number(sample.releaseAtMs) ||
+            Number(existing.offsetMs || 0) !== Number(sample.offsetMs || 0)) {
+          entry.history[existingHistoryIndex] = sample;
+          changed = true;
+        }
+      } else {
+        entry.history.push(sample);
+        if (entry.history.length > 3) entry.history.shift();
+        changed = true;
+      }
+
+      const storedLatestRelease = Number(entry.latestReleaseDate);
+      if (!Number.isFinite(storedLatestRelease) || releaseAtMs >= storedLatestRelease) {
+        entry.latestReleaseDate = releaseAtMs;
+      }
+      if (changed) entry.updatedAt = new Date().toISOString();
+
+      return { saved: true, changed, sample };
+    }
+
     async function applyCache(items) {
       const output = [];
 
@@ -3469,6 +3668,12 @@
           entry.wasDelayed = false;
         }
 
+        // Save a confident RSS episode observation independently of which schedule source
+        // wins the UI. This is what lets unusually late releases (for example a show whose
+        // SubsPlease release falls outside the +/-3.5h AniList sanity window) still teach
+        // the rolling RSS median without forcing that single timestamp onto the board.
+        const rssObservation = recordMatchedRssObservation(item, entry);
+
         if (item.source === "schedule") {
           // Keep pasted timetable values transient so they override old RSS history
           // without destroying that history when the timetable is disabled later.
@@ -3481,25 +3686,6 @@
         if (item.source === "rss") {
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
-
-          const currentDay = item.latestReleaseDay;
-          const currentTime = item.latestReleaseTime;
-          let trackerEp = item.matchedEpisode; 
-          if (trackerEp) trackerEp = String(trackerEp).padStart(2, "0");
-          else if (item.hasNextAiring && Number.isFinite(item.displayEpisode)) trackerEp = String(Math.max(1, item.displayEpisode - 1)).padStart(2, "0");
-          else trackerEp = "?";
-
-          const alreadySawThisEpisode = entry.history.some(h => h.episode === trackerEp);
-          const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
-          const isIgnoredRssEpisode = ignoredRssEpisode !== null &&
-            ignoredRssEpisode === episodeNumberFromToken(trackerEp);
-          // Keep the rejection across stale/older feed responses, too. A later
-          // valid episode can be saved without making the discarded one valid again.
-
-          if (currentDay && isValidTime(currentTime) && !alreadySawThisEpisode && !isIgnoredRssEpisode) {
-            entry.history.push({ day: currentDay, time: currentTime, mins: toMinutes(currentTime), episode: trackerEp });
-            if (entry.history.length > 3) entry.history.shift();
-          }
 
           if (entry.history.length > 0) {
             const medMins = medianTime(entry.history.map(h => h.mins));
@@ -3602,12 +3788,20 @@
 
           cache[key] = {
             ...entry,
+            ...(rssObservation.saved && (item.rssMatchedTitle || item.matchedTitle)
+              ? { rssMatchedTitle: item.rssMatchedTitle || item.matchedTitle }
+              : {}),
             ...(entry.origin === "rss" && rssScheduleDay && rssScheduleTime
               ? { rssScheduleDay, rssScheduleTime }
               : {})
           }; 
         } else {
-          cache[key] = { ...entry };
+          cache[key] = {
+            ...entry,
+            ...(rssObservation.saved && (item.rssMatchedTitle || item.matchedTitle)
+              ? { rssMatchedTitle: item.rssMatchedTitle || item.matchedTitle }
+              : {})
+          };
           output.push(item);
         }
       }
@@ -3762,13 +3956,25 @@
             Number.isFinite(previousAiringAt) && previousAiringAt > 0 &&
             previousAiringAt < nextAiringAt &&
             (confirmedEpisode === null || confirmedEpisode < previousEpisode)) {
-          const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, timing, timeZone);
+          // AniList may advance before SubsPlease releases the episode. When we have
+          // learned RSS history, keep that just-aired episode in Next Up until the
+          // show's exact median RSS slot. No grace is added in either direction.
+          const learnedRssDay = String(item.rssScheduleDay || "");
+          const learnedRssTime = String(item.rssScheduleTime || "");
+          const previousTiming = WEEKDAYS.includes(learnedRssDay) && isValidTime(learnedRssTime)
+            ? { day: learnedRssDay, time: learnedRssTime, source: "rss" }
+            : timing;
+          const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, previousTiming, timeZone);
           if (Number.isFinite(previousAtMs)) {
-            candidates.push({ occurrenceAtMs: previousAtMs, episodeNumber: previousEpisode });
+            candidates.push({
+              occurrenceAtMs: previousAtMs,
+              episodeNumber: previousEpisode,
+              timing: previousTiming
+            });
           }
         }
-        // Bind the badge to this particular release. Do not manufacture another
-        // weekly occurrence of an episode whose known release time has already passed.
+        // Bind the badge to this particular release. The just-aired AniList episode
+        // remains eligible only until its learned RSS slot, or until RSS confirms it.
         return candidates
           .filter(entry => entry.occurrenceAtMs > nowMs)
           .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs)[0] || null;
@@ -4239,9 +4445,9 @@
       }
     }
 
-    function getVisibleFinalHoldoverItems(existingIds) {
+    function getVisibleFinalHoldoverItems(existingItemsById) {
       const output = [];
-      const seenIds = existingIds || new Set();
+      const existingItems = existingItemsById instanceof Map ? existingItemsById : new Map();
 
       for (const [id, holdover] of Object.entries(state.finalHoldovers || {})) {
         if (!isFinalHoldoverVisibleToday(holdover, DEFAULT_TIMEZONE)) continue;
@@ -4250,10 +4456,20 @@
 
         const latestReleaseDate = item.latestReleaseDate || holdover.latestReleaseDate || null;
         const released = isFinalHoldoverReleased(holdover, DEFAULT_TIMEZONE);
-        // Before release, prefer a still-live AniList card. The pending holdover is only
-        // a safety net for the gap after AniList removes the finished show. Once the
-        // release time passes, the holdover intentionally replaces the live card.
-        if (seenIds.has(String(id)) && !released) continue;
+        const existingItem = existingItems.get(String(id));
+        const existingHasLiveFinal = Boolean(
+          existingItem &&
+          !existingItem.isEnded &&
+          existingItem.isFinalEpisode &&
+          episodeNumberFromToken(existingItem.aniListNextEpisode) !== null &&
+          Number.isFinite(Number(existingItem.nextAiringAt)) &&
+          Number(existingItem.nextAiringAt) > 0
+        );
+
+        // Keep a genuinely live AniList final before the predicted release. If AniList
+        // has already ended/cleared the finale, let the pending holdover take over so the
+        // card and Next Up survive until the board's predicted release time.
+        if (existingHasLiveFinal && !released) continue;
 
         output.push({
           ...item,
@@ -4325,7 +4541,9 @@
       }
       await saveFinalHoldovers(state.userName, state.finalHoldovers);
 
-      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(new Set(cached.map(item => String(item.id))));
+      const visibleFinalHoldovers = getVisibleFinalHoldoverItems(
+        new Map(cached.map(item => [String(item.id), item]))
+      );
       const visibleFinalHoldoverIds = new Set(visibleFinalHoldovers.map(item => String(item.id)));
       const cachedWithoutVisibleHoldovers = cached.filter(item => !visibleFinalHoldoverIds.has(String(item.id)));
 
@@ -4707,10 +4925,11 @@
 
       try {
         // Storage failures must stop the refresh before any empty fallback can be written.
-        let [nextOverrides, nextAddedShows, nextFinalHoldovers] = await Promise.all([
+        let [nextOverrides, nextAddedShows, nextFinalHoldovers, nextSlotCache] = await Promise.all([
           loadOverrides(userName),
           loadAddedShows(userName),
-          loadFinalHoldovers(userName)
+          loadFinalHoldovers(userName),
+          loadSlotCache(userName)
         ]);
         const rssUrls = getRssUrls();
         const sameUser = String(state.userName || "").trim().toLowerCase() === userName.toLowerCase();
@@ -4745,6 +4964,7 @@
         // Preserve previously learned RSS slots when a transient RSS failure would
         // otherwise blank them out. Only replace them when at least one feed succeeded.
         let nextPrimaryCandidates = state.primaryCandidates || [];
+        let freshRssCandidatesAvailable = false;
 
         if (rssResult.status === "fulfilled") {
           const allCandidates = [];
@@ -4775,6 +4995,7 @@
 
           if (anyUsableCandidates) {
             nextPrimaryCandidates = mergeFeedCandidates(allCandidates);
+            freshRssCandidatesAvailable = true;
           } else {
             nextNotes.push(anyFeedParsed
               ? "RSS feeds returned no usable releases; keeping previous RSS slot data."
@@ -4838,21 +5059,39 @@
           loadAddedShows(userName)
         ]);
 
-        // Detect and correct for a systematic RSS pubDate offset (e.g. SubsPlease
-        // stamping timestamps in a different timezone than +0000 claims). Uses AniList
-        // next-airing data as ground truth, so it self-corrects when their feed changes.
-        const residualOffset = detectRssTimeOffset(nextPrimaryCandidates, nextCurrentEntries, DEFAULT_TIMEZONE);
-        if (residualOffset !== null && Math.abs(residualOffset) >= RSS_OFFSET_APPLY_THRESHOLD_MS) {
+        // Detect a systematic RSS feed-clock error from FRESH feed data only.
+        // Prefer previously learned RSS schedules; use AniList as a bootstrap fallback.
+        // The detector returns the desired ABSOLUTE whole-hour correction, so it cannot
+        // drift by repeatedly adding residuals (the old +7 -> +7.5 failure mode).
+        const offsetDetection = freshRssCandidatesAvailable
+          ? detectRssTimeOffset(
+              nextPrimaryCandidates,
+              nextCurrentEntries,
+              nextSlotCache,
+              aniListResult.status === "fulfilled",
+              DEFAULT_TIMEZONE
+            )
+          : null;
+
+        if (offsetDetection) {
+          const desiredOffset = Number(offsetDetection.desiredOffsetMs);
           const currentOffset = Number(state.rssTimeOffsetMs) || 0;
-          const proposedOffset = currentOffset + residualOffset;
-          // Bound the total correction, not only the latest residual. This still permits
-          // the observed ~7h feed-clock shift but prevents repeated adjustments from
-          // walking the persisted correction outside the intended safety window.
-          if (Math.abs(proposedOffset) <= RSS_OFFSET_SANITY_BOUND_MS) {
-            state.rssTimeOffsetMs = proposedOffset;
-            saveRssTimeOffset(state.rssTimeOffsetMs);
-            // Re-parse the freshly fetched feeds with the corrected offset so this
-            // cycle already sees the fix, instead of waiting until the next fetch.
+          const currentIsWholeHour = currentOffset % (60 * 60 * 1000) === 0;
+          const isInitialCorrection = currentOffset === 0;
+          const largeEnoughInitial = !isInitialCorrection || Math.abs(desiredOffset) >= RSS_OFFSET_INITIAL_MIN_ABS_MS;
+          const requiredSupport = isInitialCorrection
+            ? RSS_OFFSET_MIN_AGREEING
+            : (currentIsWholeHour ? RSS_OFFSET_EXISTING_CHANGE_SUPPORT : RSS_OFFSET_MIN_AGREEING);
+          const enoughSupport = Number(offsetDetection.support) >= requiredSupport;
+          const changed = Number.isFinite(desiredOffset) && desiredOffset !== currentOffset;
+
+          if (changed && largeEnoughInitial && enoughSupport && Math.abs(desiredOffset) <= RSS_OFFSET_SANITY_BOUND_MS) {
+            state.rssTimeOffsetMs = desiredOffset;
+            saveRssTimeOffset(desiredOffset);
+
+            // Re-parse this same network response immediately with the new correction.
+            // This makes the board and history correct in the current sync rather than
+            // waiting for the next 5-minute poll.
             const correctedCandidates = [];
             let correctedAny = false;
             if (rssResult.status === "fulfilled") {
@@ -4879,12 +5118,12 @@
               }
               if (newest > 0) state.lastRssReleaseAt = newest;
             }
-            const hours = (state.rssTimeOffsetMs / 3600000).toFixed(1);
-            console.info(`RSS timestamps auto-corrected by ${hours}h to match AniList.`);
-          } else {
-            console.warn("Ignored RSS timestamp correction outside the +/-8h safety window.", {
-              currentOffset, residualOffset, proposedOffset
-            });
+
+            const hours = desiredOffset / 3600000;
+            console.info(
+              `RSS feed-clock correction set to ${hours > 0 ? "+" : ""}${hours}h ` +
+              `from ${offsetDetection.support}/${offsetDetection.observationCount} ${offsetDetection.basis} observations.`
+            );
           }
         }
 
