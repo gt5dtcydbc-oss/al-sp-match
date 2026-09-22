@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Video Summagator — Space-Time Cube</title>
+<title>Video Summagator — Space-Time Cube + Ghost Frames</title>
 <style>
   :root{
     color-scheme:dark;
@@ -61,6 +61,8 @@
   .slice::after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.76);pointer-events:none}
   .sliceLabel{position:absolute;left:8px;top:8px;z-index:3;padding:4px 6px;border-radius:4px;background:rgba(0,0,0,.58);font-size:10px;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85);pointer-events:none}
   #ghostPlane{position:absolute;left:50%;top:50%;width:var(--cube-w);height:var(--cube-h);transform:translate(-50%,-50%) translateZ(var(--ghost-z));outline:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.025);pointer-events:none;display:none;backface-visibility:hidden}
+  .ghostSlice{position:absolute;left:50%;top:50%;width:var(--cube-w);height:var(--cube-h);transform:translate(-50%,-50%) translateZ(var(--ghost-slice-z));opacity:var(--ghost-slice-alpha);pointer-events:none;backface-visibility:hidden;overflow:hidden;background:transparent;box-shadow:0 0 0 1px rgba(255,255,255,.07);will-change:transform,opacity;contain:paint}
+  .ghostSlice canvas{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none}
 
   .topbar{position:absolute;z-index:20;left:18px;right:18px;top:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none}
   .brand,.actions{pointer-events:auto}
@@ -165,7 +167,7 @@
   <div id="loading" role="status" aria-live="polite">
     <div id="loadingHead"><span id="loadingText">Preparing full-video time surfaces…</span><span id="loadingPct">0%</span></div>
     <div class="bar"><i id="loadingBar"></i></div>
-    <div id="loadingHint">The side textures are cached once. They are not rebuilt during playback.</div>
+    <div id="loadingHint">The side textures and low-resolution context frames are cached once. They are not rebuilt during playback.</div>
   </div>
 
   <aside id="controls" aria-label="Video cube controls">
@@ -206,6 +208,10 @@
       <div class="checks"><div class="check"><input id="showEnds" type="checkbox" checked><label for="showEnds">Show end frames</label></div><div class="check"><input id="showSlice" type="checkbox" checked><label for="showSlice">Show live frame</label></div></div>
       <div class="checks"><div class="check"><input id="hideNearSide" type="checkbox" checked><label for="hideNearSide">Hide near wall</label></div><div class="check"><input id="showTimeLabel" type="checkbox" checked><label for="showTimeLabel">Frame time</label></div></div>
       <div class="checks"><div class="check"><input id="showSideWalls" type="checkbox" checked><label for="showSideWalls">Left / right</label></div><div class="check"><input id="showVerticalWalls" type="checkbox" checked><label for="showVerticalWalls">Top / bottom</label></div></div>
+      <div class="checks"><div class="check"><input id="showGhosts" type="checkbox" checked><label for="showGhosts">Ghost frames</label></div><div class="check"><input id="ghostOnlyPlaying" type="checkbox" checked><label for="ghostOnlyPlaying">Only while playing</label></div></div>
+      <div class="row"><label for="ghostCount">Ghosts / side</label><input id="ghostCount" type="range" min="1" max="6" step="1" value="3"><output id="ghostCountOut">3</output></div>
+      <div class="row"><label for="ghostSpan">Ghost span</label><input id="ghostSpan" type="range" min="0.2" max="3" step="0.1" value="1.2"><output id="ghostSpanOut">1.2 s</output></div>
+      <div class="row"><label for="ghostOpacity">Ghost opacity</label><input id="ghostOpacity" type="range" min="0" max="50" step="1" value="18"><output id="ghostOpacityOut">18%</output></div>
     </div>
 
     <div class="section">
@@ -263,6 +269,8 @@
   const exportVideoBtn = $('#exportVideo');
   const firstFrameStore = document.createElement('canvas');
   const lastFrameStore = document.createElement('canvas');
+  const ghostAtlas = document.createElement('canvas');
+  const ghostAtlasCtx = ghostAtlas.getContext('2d', {alpha:false});
   const empty = $('#empty');
   const loading = $('#loading');
   const loadingText = $('#loadingText');
@@ -309,6 +317,12 @@
   let previewState = null;
   let previewRaf = 0;
   let exporting = false;
+  let ghostAtlasCols = 1;
+  let ghostAtlasRows = 1;
+  let ghostTileW = 160;
+  let ghostTileH = 90;
+  let ghostSampleCount = 0;
+  let ghostPlanePool = [];
 
   const view = {yaw:0, pitch:0, panX:0, panY:0, zoom:1};
   const defaultView = {yaw:0, pitch:0, panX:0, panY:0, zoom:1};
@@ -350,6 +364,82 @@
   function isTimeReversed(){ return $('#timeDirection')?.value==='back-front'; }
   function spatialNormFromTime(norm){ return isTimeReversed()?1-clamp(norm,0,1):clamp(norm,0,1); }
   function timeNormFromSpatial(norm){ return isTimeReversed()?1-clamp(norm,0,1):clamp(norm,0,1); }
+
+  function setupGhostAtlas(n){
+    ghostSampleCount=Math.max(1,n|0);
+    const maxDim=160;
+    if(videoAspect>=1){ ghostTileW=maxDim; ghostTileH=Math.max(48,Math.round(maxDim/Math.max(.1,videoAspect))); }
+    else { ghostTileH=maxDim; ghostTileW=Math.max(48,Math.round(maxDim*Math.max(.1,videoAspect))); }
+    ghostAtlasCols=Math.ceil(Math.sqrt(ghostSampleCount));
+    ghostAtlasRows=Math.ceil(ghostSampleCount/ghostAtlasCols);
+    ghostAtlas.width=ghostAtlasCols*ghostTileW;
+    ghostAtlas.height=ghostAtlasRows*ghostTileH;
+    ghostAtlasCtx.fillStyle='#000'; ghostAtlasCtx.fillRect(0,0,ghostAtlas.width,ghostAtlas.height);
+    for(const p of ghostPlanePool){ p.dataset.sample=''; }
+  }
+  function storeGhostSample(index,source){
+    if(!ghostAtlas.width || !ghostAtlas.height || index<0 || index>=ghostSampleCount) return;
+    const col=index%ghostAtlasCols, row=Math.floor(index/ghostAtlasCols);
+    ghostAtlasCtx.drawImage(source,col*ghostTileW,row*ghostTileH,ghostTileW,ghostTileH);
+  }
+  function ghostAtlasRect(index){
+    const i=clamp(Math.round(index),0,Math.max(0,ghostSampleCount-1));
+    const col=i%ghostAtlasCols, row=Math.floor(i/ghostAtlasCols);
+    return {x:col*ghostTileW,y:row*ghostTileH,w:ghostTileW,h:ghostTileH};
+  }
+  function ghostAtlasUv(index){
+    const r=ghostAtlasRect(index), aw=Math.max(1,ghostAtlas.width), ah=Math.max(1,ghostAtlas.height);
+    const insetU=.5/aw, insetV=.5/ah;
+    return {u0:r.x/aw+insetU,v0:r.y/ah+insetV,u1:(r.x+r.w)/aw-insetU,v1:(r.y+r.h)/ah-insetV};
+  }
+  function ensureGhostPlanes(count){
+    const need=Math.max(0,count|0);
+    while(ghostPlanePool.length<need){
+      const el=document.createElement('div'); el.className='ghostSlice'; el.setAttribute('aria-hidden','true');
+      const cv=document.createElement('canvas'); cv.width=ghostTileW; cv.height=ghostTileH; el.appendChild(cv);
+      cube.insertBefore(el,ghostPlane); ghostPlanePool.push(el);
+    }
+    for(let i=0;i<ghostPlanePool.length;i++) ghostPlanePool[i].style.display=i<need?'block':'none';
+  }
+  function hideGhostFrames(){ for(const p of ghostPlanePool) p.style.display='none'; }
+  function refreshGhostFrames(force=false,norm=selectedNorm){
+    const enabled=$('#showGhosts')?.checked!==false;
+    const onlyPlaying=$('#ghostOnlyPlaying')?.checked===true;
+    if(!ready || !enabled || !duration || ghostSampleCount<2 || (onlyPlaying && !isPlaybackActive())){ hideGhostFrames(); return; }
+    const count=clamp(Number($('#ghostCount')?.value)||3,1,6);
+    const span=clamp(Number($('#ghostSpan')?.value)||1.2,.05,Math.max(.05,duration));
+    const baseAlpha=clamp((Number($('#ghostOpacity')?.value)||0)/100,0,.8);
+    if(baseAlpha<=.001){ hideGhostFrames(); return; }
+    ensureGhostPlanes(count*2);
+    const cur=clamp(norm,0,1)*duration;
+    const currentIdx=Math.round(clamp(norm,0,1)*(ghostSampleCount-1));
+    const seen=new Set([currentIdx]);
+    let slot=0;
+    for(const sign of [-1,1]){
+      for(let k=1;k<=count;k++){
+        const t=cur+sign*(span*k/count);
+        if(t<0 || t>duration) continue;
+        const tn=clamp(t/duration,0,1);
+        const idx=Math.round(tn*(ghostSampleCount-1));
+        if(seen.has(idx)) continue;
+        seen.add(idx);
+        const el=ghostPlanePool[slot++];
+        const cv=el.firstElementChild;
+        if(cv.width!==ghostTileW || cv.height!==ghostTileH){ cv.width=ghostTileW; cv.height=ghostTileH; el.dataset.sample=''; }
+        if(force || el.dataset.sample!==String(idx)){
+          const r=ghostAtlasRect(idx), ctx=cv.getContext('2d',{alpha:false});
+          ctx.drawImage(ghostAtlas,r.x,r.y,r.w,r.h,0,0,cv.width,cv.height);
+          el.dataset.sample=String(idx);
+        }
+        const z=cubeD/2-spatialNormFromTime(tn)*cubeD;
+        const alpha=baseAlpha*Math.pow(.58,k-1);
+        el.style.setProperty('--ghost-slice-z',`${z}px`);
+        el.style.setProperty('--ghost-slice-alpha',String(alpha));
+        el.style.display='block';
+      }
+    }
+    for(let i=slot;i<ghostPlanePool.length;i++) ghostPlanePool[i].style.display='none';
+  }
 
   function updateWallVisibility(){
     const left=document.querySelector('.left');
@@ -428,6 +518,7 @@
     const cut=$('#timeCut'); if(cut) cut.value=String(Math.round(selectedNorm*1000));
     const cutOut=$('#timeCutOut'); if(cutOut) cutOut.textContent=fmt(selectedNorm*duration);
     sliceLabel.textContent=fmt(selectedNorm*duration);
+    refreshGhostFrames(false,selectedNorm);
   }
   function updateGhost(norm){
     if(norm==null){ ghostPlane.style.display='none'; return; }
@@ -447,6 +538,7 @@
   }
   function setReady(on){
     ready=on;
+    if(!on) hideGhostFrames();
     transport.classList.toggle('ready',on);
     frontViewBtn.disabled=!on; resetViewBtn.disabled=!on; rebuildBtn.disabled=!on;
     previewExportBtn.disabled=!on; exportVideoBtn.disabled=!on;
@@ -467,6 +559,7 @@
     canvases.top.width=w; canvases.top.height=n;
     canvases.bottom.width=w; canvases.bottom.height=n;
     sampleCanvas.width=w; sampleCanvas.height=h;
+    setupGhostAtlas(n);
     const out={n,w,h};
     for(const [k,c] of Object.entries(canvases)){
       out[k]=c.getContext('2d',{alpha:false});
@@ -544,6 +637,7 @@
         const t=samplerDuration*(i/Math.max(1,c.n-1));
         await seekSampler(t);
         sampleCtx.drawImage(samplerVideo,0,0,c.w,c.h);
+        storeGhostSample(i,sampleCanvas);
         if(i===0) firstFrameStore.getContext('2d',{alpha:false}).drawImage(sampleCanvas,0,0);
         if(i===c.n-1) lastFrameStore.getContext('2d',{alpha:false}).drawImage(sampleCanvas,0,0);
 
@@ -566,7 +660,8 @@
       updateTimeUI(true);
       meta.textContent=`${video.videoWidth}×${video.videoHeight} · ${fmt(duration)} · ${c.n} cached time samples`;
       loading.classList.remove('show'); setReady(true);
-      bufferState.textContent='surfaces cached';
+      refreshGhostFrames(true,duration?video.currentTime/duration:0);
+      bufferState.textContent='surfaces cached + ghost frames';
       if(wasReverse) startReversePlayback();
       else if(wasPlaying) video.play().catch(()=>{});
     }catch(err){
@@ -615,13 +710,14 @@
     reversePlaying=false; reverseAccumulator=0; reverseLastTs=0;
     if(reverseRaf){ cancelAnimationFrame(reverseRaf); reverseRaf=0; }
     if(updateUi) setPlayUi(false);
+    refreshGhostFrames(true,duration?video.currentTime/duration:0);
   }
   function startReversePlayback(){
     if(!ready || !duration) return;
     video.pause();
     if(video.currentTime<=0.01) video.currentTime=Math.max(0,duration-.003);
     reversePlaying=true; reverseAccumulator=0; reverseLastTs=performance.now();
-    setPlayUi(true); bufferState.textContent='reverse seek mode';
+    setPlayUi(true); bufferState.textContent='reverse seek mode'; refreshGhostFrames(true,duration?video.currentTime/duration:0);
     const tick=ts=>{
       if(!reversePlaying) return;
       const dt=Math.min(.1,Math.max(0,(ts-reverseLastTs)/1000));
@@ -742,10 +838,11 @@
   video.addEventListener('play',()=>{
     if(reversePlaying) stopReversePlayback(false);
     setPlayUi(true);
+    refreshGhostFrames(true,duration?video.currentTime/duration:0);
     if(typeof video.requestVideoFrameCallback==='function') frameCallbackHandle=video.requestVideoFrameCallback(frameLoop);
   });
-  video.addEventListener('pause',()=>{ if(!reversePlaying) setPlayUi(false); updateTimeUI(true); });
-  video.addEventListener('ended',()=>{ if(!reversePlaying) setPlayUi(false); updateTimeUI(true); });
+  video.addEventListener('pause',()=>{ if(!reversePlaying) setPlayUi(false); updateTimeUI(true); refreshGhostFrames(true,duration?video.currentTime/duration:0); });
+  video.addEventListener('ended',()=>{ if(!reversePlaying) setPlayUi(false); updateTimeUI(true); refreshGhostFrames(true,duration?video.currentTime/duration:0); });
   video.addEventListener('timeupdate',()=>{ if(typeof video.requestVideoFrameCallback!=='function') updateTimeUI(false); });
   video.addEventListener('seeking',()=>{bufferState.textContent='seeking…'});
   video.addEventListener('seeked',()=>{bufferState.textContent='ready'; updateTimeUI(true)});
@@ -864,7 +961,7 @@
     const tLoc={pos:gl.getAttribLocation(texProgram,'aPos'),uv:gl.getAttribLocation(texProgram,'aUv'),mvp:gl.getUniformLocation(texProgram,'uMVP'),tex:gl.getUniformLocation(texProgram,'uTex'),alpha:gl.getUniformLocation(texProgram,'uAlpha')};
     const lLoc={pos:gl.getAttribLocation(lineProgram,'aPos'),mvp:gl.getUniformLocation(lineProgram,'uMVP'),color:gl.getUniformLocation(lineProgram,'uColor')};
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
-    const textureSources={front:canvases.front,back:canvases.back,left:canvases.left,right:canvases.right,top:canvases.top,bottom:canvases.bottom};
+    const textureSources={front:canvases.front,back:canvases.back,left:canvases.left,right:canvases.right,top:canvases.top,bottom:canvases.bottom,ghost:ghostAtlas};
     const textures={};
     function newTexture(source){
       const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
@@ -921,6 +1018,22 @@
       if(verticalOn && !hidden.has('bottom')){
         const fv=reversed?0:1,bv=reversed?1:0;
         add('bottom',quadData([-hx,-hy,hz],[hx,-hy,hz],[hx,-hy,-hz],[-hx,-hy,-hz],[0,fv],[1,fv],[1,bv],[0,bv]),sideAlpha,[0,-hy,0]);
+      }
+      const ghostEnabled=$('#showGhosts').checked && ghostSampleCount>1 && duration>0 && (!$('#ghostOnlyPlaying').checked || $('#exportMode').value==='playback');
+      if(ghostEnabled){
+        const ghostCount=clamp(Number($('#ghostCount').value)||3,1,6);
+        const ghostSpan=clamp(Number($('#ghostSpan').value)||1.2,.05,Math.max(.05,duration));
+        const ghostBase=clamp((Number($('#ghostOpacity').value)||0)/100,0,.8);
+        const cur=timeNorm*duration, currentIdx=Math.round(clamp(timeNorm,0,1)*(ghostSampleCount-1));
+        const seen=new Set([currentIdx]);
+        for(const sign of [-1,1]) for(let k=1;k<=ghostCount;k++){
+          const gt=cur+sign*(ghostSpan*k/ghostCount);
+          if(gt<0 || gt>duration) continue;
+          const gn=clamp(gt/duration,0,1), idx=Math.round(gn*(ghostSampleCount-1));
+          if(seen.has(idx)) continue; seen.add(idx);
+          const gz=hz-spatialNormFromTime(gn)*d, uv=ghostAtlasUv(idx), a=ghostBase*Math.pow(.58,k-1);
+          add('ghost',quadData([-hx,-hy,gz],[hx,-hy,gz],[hx,hy,gz],[-hx,hy,gz],[uv.u0,uv.v0],[uv.u1,uv.v0],[uv.u1,uv.v1],[uv.u0,uv.v1]),a,[0,0,gz]);
+        }
       }
       if(showSlice){
         const sz=hz-spatialNormFromTime(timeNorm)*d;
@@ -1056,6 +1169,11 @@
   $('#showVerticalWalls').addEventListener('change',()=>updateWallVisibility());
   $('#timeDirection').addEventListener('change',()=>{ if(previewState) finishPreview(true); applyTimeDirection(); });
   $('#showTimeLabel').addEventListener('change',()=>{sliceLabel.style.display=$('#showTimeLabel').checked?'block':'none'});
+  $('#showGhosts').addEventListener('change',()=>refreshGhostFrames(true));
+  $('#ghostOnlyPlaying').addEventListener('change',()=>refreshGhostFrames(true));
+  bindRange('#ghostCount','#ghostCountOut',v=>{refreshGhostFrames(true);},v=>String(Math.round(v)));
+  bindRange('#ghostSpan','#ghostSpanOut',v=>{refreshGhostFrames(true);},v=>`${Number(v).toFixed(1)} s`);
+  bindRange('#ghostOpacity','#ghostOpacityOut',v=>{refreshGhostFrames(true);},v=>`${Math.round(v)}%`);
   $('#samples').addEventListener('change',()=>{ if(ready) showToast('Press “Rebuild side textures” to apply the new sample count.',1900); });
   $('#edgeStrip').addEventListener('change',()=>{ if(ready) showToast('Press “Rebuild side textures” to apply the new edge strip.',1900); });
   rebuildBtn.addEventListener('click',()=>buildSurfaces(true));
