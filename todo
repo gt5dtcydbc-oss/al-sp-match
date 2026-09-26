@@ -4,4 +4,4 @@ Ghost frames / trailing
 Small bug where the episode progress with the anilist tile and not the rss time
 Shows that are on break or have yet to air their first episode should be darker / lower opacity
 Up Next skipping two shows for next day
-Matching not picking up show
+Matching not picking up show - but EP indicator (pulse air time) sees it
