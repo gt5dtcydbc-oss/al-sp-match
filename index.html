@@ -3560,83 +3560,82 @@
       return Number.isInteger(episode) ? String(episode).padStart(2, "0") : String(episode);
     }
 
-    function recordMatchedRssObservation(item, entry) {
-      const episode = episodeNumberFromToken(item?.matchedEpisode);
-      const currentDay = String(item?.latestReleaseDay || "");
-      const currentTime = String(item?.latestReleaseTime || "");
-      const releaseAtMs = Number(item?.latestReleaseDate);
+  function recordMatchedRssObservation(item, entry) {
+    const episode = episodeNumberFromToken(item?.matchedEpisode);
+    const currentDay = String(item?.latestReleaseDay || "");
+    const currentTime = String(item?.latestReleaseTime || "");
+    const releaseAtMs = Number(item?.latestReleaseDate);
 
-      // Observation trust is deliberately separate from display-source trust. A release
-      // can fail the AniList-vs-RSS timing sanity check and still be a valid sample when
-      // the title/episode match itself is confident and the feed timestamp is usable.
-      if (episode === null || !WEEKDAYS.includes(currentDay) || !isValidTime(currentTime) ||
-          !Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
+    // Basic validity: need a day, time, and a timestamp.
+    if (!WEEKDAYS.includes(currentDay) || !isValidTime(currentTime) ||
+        !Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
         return { saved: false, changed: false, reason: "incomplete" };
-      }
+    }
 
-      const totalEpisode = episodeNumberFromToken(item?.totalEpisodeNumber);
-      if (totalEpisode !== null && episode > totalEpisode) {
+    // Fallback episode matching the working version's logic:
+    // if matchedEpisode is null, use displayEpisode - 1 (the just-aired episode).
+    let resolvedEpisode = episode;
+    if (resolvedEpisode === null) {
+        const nextEp = episodeNumberFromToken(item?.aniListNextEpisode);
+        if (nextEp !== null && nextEp > 1) resolvedEpisode = nextEp - 1;
+    }
+    if (resolvedEpisode === null) {
+        return { saved: false, changed: false, reason: "incomplete" };
+    }
+
+    // Keep the beyond-total guard (prevents genuinely invalid data)
+    const totalEpisode = episodeNumberFromToken(item?.totalEpisodeNumber);
+    if (totalEpisode !== null && resolvedEpisode > totalEpisode) {
         return { saved: false, changed: false, reason: "beyond-total" };
-      }
+    }
 
-      const nextEpisode = episodeNumberFromToken(item?.aniListNextEpisode);
-      // AniList can itself lag briefly around an airing transition, so allow a small
-      // one/two-episode cushion while still rejecting obviously unrelated episode numbers.
-      if (nextEpisode !== null && episode > nextEpisode + 2) {
-        return { saved: false, changed: false, reason: "implausibly-ahead-of-anilist" };
-      }
+    // REMOVED: implausibly-ahead-of-anilist guard
+    // REMOVED: older-than-history guard
 
-      entry.history = Array.isArray(entry.history) ? entry.history : [];
-      const historyEpisodes = entry.history
-        .map(sample => episodeNumberFromToken(sample?.episode))
-        .filter(value => value !== null);
-      const newestHistoryEpisode = historyEpisodes.length ? Math.max(...historyEpisodes) : null;
-      if (newestHistoryEpisode !== null && episode < newestHistoryEpisode) {
-        return { saved: false, changed: false, reason: "older-than-history" };
-      }
+    entry.history = Array.isArray(entry.history) ? entry.history : [];
 
-      const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
-      if (ignoredRssEpisode !== null && ignoredRssEpisode === episode) {
+    // Keep the ignored-episode guard (respects user's "Drop latest" action)
+    const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
+    if (ignoredRssEpisode !== null && ignoredRssEpisode === resolvedEpisode) {
         return { saved: false, changed: false, reason: "ignored" };
-      }
+    }
 
-      const episodeToken = rssEpisodeToken(episode);
-      const sample = {
+    const episodeToken = rssEpisodeToken(resolvedEpisode);
+    const sample = {
         day: currentDay,
         time: currentTime,
         mins: toMinutes(currentTime),
         episode: episodeToken,
         releaseAtMs,
         offsetMs: Number(state.rssTimeOffsetMs) || 0
-      };
-      const existingHistoryIndex = entry.history.findIndex(
-        historySample => episodeNumberFromToken(historySample?.episode) === episode
-      );
+    };
 
-      let changed = false;
-      if (existingHistoryIndex >= 0) {
+    const existingHistoryIndex = entry.history.findIndex(
+        historySample => episodeNumberFromToken(historySample?.episode) === resolvedEpisode
+    );
+    let changed = false;
+    if (existingHistoryIndex >= 0) {
         // Rebase an already-seen episode if the learned feed-clock correction changes.
         const existing = entry.history[existingHistoryIndex] || {};
         if (existing.day !== sample.day || existing.time !== sample.time ||
             Number(existing.releaseAtMs) !== Number(sample.releaseAtMs) ||
             Number(existing.offsetMs || 0) !== Number(sample.offsetMs || 0)) {
-          entry.history[existingHistoryIndex] = sample;
-          changed = true;
+            entry.history[existingHistoryIndex] = sample;
+            changed = true;
         }
-      } else {
+    } else {
         entry.history.push(sample);
         if (entry.history.length > 3) entry.history.shift();
         changed = true;
-      }
-
-      const storedLatestRelease = Number(entry.latestReleaseDate);
-      if (!Number.isFinite(storedLatestRelease) || releaseAtMs >= storedLatestRelease) {
-        entry.latestReleaseDate = releaseAtMs;
-      }
-      if (changed) entry.updatedAt = new Date().toISOString();
-
-      return { saved: true, changed, sample };
     }
+
+    const storedLatestRelease = Number(entry.latestReleaseDate);
+    if (!Number.isFinite(storedLatestRelease) || releaseAtMs >= storedLatestRelease) {
+        entry.latestReleaseDate = releaseAtMs;
+    }
+    if (changed) entry.updatedAt = new Date().toISOString();
+    return { saved: true, changed, sample };
+}
 
     async function applyCache(items) {
       const output = [];
