@@ -4340,7 +4340,7 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${item.isUpcomingSeason && (!item.hasNextAiring || item.diffDays > 7) ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${item.isUpcomingSeason && (!item.hasNextAiring || item.diffDays > 6) ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
