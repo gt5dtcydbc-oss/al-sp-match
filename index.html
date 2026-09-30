@@ -3945,6 +3945,7 @@
         const previousAiringAt = Number(item.tickerPreviousAiringAt);
         const confirmedEpisode = episodeNumberFromToken(item.tickerConfirmedRssEpisode);
         const candidates = [];
+        let hasPreviousReleaseCandidate = false;
 
         // If RSS has already confirmed the episode AniList still calls "next", that
         // release is no longer upcoming. Wait for AniList to provide the following
@@ -3956,9 +3957,8 @@
             Number.isFinite(previousAiringAt) && previousAiringAt > 0 &&
             previousAiringAt < nextAiringAt &&
             (confirmedEpisode === null || confirmedEpisode < previousEpisode)) {
-          // AniList may advance before SubsPlease releases the episode. When we have
-          // learned RSS history, keep that just-aired episode in Next Up until the
-          // show's exact median RSS slot. No grace is added in either direction.
+          // Preferred bridge: when we observed AniList advancing, keep that exact
+          // previous episode/date alive until its predicted release slot.
           const learnedRssDay = String(item.rssScheduleDay || "");
           const learnedRssTime = String(item.rssScheduleTime || "");
           const previousTiming = WEEKDAYS.includes(learnedRssDay) && isValidTime(learnedRssTime)
@@ -3971,10 +3971,41 @@
               episodeNumber: previousEpisode,
               timing: previousTiming
             });
+            hasPreviousReleaseCandidate = true;
           }
         }
-        // Bind the badge to this particular release. The just-aired AniList episode
-        // remains eligible only until its learned RSS slot, or until RSS confirms it.
+
+        // Recovery bridge: Safari/background refreshes or cache rebuilds can miss the
+        // exact AniList transition above. If AniList already points at next week's
+        // episode but RSS has not confirmed this week's episode, reconstruct this
+        // week's release from the next AniList date and the board's predicted slot.
+        // The reconstructed episode is NEVER held past that predicted slot.
+        const inferredPreviousEpisode = nextEpisode - 1;
+        if (!hasPreviousReleaseCandidate && inferredPreviousEpisode > 0 &&
+            (confirmedEpisode === null || confirmedEpisode < inferredPreviousEpisode)) {
+          const nextAirDateKey = localDateKeyFromMs(nextAiringAt * 1000, timeZone);
+          const previousAirDateKey = nextAirDateKey ? shiftLocalDateKey(nextAirDateKey, -7) : "";
+          const inferredReleaseDateKey = previousAirDateKey
+            ? closestDateKeyForWeekday(previousAirDateKey, timing.day, timeZone)
+            : "";
+          const inferredPreviousAtMs = inferredReleaseDateKey
+            ? localTimestampFromDateKeyAndTime(inferredReleaseDateKey, timing.time, timeZone)
+            : null;
+
+          if (Number.isFinite(inferredPreviousAtMs) &&
+              inferredPreviousAtMs > nowMs && inferredPreviousAtMs < nextAtMs) {
+            candidates.push({
+              occurrenceAtMs: inferredPreviousAtMs,
+              episodeNumber: inferredPreviousEpisode,
+              timing,
+              inferredPreviousRelease: true
+            });
+          }
+        }
+
+        // Bind the badge to a particular predicted release. A just-aired AniList
+        // episode stays only until its board/RSS slot, or until RSS confirms it.
+        // There is deliberately no late-release grace period.
         return candidates
           .filter(entry => entry.occurrenceAtMs > nowMs)
           .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs)[0] || null;
