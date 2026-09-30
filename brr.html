@@ -431,13 +431,14 @@
 <div class="card">
     <h1>AniList AutoBrr Filter Generator</h1>
     <p class="subtitle">
-        Generate comma-separated AutoBrr wildcard filters from your AniList CURRENT list or from one AniList show.
+        Generate comma-separated AutoBrr wildcard filters from your AniList CURRENT list, a Custom List, or from one AniList show.
         Uses AniList’s primary romaji, English, and preferred titles, with an optional English/romaji synonym toggle; no secondary metadata service is required.
     </p>
 
     <div class="input-group">
         <input type="text" id="username" placeholder="AniList Username" autocomplete="username">
-        <button id="generateBtn" type="button">Generate Watching List</button>
+        <input type="text" id="customListName" placeholder="Custom List Name (optional, e.g. 'Movies')" autocomplete="off">
+        <button id="generateBtn" type="button">Generate List</button>
     </div>
 
     <div class="seasonal-truth-block">
@@ -511,7 +512,7 @@
     </div>
 
     <p class="hint">
-        When using a username, only AniList entries with status <strong>CURRENT</strong> are included.
+        When using a username, only AniList entries with status <strong>CURRENT</strong> are included, unless you specify a <strong>Custom List Name</strong> (which will pull items from that list regardless of status).
         AniList synonyms are excluded by default. When enabled, only Latin-script-looking English/romaji synonyms are added. Very short titles are emitted exactly instead of as broad wildcards.
     </p>
 
@@ -525,6 +526,7 @@
 
     const els = {
         username: document.getElementById('username'),
+        customListName: document.getElementById('customListName'),
         generateBtn: document.getElementById('generateBtn'),
         seasonalTruthInput: document.getElementById('seasonalTruthInput'),
         singleShowInput: document.getElementById('singleShowInput'),
@@ -917,33 +919,55 @@
       return controller.signal;
     }
 
-    async function fetchAniListCurrent(username, retries = 2) {
+    async function fetchAniListCurrent(username, customListName = '', retries = 2) {
         if (Date.now() < aniListCooldownUntil) {
             await sleep(aniListCooldownUntil - Date.now());
         }
 
-        const query = `
-            query ($name: String) {
-              MediaListCollection(userName: $name, type: ANIME, status: CURRENT) {
-                lists {
-                  entries {
-                  
-                    media {
-                      id
-                      title { romaji english native userPreferred }
-                      synonyms
+        let query;
+        const variables = { name: username };
+
+        if (customListName) {
+            query = `
+                query ($name: String) {
+                  MediaListCollection(userName: $name, type: ANIME) {
+                    lists {
+                      name
+                      isCustomList
+                      entries {
+                        media {
+                          id
+                          title { romaji english native userPreferred }
+                          synonyms
+                        }
+                      }
                     }
-                  
                   }
                 }
-              }
-            }
-        `;
+            `;
+        } else {
+            query = `
+                query ($name: String) {
+                  MediaListCollection(userName: $name, type: ANIME, status: CURRENT) {
+                    lists {
+                      entries {
+                        media {
+                          id
+                          title { romaji english native userPreferred }
+                          synonyms
+                        }
+                      }
+                    }
+                  }
+                }
+            `;
+        }
+
         try {
             const response = await fetch(ANILIST_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ query, variables: { name: username } }),
+                body: JSON.stringify({ query, variables }),
                 signal: timeoutSignal(15000) 
  
             });
@@ -957,7 +981,7 @@
                 if (retries > 0) {
                     setStatus(`Rate limited by AniList. Pausing for ${retryAfter}s...`, 'warning');
                     await sleep(retryAfter * 1000);
-                    return fetchAniListCurrent(username, retries - 1);
+                    return fetchAniListCurrent(username, customListName, retries - 1);
                 }
                 throw new Error("AniList rate limit reached. Try again later.");
             }
@@ -971,18 +995,38 @@
             const collection = result.data?.MediaListCollection;
             if (!collection) throw new Error('User not found or list is private.');
 
-            const uniqueById = new Map();
             const lists = Array.isArray(collection.lists) ? collection.lists : [];
+            const uniqueById = new Map();
 
-            lists.forEach(list => {
-                const entries = Array.isArray(list.entries) ? list.entries : [];
+            if (customListName) {
+                // Find the specific custom list by name (case-insensitive)
+                const customList = lists.find(list => 
+                    list.isCustomList && 
+                    list.name.toLowerCase() === customListName.toLowerCase()
+                );
+                
+                if (!customList) {
+                    throw new Error(`Custom list "${customListName}" not found. Please check the spelling and ensure the list is not private.`);
+                }
+                
+                const entries = Array.isArray(customList.entries) ? customList.entries : [];
                 entries.forEach(entry => {
                     const media = entry?.media;
                     if (!media?.id) return;
-    
                     if (!uniqueById.has(media.id)) uniqueById.set(media.id, media);
                 });
-            });
+            } else {
+                // Existing logic for CURRENT status
+                lists.forEach(list => {
+                    const entries = Array.isArray(list.entries) ? list.entries : [];
+                    entries.forEach(entry => {
+                        const media = entry?.media;
+                        if (!media?.id) return;
+        
+                        if (!uniqueById.has(media.id)) uniqueById.set(media.id, media);
+                    });
+                });
+            }
             return [...uniqueById.values()];
         } catch (error) {
             if (error.name === 'AbortError' || error.name === 'TimeoutError') {
@@ -1362,6 +1406,8 @@
 
     async function generateUserFilter() {
         const username = els.username.value.trim();
+        const customListName = els.customListName.value.trim();
+        
         if (!username) {
             setStatus('Please enter an AniList username.', 'error');
             return;
@@ -1382,12 +1428,15 @@
             logLine(`Parsed ${seasonalTruthTitles.length.toLocaleString()} pasted seasonal name${seasonalTruthTitles.length === 1 ? '' : 's'}.`, 'ok');
         }
         safeSetItem('anilist_username', username);
+        safeSetItem('anilist_custom_list', customListName);
         safeSetItem(SEASONAL_TRUTH_KEY, rawSeasonalTruth);
         toggleButtons(true);
-        setStatus('Querying AniList for user list...');
+        
+        setStatus(customListName ? `Querying AniList for custom list "${customListName}"...` : 'Querying AniList for user list...');
+        
         try {
-            const mediaList = await fetchAniListCurrent(username);
-            if (!mediaList.length) throw new Error('No CURRENT anime found on this AniList account.');
+            const mediaList = await fetchAniListCurrent(username, customListName);
+            if (!mediaList.length) throw new Error(customListName ? `No anime found in the custom list "${customListName}".` : 'No CURRENT anime found on this AniList account.');
             processMediaList(mediaList, options);
         } catch (error) {
             setStatus(`Error: ${error?.message || 'Unknown error.'}`, 'error');
@@ -1450,6 +1499,9 @@
         const savedName = safeGetItem('anilist_username');
         if (savedName) els.username.value = savedName;
 
+        const savedCustomList = safeGetItem('anilist_custom_list');
+        if (savedCustomList && els.customListName) els.customListName.value = savedCustomList;
+
         const savedSeasonalTruth = safeGetItem(SEASONAL_TRUTH_KEY);
         if (savedSeasonalTruth && els.seasonalTruthInput) els.seasonalTruthInput.value = savedSeasonalTruth;
 
@@ -1461,6 +1513,12 @@
         els.username.addEventListener('keydown', event => {
             if (event.key === 'Enter') generateUserFilter();
         });
+        els.customListName.addEventListener('keydown', event => {
+            if (event.key === 'Enter') generateUserFilter();
+        });
+        els.customListName.addEventListener('blur', () => safeSetItem('anilist_custom_list', els.customListName.value));
+        els.customListName.addEventListener('change', () => safeSetItem('anilist_custom_list', els.customListName.value));
+
         if (els.seasonalTruthInput) {
             els.seasonalTruthInput.addEventListener('blur', () => safeSetItem(SEASONAL_TRUTH_KEY, els.seasonalTruthInput.value));
             els.seasonalTruthInput.addEventListener('change', () => safeSetItem(SEASONAL_TRUTH_KEY, els.seasonalTruthInput.value));
