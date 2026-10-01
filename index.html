@@ -2950,6 +2950,30 @@
       return Number.isFinite(number) && number > 0 ? number : null;
     }
 
+    function hasStartedAiring(item, nowMs = Date.now()) {
+      if (!item) return false;
+
+      const totalEpisode = episodeNumberFromToken(item.totalEpisodeNumber);
+      const aniListNextEpisode = episodeNumberFromToken(item.aniListNextEpisode);
+      if (aniListNextEpisode !== null && aniListNextEpisode > 1 &&
+          (totalEpisode === null || aniListNextEpisode <= totalEpisode + 1)) {
+        return true;
+      }
+
+      // Only count RSS as proof when the release passed the same basic sanity checks
+      // used by the sampler. This prevents rejected/stale RSS entries from changing
+      // the season state.
+      const rssEpisode = episodeNumberFromToken(item.matchedEpisode);
+      const latestReleaseDate = Number(item.latestReleaseDate);
+      return rssEpisode !== null &&
+        (totalEpisode === null || rssEpisode <= totalEpisode) &&
+        Number.isFinite(latestReleaseDate) && latestReleaseDate > 0 && latestReleaseDate <= nowMs;
+    }
+
+    function isEffectivelyUpcomingSeason(item, nowMs = Date.now()) {
+      return Boolean(item?.isUpcomingSeason) && !hasStartedAiring(item, nowMs);
+    }
+
     function isRecentTimestamp(timestampMs, windowMs = RECENT_RELEASE_WINDOW_MS) {
       const safeTimestamp = Number(timestampMs);
       if (!Number.isFinite(safeTimestamp) || safeTimestamp <= 0) return false;
@@ -3654,17 +3678,18 @@
         updateEpisodeTickerGateState(item, entry, Date.now());
         updateFinaleTransitionDotState(item, entry, DEFAULT_TIMEZONE);
 
-        if (item.isUpcomingSeason) {
+        const effectivelyUpcomingSeason = isEffectivelyUpcomingSeason(item);
+        if (effectivelyUpcomingSeason) {
           entry.wasDelayed = false;
         } else if (item.diffDays > 7) {
           entry.wasDelayed = true;
         }
         
-        if (!item.isUpcomingSeason && item.diffDays === 7 && entry.wasDelayed === true) {
+        if (!effectivelyUpcomingSeason && item.diffDays === 7 && entry.wasDelayed === true) {
           item.isScheduleMoved = true; 
         }
         
-        if (!item.isUpcomingSeason && item.diffDays < 7) {
+        if (!effectivelyUpcomingSeason && item.diffDays < 7) {
           entry.wasDelayed = false;
         }
 
@@ -3870,7 +3895,7 @@
 
     function isBoardActiveItem(item, timeZone = DEFAULT_TIMEZONE) {
       if (!item || item.isEnded || item.isScheduleMoved) return false;
-      if (!item.isUpcomingSeason) return true;
+      if (!isEffectivelyUpcomingSeason(item)) return true;
 
       const diffDays = Number(item.diffDays);
       const dayOffset = dayOffsetFromToday(item.day, timeZone);
@@ -3879,7 +3904,7 @@
 
     function isBoardCountableItem(item, timeZone = DEFAULT_TIMEZONE) {
       if (!item || item.isScheduleMoved) return false;
-      if (!item.isUpcomingSeason) return true;
+      if (!isEffectivelyUpcomingSeason(item)) return true;
 
       const diffDays = Number(item.diffDays);
       const dayOffset = dayOffsetFromToday(item.day, timeZone);
@@ -4371,7 +4396,7 @@
         : '';
 
       return `
-        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${item.isUpcomingSeason && (!item.hasNextAiring || item.diffDays > 6) ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
+        <div class="anime-card ${isNext ? 'highlight-next' : ''} ${item.isScheduleMoved ? 'on-break' : ''} ${isEffectivelyUpcomingSeason(item) && (!item.hasNextAiring || item.diffDays > 6) ? 'upcoming-season' : ''} ${isEnded ? 'ended' : ''} ${isFinal ? 'final-episode' : ''} ${item.isFinalHoldover ? 'final-holdover' : ''}" data-id="${id}">
           <div class="anime-card-bg">
             ${imageHTML}
           </div>
