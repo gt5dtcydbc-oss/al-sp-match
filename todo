@@ -1,128 +1,45 @@
-# Anime Airing Board — Handoff Document
+The fix
+Add a guard that detects "this show has already started airing" using two reliable signals: AniList advancing past episode 1, or RSS having detected a release.
+Step 1: In cardHTML, add this line near the top (right after const siteUrl = ...):
 
-## 1. Project Overview
+javascript
+1
 
-A single-file HTML app (`index.html`) that tracks currently-airing anime:
-- Pulls the user's AniList "currently watching" list via GraphQL
-- Matches shows against SubsPlease RSS feeds to learn real release times
-- Displays shows on a weekly board with an "Up Next" countdown panel
-- Persists state in IndexedDB (slot cache, overrides, added shows, final holdovers) + localStorage (offset, page settings)
+Step 2: Update the class condition. Find:
 
-**Key constants:**
-- Timezone: `Europe/Berlin` (auto-detected via `Intl`)
-- RSS feeds: `https://subsplease.org/rss/?r=1080` and `?r=720`
-- Refresh: every 5 min; countdown tick every 30s
+javascript
+1
 
-## 2. Current Code State
+Change to:
 
-**Most recent uploaded file:** `Pasted_Text_1790579334726.txt`
+javascript
+1
 
-What that file contains:
-- ✅ Bug #4 fix applied (`recordMatchedRssObservation` rewritten) — confirmed working
-- ✅ Bug #2 CSS rule applied (both `on-break` and `upcoming-season` greyscale)
-- ⚠️ Bug #2 `cardHTML` condition had a `$$` typo in the uploaded snapshot. The user fixed the typo to a single `$` afterward and confirmed it works. The live copy has `item.diffDays > 7`.
-- ⚠️ The `>= 6` threshold change and on-break alignment have NOT been applied yet.
-
-## 3. Bug Status Overview
-
-| Bug | Description | Status |
-|-----|-------------|--------|
-| #4 | RSS samples not saving | ✅ FIXED & CONFIRMED |
-| #2 | Dim shows on break / not airing soon | ⚠️ PARTIALLY DONE — `>= 6` threshold + on-break alignment pending |
-| #3 | "Up Next" skipping shows | ❌ PROPOSED, NOT APPLIED |
-| #1 | Episode progress uses AniList time | ❌ NOT STARTED |
-
-## 4. Bug #4 — RSS Samples Not Saved ✅ FIXED
-
-**Symptom:** Time chip showed correct RSS time, but "RSS samples" in the Show Settings modal were empty.
-
-**Root cause:** `recordMatchedRssObservation` had two over-strict guards rejecting samples:
-- `implausibly-ahead-of-anilist`: rejected if `episode > nextEpisode + 2`
-- `older-than-history`: rejected if `episode < newestHistoryEpisode`
-
-The display time bypassed these guards (saved directly from `item.latestReleaseDate`), but `entry.history` did not — hence "it records something" (the time) but no samples.
-
-**Fix applied (already in current file):** Rewrote `recordMatchedRssObservation`:
-- Removed both `implausibly-ahead-of-anilist` and `older-than-history` guards
-- Added fallback episode logic (`nextEpisode - 1` when `matchedEpisode` is null, matching the older working version)
-- Kept `beyond-total` guard and `ignored` guard (for "Drop latest")
-- Kept basic validity checks (day, time, timestamp)
-
-The fixed function currently in the code:
-
-```javascript
-function recordMatchedRssObservation(item, entry) {
-    const episode = episodeNumberFromToken(item?.matchedEpisode);
-    const currentDay = String(item?.latestReleaseDay || "");
-    const currentTime = String(item?.latestReleaseTime || "");
-    const releaseAtMs = Number(item?.latestReleaseDate);
-
-    // Basic validity: need a day, time, and a timestamp.
-    if (!WEEKDAYS.includes(currentDay) || !isValidTime(currentTime) ||
-        !Number.isFinite(releaseAtMs) || releaseAtMs <= 0) {
-        return { saved: false, changed: false, reason: "incomplete" };
-    }
-
-    // Fallback episode matching the working version's logic:
-    // if matchedEpisode is null, use displayEpisode - 1 (the just-aired episode).
-    let resolvedEpisode = episode;
-    if (resolvedEpisode === null) {
-        const nextEp = episodeNumberFromToken(item?.aniListNextEpisode);
-        if (nextEp !== null && nextEp > 1) resolvedEpisode = nextEp - 1;
-    }
-    if (resolvedEpisode === null) {
-        return { saved: false, changed: false, reason: "incomplete" };
-    }
-
-    // Keep the beyond-total guard (prevents genuinely invalid data)
-    const totalEpisode = episodeNumberFromToken(item?.totalEpisodeNumber);
-    if (totalEpisode !== null && resolvedEpisode > totalEpisode) {
-        return { saved: false, changed: false, reason: "beyond-total" };
-    }
-
-    // REMOVED: implausibly-ahead-of-anilist guard
-    // REMOVED: older-than-history guard
-
-    entry.history = Array.isArray(entry.history) ? entry.history : [];
-
-    // Keep the ignored-episode guard (respects user's "Drop latest" action)
-    const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
-    if (ignoredRssEpisode !== null && ignoredRssEpisode === resolvedEpisode) {
-        return { saved: false, changed: false, reason: "ignored" };
-    }
-
-    const episodeToken = rssEpisodeToken(resolvedEpisode);
-    const sample = {
-        day: currentDay,
-        time: currentTime,
-        mins: toMinutes(currentTime),
-        episode: episodeToken,
-        releaseAtMs,
-        offsetMs: Number(state.rssTimeOffsetMs) || 0
-    };
-
-    const existingHistoryIndex = entry.history.findIndex(
-        historySample => episodeNumberFromToken(historySample?.episode) === resolvedEpisode
-    );
-    let changed = false;
-    if (existingHistoryIndex >= 0) {
-        const existing = entry.history[existingHistoryIndex] || {};
-        if (existing.day !== sample.day || existing.time !== sample.time ||
-            Number(existing.releaseAtMs) !== Number(sample.releaseAtMs) ||
-            Number(existing.offsetMs || 0) !== Number(sample.offsetMs || 0)) {
-            entry.history[existingHistoryIndex] = sample;
-            changed = true;
-        }
-    } else {
-        entry.history.push(sample);
-        if (entry.history.length > 3) entry.history.shift();
-        changed = true;
-    }
-
-    const storedLatestRelease = Number(entry.latestReleaseDate);
-    if (!Number.isFinite(storedLatestRelease) || releaseAtMs >= storedLatestRelease) {
-        entry.latestReleaseDate = releaseAtMs;
-    }
-    if (changed) entry.updatedAt = new Date().toISOString();
-    return { saved: true, changed, sample };
-}
+How this behaves now
+Scenario
+	
+hasStartedAiring
+	
+Greyed?
+Ep 1 aired, AniList advanced to ep 2
+	
+true (2 > 1)
+	
+No ✅
+Ep 1 aired, RSS detected release
+	
+true (matchedEpisode set)
+	
+No ✅
+Genuinely upcoming, no ep aired yet
+	
+false
+	
+Yes (if far away) ✅
+Upcoming, no air date info
+	
+false
+	
+Yes ✅
+This fixes the immediate bug without touching the > 7 threshold. Once you've confirmed it works, we can still circle back to the >= 6 threshold refinement we discussed earlier as a separate change.
+Want to apply this and test it on that show?
