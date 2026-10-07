@@ -530,23 +530,22 @@
       gap: 6px;
     }
 
-    .anime-card-note-chip {
-      display: inline-flex;
-      align-items: center;
+    .anime-card-custom-badge {
+      display: inline-block;
       max-width: 68px;
       padding: 2px 5px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.12);
       border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.10);
       color: #fff;
       font-size: 0.5rem;
       font-weight: 800;
       line-height: 1.15;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.03em;
       text-transform: none;
-      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
       vertical-align: middle;
     }
 
@@ -3923,51 +3922,22 @@
       return (dayIndex - now.dayIndex + 7) % 7;
     }
 
-    function localDateKeyDayDifference(fromDateKey, toDateKey) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fromDateKey || "")) ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(String(toDateKey || ""))) return null;
-      const [fy, fm, fd] = String(fromDateKey).split("-").map(Number);
-      const [ty, tm, td] = String(toDateKey).split("-").map(Number);
-      const fromUtc = Date.UTC(fy, fm - 1, fd);
-      const toUtc = Date.UTC(ty, tm - 1, td);
-      const diff = Math.round((toUtc - fromUtc) / 86400000);
-      return Number.isFinite(diff) ? diff : null;
-    }
+    function isBoardActiveItem(item, timeZone = DEFAULT_TIMEZONE) {
+      if (!item || item.isEnded || item.isScheduleMoved) return false;
+      if (!isEffectivelyUpcomingSeason(item)) return true;
 
-    function isUpcomingSeasonInBoardWindow(item, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
-      if (!item || !isEffectivelyUpcomingSeason(item, nowMs)) return false;
-
-      // Use the actual board occurrence tied to AniList's next episode instead of
-      // comparing two independent weekday counters. This avoids valid morning /
-      // cross-midnight first episodes being filtered out before Next Up can sort them.
-      const timing = resolveNextUpTiming(item, timeZone);
-      const occurrenceAtMs = timing
-        ? releaseOccurrenceForAiring(item.nextAiringAt, timing, timeZone)
-        : null;
-
-      if (Number.isFinite(occurrenceAtMs)) {
-        const todayKey = localDateKeyFromMs(nowMs, timeZone);
-        const occurrenceKey = localDateKeyFromMs(occurrenceAtMs, timeZone);
-        const daysAhead = localDateKeyDayDifference(todayKey, occurrenceKey);
-        return Number.isFinite(daysAhead) && daysAhead >= 0 && daysAhead <= 6;
-      }
-
-      // Conservative fallback for incomplete AniList data: retain the previous rule.
       const diffDays = Number(item.diffDays);
       const dayOffset = dayOffsetFromToday(item.day, timeZone);
       return Number.isFinite(diffDays) && diffDays >= 0 && diffDays === dayOffset;
     }
 
-    function isBoardActiveItem(item, timeZone = DEFAULT_TIMEZONE) {
-      if (!item || item.isEnded || item.isScheduleMoved) return false;
-      if (!isEffectivelyUpcomingSeason(item)) return true;
-      return isUpcomingSeasonInBoardWindow(item, timeZone);
-    }
-
     function isBoardCountableItem(item, timeZone = DEFAULT_TIMEZONE) {
       if (!item || item.isScheduleMoved) return false;
       if (!isEffectivelyUpcomingSeason(item)) return true;
-      return isUpcomingSeasonInBoardWindow(item, timeZone);
+
+      const diffDays = Number(item.diffDays);
+      const dayOffset = dayOffsetFromToday(item.day, timeZone);
+      return Number.isFinite(diffDays) && diffDays >= 0 && diffDays === dayOffset;
     }
 
     function getNextUpcomingSlot(grouped, timeZone = DEFAULT_TIMEZONE) {
@@ -4115,57 +4085,31 @@
         : null;
     }
 
-    function nextWeeklyOccurrenceFromTiming(timing, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
-      if (!WEEKDAYS.includes(timing?.day) || !isValidTime(timing?.time)) return null;
-      const todayKey = localDateKeyFromMs(nowMs, timeZone);
-      const todayIndex = WEEKDAYS.indexOf(weekdayForLocalDateKey(todayKey, timeZone));
-      const targetIndex = WEEKDAYS.indexOf(timing.day);
-      if (todayIndex < 0 || targetIndex < 0) return null;
-
-      const dayOffset = (targetIndex - todayIndex + 7) % 7;
-      let dateKey = shiftLocalDateKey(todayKey, dayOffset);
-      let occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
-      if (!Number.isFinite(occurrenceAtMs)) return null;
-      if (occurrenceAtMs <= nowMs) {
-        dateKey = shiftLocalDateKey(dateKey, 7);
-        occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
-      }
-      return Number.isFinite(occurrenceAtMs) && occurrenceAtMs > nowMs ? occurrenceAtMs : null;
-    }
-
     function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
       return (items || [])
-        .filter(item => isBoardActiveItem(item, timeZone))
         .map(item => {
+          if (!item || item.isEnded || item.isScheduleMoved) return null;
+
           const timing = resolveNextUpTiming(item, timeZone);
           if (!timing) return null;
-          let occurrence = resolveNextUpOccurrence(item, timing, timeZone, nowMs);
 
-          // Short-horizon recovery for stale AniList/RSS state: an active show with a
-          // valid board slot later today/tomorrow should not vanish from Next Up merely
-          // because its exact episode/date bridge is temporarily incomplete. Keep this
-          // bounded to 36h so a slot that already passed never gets invented next week.
-          if (!occurrence) {
-            const weeklyAtMs = nextWeeklyOccurrenceFromTiming(timing, timeZone, nowMs);
-            const withinPreview = Number.isFinite(weeklyAtMs) &&
-              weeklyAtMs - nowMs <= UPCOMING_EPISODE_PREVIEW_MS;
-            const nextEpisode = episodeNumberFromToken(item.aniListNextEpisode);
-            const confirmedEpisode = episodeNumberFromToken(item.tickerConfirmedRssEpisode);
-            const releaseStillUnconfirmed = nextEpisode === null ||
-              confirmedEpisode === null || confirmedEpisode < nextEpisode;
-            if (withinPreview && releaseStillUnconfirmed) {
-              const episodeNumber = nextEpisode;
-              occurrence = {
-                occurrenceAtMs: weeklyAtMs,
-                episodeNumber,
-                timing,
-                shortHorizonRecovery: true
-              };
-            }
-          }
-
+          const occurrence = resolveNextUpOccurrence(item, timing, timeZone, nowMs);
           if (!occurrence) return null;
-          const status = { isNow: false, minutesUntil: (occurrence.occurrenceAtMs - nowMs) / 60000 };
+
+          const minutesUntil = (occurrence.occurrenceAtMs - nowMs) / 60000;
+          if (!Number.isFinite(minutesUntil) || minutesUntil <= 0) return null;
+
+          const normallyActive = isBoardActiveItem(item, timeZone);
+          const imminentUpcomingRecovery = !normallyActive &&
+            isEffectivelyUpcomingSeason(item, nowMs) &&
+            (occurrence.occurrenceAtMs - nowMs) <= UPCOMING_EPISODE_PREVIEW_MS;
+
+          // Keep the normal board/upcoming rules everywhere else. This exception is
+          // Next-Up-only and only rescues a genuine first release that is imminent.
+          // It therefore cannot make 7+ day upcoming cards colourful.
+          if (!normallyActive && !imminentUpcomingRecovery) return null;
+
+          const status = { isNow: false, minutesUntil };
           return { item, status, timing, ...occurrence };
         })
         .filter(Boolean)
@@ -4479,7 +4423,7 @@
       const siteUrl = item.siteUrl || "#";
       const customBadge = normalizeShowBadge(state.overrides?.[id]?.badge);
       const customBadgeHTML = customBadge
-        ? `<span class="anime-card-note-chip" title="${escapeHtml(customBadge)}">${escapeHtml(customBadge)}</span>`
+        ? `<span class="anime-card-custom-badge" title="${escapeHtml(customBadge)}">${escapeHtml(customBadge)}</span>`
         : "";
       const isFinal = Boolean(item.isFinalDisplayActive || item.isFinalAired || item.isFinalHoldover);
       let isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
@@ -4493,7 +4437,7 @@
       const episodeHTML = shouldShowEpisode
         ? (item.isFinalHoldover
             ? `<div class="anime-card-episode">${customBadgeHTML}<span class="final-dot" title="Finale aired" aria-label="Finale aired"></span></div>`
-            : `<div class="anime-card-episode">${customBadgeHTML}<span>EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}</span>${showFinalDot ? '<span class="final-dot" title="Finale" aria-label="Finale"></span>' : ''}</div>`)
+            : `<div class="anime-card-episode">${customBadgeHTML}EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Finale" aria-label="Finale"></span>' : ''}</div>`)
         : (customBadgeHTML ? `<div class="anime-card-episode">${customBadgeHTML}</div>` : '');
 
       const imageHTML = coverUrl 
@@ -4847,6 +4791,7 @@
       if (!id) return;
 
       state.overrides[id] = {
+        ...(state.overrides[id] || {}),
         enabled: Boolean(els.modalUseCustom.checked),
         day: WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday",
         time: isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00",
@@ -4869,16 +4814,16 @@
 
       await clearCachedSlotForShow(id);
 
-      const existingBadge = normalizeShowBadge(state.overrides?.[id]?.badge);
+      const badge = normalizeShowBadge(state.overrides?.[id]?.badge);
       if (detected) {
         state.overrides[id] = {
           enabled: false,
           day: detected.day,
           time: detected.time,
-          badge: existingBadge
+          badge
         };
-      } else if (existingBadge) {
-        state.overrides[id] = { enabled: false, day: "Monday", time: "18:00", badge: existingBadge };
+      } else if (badge) {
+        state.overrides[id] = { enabled: false, day: "Monday", time: "18:00", badge };
       } else {
         delete state.overrides[id];
       }
@@ -4903,9 +4848,9 @@
         return;
       }
 
-      const existingBadge = normalizeShowBadge(state.overrides?.[id]?.badge);
-      if (existingBadge) {
-        state.overrides[id] = { enabled: false, day: "Monday", time: "18:00", badge: existingBadge };
+      const badge = normalizeShowBadge(state.overrides?.[id]?.badge);
+      if (badge) {
+        state.overrides[id] = { enabled: false, day: "Monday", time: "18:00", badge };
       } else {
         delete state.overrides[id];
       }
