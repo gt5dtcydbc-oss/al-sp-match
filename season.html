@@ -751,6 +751,27 @@
 
     .modal-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 
+    .schedule-readout {
+      width: 100%;
+      min-width: 0;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      font-size: 1rem;
+      line-height: 1.2;
+      box-sizing: border-box;
+    }
+
+    #showSettingsModal .schedule-edit-control[hidden],
+    #showSettingsModal .schedule-readout[hidden] {
+      display: none !important;
+    }
+
     @keyframes modalScaleIn {
       from { transform: scale(0.95) translateY(10px); opacity: 0; }
       to { transform: scale(1) translateY(0); opacity: 1; }
@@ -1021,13 +1042,15 @@
         <div class="modal-grid">
           <div class="field">
             <label for="modalDay">Day</label>
-            <select id="modalDay">
+            <select id="modalDay" class="schedule-edit-control">
               <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
             </select>
+            <div id="modalDayDisplay" class="schedule-readout" aria-live="polite" hidden></div>
           </div>
           <div class="field">
             <label for="modalTime">Time</label>
-            <input id="modalTime" type="time" value="18:00" placeholder="HH:MM" />
+            <input id="modalTime" class="schedule-edit-control" type="time" value="18:00" placeholder="HH:MM" />
+            <div id="modalTimeDisplay" class="schedule-readout" aria-live="polite" hidden></div>
           </div>
         </div>
         <div id="modalCustomHelper" class="modal-note" style="background: transparent; border: none; padding: 0;">Custom slot is off. Turn it on to set your own day and time.</div>
@@ -1611,7 +1634,9 @@
       modalHistorySlot: document.getElementById("modalHistorySlot"),
       modalBadge: document.getElementById("modalBadge"),
       modalDay: document.getElementById("modalDay"),
+      modalDayDisplay: document.getElementById("modalDayDisplay"),
       modalTime: document.getElementById("modalTime"),
+      modalTimeDisplay: document.getElementById("modalTimeDisplay"),
       modalCustomHelper: document.getElementById("modalCustomHelper"),
       modalUseDetectedBtn: document.getElementById("modalUseDetectedBtn"),
       modalClearOrRemoveBtn: document.getElementById("modalClearOrRemoveBtn"),
@@ -4763,8 +4788,27 @@
 
     function syncSettingsModalState() {
       const enabled = Boolean(els.modalUseCustom.checked);
+      const media = mediaById(state.activeSettingsId);
+      const detected = !enabled && media ? detectSlotForModal(media) : null;
+
       els.modalDay.disabled = !enabled;
       els.modalTime.disabled = !enabled;
+      els.modalDay.hidden = !enabled;
+      els.modalTime.hidden = !enabled;
+      if (els.modalDayDisplay) els.modalDayDisplay.hidden = enabled;
+      if (els.modalTimeDisplay) els.modalTimeDisplay.hidden = enabled;
+
+      if (!enabled) {
+        const displayDay = WEEKDAYS.includes(detected?.day)
+          ? detected.day
+          : (WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "—");
+        const displayTime = isValidTime(detected?.time)
+          ? detected.time
+          : (isValidTime(els.modalTime.value) ? els.modalTime.value : "—");
+        if (els.modalDayDisplay) els.modalDayDisplay.textContent = displayDay;
+        if (els.modalTimeDisplay) els.modalTimeDisplay.textContent = displayTime;
+      }
+
       els.modalCustomHelper.textContent = enabled
         ? "Custom slot is active and will override automatically detected data."
         : "Custom slot is off. Turn it on to manually set schedule.";
