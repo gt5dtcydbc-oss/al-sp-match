@@ -519,7 +519,18 @@
       margin-bottom: 2px;
     }
 
+    .anime-card-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+    }
+
     .anime-card-episode {
+      min-width: 0;
+      flex: 0 1 auto;
       font-size: 0.7rem;
       color: var(--text-muted);
       font-weight: 700;
@@ -528,11 +539,14 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     .anime-card-custom-badge {
       display: inline-block;
-      max-width: 68px;
+      flex: 0 1 auto;
+      max-width: min(68px, 46%);
+      margin-left: auto;
       padding: 2px 5px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,0.14);
@@ -822,12 +836,19 @@
       }
 
       #modalDay {
-        text-align: center;
-        text-align-last: center;
+        /* Keep the native iOS picker, but avoid centered selected-text rendering.
+           WebKit can clip or offset the displayed weekday differently when the
+           control switches between enabled and disabled states. */
+        -webkit-appearance: menulist;
+        appearance: auto;
+        text-align: left;
+        text-align-last: left;
+        padding-left: 16px;
+        padding-right: 16px;
       }
 
       #modalDay option {
-        text-align: center;
+        text-align: left;
       }
 
       #modalTime {
@@ -4436,9 +4457,12 @@
 
       const episodeHTML = shouldShowEpisode
         ? (item.isFinalHoldover
-            ? `<div class="anime-card-episode">${customBadgeHTML}<span class="final-dot" title="Finale aired" aria-label="Finale aired"></span></div>`
-            : `<div class="anime-card-episode">${customBadgeHTML}EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Finale" aria-label="Finale"></span>' : ''}</div>`)
-        : (customBadgeHTML ? `<div class="anime-card-episode">${customBadgeHTML}</div>` : '');
+            ? '<div class="anime-card-episode"><span class="final-dot" title="Finale aired" aria-label="Finale aired"></span></div>'
+            : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Finale" aria-label="Finale"></span>' : ''}</div>`)
+        : '';
+      const metaRowHTML = (episodeHTML || customBadgeHTML)
+        ? `<div class="anime-card-meta-row">${episodeHTML}${customBadgeHTML}</div>`
+        : '';
 
       const imageHTML = coverUrl 
         ? `<a href="${escapeHtml(siteUrl)}" target="_blank" rel="noreferrer"><img class="lazy-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 3'%3E%3C/svg%3E" data-media-id="${id}" data-original-url="${escapeHtml(coverUrl)}" alt="" loading="lazy"></a>`
@@ -4456,7 +4480,7 @@
             </div>
             <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
               <div class="anime-card-title">${title}</div>
-              ${episodeHTML}
+              ${metaRowHTML}
             </div>
           </div>
         </div>
@@ -4722,8 +4746,15 @@
       const id = String(media.id);
       const override = overrideForMediaId(id);
       const detected = detectSlotForModal(media);
-      const initialDay = override?.day || detected?.day || "Monday";
-      const initialTime = override?.time || detected?.time || "18:00";
+      // A disabled override may exist only to store a badge (or may contain an old
+      // manual day/time). When the override is off, show the currently detected
+      // schedule instead of letting that stale stored value win in the picker.
+      const initialDay = override?.enabled
+        ? override.day
+        : (detected?.day || override?.day || "Monday");
+      const initialTime = override?.enabled
+        ? override.time
+        : (detected?.time || override?.time || "18:00");
 
       els.showSettingsTitle.textContent = titleForMedia(media);
       els.showSettingsSubtitle.textContent = [
@@ -4790,11 +4821,22 @@
       const id = String(state.activeSettingsId || "");
       if (!id) return;
 
+      const enabled = Boolean(els.modalUseCustom.checked);
+      const media = mediaById(id);
+      const detected = !enabled && media ? detectSlotForModal(media) : null;
+
       state.overrides[id] = {
         ...(state.overrides[id] || {}),
-        enabled: Boolean(els.modalUseCustom.checked),
-        day: WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday",
-        time: isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00",
+        enabled,
+        // When custom scheduling is off, keep the stored slot aligned with the
+        // current detected value. This prevents badge-only settings from freezing
+        // an old/default weekday that later appears in the modal.
+        day: WEEKDAYS.includes(enabled ? els.modalDay.value : detected?.day)
+          ? (enabled ? els.modalDay.value : detected.day)
+          : (WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday"),
+        time: isValidTime(enabled ? els.modalTime.value : detected?.time)
+          ? (enabled ? els.modalTime.value : detected.time)
+          : (isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00"),
         badge: normalizeShowBadge(els.modalBadge?.value)
       };
 
