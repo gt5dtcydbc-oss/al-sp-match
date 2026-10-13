@@ -519,7 +519,18 @@
       margin-bottom: 2px;
     }
 
+    .anime-card-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+    }
+
     .anime-card-episode {
+      min-width: 0;
+      flex: 0 1 auto;
       font-size: 0.7rem;
       color: var(--text-muted);
       font-weight: 700;
@@ -528,6 +539,28 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
+    }
+
+    .anime-card-custom-badge {
+      display: inline-block;
+      flex: 0 1 auto;
+      max-width: min(68px, 46%);
+      margin-left: auto;
+      padding: 2px 5px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.10);
+      color: #fff;
+      font-size: 0.5rem;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: 0.03em;
+      text-transform: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
     }
 
     @keyframes pulse-finale {
@@ -718,6 +751,27 @@
 
     .modal-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 
+    .schedule-readout {
+      width: 100%;
+      min-width: 0;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      font-size: 1rem;
+      line-height: 1.2;
+      box-sizing: border-box;
+    }
+
+    #showSettingsModal .schedule-edit-control[hidden],
+    #showSettingsModal .schedule-readout[hidden] {
+      display: none !important;
+    }
+
     @keyframes modalScaleIn {
       from { transform: scale(0.95) translateY(10px); opacity: 0; }
       to { transform: scale(1) translateY(0); opacity: 1; }
@@ -780,14 +834,15 @@
         max-width: 100%;
         grid-template-columns: 1fr !important;
         gap: 14px;
-        overflow: hidden;
+        /* Do not clip native iOS form-control internals. */
+        overflow: visible;
       }
 
       #showSettingsModal .modal-grid .field {
         width: 100%;
         max-width: 100%;
         min-width: 0;
-        overflow: hidden;
+        overflow: visible;
       }
 
       #showSettingsModal .modal-grid select,
@@ -799,23 +854,76 @@
         inline-size: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
+        height: 52px !important;
+        min-height: 52px !important;
         box-sizing: border-box;
+        margin: 0;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: normal;
       }
 
       #modalDay {
-        text-align: center;
-        text-align-last: center;
+        /* Safari can paint the selected text/arrow almost black on a dark
+           background. Use our own surface/chevron while keeping the native picker. */
+        -webkit-appearance: none;
+        appearance: none;
+        color: var(--text) !important;
+        -webkit-text-fill-color: var(--text) !important;
+        opacity: 1 !important;
+        text-align: left;
+        text-align-last: left;
+        padding-left: 16px !important;
+        padding-right: 44px !important;
+        background-color: var(--bg);
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+          linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+        background-position:
+          calc(100% - 21px) 50%,
+          calc(100% - 15px) 50%;
+        background-size: 6px 6px, 6px 6px;
+        background-repeat: no-repeat;
+      }
+
+      #modalDay:disabled {
+        color: var(--text) !important;
+        -webkit-text-fill-color: var(--text) !important;
+        opacity: 1 !important;
       }
 
       #modalDay option {
-        text-align: center;
+        color: #fff;
+        background: #000;
+        text-align: left;
       }
 
       #modalTime {
         -webkit-appearance: none;
         appearance: none;
+        color: var(--text) !important;
+        -webkit-text-fill-color: var(--text) !important;
+        opacity: 1 !important;
         text-align: left;
-        padding-right: 16px;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+      }
+
+      #modalTime::-webkit-date-and-time-value {
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        text-align: left;
+      }
+
+      #modalTime::-webkit-datetime-edit {
+        padding: 0;
+      }
+
+      #modalTime:disabled {
+        color: var(--text) !important;
+        -webkit-text-fill-color: var(--text) !important;
+        opacity: 1 !important;
       }
     }
   </style>
@@ -927,16 +1035,22 @@
         </label>
         <div id="modalDetectedSlot" class="modal-note">Detected: No slot found yet</div>
         <div id="modalHistorySlot" class="modal-note" style="display: none;"></div>
+        <div class="field">
+          <label for="modalBadge">Small badge</label>
+          <input id="modalBadge" type="text" maxlength="12" spellcheck="false" autocomplete="off" placeholder="Optional · max 12 chars" />
+        </div>
         <div class="modal-grid">
           <div class="field">
             <label for="modalDay">Day</label>
-            <select id="modalDay">
+            <select id="modalDay" class="schedule-edit-control">
               <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
             </select>
+            <div id="modalDayDisplay" class="schedule-readout" aria-live="polite" hidden></div>
           </div>
           <div class="field">
             <label for="modalTime">Time</label>
-            <input id="modalTime" type="time" value="18:00" placeholder="HH:MM" />
+            <input id="modalTime" class="schedule-edit-control" type="time" value="18:00" placeholder="HH:MM" />
+            <div id="modalTimeDisplay" class="schedule-readout" aria-live="polite" hidden></div>
           </div>
         </div>
         <div id="modalCustomHelper" class="modal-note" style="background: transparent; border: none; padding: 0;">Custom slot is off. Turn it on to set your own day and time.</div>
@@ -1518,8 +1632,11 @@
       modalUseCustom: document.getElementById("modalUseCustom"),
       modalDetectedSlot: document.getElementById("modalDetectedSlot"),
       modalHistorySlot: document.getElementById("modalHistorySlot"),
+      modalBadge: document.getElementById("modalBadge"),
       modalDay: document.getElementById("modalDay"),
+      modalDayDisplay: document.getElementById("modalDayDisplay"),
       modalTime: document.getElementById("modalTime"),
+      modalTimeDisplay: document.getElementById("modalTimeDisplay"),
       modalCustomHelper: document.getElementById("modalCustomHelper"),
       modalUseDetectedBtn: document.getElementById("modalUseDetectedBtn"),
       modalClearOrRemoveBtn: document.getElementById("modalClearOrRemoveBtn"),
@@ -1543,6 +1660,8 @@
       addedShows: {},
       finalHoldovers: {},
       primaryCandidates: [],
+      // Ephemeral, recalculated from the current shows/feed; never persisted.
+      rssCandidateOwnership: new Map(),
       items: [],
       notes: [],
       totalAniListEntries: 0,
@@ -2247,7 +2366,7 @@
 
     // Strongest fallback calibration: compare the raw feed clock with the schedule
     // already learned from prior RSS episodes. This does not depend on AniList's release lag.
-    function detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone = DEFAULT_TIMEZONE) {
+    function detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone = DEFAULT_TIMEZONE, ownership = null) {
       const observations = [];
       const cache = slotCache && typeof slotCache === "object" ? slotCache : {};
 
@@ -2260,7 +2379,7 @@
         let bestScore = 0;
         for (const entry of entries || []) {
           const media = entry?.media;
-          if (!media) continue;
+          if (!media || !rssCandidateAllowedForMedia(media, candidate, ownership)) continue;
           const score = scoreMatch(candidate, titleVariants(media));
           if (score > bestScore) { bestScore = score; matchedMedia = media; }
         }
@@ -2295,7 +2414,7 @@
     // normally be the episode immediately before AniList's nextAiringEpisode. AniList
     // gives the broadcast time; +60m is only a rough SubsPlease lag hint. Multiple shows
     // plus whole-hour voting prevent ordinary release-lag noise becoming a clock offset.
-    function detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone = DEFAULT_TIMEZONE) {
+    function detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone = DEFAULT_TIMEZONE, ownership = null) {
       const observations = [];
       const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -2311,7 +2430,7 @@
         let bestScore = 0;
         for (const entry of entries || []) {
           const media = entry?.media;
-          if (!media) continue;
+          if (!media || !rssCandidateAllowedForMedia(media, candidate, ownership)) continue;
           const score = scoreMatch(candidate, titleVariants(media));
           if (score > bestScore) { bestScore = score; matchedMedia = media; }
         }
@@ -2330,11 +2449,11 @@
       return summarizeWholeHourOffsetObservations(observations, "anilist");
     }
 
-    function detectRssTimeOffset(primaryCandidates, entries, slotCache, allowAniListCalibration, timeZone = DEFAULT_TIMEZONE) {
-      const historyResult = detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone);
+    function detectRssTimeOffset(primaryCandidates, entries, slotCache, allowAniListCalibration, timeZone = DEFAULT_TIMEZONE, ownership = null) {
+      const historyResult = detectRssTimeOffsetFromHistory(primaryCandidates, entries, slotCache, timeZone, ownership);
       if (historyResult) return historyResult;
       if (!allowAniListCalibration) return null;
-      return detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone);
+      return detectRssTimeOffsetFromAniList(primaryCandidates, entries, timeZone, ownership);
     }
 
     function dateToWeekdayTime(date, timeZone) {
@@ -2403,7 +2522,10 @@
       };
     }
 
-    function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
+    // Keep the existing RSS title scoring and tie order: this extracts its original
+    // selection step so competing AniList shows can be compared without changing how
+    // an individual show's best SubsPlease title is chosen.
+    function bestRssTitleCandidate(media, candidates) {
       const variants = titleVariants(media);
       const safeCandidates = Array.isArray(candidates) ? candidates : [];
       let best = null;
@@ -2412,7 +2534,112 @@
         const score = scoreMatch(candidate, variants);
         if (score > bestScore) { best = candidate; bestScore = score; }
       }
-      if (!best || bestScore < 70 || !best.items.length) return null;
+      return best && bestScore >= 70 && best.items?.length
+        ? { candidate: best, score: bestScore }
+        : null;
+    }
+
+    // If multiple shows select the same RSS title, check whether the observed
+    // SubsPlease weekday/time agrees with AniList's upcoming broadcast slot.
+    // This is ONLY a tie-breaker for collisions; an unusual subtitle delay should
+    // never disqualify an otherwise unopposed, valid title match.
+    function rssAniListScheduleBonus(media, candidate, timeZone = DEFAULT_TIMEZONE) {
+      // A pre-premiere show can share a title with an already-airing season, so
+      // old RSS releases must not make its future slot seem like corroboration.
+      if (media?.status === "NOT_YET_RELEASED") return 0;
+
+      const airingAt = Number(media?.nextAiringEpisode?.airingAt);
+      if (!Number.isFinite(airingAt) || airingAt <= 0) return 0;
+      const aniSlot = getAniListWeekdayAndTime(airingAt, timeZone);
+      const rssSlot = inferSlotFromReleases(candidate?.items || [], timeZone);
+      if (!aniSlot || !rssSlot || !isValidTime(aniSlot.time) || !isValidTime(rssSlot.time)) return 0;
+
+      const aniDayIndex = WEEKDAYS.indexOf(aniSlot.weekday);
+      const rssDayIndex = WEEKDAYS.indexOf(rssSlot.day);
+      if (aniDayIndex < 0 || rssDayIndex < 0) return 0;
+
+      const weekMinutes = 7 * 24 * 60;
+      const aniWeekMinute = aniDayIndex * 1440 + toMinutes(aniSlot.time);
+      const rssWeekMinute = rssDayIndex * 1440 + toMinutes(rssSlot.time);
+      // Small day shifts around midnight (including Sunday -> Monday) are normal.
+      const signedDelta = ((rssWeekMinute - aniWeekMinute + weekMinutes * 1.5) % weekMinutes) - weekMinutes / 2;
+
+      // Same sanity window used by detectDefaultSlot, including near-midnight
+      // releases. Same weekday alone is weaker but still useful evidence when
+      // SubsPlease is delayed by several hours.
+      if (Math.abs(signedDelta) <= 210) return 40;
+      if (aniDayIndex === rssDayIndex) return 25;
+      return 0;
+    }
+
+    // When two tracked shows select the same RSS title, prefer the show whose
+    // AniList broadcast day/time agrees with SubsPlease, provided BOTH shows
+    // have usable schedule evidence. If that evidence cannot resolve the match,
+    // do not assign ownership: preserve the original independent title matching
+    // instead of blocking RSS releases for both shows.
+    function resolveRssCandidateOwnership(entries, candidates, timeZone = DEFAULT_TIMEZONE) {
+      const contendersByCandidate = new Map();
+      const seenIds = new Set();
+      for (const entry of entries || []) {
+        const media = entry?.media;
+        const id = String(media?.id || "");
+        if (!id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        const match = bestRssTitleCandidate(media, candidates);
+        if (!match) continue;
+        if (!contendersByCandidate.has(match.candidate)) contendersByCandidate.set(match.candidate, []);
+        const airingAt = Number(media?.nextAiringEpisode?.airingAt);
+        const hasAniListTiming = media.status !== "NOT_YET_RELEASED" &&
+          Number.isFinite(airingAt) && airingAt > 0;
+        contendersByCandidate.get(match.candidate).push({
+          id, score: match.score, hasAniListTiming,
+          scheduleBonus: rssAniListScheduleBonus(media, match.candidate, timeZone)
+        });
+      }
+
+      const ownership = new Map();
+      for (const [candidate, contenders] of contendersByCandidate) {
+        if (contenders.length < 2) continue;
+        // Missing AniList timings are unknown, not evidence against that show.
+        if (contenders.some(contender => !contender.hasAniListTiming)) continue;
+
+        const strongestTitleScore = Math.max(...contenders.map(contender => contender.score));
+        const rankedByTime = contenders.slice().sort((a, b) => b.scheduleBonus - a.scheduleBonus);
+        const first = rankedByTime[0];
+        const second = rankedByTime[1];
+        // Ownership is ONLY decided by a clear AniList day/time advantage.
+        // A weak title match cannot steal an exact match on timing alone.
+        // Same-day/time ties or mismatches stay on the pre-guard matching path.
+        if (first.scheduleBonus > 0 &&
+            first.scheduleBonus - second.scheduleBonus >= 15 &&
+            first.score >= strongestTitleScore - 12) {
+          ownership.set(candidate, first.id);
+        }
+      }
+      return ownership;
+    }
+
+    function rssCandidateAllowedForMedia(media, candidate, ownership = state.rssCandidateOwnership) {
+      if (!(ownership instanceof Map) || !ownership.has(candidate)) return true;
+      return ownership.get(candidate) === String(media?.id);
+    }
+
+    function tryMatchCandidateSet(media, candidates, timeZone, sourceName) {
+      const selection = bestRssTitleCandidate(media, candidates);
+      if (!selection) return null;
+      let best = selection.candidate;
+      // Only a clear AniList day/time winner owns a contested RSS title.
+      // If another show owns the first match, try the next-best permitted RSS
+      // title before falling back to the existing AniList/cached schedule.
+      // Ambiguous collisions have no owner and follow the original match path.
+      if (sourceName === "rss" && !rssCandidateAllowedForMedia(media, best)) {
+        const available = (candidates || []).filter(candidate =>
+          rssCandidateAllowedForMedia(media, candidate)
+        );
+        const alternate = bestRssTitleCandidate(media, available);
+        if (!alternate) return null;
+        best = alternate.candidate;
+      }
 
       const slot = inferSlotFromReleases(best.items, timeZone);
       if (!slot) return null;
@@ -3274,13 +3501,18 @@
       );
     }
 
+    function normalizeShowBadge(value) {
+      return String(value || "").trim().replace(/\s+/g, " ").slice(0, 12);
+    }
+
     function overrideForMediaId(mediaId) {
       const override = state.overrides?.[String(mediaId)];
       if (!override) return null;
       return {
         enabled: Boolean(override.enabled),
         day: WEEKDAYS.includes(override.day) ? override.day : "Monday",
-        time: isValidTime(override.time) ? override.time : "18:00"
+        time: isValidTime(override.time) ? override.time : "18:00",
+        badge: normalizeShowBadge(override.badge)
       };
     }
 
@@ -4058,13 +4290,29 @@
 
     function getNextUpcomingItems(items, limit = 3, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
       return (items || [])
-        .filter(item => isBoardActiveItem(item, timeZone))
         .map(item => {
+          if (!item || item.isEnded || item.isScheduleMoved) return null;
+
           const timing = resolveNextUpTiming(item, timeZone);
           if (!timing) return null;
+
           const occurrence = resolveNextUpOccurrence(item, timing, timeZone, nowMs);
           if (!occurrence) return null;
-          const status = { isNow: false, minutesUntil: (occurrence.occurrenceAtMs - nowMs) / 60000 };
+
+          const minutesUntil = (occurrence.occurrenceAtMs - nowMs) / 60000;
+          if (!Number.isFinite(minutesUntil) || minutesUntil <= 0) return null;
+
+          const normallyActive = isBoardActiveItem(item, timeZone);
+          const imminentUpcomingRecovery = !normallyActive &&
+            isEffectivelyUpcomingSeason(item, nowMs) &&
+            (occurrence.occurrenceAtMs - nowMs) <= UPCOMING_EPISODE_PREVIEW_MS;
+
+          // Keep the normal board/upcoming rules everywhere else. This exception is
+          // Next-Up-only and only rescues a genuine first release that is imminent.
+          // It therefore cannot make 7+ day upcoming cards colourful.
+          if (!normallyActive && !imminentUpcomingRecovery) return null;
+
+          const status = { isNow: false, minutesUntil };
           return { item, status, timing, ...occurrence };
         })
         .filter(Boolean)
@@ -4376,6 +4624,10 @@
       const coverUrl = item.cover || "";
       const id = String(item.id);
       const siteUrl = item.siteUrl || "#";
+      const customBadge = normalizeShowBadge(state.overrides?.[id]?.badge);
+      const customBadgeHTML = customBadge
+        ? `<span class="anime-card-custom-badge" title="${escapeHtml(customBadge)}">${escapeHtml(customBadge)}</span>`
+        : "";
       const isFinal = Boolean(item.isFinalDisplayActive || item.isFinalAired || item.isFinalHoldover);
       let isEnded = Boolean(item.isEnded || item.isFinalAired || item.isFinalHoldover);
       if (item.isFinalHoldover) {
@@ -4389,6 +4641,9 @@
         ? (item.isFinalHoldover
             ? '<div class="anime-card-episode"><span class="final-dot" title="Finale aired" aria-label="Finale aired"></span></div>'
             : `<div class="anime-card-episode">EP ${escapeHtml(item.displayEpisode || "?")}/${escapeHtml(item.totalEpisodes || "?")}${showFinalDot ? '<span class="final-dot" title="Finale" aria-label="Finale"></span>' : ''}</div>`)
+        : '';
+      const metaRowHTML = (episodeHTML || customBadgeHTML)
+        ? `<div class="anime-card-meta-row">${episodeHTML}${customBadgeHTML}</div>`
         : '';
 
       const imageHTML = coverUrl 
@@ -4407,7 +4662,7 @@
             </div>
             <div class="anime-card-bottom" data-action="open-show-settings" data-id="${id}" role="button" tabindex="0">
               <div class="anime-card-title">${title}</div>
-              ${episodeHTML}
+              ${metaRowHTML}
             </div>
           </div>
         </div>
@@ -4560,6 +4815,7 @@
       const currentEntries = state.currentEntries || [];
       const addedEntries = Object.values(state.addedShows || {}).map(makeEntryFromMedia);
       state.mergedEntries = dedupeEntriesById([...currentEntries, ...addedEntries]);
+      state.rssCandidateOwnership = resolveRssCandidateOwnership(state.mergedEntries, state.primaryCandidates);
 
       if (options.allowPrune === true) {
         await pruneOrphanedStoredState(
@@ -4643,8 +4899,27 @@
 
     function syncSettingsModalState() {
       const enabled = Boolean(els.modalUseCustom.checked);
+      const media = mediaById(state.activeSettingsId);
+      const detected = !enabled && media ? detectSlotForModal(media) : null;
+
       els.modalDay.disabled = !enabled;
       els.modalTime.disabled = !enabled;
+      els.modalDay.hidden = !enabled;
+      els.modalTime.hidden = !enabled;
+      if (els.modalDayDisplay) els.modalDayDisplay.hidden = enabled;
+      if (els.modalTimeDisplay) els.modalTimeDisplay.hidden = enabled;
+
+      if (!enabled) {
+        const displayDay = WEEKDAYS.includes(detected?.day)
+          ? detected.day
+          : (WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "—");
+        const displayTime = isValidTime(detected?.time)
+          ? detected.time
+          : (isValidTime(els.modalTime.value) ? els.modalTime.value : "—");
+        if (els.modalDayDisplay) els.modalDayDisplay.textContent = displayDay;
+        if (els.modalTimeDisplay) els.modalTimeDisplay.textContent = displayTime;
+      }
+
       els.modalCustomHelper.textContent = enabled
         ? "Custom slot is active and will override automatically detected data."
         : "Custom slot is off. Turn it on to manually set schedule.";
@@ -4673,8 +4948,15 @@
       const id = String(media.id);
       const override = overrideForMediaId(id);
       const detected = detectSlotForModal(media);
-      const initialDay = override?.day || detected?.day || "Monday";
-      const initialTime = override?.time || detected?.time || "18:00";
+      // A disabled override may exist only to store a badge (or may contain an old
+      // manual day/time). When the override is off, show the currently detected
+      // schedule instead of letting that stale stored value win in the picker.
+      const initialDay = override?.enabled
+        ? override.day
+        : (detected?.day || override?.day || "Monday");
+      const initialTime = override?.enabled
+        ? override.time
+        : (detected?.time || override?.time || "18:00");
 
       els.showSettingsTitle.textContent = titleForMedia(media);
       els.showSettingsSubtitle.textContent = [
@@ -4706,6 +4988,7 @@
       }
 
       els.modalUseCustom.checked = Boolean(override?.enabled);
+      if (els.modalBadge) els.modalBadge.value = normalizeShowBadge(override?.badge);
       els.modalDay.value = WEEKDAYS.includes(initialDay) ? initialDay : "Monday";
       els.modalTime.value = isValidTime(initialTime) ? initialTime : "18:00";
       els.modalClearOrRemoveBtn.textContent = state.addedShows[id] ? "Remove tracked show" : "Clear override";
@@ -4740,10 +5023,23 @@
       const id = String(state.activeSettingsId || "");
       if (!id) return;
 
+      const enabled = Boolean(els.modalUseCustom.checked);
+      const media = mediaById(id);
+      const detected = !enabled && media ? detectSlotForModal(media) : null;
+
       state.overrides[id] = {
-        enabled: Boolean(els.modalUseCustom.checked),
-        day: WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday",
-        time: isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00"
+        ...(state.overrides[id] || {}),
+        enabled,
+        // When custom scheduling is off, keep the stored slot aligned with the
+        // current detected value. This prevents badge-only settings from freezing
+        // an old/default weekday that later appears in the modal.
+        day: WEEKDAYS.includes(enabled ? els.modalDay.value : detected?.day)
+          ? (enabled ? els.modalDay.value : detected.day)
+          : (WEEKDAYS.includes(els.modalDay.value) ? els.modalDay.value : "Monday"),
+        time: isValidTime(enabled ? els.modalTime.value : detected?.time)
+          ? (enabled ? els.modalTime.value : detected.time)
+          : (isValidTime(els.modalTime.value) ? els.modalTime.value : "18:00"),
+        badge: normalizeShowBadge(els.modalBadge?.value)
       };
 
       await persistState();
@@ -4762,12 +5058,16 @@
 
       await clearCachedSlotForShow(id);
 
+      const badge = normalizeShowBadge(state.overrides?.[id]?.badge);
       if (detected) {
         state.overrides[id] = {
           enabled: false,
           day: detected.day,
-          time: detected.time
+          time: detected.time,
+          badge
         };
+      } else if (badge) {
+        state.overrides[id] = { enabled: false, day: "Monday", time: "18:00", badge };
       } else {
         delete state.overrides[id];
       }
@@ -4792,7 +5092,12 @@
         return;
       }
 
-      delete state.overrides[id];
+      const badge = normalizeShowBadge(state.overrides?.[id]?.badge);
+      if (badge) {
+        state.overrides[id] = { enabled: false, day: "Monday", time: "18:00", badge };
+      } else {
+        delete state.overrides[id];
+      }
       await persistState();
       await refreshBoardFromState();
       closeSettingsModal();
@@ -4879,7 +5184,20 @@
       state.addedShows[id] = media;
 
       if (!state.overrides[id]) {
-        const suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        const previousOwnership = state.rssCandidateOwnership;
+        state.rssCandidateOwnership = resolveRssCandidateOwnership(
+          dedupeEntriesById([
+            ...state.currentEntries,
+            ...Object.values(state.addedShows || {}).map(makeEntryFromMedia)
+          ]),
+          state.primaryCandidates
+        );
+        let suggested;
+        try {
+          suggested = detectDefaultSlot(media, state.primaryCandidates, DEFAULT_TIMEZONE);
+        } finally {
+          state.rssCandidateOwnership = previousOwnership;
+        }
         if (suggested) {
           state.overrides[id] = {
             enabled: false,
@@ -5119,13 +5437,23 @@
         // Prefer previously learned RSS schedules; use AniList as a bootstrap fallback.
         // The detector returns the desired ABSOLUTE whole-hour correction, so it cannot
         // drift by repeatedly adding residuals (the old +7 -> +7.5 failure mode).
+        const calibrationOwnership = freshRssCandidatesAvailable
+          ? resolveRssCandidateOwnership(
+              dedupeEntriesById([
+                ...nextCurrentEntries,
+                ...Object.values(nextAddedShows || {}).map(makeEntryFromMedia)
+              ]),
+              nextPrimaryCandidates
+            )
+          : null;
         const offsetDetection = freshRssCandidatesAvailable
           ? detectRssTimeOffset(
               nextPrimaryCandidates,
               nextCurrentEntries,
               nextSlotCache,
               aniListResult.status === "fulfilled",
-              DEFAULT_TIMEZONE
+              DEFAULT_TIMEZONE,
+              calibrationOwnership
             )
           : null;
 
