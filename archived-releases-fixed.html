@@ -1,0 +1,4226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Archived Releases" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b0d13" />
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Archived%20Anime%20Dashboard%22%2C%22short_name%22%3A%22Archive%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b0d13%22%2C%22theme_color%22%3A%22%230b0d13%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A//upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image/svg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D" />
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg" />
+  <title>Archived Releases</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0d13;
+  --surface: #141822;
+  --surface-soft: #1d2331;
+  --surface-softer: #252c3d;
+  --soft: #1d2331;
+  --softer: #252c3d;
+  --text: #edf1f8;
+  --muted: #a1abc0;
+  --muted-2: #6b768e;
+  --muted2: #6b768e;
+  --line: rgba(255, 255, 255, 0.08);
+  --brand: #8b96ff;
+  --brand-strong: #a8b0ff;
+  --brand2: #a8b0ff;
+  --ok: #45d49b;
+  --warn: #f2c36b;
+  --danger: #ff7b73;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --radius: 16px;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { min-height: 100%; background: var(--bg); background-color: var(--bg); }
+body { margin: 0; min-height: 100vh; min-height: 100svh; min-height: 100dvh; font-family: var(--font); color: var(--text); background: var(--bg); background-color: var(--bg); overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-color: var(--bg); background-image: radial-gradient(circle at 15% 0%, rgba(139, 150, 255, 0.08), transparent 40vw), linear-gradient(180deg, var(--bg), #08090d); background-repeat: no-repeat; background-size: cover; }
+button, input, textarea, select { font: inherit; }
+button { border: 0; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+a { color: inherit; }
+textarea { resize: vertical; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(139,150,255,.4); border-color: var(--brand); }
+.app { position: relative; z-index: 1; width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 0 calc(64px + env(safe-area-inset-bottom)); }
+.shell { display: grid; gap: 32px; }
+.hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.hero-text { max-width: 680px; }
+.eyebrow { margin: 0 0 8px; font-size: .75rem; letter-spacing: .15em; text-transform: uppercase; color: var(--brand); font-weight: 800; }
+h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; line-height: 1; font-weight: 800; }
+.board-controls, .toolbar-actions, .mini-actions, .segmented, .links-row, .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tabs, .segmented { background: rgba(20,24,34,.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 6px; border-radius: 99px; border: 1px solid var(--line); }
+.tab, .segment { background: transparent; color: var(--muted); padding: 8px 18px; border-radius: 99px; font-weight: 800; font-size: .9rem; transition: all .2s ease; }
+.tab:hover, .segment:hover { color: var(--text); }
+.tab.active, .segment.active { background: var(--surface-softer); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.input, .search-input, textarea, select { width: 100%; background: rgba(20,24,34,.65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 11px 14px; outline: none; transition: border-color .2s, box-shadow .2s; }
+.pill-input { min-width: 240px; height: 42px; border-radius: 99px; padding: 0 18px; font-size: .9rem; }
+.input:focus, .search-input:focus, textarea:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,.15); }
+.tab-view { display: none; animation: fadeIn .25s ease; }
+.tab-view.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.active-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; align-items: start; }
+.board-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.board-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.1rem; font-weight: 800; }
+.count { min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--surface-softer); color: var(--muted); font-size: .75rem; font-weight: 800; padding: 0 8px; }
+.board, .active-boards, .board-list, .list { overflow: visible; }
+.board-list, .list { display: grid; gap: 12px; min-height: 64px; padding-bottom: 24px; }
+.card { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); transition: transform .2s cubic-bezier(.2,0,0,1), box-shadow .2s ease, border-color .2s ease, background .2s ease; overflow: visible; display: flex; flex-direction: column; }
+.card:hover, .card:focus-within { z-index: 20; transform: translateY(-2px); background: var(--surface-soft); box-shadow: 0 8px 24px rgba(0,0,0,.4); border-color: rgba(139,150,255,.3); }
+.card:has(.menu[open]), .card.menu-open { z-index: 100; }
+.card-main { display: grid; grid-template-columns: auto 56px minmax(0,1fr) auto; align-items: center; gap: 14px; padding: 12px 14px; min-height: 104px; }
+.card-main.no-download { grid-template-columns: 56px minmax(0,1fr) auto; }
+.check { position: relative; appearance: none; width: 22px; height: 22px; border: 2px solid var(--muted-2); border-radius: 50%; transition: all .2s ease; cursor: pointer; margin: 0; display: grid; place-items: center; flex-shrink: 0; }
+.check::before { content: ""; position: absolute; inset: -14px; }
+.check:checked { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 12px rgba(69,212,155,.4); }
+.check:checked::after { content: "✓"; color: #000; font-size: 14px; font-weight: 900; }
+.thumb { width: 56px; height: 76px; border-radius: 8px; object-fit: cover; background-color: var(--surface-softer); color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.2); flex-shrink: 0; transition: transform .2s ease; }
+.card:hover .thumb, .thumb-link:hover .thumb { transform: translateY(-1px); }
+.content { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.title { font-weight: 800; font-size: 1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title a { text-decoration: none; }
+.title a:hover { color: var(--brand); }
+.meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; color: var(--muted); font-size: .8rem; font-weight: 650; min-width: 0; overflow: hidden; }
+.meta span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.meta.has-error { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+.badge { padding: 4px 8px; border-radius: 6px; font-size: .68rem; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
+.badge.found { color: var(--ok); background: rgba(69,212,155,.1); }
+.badge.watch { color: var(--warn); background: rgba(242,195,107,.1); }
+.badge.done { color: var(--muted); background: var(--surface-softer); }
+.badge.need { color: var(--warn); background: rgba(242,195,107,.12); }
+.badge.update { color: #fff; background: var(--brand); box-shadow: 0 0 10px rgba(139,150,255,.4); }
+.card.has-update { border-color: rgba(139,150,255,.6); box-shadow: 0 0 0 1px rgba(139,150,255,.26), 0 0 24px rgba(139,150,255,.12); }
+.card.has-update:hover, .card.has-update:focus-within { border-color: rgba(168,176,255,.75); box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(139,150,255,.3), 0 0 28px rgba(139,150,255,.18); }
+.card.has-update > .card-main .thumb { box-shadow: 0 0 0 2px rgba(139,150,255,.65), 0 8px 20px rgba(0,0,0,.28); }
+.time { font-size: .7rem; color: var(--muted-2); font-weight: 650; }
+.update-marker { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-width: 0; }
+.update-date { color: var(--brand-strong); font-size: .68rem; font-weight: 850; letter-spacing: .01em; line-height: 1; white-space: nowrap; }
+.menu { position: relative; z-index: 1; margin-left: 0; align-self: center; }
+.menu[open] { z-index: 120; }
+.menu summary { list-style: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.icon-btn, .menu summary.icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-softer); border: 1px solid var(--line); color: var(--muted); font-weight: 900; cursor: pointer; text-decoration: none; }
+.icon-btn:hover, .menu[open] summary, .icon-btn.active { color: var(--brand); border-color: rgba(139,150,255,.4); background: rgba(255,255,255,.08); }
+.menu-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 220px; z-index: 130; background: #111520; border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); display: grid; gap: 4px; }
+.menu-panel a, .menu-panel button, .menu-action { width: 100%; min-height: 34px; border-radius: 10px; background: transparent; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-weight: 750; font-size: .85rem; text-align: left; }
+.menu-panel a:hover, .menu-panel button:hover, .menu-action:hover { background: var(--surface-softer); }
+.menu-panel .danger, .menu-action.danger { color: var(--danger); }
+.menu-action.active { color: var(--brand); }
+.notes { display: none; padding: 0 14px 14px 106px; border-top: 1px solid var(--line); background: rgba(0,0,0,.1); }
+.card.notes-open .notes { display: block; padding-top: 14px; animation: slideDownPanel .2s ease-out; }
+@keyframes slideDownPanel { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.folder { padding: 0; display: flex; flex-direction: column; gap: 0; }
+.folder .card-main { cursor: pointer; grid-template-columns: 56px minmax(0,1fr) auto; padding-left: 14px; min-height: 104px; }
+.folder .card-main.has-folder-menu { grid-template-columns: 56px minmax(0,1fr) auto auto; }
+.folder .card-main.no-folder-menu { grid-template-columns: 56px minmax(0,1fr) auto; }
+.folder .menu { justify-self: end; }
+.folder-list { display: grid; gap: 12px; padding: 14px; background: rgba(0,0,0,.15); border-top: 1px solid var(--line); min-height: 24px; }
+.folder-list.collapsed { display: none; }
+.folder-toggle { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--surface-softer); color: var(--muted); border: 1px solid var(--line); border-radius: 9px; pointer-events: none; font-size: .75rem; transition: all .2s ease; justify-self: end; }
+.folder-toggle.collapsed { transform: rotate(-90deg); }
+.folder-name { background: transparent; border: none; color: var(--text); font-weight: 900; font-size: 1rem; padding: 4px 8px; border-radius: 6px; outline: none; width: 100%; min-width: 0; max-width: 100%; margin-left: -8px; box-shadow: none !important; }
+.folder-name:focus, .folder-name:not([readonly]):hover { background: var(--surface-soft); }
+.folder-name[readonly] { pointer-events: none; }
+.bottom-section, .bottom { margin-top: 48px; display: grid; gap: 24px; border-top: 1px solid var(--line); padding-top: 42px; }
+.section-card { background: rgba(20,24,34,.74); border: 1px solid var(--line); border-radius: 24px; padding: 20px; display: grid; gap: 16px; box-shadow: 0 1px 0 rgba(255,255,255,.02) inset; }
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.section-title { margin: 0; font-size: 1rem; font-weight: 900; color: var(--text); }
+.hint, .help { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.45; }
+.add-panel { display: none; gap: 14px; }
+.add-panel.active { display: grid; }
+.search-row, .form-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; align-items: center; }
+.manual-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.manual-grid .wide { grid-column: 1 / -1; }
+.btn { min-height: 42px; padding: 0 18px; border-radius: 99px; background: var(--surface-softer); color: var(--text); font-weight: 850; border: 1px solid var(--line); transition: all .2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.btn:hover { background: rgba(255,255,255,.08); }
+.btn.primary { background: var(--brand); color: #000; border-color: transparent; }
+.btn.primary:hover { background: var(--brand-strong); }
+.btn.danger { color: var(--danger); }
+.btn.compact { min-height: 34px; padding: 0 13px; font-size: .82rem; }
+.btn.active, .segment.active { background: var(--brand); color: #000; border-color: transparent; }
+.results { display: none; background: rgba(20,24,34,.9); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 18px; max-height: 360px; overflow-y: auto; padding: 10px; transform-origin: top; }
+.results.open { display: grid; gap: 5px; animation: slideDown .2s cubic-bezier(.4,0,.2,1); }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px) scaleY(.95); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
+.result { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 12px; background: transparent; text-align: left; transition: background .2s; width: 100%; color: var(--text); }
+.result:hover { background: var(--surface-softer); }
+.poster { width: 42px; height: 58px; border-radius: 6px; object-fit: cover; color: transparent; background-color: var(--surface-softer); flex-shrink: 0; }
+.result-info { flex: 1; min-width: 0; }
+.result-title { display: block; font-weight: 850; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-meta { display: block; font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.status { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--muted); font-size: .9rem; transition: color .3s; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(69,212,155,.15); transition: all .3s ease; }
+.dot.sync { background: var(--brand); box-shadow: 0 0 0 3px rgba(139,150,255,.3); animation: pulseSync 1.5s infinite ease-in-out; }
+.dot.err { background: var(--danger); box-shadow: 0 0 0 3px rgba(255,123,115,.3); }
+@keyframes pulseSync { 0% { box-shadow: 0 0 0 0 rgba(139,150,255,.4); } 70% { box-shadow: 0 0 0 6px rgba(139,150,255,0); } 100% { box-shadow: 0 0 0 0 rgba(139,150,255,0); } }
+.activity-indicator { position: fixed; top: calc(16px + env(safe-area-inset-top)); right: calc(16px + env(safe-area-inset-right)); z-index: 1200; display: inline-flex; align-items: center; gap: 8px; min-height: 34px; max-width: min(280px, calc(100vw - 32px)); padding: 0 12px; border-radius: 999px; background: rgba(20,24,34,.88); border: 1px solid rgba(139,150,255,.3); color: var(--text); box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: .78rem; font-weight: 850; pointer-events: none; }
+.activity-indicator[hidden] { display: none; }
+.activity-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,.45); animation: pulseActivity 1.1s infinite ease-in-out; }
+@keyframes pulseActivity { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.45); } 70% { box-shadow: 0 0 0 6px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+.activity-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 520px) { .activity-indicator { top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); min-height: 30px; padding-inline: 10px; } .activity-label { display: none; } }
+.maintenance-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.maintenance-box { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.14); }
+.file { display: none; }
+.review { display: grid; gap: 8px; max-height: 300px; overflow: auto; }
+.review-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--surface-softer); }
+.batch-review-box { margin-top: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.12); }
+.release-progress { width: 100%; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(0,0,0,.12); color: var(--muted); font-size: .84rem; font-weight: 750; line-height: 1.35; }
+.review-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.settings-toggle { width: 100%; min-height: 78px; border-radius: 24px; justify-content: space-between; text-align: left; padding: 18px 20px; background: rgba(20,24,34,.55); border: 1px dashed var(--line); color: var(--text); }
+.settings-toggle:hover { border-color: var(--brand); background: rgba(139,150,255,.06); }
+.settings-toggle.active { border-style: solid; border-color: rgba(139,150,255,.45); background: rgba(139,150,255,.1); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+.settings-toggle-copy { display: grid; gap: 4px; min-width: 0; }
+.settings-toggle-copy strong { font-size: 1rem; font-weight: 950; }
+.settings-toggle-copy small { color: var(--muted); font-weight: 700; line-height: 1.35; }
+.settings-toggle-state { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 99px; background: var(--surface-softer); color: var(--muted); transition: transform .2s ease, color .2s ease; flex-shrink: 0; }
+.settings-toggle.active .settings-toggle-state { transform: rotate(180deg); color: var(--brand); }
+.settings-panel { margin-top: -12px; border-top-left-radius: 16px; border-top-right-radius: 16px; background: rgba(20,24,34,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.toast-area { position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 1100; display: grid; gap: 12px; }
+.toast { background: var(--surface); border: 1px solid var(--line); padding: 14px 18px; border-radius: 99px; box-shadow: var(--shadow); font-weight: 750; font-size: .92rem; animation: toastSlideIn .3s cubic-bezier(.175,.885,.32,1.275); }
+.toast.error { border-color: rgba(255,123,115,.4); color: var(--danger); }
+@keyframes toastSlideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+.empty { padding: 34px 20px; text-align: center; color: var(--muted-2); background: rgba(255,255,255,.02); border-radius: 18px; font-weight: 650; border: 1px solid rgba(255,255,255,.05); }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; padding: 24px; }
+.modal.open { opacity: 1; pointer-events: auto; }
+.modal-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; width: 100%; max-width: 620px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.5); transform: translateY(20px); transition: transform .3s cubic-bezier(.175,.885,.32,1.275); }
+.modal.open .modal-card { transform: translateY(0); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+.modal-head h3 { margin: 0; font-size: 1.2rem; }
+.modal-body { padding: 24px; overflow-y: auto; display: grid; gap: 12px; }
+.relation-item { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--surface-softer); border-radius: 12px; }
+.relation-type { font-size: .7rem; color: var(--brand); font-weight: 900; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
+.compact-select { min-width: 170px; width: auto; height: 42px; border-radius: 99px; }
+
+.downloaded-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 1fr));
+}
+
+/* Folder metadata polish */
+.folder .meta {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  gap: 6px;
+  align-items: center;
+}
+
+.folder .meta > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.folder .meta span:first-child {
+  min-width: auto;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.folder .folder-completion {
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.folder .badge.update {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 800px) {
+  .app { width: min(100% - 28px, 1200px); }
+  .active-boards { grid-template-columns: 1fr; }
+  .hero { flex-direction: column; align-items: flex-start; }
+  .board-controls { width: 100%; }
+  .pill-input { width: 100%; }
+  .search-row, .form-row { grid-template-columns: 1fr; }
+  .manual-grid { grid-template-columns: 1fr; }
+  .card-main { grid-template-columns: auto 52px minmax(0,1fr) auto; gap: 12px; }
+  .card-main.no-download { grid-template-columns: 52px minmax(0,1fr) auto; }
+  .thumb { width: 52px; height: 72px; }
+  .notes { padding-left: 14px; }
+  .folder .card-main { grid-template-columns: 52px minmax(0,1fr) auto; }
+  .folder .card-main.has-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto auto; }
+  .folder .card-main.no-folder-menu { grid-template-columns: 52px minmax(0,1fr) auto; }
+  .folder-list { padding: 14px; }
+  #view-downloaded .board-header { gap: 14px; }
+  #view-downloaded .toolbar-actions { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+  #view-downloaded .toolbar-actions .segmented { grid-column: 1 / -1; width: 100%; display: flex; flex-wrap: nowrap; gap: 4px; padding: 5px; border-radius: 18px; overflow: hidden; }
+  #view-downloaded .toolbar-actions .segment { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: .78rem; text-align: center; white-space: nowrap; }
+  #view-downloaded .toolbar-actions .btn { width: 100%; min-width: 0; padding: 0 10px; }
+  .folder .meta { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+  .folder .folder-completion { flex-shrink: 0; }
+  .folder .badge.update { font-size: .62rem; padding: 3px 7px; }
+  .folder .update-marker { gap: 4px; }
+  .folder .update-date { font-size: .62rem; }
+  .settings-toggle { min-height: 68px; padding: 16px; }
+  .settings-toggle-copy small { font-size: .8rem; }
+  .menu-panel { right: 0; max-width: min(260px, calc(100vw - 48px)); }
+  .review-item { grid-template-columns: 1fr; }
+}
+@media (max-width: 390px) {
+  #view-downloaded .toolbar-actions .segment { font-size: .7rem; padding-inline: 4px; }
+}
+</style>
+</head>
+<body>
+
+<div class="activity-indicator" id="activityIndicator" hidden aria-live="polite" aria-label="Board is responding">
+  <span class="activity-dot" aria-hidden="true"></span>
+  <span class="activity-label" id="activityIndicatorText">Working...</span>
+</div>
+
+<main class="app">
+  <section class="shell">
+    <header class="hero">
+      <div class="hero-text">
+        <h1>Archived Releases</h1>
+      </div>
+      <div class="board-controls">
+        <div class="tabs" id="mainTabs">
+          <button class="tab active" data-target="view-active" type="button">Active</button>
+          <button class="tab" data-target="view-downloaded" type="button">Library</button>
+        </div>
+        <input type="text" id="boardSearchInput" class="input pill-input" placeholder="Filter active shows..." autocomplete="off" />
+      </div>
+    </header>
+
+    <section class="boards" id="boards">
+      <div class="tab-view active" id="view-active">
+        <div class="active-boards">
+          <article class="board" data-board="found">
+            <header class="board-header">
+              <h2 class="board-title">Found <span class="count" id="foundCount">0</span></h2>
+            </header>
+            <div class="board-list list" id="foundList"></div>
+          </article>
+          <article class="board" data-board="watching">
+            <header class="board-header">
+              <h2 class="board-title">Watching <span class="count" id="watchingCount">0</span></h2>
+            </header>
+            <div class="board-list list" id="watchingList"></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="tab-view" id="view-downloaded">
+        <header class="board-header" style="margin-bottom: 24px;">
+          <h2 class="board-title">Downloaded Archive <span class="count" id="downloadedCount">0</span></h2>
+          <div class="toolbar-actions">
+            <div class="segmented" aria-label="Library filter">
+              <button class="segment active" id="filterAllBtn" type="button">All</button>
+              <button class="segment" id="filterCompleteBtn" type="button">Complete</button>
+              <button class="segment" id="filterIncompleteBtn" type="button">Incomplete</button>
+              <button class="segment" id="filterUpdatedBtn" type="button" hidden>Updated</button>
+            </div>
+            <button class="btn compact" id="editOrderBtn" type="button">Edit Order</button>
+            <button class="btn compact" id="addFolderBtn" type="button">+ Folder</button>
+            <button class="btn compact" id="sortLibraryBtn" type="button">A-Z</button>
+          </div>
+        </header>
+        <div class="active-boards downloaded-grid" id="downloadedList"></div>
+      </div>
+    </section>
+
+    <section class="bottom-section">
+      <article class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Add Show</h3>
+            <p class="hint">AniList is canonical. If AniList is unavailable, use Manual Add or import an existing backup for now.</p>
+          </div>
+          <div class="segmented" id="addModeTabs">
+            <button class="segment active" data-add-mode="search" type="button">Search</button>
+            <button class="segment" data-add-mode="paste" type="button">Paste</button>
+            <button class="segment" data-add-mode="manual" type="button">Manual</button>
+          </div>
+        </div>
+
+        <div class="add-panel active" id="add-search-panel">
+          <div class="search-row">
+            <input class="input" id="searchInput" type="search" autocomplete="off" placeholder="Search AniList to add a show..." />
+            <button class="btn primary" id="searchBtn" type="button">Search</button>
+          </div>
+          <div class="results" id="results"></div>
+        </div>
+
+        <div class="add-panel" id="add-paste-panel">
+          <p class="hint">Paste AniList URLs, SeaDex URLs (seadex.moe or releases.moe), labelled IDs, or plain titles. Existing MAL URL imports still resolve through AniList. One item per line works best.</p>
+          <textarea id="batchInput" rows="6" placeholder="https://anilist.co/anime/154587/Frieren-Beyond-Journeys-End/&#10;https://myanimelist.net/anime/52991/Sousou_no_Frieren&#10;Cowboy Bebop"></textarea>
+          <div class="mini-actions">
+            <button class="btn primary" id="batchImportBtn" type="button">Review Paste Import</button>
+            <button class="btn" id="batchClearBtn" type="button">Clear</button>
+          </div>
+          <div id="batchReview" hidden class="batch-review-box">
+            <div class="review-head">
+              <strong id="batchReviewSummary">Review Matches</strong>
+              <div class="mini-actions">
+                <button class="btn primary compact" id="batchConfirmBtn" type="button">Add Selected</button>
+                <button class="btn danger compact" id="batchCancelBtn" type="button">Cancel</button>
+              </div>
+            </div>
+            <div class="review" id="batchReviewList"></div>
+          </div>
+        </div>
+
+        <div class="add-panel" id="add-manual-panel">
+          <p class="hint">For offline-safe entries, title, year, format, and image URL or upload are mandatory. AniList/MAL IDs are optional and help regeneration.</p>
+          <div class="manual-grid">
+            <input class="input" id="manualTitle" type="text" placeholder="Title *" autocomplete="off" />
+            <input class="input" id="manualYear" type="number" min="1900" max="2100" placeholder="Year *" autocomplete="off" />
+            <select id="manualFormat" class="input" aria-label="Format *">
+              <option value="">Format *</option>
+              <option>TV</option>
+              <option>TV_SHORT</option>
+              <option>MOVIE</option>
+              <option>SPECIAL</option>
+              <option>OVA</option>
+              <option>ONA</option>
+              <option>MUSIC</option>
+              <option>UNKNOWN</option>
+            </select>
+            <input class="input" id="manualImageUrl" type="url" placeholder="Image URL or upload image *" autocomplete="off" />
+            <input class="input" id="manualImageFile" type="file" accept="image/*" aria-label="Upload local image" />
+            <input class="input" id="manualAniListId" type="number" placeholder="AniList ID (optional)" autocomplete="off" />
+            <input class="input" id="manualMalId" type="number" placeholder="MAL ID (optional)" autocomplete="off" />
+            <textarea class="wide" id="manualNotes" rows="3" placeholder="Notes (optional)"></textarea>
+          </div>
+          <div class="mini-actions">
+            <button class="btn primary" id="manualAddBtn" type="button">Add Manual Show</button>
+            <button class="btn" id="manualClearBtn" type="button">Clear Form</button>
+          </div>
+        </div>
+      </article>
+
+      <button id="toggleSettingsBtn" class="btn settings-toggle" type="button" aria-expanded="false">
+        <span class="settings-toggle-copy">
+          <strong>Settings & Maintenance</strong>
+          <small>Data, sync, grouping, archive, and cleanup tools</small>
+        </span>
+        <span class="settings-toggle-state" aria-hidden="true">⌄</span>
+      </button>
+
+      <div class="section-card settings-panel" id="settingsPanel" style="display:none">
+        <div class="maintenance-grid">
+          <div class="maintenance-box">
+            <strong>Status</strong>
+            <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">System Ready</span></div>
+            <button class="btn" id="testReleasesApiBtn" type="button">Test SeaDex API</button>
+            <p class="hint" id="releasesApiStatus" aria-live="polite">Checks the configured API without changing your board.</p>
+          </div>
+          <div class="maintenance-box">
+            <strong>Library tools</strong>
+            <p class="hint">Refresh Stale checks active Found/Watching entries after 12 hours and Library entries after 24 hours. Release checks use AniList IDs and small batches. Failed checks keep existing data and become eligible for retry after 5 minutes (or a longer server cooldown).</p>
+            <div class="mini-actions">
+              <button class="btn" id="smartGroupBtn" type="button">Smart Group</button>
+              <button class="btn" id="refreshReleasesBtn" type="button">Refresh Stale</button>
+              <button class="btn" id="refreshAllReleasesBtn" type="button">Full Refresh</button>
+              <button class="btn danger" id="cancelReleaseRefreshBtn" type="button" hidden>Cancel</button>
+              <button class="btn" id="regenerateAniListBtn" type="button">Regenerate AniList</button>
+            </div>
+            <div class="release-progress" id="releaseRefreshProgress" hidden></div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Data</strong>
+            <p class="hint">Normal JSON and cloud sync stay small. Portable archives embed covers for offline use and can be merged back later.</p>
+            <div class="mini-actions">
+              <button class="btn" id="exportBtn" type="button">Export JSON</button>
+              <button class="btn" id="portableExportBtn" type="button">Export Portable Archive</button>
+              <input class="file" id="importFile" type="file" accept=".json,application/json" />
+              <button class="btn" id="importBtn" type="button">Import JSON / Portable</button>
+              <select class="input compact-select" id="importMode" aria-label="Import mode">
+                <option value="replace">Replace board</option>
+                <option value="merge">Merge into board</option>
+              </select>
+              <button class="btn danger" id="clearBtn" type="button">Clear Board</button>
+            </div>
+          </div>
+          <div class="maintenance-box">
+            <strong>Cloud Sync</strong>
+            <p class="hint">PAT and Gist ID stay in localStorage. The board is saved in IndexedDB/local fallback and synced lightweight to Gist.</p>
+            <input class="input" id="githubPat" type="password" placeholder="GitHub PAT (ghp_...)" autocomplete="off" spellcheck="false" />
+            <input class="input" id="gistId" type="text" placeholder="Gist ID" autocomplete="off" spellcheck="false" />
+            <button class="btn primary" id="syncNowBtn" type="button">Pull & Sync</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+</main>
+
+<div class="modal" id="exploreModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="exploreModalTitle">Related Shows</h3>
+      <button class="icon-btn" id="closeExploreBtn" type="button">×</button>
+    </div>
+    <div class="modal-body" id="exploreModalBody"></div>
+  </div>
+</div>
+<div class="toast-area" id="toastArea"></div>
+
+<script>
+      const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+      // Retain the supplied hotfix. The API host and public website are independent.
+      // A hostname change must be confirmed with the service; do not silently fail over.
+      const RELEASES_ENDPOINT =
+        "https://seadex.moe/api/collections/entries/records";
+      const RELEASES_SITE_URL = "https://releases.moe";
+      const RELEASES_ERROR_RETRY_MS = 5 * 60 * 1000;
+      const RELEASES_SERVICE_BACKOFF_MS = 60 * 1000;
+      const API_MAX_INLINE_RETRY_WAIT_MS = 5000;
+      const RELEASES_MAX_PAGES = 100;
+      const STORAGE_KEY = "anilist-releases-board:v2";
+      const STORAGE_FALLBACK_KEY = STORAGE_KEY + ":fallback";
+      const STORAGE_MIGRATED_KEY = STORAGE_KEY + ":migrated";
+      const SYNC_SETTINGS_KEY = "anilist-releases-sync-v1";
+      const DB_NAME = "anilist-releases-board-db";
+      const DB_STORE = "board";
+      const DB_STATE_ID = "current";
+      const MAX_LOCAL_FALLBACK_BYTES = 300000;
+      const MAX_CLOUD_SYNC_BYTES = 900000;
+      const MAX_PORTABLE_COVER_BYTES = 900 * 1024;
+      const AUTO_LIBRARY_RELEASE_CHECK_LIMIT = 100;
+      const ACTIVE_RELEASE_STALE_MS = 12 * 60 * 60 * 1000;
+      const LIBRARY_RELEASE_STALE_MS = 24 * 60 * 60 * 1000;
+      const RELEASES_REQUEST_DELAY_MS = 1000;
+      const RELEASES_BULK_CHUNK_SIZE = 50;
+      const RELEASES_SINGLE_FALLBACK_AUTO_LIMIT = 25;
+      const RELEASE_PROGRESS_TOAST_MIN_MS = 1500;
+      const RELEASES_FULL_REFRESH_SAVE_EVERY = 50;
+      const BOARDS = ["found", "watching", "downloaded"];
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const q = (s) => document.querySelector(s);
+      const qa = (s) => Array.from(document.querySelectorAll(s));
+
+      const state = {
+        shows: [],
+        groups: [],
+        groupOrder: {},
+        order: { found: [], watching: [], downloaded: [] },
+        ui: {
+          filterComplete: false,
+          filterIncomplete: false,
+          filterUpdated: false,
+          openNotes: {},
+          sortMode: false,
+          addMode: "search",
+        },
+        localSearch: "",
+      };
+      let searchRequestId = 0,
+        pendingBatchMatches = [],
+        cloudSyncTimer = null,
+        startupTasksStarted = false,
+        releaseCheckRunning = false,
+        lastAutoReleaseCheckAt = 0,
+        lastCloudPullFailed = false,
+        aniListCooldownUntil = 0,
+        releaseCooldownUntil = 0,
+        dbPromise = null,
+        idbAvailable = null,
+        lastLibraryUpdateToastCount = null,
+        suppressCloudSync = false,
+        releaseQueueCancelRequested = false,
+        releaseBulkDisabled = false,
+        releaseQueuePauseReason = "",
+        releaseServiceError = null,
+        releaseNextRequestAt = 0,
+        releaseRequestQueue = Promise.resolve(),
+        activityCount = 0,
+        activityHideTimer = null,
+        activityLabel = "Working...";
+      const RESUME_RELEASE_CHECK_STALE_MS = 15 * 60 * 1000;
+      const commentTimers = new Map(),
+        groupNameTimers = new Map();
+
+      const els = {
+        boards: q("#boards"),
+        tabs: qa(".tab"),
+        views: qa(".tab-view"),
+        statusText: q("#statusText"),
+        statusDot: q("#statusDot"),
+        testReleasesApiBtn: q("#testReleasesApiBtn"),
+        releasesApiStatus: q("#releasesApiStatus"),
+        activityIndicator: q("#activityIndicator"),
+        activityIndicatorText: q("#activityIndicatorText"),
+        searchInput: q("#searchInput"),
+        searchBtn: q("#searchBtn"),
+        results: q("#results"),
+        boardSearchInput: q("#boardSearchInput"),
+        filterUpdatedBtn: q("#filterUpdatedBtn"),
+        addModeTabs: q("#addModeTabs"),
+        addPanels: qa(".add-panel"),
+        toggleSettingsBtn: q("#toggleSettingsBtn"),
+        settingsPanel: q("#settingsPanel"),
+        editOrderBtn: q("#editOrderBtn"),
+        addFolderBtn: q("#addFolderBtn"),
+        sortLibraryBtn: q("#sortLibraryBtn"),
+        filterAllBtn: q("#filterAllBtn"),
+        filterCompleteBtn: q("#filterCompleteBtn"),
+        filterIncompleteBtn: q("#filterIncompleteBtn"),
+        foundList: q("#foundList"),
+        watchingList: q("#watchingList"),
+        downloadedList: q("#downloadedList"),
+        foundCount: q("#foundCount"),
+        watchingCount: q("#watchingCount"),
+        downloadedCount: q("#downloadedCount"),
+        batchInput: q("#batchInput"),
+        batchImportBtn: q("#batchImportBtn"),
+        batchClearBtn: q("#batchClearBtn"),
+        batchReview: q("#batchReview"),
+        batchReviewList: q("#batchReviewList"),
+        batchReviewSummary: q("#batchReviewSummary"),
+        batchConfirmBtn: q("#batchConfirmBtn"),
+        batchCancelBtn: q("#batchCancelBtn"),
+        manualTitle: q("#manualTitle"),
+        manualYear: q("#manualYear"),
+        manualFormat: q("#manualFormat"),
+        manualImageUrl: q("#manualImageUrl"),
+        manualImageFile: q("#manualImageFile"),
+        manualAniListId: q("#manualAniListId"),
+        manualMalId: q("#manualMalId"),
+        manualNotes: q("#manualNotes"),
+        manualAddBtn: q("#manualAddBtn"),
+        manualClearBtn: q("#manualClearBtn"),
+        smartGroupBtn: q("#smartGroupBtn"),
+        regenerateAniListBtn: q("#regenerateAniListBtn"),
+        refreshReleasesBtn: q("#refreshReleasesBtn"),
+        refreshAllReleasesBtn: q("#refreshAllReleasesBtn"),
+        cancelReleaseRefreshBtn: q("#cancelReleaseRefreshBtn"),
+        releaseRefreshProgress: q("#releaseRefreshProgress"),
+        exportBtn: q("#exportBtn"),
+        portableExportBtn: q("#portableExportBtn"),
+        importMode: q("#importMode"),
+        importBtn: q("#importBtn"),
+        importFile: q("#importFile"),
+        clearBtn: q("#clearBtn"),
+        githubPat: q("#githubPat"),
+        gistId: q("#gistId"),
+        syncNowBtn: q("#syncNowBtn"),
+        toastArea: q("#toastArea"),
+        exploreModal: q("#exploreModal"),
+        exploreModalTitle: q("#exploreModalTitle"),
+        exploreModalBody: q("#exploreModalBody"),
+        closeExploreBtn: q("#closeExploreBtn"),
+      };
+
+      function on(el, ev, fn, opt) {
+        if (!el) return;
+        el.addEventListener(
+          ev,
+          function (...args) {
+            const result = fn.apply(this, args);
+            if (result && typeof result.then === "function") {
+              const endActivity = beginActivity(activityLabel || "Working...");
+              return result.finally(endActivity);
+            }
+            return result;
+          },
+          opt,
+        );
+      }
+      function escapeHtml(v) {
+        return String(v ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+      function escapeAttr(v) {
+        return escapeHtml(v);
+      }
+      function uuid() {
+        return crypto.randomUUID
+          ? crypto.randomUUID()
+          : "id_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+      }
+      function defaultOrder() {
+        return { found: [], watching: [], downloaded: [] };
+      }
+      function defaultUi() {
+        return {
+          filterComplete: false,
+          filterIncomplete: false,
+          filterUpdated: false,
+          openNotes: {},
+          sortMode: false,
+          addMode: "search",
+        };
+      }
+      function setActivityLabel(text) {
+        const label = String(text || "").trim();
+        if (label && label !== "System Ready") activityLabel = label;
+        if (activityCount > 0 && els.activityIndicatorText)
+          els.activityIndicatorText.textContent = activityLabel || "Working...";
+      }
+      function updateActivityIndicator() {
+        if (!els.activityIndicator) return;
+        clearTimeout(activityHideTimer);
+        if (activityCount > 0) {
+          els.activityIndicator.hidden = false;
+          if (els.activityIndicatorText)
+            els.activityIndicatorText.textContent = activityLabel || "Working...";
+        } else {
+          activityHideTimer = setTimeout(() => {
+            if (activityCount === 0 && els.activityIndicator)
+              els.activityIndicator.hidden = true;
+          }, 220);
+        }
+      }
+      function beginActivity(label = "Working...") {
+        if (label) setActivityLabel(label);
+        activityCount += 1;
+        updateActivityIndicator();
+        let ended = false;
+        return () => {
+          if (ended) return;
+          ended = true;
+          activityCount = Math.max(0, activityCount - 1);
+          updateActivityIndicator();
+        };
+      }
+      async function withActivity(label, fn) {
+        const endActivity = beginActivity(label);
+        try {
+          return await fn();
+        } finally {
+          endActivity();
+        }
+      }
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = (...args) => withActivity("Working...", () => nativeFetch(...args));
+      function setStatus(text, mode = "ready") {
+        if (!els.statusText || !els.statusDot) return;
+        els.statusText.textContent = text;
+        els.statusDot.className =
+          mode === "sync" ? "dot sync" : mode === "error" ? "dot err" : "dot";
+
+        const statusText = String(text || "").trim();
+        if (mode === "sync" || (mode !== "error" && statusText && statusText !== "System Ready"))
+          setActivityLabel(statusText || "Working...");
+      }
+      function toast(msg, type = "", options = {}) {
+        if (!els.toastArea) return null;
+        const opts = typeof options === "number" ? { duration: options } : options || {};
+        const duration = opts.duration ?? 3000;
+        const t = document.createElement("div");
+        t.className = "toast " + type;
+        t.textContent = msg;
+        els.toastArea.append(t);
+        if (duration > 0) setTimeout(() => t.remove(), duration);
+        return t;
+      }
+      function dismissToast(t) {
+        if (t?.isConnected) t.remove();
+      }
+      function updateToast(t, msg, type = "") {
+        if (!t?.isConnected) return null;
+        t.className = "toast " + type;
+        t.textContent = msg;
+        return t;
+      }
+      function finishToast(t, msg, type = "", duration = 3000) {
+        if (!t?.isConnected) return toast(msg, type, { duration });
+        updateToast(t, msg, type);
+        if (duration > 0) setTimeout(() => t.remove(), duration);
+        return t;
+      }
+      async function keepToastVisible(startedAt, minMs = RELEASE_PROGRESS_TOAST_MIN_MS) {
+        const remaining = minMs - (Date.now() - startedAt);
+        if (remaining > 0) await sleep(remaining);
+      }
+      function timeoutSignal(ms) {
+        if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+        const c = new AbortController();
+        setTimeout(() => c.abort(), ms);
+        return c.signal;
+      }
+      function normalizeFormat(v) {
+        const s = String(v || "")
+          .trim()
+          .toUpperCase();
+        return s === "TV SPECIAL" ? "SPECIAL" : s;
+      }
+      function normalizeTitle(v) {
+        return String(v || "")
+          .normalize("NFKD")
+          .toLowerCase()
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/&/g, " and ")
+          .replace(/[^a-z0-9]+/g, " ")
+          .replace(/\b(the|a|an|season|part|cour|tv|movie)\b/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+      function getYearFromText(v) {
+        const m = String(v || "").match(/\b((?:19|20)\d{2})\b/);
+        return m ? Number(m[1]) : null;
+      }
+      function getBoard(s) {
+        if (!s) return "watching";
+        if (s.downloaded || s.board === "downloaded") return "downloaded";
+        return s.board === "found" ? "found" : "watching";
+      }
+      function byId(id) {
+        return state.shows.find((s) => s.id === id) || null;
+      }
+      function groupById(id) {
+        return state.groups.find((g) => g.id === id) || null;
+      }
+      function showTitle(s) {
+        return String(
+          s?.titleEnglish || s?.titleRomaji || s?.title || "",
+        ).trim();
+      }
+      function compareAZ(a, b) {
+        return showTitle(a).localeCompare(showTitle(b), undefined, {
+          sensitivity: "base",
+          numeric: true,
+        });
+      }
+      const formatRank = {
+        TV: 1,
+        ONA: 2,
+        OVA: 3,
+        MOVIE: 4,
+        SPECIAL: 5,
+        MUSIC: 6,
+        UNKNOWN: 99,
+      };
+      function compareFolder(a, b) {
+        const ay = Number.isFinite(Number(a?.seasonYear)),
+          by = Number.isFinite(Number(b?.seasonYear));
+        if (ay !== by) return ay ? -1 : 1;
+        if (ay && by && Number(a.seasonYear) !== Number(b.seasonYear))
+          return Number(a.seasonYear) - Number(b.seasonYear);
+        const af =
+            formatRank[String(a?.format || "UNKNOWN").toUpperCase()] ?? 99,
+          bf = formatRank[String(b?.format || "UNKNOWN").toUpperCase()] ?? 99;
+        if (af !== bf) return af - bf;
+        const ai = Number(a?.anilistId),
+          bi = Number(b?.anilistId),
+          ah = Number.isFinite(ai) && ai > 0,
+          bh = Number.isFinite(bi) && bi > 0;
+        if (ah !== bh) return ah ? -1 : 1;
+        if (ah && bh && ai !== bi) return ai - bi;
+        return compareAZ(a, b);
+      }
+      function sortGroup(gid) {
+        if (Array.isArray(state.groupOrder[gid]))
+          state.groupOrder[gid].sort((a, b) => compareFolder(byId(a), byId(b)));
+      }
+      function normalizeShow(s) {
+        if (!s.id) s.id = uuid();
+        if (!s.board) s.board = s.downloaded ? "downloaded" : "watching";
+        if (!s.releasesMoe) s.releasesMoe = defaultRelease();
+        if (!Array.isArray(s.relations)) s.relations = [];
+        if (!state.ui.openNotes) state.ui.openNotes = {};
+        if (!("allAvailableDownloaded" in s)) s.allAvailableDownloaded = false;
+        if (!("needsAnilist" in s)) s.needsAnilist = !s.anilistId;
+        if (!("temporary" in s)) s.temporary = !s.anilistId;
+        if (!s.anilistId) s.source = "manual";
+        else s.source = "anilist";
+      }
+      function normalizeGroup(g) {
+        if (!g) return;
+        if (!g.id) g.id = "grp_" + uuid();
+        if (!g.board) g.board = "downloaded";
+        if (!g.name) g.name = "New Folder";
+        g.collapsed = !!g.collapsed;
+        if (!("allAvailableDownloaded" in g)) g.allAvailableDownloaded = false;
+      }
+      function reconcile() {
+        if (!state.order || typeof state.order !== "object")
+          state.order = defaultOrder();
+        BOARDS.forEach((b) => {
+          if (!Array.isArray(state.order[b])) state.order[b] = [];
+        });
+        if (!Array.isArray(state.groups)) state.groups = [];
+        if (!state.groupOrder || typeof state.groupOrder !== "object")
+          state.groupOrder = {};
+        state.shows.forEach(normalizeShow);
+        state.groups.forEach(normalizeGroup);
+        state.groups = state.groups.filter(
+          (g) => g && g.id && BOARDS.includes(g.board),
+        );
+        state.shows.forEach((s) => {
+          if (s.groupId) {
+            const g = groupById(s.groupId);
+            if (!g || g.board !== getBoard(s)) s.groupId = null;
+          }
+        });
+        const seen = new Set();
+        Object.keys(state.groupOrder).forEach((gid) => {
+          state.groupOrder[gid] = (state.groupOrder[gid] || []).filter((id) => {
+            const s = byId(id);
+            return s && s.groupId === gid;
+          });
+          state.groupOrder[gid].forEach((id) => seen.add(id));
+        });
+        state.groups.forEach((g) => {
+          if (!state.groupOrder[g.id]) state.groupOrder[g.id] = [];
+          state.shows.forEach((s) => {
+            if (s.groupId === g.id && !state.groupOrder[g.id].includes(s.id))
+              state.groupOrder[g.id].push(s.id);
+          });
+          syncFolderCompleteState(g.id);
+        });
+        BOARDS.forEach((board) => {
+          const next = [],
+            seenItems = new Set();
+          state.order[board].forEach((id) => {
+            if (seenItems.has(id)) return;
+            const s = byId(id),
+              g = groupById(id);
+            if (s && getBoard(s) === board && !s.groupId && !seen.has(id)) {
+              next.push(id);
+              seen.add(id);
+              seenItems.add(id);
+            } else if (g && g.board === board) {
+              next.push(id);
+              seenItems.add(id);
+              if (!state.groupOrder[id]) state.groupOrder[id] = [];
+            }
+          });
+          state.shows.forEach((s) => {
+            if (getBoard(s) === board && !s.groupId && !seen.has(s.id)) {
+              next.unshift(s.id);
+              seen.add(s.id);
+            }
+          });
+          state.order[board] = next;
+        });
+      }
+      function insertAZ(arr, id) {
+        const s = byId(id);
+        if (!s) return;
+        const firstGroup = arr.findIndex((x) => groupById(x));
+        const end = firstGroup > -1 ? firstGroup : arr.length;
+        let at = end;
+        for (let i = 0; i < end; i++) {
+          const o = byId(arr[i]);
+          if (o && compareAZ(s, o) < 0) {
+            at = i;
+            break;
+          }
+        }
+        arr.splice(at, 0, id);
+      }
+      function removeFromOrders(id) {
+        BOARDS.forEach((b) => {
+          state.order[b] = state.order[b].filter((x) => x !== id);
+        });
+        Object.keys(state.groupOrder).forEach((g) => {
+          state.groupOrder[g] = state.groupOrder[g].filter((x) => x !== id);
+        });
+      }
+      function moveBoard(id, prev, next) {
+        if (prev === next) return;
+        removeFromOrders(id);
+        const s = byId(id);
+        if (s) s.groupId = null;
+        insertAZ(state.order[next], id);
+      }
+
+      function defaultRelease(o = {}) {
+        return {
+          found: false,
+          recordId: null,
+          checkedAt: null,
+          libraryCheckedAt: null,
+          lastAttemptAt: null,
+          retryAfter: null,
+          error: null,
+          errorStatus: null,
+          errorCode: null,
+          updated: null,
+          latestUpdated: null,
+          updateAvailable: false,
+          notListed: false,
+          notListedAt: null,
+          ...(o || {}),
+        };
+      }
+      function getMediaTitle(m) {
+        return typeof m?.title === "object"
+          ? m.title.english || m.title.romaji || m.title.native || "Untitled"
+          : m?.title || m?.titleEnglish || m?.titleRomaji || "Untitled";
+      }
+      function getMediaCover(m) {
+        return typeof m?.coverImage === "object"
+          ? m.coverImage.medium || m.coverImage.large || ""
+          : m?.coverImage || "";
+      }
+      function mediaKey(m) {
+        const aid = m?.id || m?.anilistId;
+        if (aid) return "anilist:" + aid;
+        const mid = m?.malId || m?.mal_id;
+        if (mid) return "mal:" + mid;
+        return (
+          "temp:" +
+          normalizeTitle(getMediaTitle(m)) +
+          ":" +
+          (m?.seasonYear || "")
+        );
+      }
+      function mediaMeta(m) {
+        return [m?.format || "Anime", m?.seasonYear || ""]
+          .filter(Boolean)
+          .join(" · ");
+      }
+      function mediaOnBoard(m) {
+        const aid = m?.id || m?.anilistId,
+          mid = m?.malId || m?.mal_id,
+          title = normalizeTitle(getMediaTitle(m)),
+          year = Number(m?.seasonYear) || null;
+        return state.shows.some(
+          (s) =>
+            (aid && s.anilistId && Number(s.anilistId) === Number(aid)) ||
+            (mid && s.malId && Number(s.malId) === Number(mid)) ||
+            (title &&
+              year &&
+              normalizeTitle(s.title) === title &&
+              Number(s.seasonYear) === year),
+        );
+      }
+      function showFromMedia(m) {
+        const aid = m.id || m.anilistId || null,
+          mid = m.malId || m.mal_id || null,
+          cover = getMediaCover(m),
+          needs = !aid;
+        return {
+          id: uuid(),
+          anilistId: aid ? Number(aid) : null,
+          malId: mid ? Number(mid) : null,
+          source: needs ? m.source || "manual" : "anilist",
+          temporary: needs,
+          needsAnilist: needs,
+          title: getMediaTitle(m),
+          titleEnglish: m.title?.english || m.titleEnglish || "",
+          titleRomaji: m.title?.romaji || m.titleRomaji || "",
+          coverImage: cover,
+          coverImageIsEmbedded: String(cover).startsWith("data:"),
+          format: normalizeFormat(m.format || ""),
+          seasonYear: m.seasonYear || null,
+          episodes: m.episodes || null,
+          siteUrl: aid
+            ? m.siteUrl || `https://anilist.co/anime/${aid}`
+            : m.siteUrl || "",
+          board: "watching",
+          downloaded: false,
+          allAvailableDownloaded: false,
+          comments: m.comments || "",
+          groupId: null,
+          relations: [],
+          releasesMoe: defaultRelease(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      function clonePlain(v) {
+        return JSON.parse(JSON.stringify(v));
+      }
+      function stripEmbedded(st) {
+        const c = clonePlain(st);
+        c.shows = (c.shows || []).map((s) => {
+          if (
+            typeof s.coverImage === "string" &&
+            s.coverImage.startsWith("data:")
+          ) {
+            s.coverImage = "";
+            s.coverImageStripped = true;
+          }
+          s.coverImageData = undefined;
+          s.coverImageOriginalUrl = undefined;
+          return s;
+        });
+        return c;
+      }
+      function savedShows(data) {
+        return Array.isArray(data)
+          ? data
+          : Array.isArray(data?.shows)
+            ? data.shows
+            : [];
+      }
+      function getStateTimestamp(data) {
+        const times = [];
+        const add = (v) => {
+          const t = Date.parse(v || "");
+          if (Number.isFinite(t)) times.push(t);
+        };
+        if (data && !Array.isArray(data)) add(data.updatedAt);
+        savedShows(data).forEach((s) => {
+          add(s.updatedAt);
+          add(s.createdAt);
+          add(s.releasesMoe?.checkedAt);
+          add(s.releasesMoe?.libraryCheckedAt);
+          add(s.releasesMoe?.updated);
+          add(s.releasesMoe?.latestUpdated);
+        });
+        return times.length ? Math.max(...times) : 0;
+      }
+      function findShowInListByMergeKeys(incoming, list) {
+        const aid = Number(incoming?.anilistId),
+          mid = Number(incoming?.malId),
+          title = normalizeTitle(
+            incoming?.title || incoming?.titleEnglish || incoming?.titleRomaji,
+          ),
+          year = Number(incoming?.seasonYear);
+        return (
+          (list || []).find(
+            (s) =>
+              (Number.isFinite(aid) &&
+                aid > 0 &&
+                Number(s.anilistId) === aid) ||
+              (Number.isFinite(mid) && mid > 0 && Number(s.malId) === mid) ||
+              (incoming?.id && s.id === incoming.id) ||
+              (title &&
+                Number.isFinite(year) &&
+                normalizeTitle(s.title || s.titleEnglish || s.titleRomaji) ===
+                  title &&
+                Number(s.seasonYear) === year),
+          ) || null
+        );
+      }
+      function preserveLocalEmbeddedCovers(incomingData) {
+        const clone = clonePlain(incomingData);
+        const incoming = savedShows(clone);
+        incoming.forEach((show) => {
+          const local = findShowInListByMergeKeys(show, state.shows);
+          if (!local) return;
+          const localCover = String(local.coverImage || "");
+          const incomingCover = String(show.coverImage || "");
+          if (
+            (show.coverImageStripped || !incomingCover) &&
+            isDataUrl(localCover)
+          ) {
+            show.coverImage = localCover;
+            show.coverImageIsEmbedded = true;
+            show.coverImageStripped = false;
+          }
+          if (
+            !incomingCover &&
+            local.coverImage &&
+            !isDataUrl(local.coverImage)
+          )
+            show.coverImage = local.coverImage;
+        });
+        return clone;
+      }
+      function byteSize(text) {
+        try {
+          return new Blob([text]).size;
+        } catch (e) {
+          return String(text || "").length;
+        }
+      }
+      function getLocal(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (e) {
+          return null;
+        }
+      }
+      function setLocal(key, value) {
+        try {
+          localStorage.setItem(key, value);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+      function removeLocal(key) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {}
+      }
+      function parseMaybeJson(raw) {
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          return null;
+        }
+      }
+      function loadLocalSnapshot() {
+        return (
+          parseMaybeJson(getLocal(STORAGE_FALLBACK_KEY)) ||
+          parseMaybeJson(getLocal(STORAGE_KEY)) ||
+          null
+        );
+      }
+      function saveLightweightFallback(snapshot) {
+        const lightweight = stripEmbedded(snapshot);
+        const text = JSON.stringify(lightweight);
+        setLocal(
+          STORAGE_MIGRATED_KEY,
+          JSON.stringify({
+            updatedAt: new Date().toISOString(),
+            storage:
+              idbAvailable === false ? "localStorage-fallback" : "indexedDB",
+          }),
+        );
+        if (byteSize(text) <= MAX_LOCAL_FALLBACK_BYTES) {
+          setLocal(STORAGE_FALLBACK_KEY, text);
+        } else {
+          removeLocal(STORAGE_FALLBACK_KEY);
+        }
+      }
+      function openBoardDb() {
+        if (!("indexedDB" in window))
+          return Promise.reject(new Error("IndexedDB unavailable"));
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (fn, val) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            fn(val);
+          };
+          const timer = setTimeout(
+            () => finish(reject, new Error("IndexedDB timeout")),
+            3500,
+          );
+          let req;
+          try {
+            req = indexedDB.open(DB_NAME, 1);
+          } catch (e) {
+            finish(reject, e);
+            return;
+          }
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(DB_STORE))
+              db.createObjectStore(DB_STORE, { keyPath: "id" });
+          };
+          req.onsuccess = () => finish(resolve, req.result);
+          req.onerror = () =>
+            finish(reject, req.error || new Error("IndexedDB open failed"));
+          req.onblocked = () => finish(reject, new Error("IndexedDB blocked"));
+        });
+        return dbPromise;
+      }
+      function idbGet(db, key) {
+        return new Promise((resolve, reject) => {
+          let tx;
+          try {
+            tx = db.transaction(DB_STORE, "readonly");
+            const req = tx.objectStore(DB_STORE).get(key);
+            req.onsuccess = () => resolve(req.result?.value || null);
+            req.onerror = () =>
+              reject(req.error || new Error("IndexedDB read failed"));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+      function idbPut(db, value) {
+        return new Promise((resolve, reject) => {
+          let tx;
+          try {
+            tx = db.transaction(DB_STORE, "readwrite");
+            tx.objectStore(DB_STORE).put({
+              id: DB_STATE_ID,
+              value,
+              updatedAt: new Date().toISOString(),
+            });
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () =>
+              reject(tx.error || new Error("IndexedDB write failed"));
+            tx.onabort = () =>
+              reject(tx.error || new Error("IndexedDB write aborted"));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+      async function readIndexedState() {
+        const db = await openBoardDb();
+        return idbGet(db, DB_STATE_ID);
+      }
+      async function persistState(snapshot) {
+        try {
+          const db = await openBoardDb();
+          await idbPut(db, snapshot);
+          idbAvailable = true;
+          saveLightweightFallback(snapshot);
+          removeLocal(STORAGE_KEY);
+          return true;
+        } catch (e) {
+          idbAvailable = false;
+          console.warn(
+            "IndexedDB save failed; using lightweight local fallback",
+            e,
+          );
+          saveLightweightFallback(snapshot);
+          return false;
+        }
+      }
+      async function hydrateWorkingStorage() {
+        try {
+          const indexed = await readIndexedState();
+          const local = loadLocalSnapshot();
+          if (indexed && savedShows(indexed).length) {
+            applyState(indexed);
+            render();
+            saveLightweightFallback(indexed);
+            setStatus("System Ready");
+            return;
+          }
+          if (local && savedShows(local).length) {
+            await persistState(local);
+            applyState(local);
+            render();
+            removeLocal(STORAGE_KEY);
+            toast("Migrated local board to IndexedDB.");
+            setStatus("System Ready");
+          }
+        } catch (e) {
+          idbAvailable = false;
+          console.warn(
+            "IndexedDB load failed; local/import/sync still available",
+            e,
+          );
+          setStatus("System Ready");
+        }
+      }
+      function save() {
+        try {
+          reconcile();
+          const snapshot = clonePlain(state);
+          saveLightweightFallback(snapshot);
+          persistState(snapshot);
+          if (!suppressCloudSync) {
+            clearTimeout(cloudSyncTimer);
+            cloudSyncTimer = setTimeout(() => pushToCloud(snapshot), 2500);
+          }
+        } catch (e) {
+          console.warn(e);
+          toast("Save failed. Export a backup soon.", "error");
+        }
+      }
+      function load() {
+        try {
+          const local = loadLocalSnapshot();
+          if (local) applyState(local);
+          else reconcile();
+        } catch (e) {
+          console.warn("Local fallback failed", e);
+          reconcile();
+        }
+      }
+      function applyState(data) {
+        state.shows = savedShows(data);
+        state.groups =
+          !Array.isArray(data) && Array.isArray(data?.groups)
+            ? data.groups
+            : [];
+        state.groupOrder =
+          !Array.isArray(data) && data?.groupOrder ? data.groupOrder : {};
+        state.order = {
+          ...defaultOrder(),
+          ...(!Array.isArray(data) && data?.order ? data.order : {}),
+        };
+        state.ui = {
+          ...defaultUi(),
+          ...(!Array.isArray(data) && data?.ui ? data.ui : {}),
+        };
+        reconcile();
+        updateButtons();
+      }
+      function loadSyncSettings() {
+        try {
+          const d = JSON.parse(localStorage.getItem(SYNC_SETTINGS_KEY) || "{}");
+          if (els.githubPat) els.githubPat.value = d.githubPat || "";
+          if (els.gistId) els.gistId.value = d.gistId || "";
+        } catch (e) {}
+      }
+      function saveSyncSettings() {
+        try {
+          localStorage.setItem(
+            SYNC_SETTINGS_KEY,
+            JSON.stringify({
+              githubPat: els.githubPat?.value.trim() || "",
+              gistId: els.gistId?.value.trim() || "",
+            }),
+          );
+        } catch (e) {}
+      }
+      function hasCloudCredentials() {
+        return !!(els.githubPat?.value.trim() && els.gistId?.value.trim());
+      }
+      async function pullFromCloud() {
+        const pat = els.githubPat?.value.trim() || "",
+          gid = els.gistId?.value.trim() || "";
+        lastCloudPullFailed = false;
+        if (!pat || !gid) return null;
+        setStatus("Pulling from Cloud...", "sync");
+        try {
+          const r = await fetch(
+            `https://api.github.com/gists/${encodeURIComponent(gid)}`,
+            {
+              headers: {
+                Accept: "application/vnd.github.v3+json",
+                Authorization: `Bearer ${pat}`,
+              },
+              signal: timeoutSignal(10000),
+            }
+          );
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const j = await r.json();
+          const content = j.files?.["state.json"]?.content;
+          return content ? JSON.parse(content) : null;
+        } catch (e) {
+          console.warn("cloud pull", e);
+          lastCloudPullFailed = true;
+          setStatus("System Ready");
+          return null;
+        }
+      }
+      async function pushToCloud(obj, { toastOnError = false } = {}) {
+        const pat = els.githubPat?.value.trim() || "",
+          gid = els.gistId?.value.trim() || "";
+        if (!pat || !gid) return false;
+        const payload = JSON.stringify(stripEmbedded(obj), null, 2);
+        if (byteSize(payload) > MAX_CLOUD_SYNC_BYTES) {
+          setStatus("Cloud sync skipped: JSON too large", "error");
+          toast(
+            "Cloud sync skipped because the lightweight JSON is too large.",
+            "error",
+          );
+          return false;
+        }
+        setStatus("Saving to Cloud...", "sync");
+        try {
+          const r = await fetch(
+            `https://api.github.com/gists/${encodeURIComponent(gid)}`,
+            {
+              method: "PATCH",
+              headers: {
+                Accept: "application/vnd.github.v3+json",
+                Authorization: `Bearer ${pat}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                files: { "state.json": { content: payload } },
+              }),
+              signal: timeoutSignal(10000),
+            }
+          );
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          setStatus("System Ready");
+          return true;
+        } catch (e) {
+          console.warn("cloud push", e);
+          setStatus("Sync Failed", "error");
+          if (toastOnError) toast("Cloud save failed", "error");
+          return false;
+        }
+      }
+      async function autoCloud({ announce = false, toastResults = announce, toastErrors = true } = {}) {
+        if (!els.githubPat?.value.trim() || !els.gistId?.value.trim()) return;
+        let progressToast = announce
+          ? toast("Pulling from Cloud...", "", { duration: 0 })
+          : null;
+        try {
+          const cloud = await pullFromCloud();
+          const cloudShows = savedShows(cloud),
+            localShows = state.shows || [];
+          if (!cloud || !cloudShows.length) {
+            dismissToast(progressToast);
+            progressToast = null;
+            if (lastCloudPullFailed && toastErrors) toast("Cloud unavailable", "error");
+            else if (toastResults) toast("Cloud checked");
+            return;
+          }
+          if (!localShows.length) {
+            applyState(preserveLocalEmbeddedCovers(cloud));
+            await persistState(clonePlain(state));
+            render();
+            dismissToast(progressToast);
+            progressToast = null;
+            if (toastResults) toast("Hydrated from Cloud");
+            return;
+          }
+          const cloudTime = getStateTimestamp(cloud),
+            localTime = getStateTimestamp(state),
+            skew = 2000;
+          if (cloudTime > localTime + skew) {
+            applyState(preserveLocalEmbeddedCovers(cloud));
+            await persistState(clonePlain(state));
+            render();
+            dismissToast(progressToast);
+            progressToast = null;
+            if (toastResults) toast("Pulled new Cloud Version");
+          } else {
+            dismissToast(progressToast);
+            progressToast = null;
+            if (toastResults) toast("Cloud is up to date");
+          }
+        } finally {
+          dismissToast(progressToast);
+          setStatus("System Ready");
+        }
+      }
+      async function pullAndSync() {
+        try {
+          els.syncNowBtn.disabled = true;
+          els.syncNowBtn.textContent = "Syncing...";
+          const cloud = await pullFromCloud();
+          if (lastCloudPullFailed) {
+            toast("Cloud unavailable", "error");
+            setStatus("Sync Failed", "error");
+            return;
+          }
+          const cloudShows = savedShows(cloud),
+            localShows = state.shows || [];
+          if (cloud && cloudShows.length && !localShows.length) {
+            applyState(preserveLocalEmbeddedCovers(cloud));
+            save();
+            render();
+            toast("Hydrated from Cloud");
+          } else if (cloud && cloudShows.length && localShows.length) {
+            const cloudTime = getStateTimestamp(cloud),
+              localTime = getStateTimestamp(state),
+              skew = 2000;
+            if (cloudTime > localTime + skew) {
+              applyState(preserveLocalEmbeddedCovers(cloud));
+              save();
+              render();
+              toast("Pulled new Cloud Version");
+            } else if (localTime > cloudTime + skew) {
+              if (await pushToCloud(state)) toast("Updated Cloud Version");
+              else toast("Cloud save failed", "error");
+            } else {
+              toast("Cloud is up to date");
+              setStatus("System Ready");
+            }
+          } else if (localShows.length) {
+            if (await pushToCloud(state)) toast("Updated Cloud Version");
+            else toast("Cloud save failed", "error");
+          } else {
+            toast("Both cloud and local are empty.", "error");
+            setStatus("System Ready");
+          }
+        } finally {
+          els.syncNowBtn.disabled = false;
+          els.syncNowBtn.textContent = "Pull & Sync";
+        }
+      }
+
+
+      function apiFailure(message, status = 0, code = "API_ERROR", retryAfterMs = 0) {
+        return Object.assign(new Error(message), { status, code, retryAfterMs });
+      }
+      function retryAfterMilliseconds(value, fallbackMs = 60000, now = Date.now()) {
+        const text = String(value ?? "").trim();
+        if (!text) return fallbackMs;
+        if (/^\d+(?:\.\d+)?$/.test(text)) {
+          const ms = Number(text) * 1000;
+          return Number.isFinite(ms) ? ms : fallbackMs;
+        }
+        const date = Date.parse(text);
+        return Number.isFinite(date) ? Math.max(0, date - now) : fallbackMs;
+      }
+      function isReleaseCancelled(error) {
+        return error?.code === "RELEASE_CANCELLED";
+      }
+      function throwIfReleaseCancelled() {
+        if (releaseCheckRunning && releaseQueueCancelRequested)
+          throw apiFailure("Release refresh cancelled", 0, "RELEASE_CANCELLED");
+      }
+      async function waitForReleaseDelay(ms) {
+        const until = Date.now() + Math.max(0, ms);
+        while (Date.now() < until) {
+          throwIfReleaseCancelled();
+          await sleep(Math.min(250, until - Date.now()));
+        }
+        throwIfReleaseCancelled();
+      }
+      function backOffReleases(error, waitMs = RELEASES_SERVICE_BACKOFF_MS) {
+        releaseCooldownUntil = Math.max(releaseCooldownUntil, Date.now() + waitMs);
+        releaseServiceError = error;
+        error.retryAfterMs = Math.max(error.retryAfterMs || 0, releaseCooldownUntil - Date.now());
+        return error;
+      }
+      async function readApiJson(response, service) {
+        const type = response.headers.get("Content-Type") || "";
+        if (type && !/\bapplication\/(?:[\w.+-]+\+)?json\b/i.test(type))
+          throw apiFailure(`${service} returned ${type.split(";")[0]}, not JSON. Check the API URL or maintenance status.`, response.status, "INVALID_RESPONSE");
+        let data;
+        try {
+          data = await response.json();
+        } catch (error) {
+          throw apiFailure(`${service} returned invalid JSON. Existing release data was not changed.`, response.status, "INVALID_RESPONSE");
+        }
+        if (!data || typeof data !== "object" || Array.isArray(data))
+          throw apiFailure(`${service} returned an unexpected JSON structure.`, response.status, "INVALID_RESPONSE");
+        return data;
+      }
+      async function aniRequest(query, variables, retries = 2, timeoutMs = 15000, respectCooldown = true) {
+        // The legacy flag may disable waiting, but can never bypass a cooldown.
+        for (let attempt = 0; ; attempt++) {
+          const remaining = aniListCooldownUntil - Date.now();
+          if (remaining > 0) {
+            if (!respectCooldown || retries === 0 || remaining > API_MAX_INLINE_RETRY_WAIT_MS)
+              throw apiFailure(`AniList rate limit. Try again in ${Math.ceil(remaining / 1000)}s.`, 429, "RATE_LIMIT", remaining);
+            await sleep(remaining);
+            if (Date.now() < aniListCooldownUntil) continue;
+          }
+          const response = await fetch(ANILIST_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ query, variables }),
+            signal: timeoutSignal(timeoutMs),
+          });
+          // Check HTTP status before parsing: a rate-limit page may be HTML.
+          if (response.status === 429) {
+            const wait = Math.max(1000, retryAfterMilliseconds(response.headers.get("Retry-After")));
+            aniListCooldownUntil = Math.max(aniListCooldownUntil, Date.now() + wait);
+            if (attempt < retries && wait <= API_MAX_INLINE_RETRY_WAIT_MS) continue;
+            throw apiFailure(`AniList rate limit. Try again in ${Math.ceil(wait / 1000)}s.`, 429, "RATE_LIMIT", wait);
+          }
+          if (!response.ok)
+            throw apiFailure(`AniList HTTP ${response.status}`, response.status);
+          const data = await readApiJson(response, "AniList");
+          if (Array.isArray(data.errors) && data.errors.length)
+            throw apiFailure(`AniList: ${String(data.errors[0]?.message || "GraphQL request failed")}`, 0, "GRAPHQL_ERROR");
+          if (!data.data || typeof data.data !== "object" || Array.isArray(data.data))
+            throw apiFailure("AniList returned no valid data object.", response.status, "INVALID_RESPONSE");
+          return data;
+        }
+      }
+      async function performReleasesRequest(url, retries, timeoutMs) {
+        for (let attempt = 0; ; attempt++) {
+          throwIfReleaseCancelled();
+          let remaining = releaseCooldownUntil - Date.now();
+          if (remaining > 0)
+            throw apiFailure(
+              `${releaseServiceError?.message || "SeaDex is cooling down"} Retry in ${Math.ceil(remaining / 1000)}s.`,
+              releaseServiceError?.status || 429, releaseServiceError?.code || "RATE_LIMIT", remaining,
+            );
+          await waitForReleaseDelay(releaseNextRequestAt - Date.now());
+          // Another completed response may have extended the cooldown while queued.
+          remaining = releaseCooldownUntil - Date.now();
+          if (remaining > 0)
+            throw apiFailure("SeaDex cooldown is active. Try again later.", releaseServiceError?.status || 429, releaseServiceError?.code || "RATE_LIMIT", remaining);
+          releaseNextRequestAt = Date.now() + RELEASES_REQUEST_DELAY_MS;
+          let response;
+          try {
+            response = await fetch(url, {
+              headers: { Accept: "application/json" },
+              credentials: "omit",
+              cache: "no-store",
+              signal: timeoutSignal(timeoutMs),
+            });
+          } catch (error) {
+            const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+            throw backOffReleases(apiFailure(
+              timedOut ? "SeaDex request timed out." : "SeaDex could not be reached. Check the API URL, network, or browser CORS policy.",
+              0, timedOut ? "TIMEOUT" : "NETWORK_ERROR",
+            ));
+          }
+          if (response.status === 429) {
+            const wait = Math.max(1000, retryAfterMilliseconds(response.headers.get("Retry-After")));
+            const error = backOffReleases(apiFailure(`SeaDex rate limit (HTTP 429).`, 429, "RATE_LIMIT", wait), wait);
+            if (attempt < retries && wait <= API_MAX_INLINE_RETRY_WAIT_MS) {
+              await waitForReleaseDelay(wait);
+              continue;
+            }
+            throw error;
+          }
+          if (!response.ok) {
+            // Error-body parsing is best effort; it must not conceal the HTTP status.
+            const body = await response.json().catch(() => null);
+            const detail = typeof body?.message === "string" ? body.message.slice(0, 240) : "";
+            const error = apiFailure(`SeaDex HTTP ${response.status}${detail ? ": " + detail : ""}`, response.status);
+            error.bulkFallbackAllowed = response.status === 414 ||
+              (response.status === 400 && /filter/i.test(detail + " " + JSON.stringify(body?.data || {})));
+            if (response.status >= 500) {
+              const wait = Math.max(RELEASES_SERVICE_BACKOFF_MS, retryAfterMilliseconds(response.headers.get("Retry-After"), RELEASES_SERVICE_BACKOFF_MS));
+              throw backOffReleases(error, wait);
+            }
+            throw error;
+          }
+          releaseServiceError = null;
+          return response;
+        }
+      }
+      function releasesRequest(url, retries = 1, timeoutMs = 12000) {
+        // One queue also covers add-show, individual refresh and the diagnostic button.
+        const pending = releaseRequestQueue.then(() => performReleasesRequest(url, retries, timeoutMs));
+        releaseRequestQueue = pending.catch(() => {});
+        return pending;
+      }
+      function positiveAniListId(value) {
+        if (typeof value !== "number" && typeof value !== "string") return null;
+        if (typeof value === "string" && !/^\d+$/.test(value.trim())) return null;
+        const id = Number(value);
+        return Number.isSafeInteger(id) && id > 0 ? id : null;
+      }
+      function validAniListIds(ids) {
+        return [...new Set((Array.isArray(ids) ? ids : []).map(positiveAniListId).filter(Boolean))];
+      }
+      function releaseItemAniListId(item) {
+        // Never match on a MAL ID. SeaDex's canonical filter is alID (AniList).
+        return positiveAniListId(item?.alID ?? item?.alId ?? item?.alid ?? item?.anilistId);
+      }
+      function releaseTimestamp(value) {
+        if (typeof value !== "string" || !value.trim()) return NaN;
+        let text = value.trim().replace(/^(\d{4}-\d{2}-\d{2}) /, "$1T");
+        // PocketBase timestamps are UTC, including responses without a trailing Z.
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(text)) text += "Z";
+        return Date.parse(text);
+      }
+      function buildReleaseUrl(anilistIds, page = 1) {
+        const ids = validAniListIds(anilistIds);
+        if (!ids.length || !Number.isSafeInteger(page) || page < 1)
+          throw apiFailure("A valid AniList ID and page are required.", 0, "INVALID_ID");
+        const filter = ids.map((id) => `alID=${id}`).join(" || ");
+        const url = new URL(RELEASES_ENDPOINT);
+        url.search = new URLSearchParams({
+          page: String(page),
+          perPage: String(Math.min(RELEASES_BULK_CHUNK_SIZE, ids.length)),
+          filter: ids.length > 1 ? `(${filter})` : filter,
+          sort: "id",
+          skipTotal: "false",
+        }).toString();
+        return url.href;
+      }
+      function buildSingleReleaseUrl(anilistId, page = 1) {
+        return buildReleaseUrl([anilistId], page);
+      }
+      function buildBulkReleaseUrl(anilistIds, page = 1) {
+        return buildReleaseUrl(anilistIds, page);
+      }
+      function validateReleasePage(data, requestedIds, expectedPage) {
+        const invalid = (detail) => apiFailure(`Unexpected SeaDex response: ${detail}. Existing release data was not changed.`, 200, "INVALID_RESPONSE");
+        if (!Array.isArray(data.items)) throw invalid("missing items array");
+        for (const field of ["page", "perPage", "totalItems", "totalPages"])
+          if (!Number.isSafeInteger(data[field]) || data[field] < 0)
+            throw invalid(`missing or invalid ${field}`);
+        if (data.page !== expectedPage || data.perPage < 1)
+          throw invalid("inconsistent page number or page size");
+        const pageCount = Math.ceil(data.totalItems / data.perPage);
+        if (data.totalPages !== pageCount && !(data.totalItems === 0 && data.totalPages === 1))
+          throw invalid("inconsistent pagination totals");
+        if (data.totalPages > RELEASES_MAX_PAGES || data.page > Math.max(1, data.totalPages))
+          throw invalid("unexpected number of result pages");
+        const expectedCount = Math.min(data.perPage, Math.max(0, data.totalItems - (expectedPage - 1) * data.perPage));
+        if (data.items.length !== expectedCount) throw invalid("incomplete result page");
+        for (const item of data.items) {
+          if (!item || typeof item !== "object" || Array.isArray(item)) throw invalid("invalid record");
+          const id = releaseItemAniListId(item);
+          if (!id || !requestedIds.has(id)) throw invalid("record does not match the requested AniList IDs");
+          if (typeof item.id !== "string" || !item.id.trim()) throw invalid("missing record ID");
+          if (!Number.isFinite(releaseTimestamp(item.updated))) throw invalid("missing or invalid update timestamp");
+        }
+        return data;
+      }
+      async function fetchReleaseMatchesByAniListIds(anilistIds) {
+        const ids = validAniListIds(anilistIds);
+        if (!ids.length) return new Map();
+        if (releaseBulkDisabled && ids.length > 1) {
+          const matches = new Map();
+          for (const id of ids) {
+            const single = await fetchReleaseMatchesByAniListIds([id]);
+            single.forEach((item, key) => matches.set(key, item));
+          }
+          return matches;
+        }
+        const matches = new Map(), recordIds = new Set(), requestedIds = new Set(ids);
+        let firstPage = null;
+        try {
+          for (let page = 1; page <= RELEASES_MAX_PAGES; page++) {
+            throwIfReleaseCancelled();
+            const response = await releasesRequest(buildReleaseUrl(ids, page));
+            const data = validateReleasePage(await readApiJson(response, "SeaDex"), requestedIds, page);
+            if (!firstPage) firstPage = data;
+            else if (data.totalItems !== firstPage.totalItems || data.totalPages !== firstPage.totalPages || data.perPage !== firstPage.perPage)
+              throw apiFailure("SeaDex results changed during pagination. Retry the check; existing release data was not changed.", 200, "INVALID_RESPONSE");
+            for (const item of data.items) {
+              if (recordIds.has(item.id))
+                throw apiFailure("SeaDex repeated a record across result pages. Existing release data was not changed.", 200, "INVALID_RESPONSE");
+              recordIds.add(item.id);
+              const id = releaseItemAniListId(item), previous = matches.get(id);
+              if (!previous || releaseTimestamp(item.updated) > releaseTimestamp(previous.updated))
+                matches.set(id, item);
+            }
+            if (page >= data.totalPages) {
+              if (recordIds.size !== data.totalItems)
+                throw apiFailure("SeaDex returned an incomplete result set.", 200, "INVALID_RESPONSE");
+              return matches;
+            }
+          }
+          throw apiFailure("SeaDex pagination exceeded the safety limit.", 200, "INVALID_RESPONSE");
+        } catch (error) {
+          if (error?.code === "INVALID_RESPONSE") backOffReleases(error);
+          throw error;
+        }
+      }
+      async function testReleasesApi() {
+        if (releaseCheckRunning) return toast("Wait until the current release refresh finishes or cancel it first.", "error");
+        const button = els.testReleasesApiBtn;
+        if (button) button.disabled = true;
+        const id = validAniListIds(state.shows.map((show) => show.anilistId))[0] || 1;
+        if (els.releasesApiStatus) els.releasesApiStatus.textContent = `Testing ${RELEASES_ENDPOINT} with AniList ID ${id}...`;
+        try {
+          const matches = await fetchReleaseMatchesByAniListIds([id]);
+          const detail = matches.has(id)
+            ? `Validated an entry for AniList ID ${id}.`
+            : `Valid API response; AniList ID ${id} was not listed. This does not verify catalogue completeness.`;
+          const message = `${new URL(RELEASES_ENDPOINT).host}: ${detail} Your board was not changed.`;
+          if (els.releasesApiStatus) els.releasesApiStatus.textContent = message;
+          toast(message);
+        } catch (error) {
+          if (els.releasesApiStatus) els.releasesApiStatus.textContent = `${RELEASES_ENDPOINT}: ${error.message} Your board was not changed.`;
+          toast(error.message, "error");
+        } finally {
+          if (button) button.disabled = false;
+        }
+      }
+      function applyReleaseMatch(s, match, { forceMove = false, checkedAt = new Date().toISOString(), markFoundUpdate = true } = {}) {
+        if (!s) return;
+        if (!s.anilistId) {
+          s.releasesMoe = defaultRelease(s.releasesMoe);
+          s.needsAnilist = true;
+          s.temporary = true;
+          return;
+        }
+        const prev = getBoard(s),
+          isLib = getBoard(s) === "downloaded",
+          apiUpdated = match?.updated || null;
+        s.releasesMoe = defaultRelease(s.releasesMoe);
+        s.releasesMoe.found = !!match;
+        s.releasesMoe.recordId = match?.id || null;
+        s.releasesMoe.checkedAt = checkedAt;
+        if (isLib) s.releasesMoe.libraryCheckedAt = checkedAt;
+        s.releasesMoe.lastAttemptAt = checkedAt;
+        s.releasesMoe.retryAfter = null;
+        s.releasesMoe.error = null;
+        s.releasesMoe.errorStatus = null;
+        s.releasesMoe.errorCode = null;
+        s.releasesMoe.notListed = !match;
+        s.releasesMoe.notListedAt = match ? null : checkedAt;
+        if (!match) {
+          s.releasesMoe.updateAvailable = false;
+          s.releasesMoe.latestUpdated = null;
+        }
+        if (match && apiUpdated) {
+          const old = s.releasesMoe.updated
+              ? releaseTimestamp(s.releasesMoe.updated)
+              : 0,
+            next = releaseTimestamp(apiUpdated);
+          if (!s.releasesMoe.updated || !Number.isFinite(old)) {
+            s.releasesMoe.updated = apiUpdated;
+            s.releasesMoe.updateAvailable = false;
+          } else if (
+            apiUpdated !== s.releasesMoe.updated &&
+            Number.isFinite(next) &&
+            next > old
+          ) {
+            if (isLib) {
+              s.releasesMoe.updateAvailable = true;
+              s.releasesMoe.latestUpdated = apiUpdated;
+            } else {
+              s.releasesMoe.updated = apiUpdated;
+              s.releasesMoe.updateAvailable = false;
+            }
+          }
+        }
+        if (!isLib && forceMove) s.board = match ? "found" : "watching";
+        s.needsAnilist = false;
+        s.temporary = false;
+        s.source = "anilist";
+        s.updatedAt = checkedAt;
+        const next = getBoard(s);
+        const movedWatchingToFound = forceMove && markFoundUpdate && prev === "watching" && next === "found";
+        if (movedWatchingToFound) s.releasesMoe.updateAvailable = true;
+        if (forceMove && prev !== next) moveBoard(s.id, prev, next);
+      }
+
+      function markReleaseRefreshError(s, error, attemptedAt = new Date().toISOString()) {
+        if (!s || isReleaseCancelled(error)) return;
+        s.releasesMoe = defaultRelease(s.releasesMoe);
+        s.releasesMoe.error = error?.message || "Refresh failed";
+        s.releasesMoe.errorStatus = error?.status || null;
+        s.releasesMoe.errorCode = error?.code || "API_ERROR";
+        s.releasesMoe.lastAttemptAt = attemptedAt;
+        const nextTry = Math.max(
+          Date.parse(attemptedAt) + RELEASES_ERROR_RETRY_MS,
+          Date.now() + (error?.retryAfterMs || 0),
+          releaseCooldownUntil,
+        );
+        s.releasesMoe.retryAfter = new Date(nextTry).toISOString();
+        // Preserve checkedAt, libraryCheckedAt, found, recordId and update flags.
+      }
+      async function refreshReleaseSingles(shows, { forceMove = false, singleFallbackLimit = Infinity, fallbackLabel = "" } = {}) {
+        const arr = (shows || []).filter((s) => s?.anilistId);
+        const max = Number.isFinite(singleFallbackLimit)
+          ? Math.max(0, Math.min(arr.length, singleFallbackLimit)) : arr.length;
+        const processed = [];
+        let successes = 0, paused = false;
+        for (let i = 0; i < max; i++) {
+          if (releaseQueueCancelRequested) break;
+          const result = await refreshShow(arr[i], { forceMove });
+          if (result.cancelled) break;
+          processed.push(arr[i]);
+          if (result.ok) successes++;
+          else if (result.error?.code !== "INVALID_ID") {
+            releaseQueuePauseReason = result.error?.message || "SeaDex is unavailable.";
+            paused = true;
+            break;
+          }
+          if (i < max - 1 && !(await waitBetweenReleaseRequests(fallbackLabel))) break;
+        }
+        return { processed, successes, paused, limited: max < arr.length, singlesUsed: processed.length };
+      }
+      async function refreshReleaseChunk(shows, { forceMove = false, singleFallbackLimit = Infinity, fallbackLabel = "" } = {}) {
+        const arr = (shows || []).filter((s) => s?.anilistId);
+        if (!arr.length)
+          return { processed: [], singlesUsed: 0, usedBulk: false, fallbackLimited: false };
+        if (arr.length === 1 || releaseBulkDisabled) {
+          const single = await refreshReleaseSingles(arr, { forceMove, singleFallbackLimit, fallbackLabel });
+          return { processed: single.processed, singlesUsed: single.singlesUsed, usedBulk: false, fallbackLimited: single.limited, paused: single.paused };
+        }
+        try {
+          // Refuse a partly invalid ID list instead of turning excluded IDs into misses.
+          if (arr.some((show) => !positiveAniListId(show.anilistId)))
+            throw apiFailure("One or more entries have invalid AniList IDs.", 0, "INVALID_ID");
+          const matches = await fetchReleaseMatchesByAniListIds(arr.map((show) => show.anilistId));
+          const checkedAt = new Date().toISOString();
+          arr.forEach((show) => applyReleaseMatch(show, matches.get(Number(show.anilistId)) || null, { forceMove, checkedAt }));
+          return { processed: arr, singlesUsed: 0, usedBulk: true, fallbackLimited: false };
+        } catch (error) {
+          if (isReleaseCancelled(error))
+            return { processed: [], singlesUsed: 0, usedBulk: false, fallbackLimited: false, cancelled: true };
+          // A query-size/filter rejection may justify a single-ID probe. An outage,
+          // HTML response, authentication error or rate limit never does.
+          if (error.bulkFallbackAllowed || error.code === "INVALID_ID") {
+            const single = await refreshReleaseSingles(arr, { forceMove, singleFallbackLimit, fallbackLabel });
+            // Disable bulk only after at least one single-ID response validates.
+            if (error.bulkFallbackAllowed && single.successes > 0) releaseBulkDisabled = true;
+            return { processed: single.processed, singlesUsed: single.singlesUsed, usedBulk: false, fallbackLimited: single.limited, bulkFailed: true, paused: single.paused };
+          }
+          console.warn("SeaDex refresh paused; previous release data retained", error);
+          const attemptedAt = new Date().toISOString();
+          arr.forEach((show) => markReleaseRefreshError(show, error, attemptedAt));
+          releaseQueuePauseReason = error.message || "SeaDex is unavailable.";
+          return { processed: arr, singlesUsed: 0, usedBulk: false, fallbackLimited: false, bulkFailed: true, paused: true };
+        }
+      }
+      async function searchAniList(search, options = {}) {
+        const query = `query($search:String){Page(perPage:8){media(search:$search,type:ANIME,sort:SEARCH_MATCH){id title{romaji english native} coverImage{medium large} format seasonYear episodes siteUrl}}}`;
+        const j = await aniRequest(
+          query,
+          { search },
+          options.retries ?? 2,
+          options.timeoutMs ?? 15000,
+          options.respectCooldown ?? true,
+        );
+        return j?.data?.Page?.media || [];
+      }
+      async function getAniListById(id) {
+        const query = `query($id:Int){Media(id:$id,type:ANIME){id title{romaji english native} coverImage{medium large} format seasonYear episodes siteUrl}}`;
+        const j = await aniRequest(query, { id: Number(id) });
+        return j?.data?.Media || null;
+      }
+      async function getAniListByMalId(idMal) {
+        const query = `query($idMal:Int){Media(idMal:$idMal,type:ANIME){id title{romaji english native} coverImage{medium large} format seasonYear episodes siteUrl}}`;
+        const j = await aniRequest(query, { idMal: Number(idMal) });
+        return j?.data?.Media || null;
+      }
+      async function runSearch() {
+        const term = els.searchInput.value.trim();
+        if (!term) {
+          els.results.classList.remove("open");
+          return;
+        }
+        const rid = ++searchRequestId;
+        els.results.classList.add("open");
+        els.results.innerHTML = '<div class="empty">Searching...</div>';
+        setStatus("Searching...");
+        try {
+          const results = await searchAniList(term, {
+            retries: 0,
+            timeoutMs: 6500,
+            respectCooldown: true,
+          });
+          if (rid !== searchRequestId) return;
+          window._searchResults = results;
+          els.results.innerHTML = results.length
+            ? results.map((m) => renderResult(m)).join("")
+            : '<div class="empty">No results found.</div>';
+          qa("[data-add-key]").forEach((b) =>
+            on(b, "click", () => {
+              const m = window._searchResults.find(
+                (x) => mediaKey(x) === b.dataset.addKey,
+              );
+              if (m) return addShow(m);
+            }),
+          );
+          setStatus("System Ready");
+        } catch (e) {
+          if (rid !== searchRequestId) return;
+          els.results.innerHTML = `<div class="empty">${escapeHtml(e?.message || "AniList search is unavailable right now.")} Use Manual Add or try again later.</div>`;
+          setStatus("Search failed", "error");
+        }
+      }
+      function renderResult(m) {
+        const added = mediaOnBoard(m);
+        return `<button class="result" type="button" data-add-key="${escapeAttr(mediaKey(m))}"><img class="poster" src="${escapeAttr(getMediaCover(m))}" alt="${escapeAttr(getMediaTitle(m))}" loading="lazy"><span class="result-info"><span class="result-title">${escapeHtml(getMediaTitle(m))}</span><span class="result-meta">${escapeHtml(mediaMeta(m))}</span></span><span class="badge ${added ? "done" : "found"}">${added ? "Added" : "Add"}</span></button>`;
+      }
+      async function addShow(m) {
+        if (mediaOnBoard(m)) return toast("Already on board.");
+        els.results.classList.remove("open");
+        els.searchInput.value = "";
+        const s = showFromMedia(m);
+        state.shows.unshift(s);
+        await refreshShow(s, { forceMove: true, markFoundUpdate: false });
+        insertAZ(state.order[getBoard(s)], s.id);
+        render();
+        save();
+        setStatus("System Ready");
+        toast(
+          s.needsAnilist
+            ? "Added manual entry. Regenerate AniList later."
+            : s.releasesMoe?.error
+              ? "Added to board. SeaDex check failed; release status is unconfirmed."
+              : "Added to active board.",
+        );
+      }
+
+
+      async function refreshShow(s, { forceMove = false, markFoundUpdate = true } = {}) {
+        if (!s) return { ok: false, skipped: true };
+        if (!s.anilistId) {
+          s.releasesMoe = defaultRelease(s.releasesMoe);
+          s.needsAnilist = true;
+          s.temporary = true;
+          return { ok: true, skipped: true };
+        }
+        try {
+          const id = positiveAniListId(s.anilistId);
+          if (!id) throw apiFailure("This entry has an invalid AniList ID.", 0, "INVALID_ID");
+          const matches = await fetchReleaseMatchesByAniListIds([id]);
+          applyReleaseMatch(s, matches.get(id) || null, { forceMove, markFoundUpdate });
+          return { ok: true };
+        } catch (error) {
+          if (isReleaseCancelled(error)) return { ok: false, cancelled: true };
+          markReleaseRefreshError(s, error);
+          return { ok: false, error };
+        }
+      }
+      function setReleaseRefreshProgress(text, visible = true) {
+        if (!els.releaseRefreshProgress) return;
+        els.releaseRefreshProgress.textContent = text || "";
+        els.releaseRefreshProgress.hidden = !visible || !text;
+      }
+      function formatDuration(ms) {
+        const seconds = Math.max(0, Math.ceil((Number(ms) || 0) / 1000));
+        if (seconds < 60) return seconds + "s";
+        const minutes = Math.floor(seconds / 60), remSeconds = seconds % 60;
+        if (minutes < 60) return remSeconds ? `${minutes}m ${remSeconds}s` : `${minutes}m`;
+        const hours = Math.floor(minutes / 60), remMinutes = minutes % 60;
+        return remMinutes ? `${hours}h ${remMinutes}m` : `${hours}h`;
+      }
+      function estimatedReleaseRemainingMs(completed, total, startedAt) {
+        const done = Math.max(0, Number(completed) || 0), count = Math.max(0, Number(total) || 0);
+        const remaining = Math.max(0, count - done);
+        if (!remaining) return 0;
+        const elapsed = Math.max(0, Date.now() - (Number(startedAt) || Date.now()));
+        const requestUnits = releaseBulkDisabled
+          ? remaining
+          : Math.ceil(remaining / Math.max(1, RELEASES_BULK_CHUNK_SIZE));
+        const minimum = requestUnits * RELEASES_REQUEST_DELAY_MS;
+        if (done < 1 || elapsed < 1000) return minimum;
+        return Math.max(minimum, remaining * (elapsed / Math.max(1, done)));
+      }
+      function releaseProgressText(action, current, total, title, startedAt, completed = Math.max(0, current - 1)) {
+        const etaMs = estimatedReleaseRemainingMs(completed, total, startedAt);
+        const suffix = completed < 1 ? "+" : "";
+        const label = title ? `: ${title}` : "";
+        return `${action} ${current}/${total}${label} · ETA ${formatDuration(etaMs)}${suffix}`;
+      }
+      function releaseTime(v) {
+        const t = Date.parse(v || "");
+        return Number.isFinite(t) ? t : 0;
+      }
+      function releaseLastCheckedAt(s, library = false) {
+        const checkedAt = releaseTime(s?.releasesMoe?.checkedAt);
+        if (!library) return checkedAt;
+        const libraryCheckedAt = releaseTime(s?.releasesMoe?.libraryCheckedAt);
+        return Math.max(checkedAt, libraryCheckedAt);
+      }
+      function releaseCheckDue(s, library, now) {
+        if (now < releaseCooldownUntil) return false;
+        const release = defaultRelease(s?.releasesMoe);
+        if (release.error) {
+          const retryAt = releaseTime(release.retryAfter) ||
+            ((releaseTime(release.lastAttemptAt) || releaseLastCheckedAt(s, library)) + RELEASES_ERROR_RETRY_MS);
+          return now >= retryAt;
+        }
+        const staleMs = library ? LIBRARY_RELEASE_STALE_MS : ACTIVE_RELEASE_STALE_MS;
+        return now - releaseLastCheckedAt(s, library) > staleMs;
+      }
+      function staleActiveEntries(now = Date.now()) {
+        return state.shows
+          .filter((s) => {
+            if (!s.anilistId || getBoard(s) === "downloaded") return false;
+            return releaseCheckDue(s, false, now);
+          })
+          .sort(
+            (a, b) =>
+              (releaseLastCheckedAt(a) || Date.parse(a.createdAt || 0) || 0) -
+              (releaseLastCheckedAt(b) || Date.parse(b.createdAt || 0) || 0),
+          );
+      }
+      function staleLibraryEntries(limit = AUTO_LIBRARY_RELEASE_CHECK_LIMIT, now = Date.now()) {
+        return state.shows
+          .filter((s) => {
+            if (!s.anilistId || getBoard(s) !== "downloaded") return false;
+            return releaseCheckDue(s, true, now);
+          })
+          .sort(
+            (a, b) =>
+              (releaseLastCheckedAt(a, true) || Date.parse(a.createdAt || 0) || 0) -
+              (releaseLastCheckedAt(b, true) || Date.parse(b.createdAt || 0) || 0),
+          )
+          .slice(0, limit);
+      }
+      async function syncReleaseRefreshToCloud() {
+        if (!hasCloudCredentials()) {
+          return {
+            attempted: false,
+            ok: false,
+            text: "Cloud backup skipped: add a GitHub PAT and Gist ID to enable it.",
+          };
+        }
+        clearTimeout(cloudSyncTimer);
+        setStatus("Backing up to cloud...", "sync");
+        setReleaseRefreshProgress("Cloud backup: syncing latest changes...");
+        const ok = await pushToCloud(clonePlain(state), { toastOnError: true });
+        return {
+          attempted: true,
+          ok,
+          text: ok
+            ? "Cloud backup saved."
+            : "Cloud backup failed. Local changes are still saved on this device.",
+        };
+      }
+      function setReleaseRefreshUi(running, label = "Refreshing") {
+        if (els.refreshReleasesBtn) {
+          els.refreshReleasesBtn.disabled = running;
+          els.refreshReleasesBtn.textContent = running ? label + "..." : "Refresh Stale";
+        }
+        if (els.refreshAllReleasesBtn) {
+          els.refreshAllReleasesBtn.disabled = running;
+          els.refreshAllReleasesBtn.textContent = running ? "Queued..." : "Full Refresh";
+        }
+        if (els.cancelReleaseRefreshBtn) {
+          els.cancelReleaseRefreshBtn.hidden = !running;
+          els.cancelReleaseRefreshBtn.disabled = !running;
+        }
+      }
+      function requestReleaseRefreshCancel() {
+        if (!releaseCheckRunning) return;
+        releaseQueueCancelRequested = true;
+        setStatus("Stopping after current request...", "sync");
+        setReleaseRefreshProgress("Stopping after the current request finishes...");
+        if (els.cancelReleaseRefreshBtn) {
+          els.cancelReleaseRefreshBtn.disabled = true;
+          els.cancelReleaseRefreshBtn.textContent = "Stopping...";
+        }
+      }
+      async function waitBetweenReleaseRequests(label = "") {
+        const started = Date.now();
+        while (Date.now() - started < RELEASES_REQUEST_DELAY_MS) {
+          if (releaseQueueCancelRequested) return false;
+          const remaining = Math.ceil((RELEASES_REQUEST_DELAY_MS - (Date.now() - started)) / 1000);
+          if (label) setStatus(`${label} next request in ${Math.max(1, remaining)}s...`, "sync");
+          await sleep(Math.min(250, RELEASES_REQUEST_DELAY_MS - (Date.now() - started)));
+        }
+        return !releaseQueueCancelRequested;
+      }
+
+      async function checkActive({ manual = false, entries = null, etaState = null } = {}) {
+        const arr = entries || staleActiveEntries(),
+          summary = { checked: 0, found: 0, errors: 0, notListed: 0 };
+        const startedAt = etaState?.startedAt || Date.now();
+        if (!arr.length) return summary;
+        let singleFallbackRemaining = manual ? Infinity : RELEASES_SINGLE_FALLBACK_AUTO_LIMIT;
+        setStatus(`Checking ${arr.length} active entries...`, "sync");
+        for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
+          if (releaseQueueCancelRequested) break;
+          const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE),
+            beforeBoards = new Map(chunk.map((s) => [s.id, getBoard(s)]));
+          if (manual) {
+            const current = etaState ? etaState.completed + 1 : summary.checked + 1;
+            const total = etaState ? etaState.total : arr.length;
+            const completed = etaState ? etaState.completed : summary.checked;
+            const label = chunk.length === 1 ? showTitle(chunk[0]) : `${chunk.length} entries`;
+            setReleaseRefreshProgress(
+              releaseProgressText("Refreshing stale", current, total, label, startedAt, completed),
+            );
+          }
+          const result = await refreshReleaseChunk(chunk, {
+            forceMove: true,
+            singleFallbackLimit: singleFallbackRemaining,
+            fallbackLabel: manual ? "Active fallback:" : "",
+          });
+          if (Number.isFinite(singleFallbackRemaining))
+            singleFallbackRemaining = Math.max(0, singleFallbackRemaining - result.singlesUsed);
+          result.processed.forEach((s) => {
+            summary.checked++;
+            if (etaState) etaState.completed++;
+            if (s.releasesMoe?.error) summary.errors++;
+            else if (s.releasesMoe?.notListed) summary.notListed++;
+            if (beforeBoards.get(s.id) === "watching" && getBoard(s) === "found")
+              summary.found++;
+          });
+          if (result.fallbackLimited || result.paused || result.cancelled) break;
+          if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests(manual ? "Active check:" : "")))
+            break;
+        }
+        render();
+        save();
+        setStatus("System Ready");
+        return summary;
+      }
+      async function checkLibrary(limit = AUTO_LIBRARY_RELEASE_CHECK_LIMIT, { manual = false, entries = null, etaState = null } = {}) {
+        const arr = entries || staleLibraryEntries(limit);
+        const summary = {
+          checked: 0,
+          updatesFound: 0,
+          errors: 0,
+          notListed: 0,
+          pendingUpdates: updateLibraryUpdateIndicator(),
+        };
+        const startedAt = etaState?.startedAt || Date.now();
+        if (!arr.length) return summary;
+        let singleFallbackRemaining = manual ? Infinity : RELEASES_SINGLE_FALLBACK_AUTO_LIMIT;
+        setStatus(`Checking ${arr.length} library entries...`, "sync");
+        for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
+          if (releaseQueueCancelRequested) break;
+          const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE);
+          const before = new Map(
+            chunk.map((s) => {
+              const release = defaultRelease(s.releasesMoe);
+              return [s.id, {
+                hadUpdate: !!release.updateAvailable,
+                previousLatest: release.latestUpdated || "",
+              }];
+            }),
+          );
+          if (manual) {
+            const current = etaState ? etaState.completed + 1 : summary.checked + 1;
+            const total = etaState ? etaState.total : arr.length;
+            const completed = etaState ? etaState.completed : summary.checked;
+            const label = chunk.length === 1 ? showTitle(chunk[0]) : `${chunk.length} entries`;
+            setReleaseRefreshProgress(
+              releaseProgressText("Refreshing stale", current, total, label, startedAt, completed),
+            );
+          }
+          const result = await refreshReleaseChunk(chunk, {
+            forceMove: false,
+            singleFallbackLimit: singleFallbackRemaining,
+            fallbackLabel: manual ? "Library fallback:" : "",
+          });
+          if (Number.isFinite(singleFallbackRemaining))
+            singleFallbackRemaining = Math.max(0, singleFallbackRemaining - result.singlesUsed);
+          result.processed.forEach((s) => {
+            summary.checked++;
+            if (etaState) etaState.completed++;
+            const prev = before.get(s.id) || { hadUpdate: false, previousLatest: "" };
+            const after = defaultRelease(s.releasesMoe);
+            if (after.error) summary.errors++;
+            else if (after.notListed) summary.notListed++;
+            if (
+              after.updateAvailable &&
+              (!prev.hadUpdate || (after.latestUpdated || "") !== prev.previousLatest)
+            )
+              summary.updatesFound++;
+          });
+          if (result.fallbackLimited || result.paused || result.cancelled) break;
+          if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests(manual ? "Library check:" : "")))
+            break;
+        }
+        render();
+        save();
+        summary.pendingUpdates = updateLibraryUpdateIndicator();
+        setStatus("System Ready");
+        return summary;
+      }
+      async function refreshAllReleases() {
+        if (releaseCheckRunning)
+          return toast("A release refresh is already running.", "error");
+        const arr = state.shows.filter((s) => s.anilistId);
+        if (!arr.length)
+          return toast("No AniList-backed entries to refresh.", "error");
+        const summary = {
+          checked: 0,
+          updatesFound: 0,
+          activeFound: 0,
+          notListed: 0,
+          errors: 0,
+        };
+        const startedAt = Date.now();
+        releaseCheckRunning = true;
+        releaseQueueCancelRequested = false;
+        releaseQueuePauseReason = "";
+        setReleaseRefreshUi(true, "Full refresh");
+        setReleaseRefreshProgress(
+          releaseProgressText("Full refresh queued", 0, arr.length, "waiting to start", startedAt, 0),
+          true,
+        );
+        try {
+          suppressCloudSync = true;
+          for (let i = 0; i < arr.length; i += RELEASES_BULK_CHUNK_SIZE) {
+            if (releaseQueueCancelRequested) break;
+            const chunk = arr.slice(i, i + RELEASES_BULK_CHUNK_SIZE);
+            const before = new Map(
+              chunk.map((s) => {
+                const release = defaultRelease(s.releasesMoe);
+                return [s.id, {
+                  board: getBoard(s),
+                  hadUpdate: !!release.updateAvailable,
+                  previousLatest: release.latestUpdated || "",
+                }];
+              }),
+            );
+            const startIndex = summary.checked + 1,
+              endIndex = Math.min(summary.checked + chunk.length, arr.length),
+              label = chunk.length === 1 ? showTitle(chunk[0]) : `${chunk.length} entries`;
+            setStatus(`Refreshing ${startIndex}-${endIndex}/${arr.length}...`, "sync");
+            setReleaseRefreshProgress(
+              releaseProgressText("Full refresh", startIndex, arr.length, label, startedAt, summary.checked),
+            );
+            const result = await refreshReleaseChunk(chunk, {
+              forceMove: true,
+              singleFallbackLimit: Infinity,
+              fallbackLabel: "Full refresh fallback:",
+            });
+            result.processed.forEach((s) => {
+              summary.checked++;
+              const prev = before.get(s.id) || { board: getBoard(s), hadUpdate: false, previousLatest: "" };
+              const after = defaultRelease(s.releasesMoe);
+              if (after.error) summary.errors++;
+              else if (after.notListed) summary.notListed++;
+              if (
+                after.updateAvailable &&
+                (!prev.hadUpdate || (after.latestUpdated || "") !== prev.previousLatest)
+              )
+                summary.updatesFound++;
+              if (prev.board === "watching" && getBoard(s) === "found")
+                summary.activeFound++;
+            });
+            if (summary.checked % RELEASES_FULL_REFRESH_SAVE_EVERY === 0) {
+              render();
+              save();
+            }
+            if (result.fallbackLimited || result.paused || result.cancelled) break;
+            if (i + RELEASES_BULK_CHUNK_SIZE < arr.length && !(await waitBetweenReleaseRequests("Full refresh:")))
+              break;
+          }
+          render();
+          save();
+          lastLibraryUpdateToastCount = updateLibraryUpdateIndicator();
+          const summaryPayload = {
+            watching: {
+              checked: summary.checked,
+              found: summary.activeFound,
+              errors: summary.errors,
+              notListed: summary.notListed,
+            },
+            library: {
+              checked: 0,
+              updatesFound: summary.updatesFound,
+              errors: 0,
+              notListed: 0,
+            },
+          };
+          const msg = autoReleaseSummaryMessage(summaryPayload);
+          if (releaseQueueCancelRequested) {
+            toast(`Refresh stopped. ${msg}`);
+            setReleaseRefreshProgress(`Stopped after ${summary.checked}/${arr.length}. ${msg}`);
+          } else {
+            suppressCloudSync = false;
+            const cloud = summary.checked > 0
+              ? await syncReleaseRefreshToCloud()
+              : { text: "Cloud backup skipped: nothing changed." };
+            const completion = releaseQueuePauseReason
+              ? `Paused after ${summary.checked}/${arr.length}: ${releaseQueuePauseReason} Failed checks kept their existing data.`
+              : "Finished full refresh.";
+            if (releaseQueuePauseReason) toast(completion, "error");
+            else toastAutoReleaseSummary(summaryPayload);
+            setReleaseRefreshProgress(`${completion} ${msg} · ${cloud.text}`);
+          }
+        } finally {
+          suppressCloudSync = false;
+          releaseCheckRunning = false;
+          setReleaseRefreshUi(false);
+          if (els.cancelReleaseRefreshBtn) els.cancelReleaseRefreshBtn.textContent = "Cancel";
+          setStatus("System Ready");
+        }
+      }
+
+
+      function aniIdFromInput(x) {
+        const value = String(x || "").trim();
+        try {
+          const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+          const host = url.hostname.toLowerCase().replace(/^www\./, "");
+          const match = host === "anilist.co"
+            ? url.pathname.match(/^\/anime\/(\d+)(?:\/|$)/)
+            : ["seadex.moe", "releases.moe"].includes(host)
+              ? url.pathname.match(/^\/(\d+)(?:\/|$)/) : null;
+          if (match) return positiveAniListId(match[1]);
+          if (/^(?:https?:\/\/|www\.)/i.test(value)) return null;
+        } catch (_) { /* Not a URL: try an explicitly labelled AniList ID. */ }
+        const match = value.match(/\b(?:anilist|ani|alid|al)[:=#\s-]*(\d+)\b/i);
+        return match ? positiveAniListId(match[1]) : null;
+      }
+      function malIdFromInput(x) {
+        const v = String(x || "").trim();
+        return (
+          Number(
+            (v.match(/myanimelist\.net\/anime\/(\d+)/i) ||
+              v.match(/\b(?:mal|myanimelist)[:=#\s-]*(\d{2,})\b/i) ||
+              [])[1],
+          ) || null
+        );
+      }
+      async function lookupItem(input) {
+        const aid = aniIdFromInput(input);
+        if (aid) {
+          try {
+            const m = await getAniListById(aid);
+            return m ? [m] : [];
+          } catch (e) {
+            throw new Error("AniList ID lookup unavailable");
+          }
+        }
+        const mid = malIdFromInput(input);
+        if (mid) {
+          try {
+            const m = await getAniListByMalId(mid);
+            return m ? [m] : [];
+          } catch (e) {
+            throw new Error("AniList MAL lookup unavailable");
+          }
+        }
+        return searchAniList(input, {
+          retries: 0,
+          timeoutMs: 6500,
+          respectCooldown: true,
+        });
+      }
+      function matchInfo(input, m) {
+        if (!m) return { level: "none", label: "No match", score: 0 };
+        const aid = aniIdFromInput(input);
+        if (aid && Number(aid) === Number(m.id || m.anilistId))
+          return { level: "high", label: "Direct ID", score: 1 };
+        const mid = malIdFromInput(input);
+        if (mid && Number(mid) === Number(m.malId || m.mal_id))
+          return { level: "high", label: "MAL ID", score: 1 };
+        const query = normalizeTitle(input.replace(/\b(19|20)\d{2}\b/g, "")),
+          year = getYearFromText(input);
+        let best = 0;
+        for (const t of [
+          m.title?.english,
+          m.title?.romaji,
+          m.title?.native,
+          m.title,
+          m.titleEnglish,
+          m.titleRomaji,
+        ]
+          .filter(Boolean)
+          .map(normalizeTitle)) {
+          if (t === query) best = Math.max(best, 1);
+          if (t.includes(query) || query.includes(t))
+            best = Math.max(best, 0.76);
+          const at = new Set(query.split(" ").filter(Boolean)),
+            bt = new Set(t.split(" ").filter(Boolean));
+          let ov = 0;
+          at.forEach((x) => {
+            if (bt.has(x)) ov++;
+          });
+          if (at.size && bt.size)
+            best = Math.max(best, ov / Math.max(at.size, bt.size));
+        }
+        if (year && Number(m.seasonYear) === year) best += 0.12;
+        best = Math.min(best, 1);
+        return best >= 0.9
+          ? { level: "high", label: "High match", score: best }
+          : best >= 0.6
+            ? { level: "medium", label: "Check match", score: best }
+            : {
+                level: "low",
+                label: "Low match",
+                score: best,
+              };
+      }
+      function selectedMedia(match) {
+        return (
+          match?.results?.find((m) => mediaKey(m) === match.selectedKey) || null
+        );
+      }
+      function addableMatches() {
+        return pendingBatchMatches
+          .filter((x) => !x.skipped)
+          .map((match) => ({ match, media: selectedMedia(match) }))
+          .filter((x) => x.media && !mediaOnBoard(x.media));
+      }
+      async function prepareBatch() {
+        const lines = String(els.batchInput.value || "")
+          .split(/\r?\n/)
+          .map((x) => x.trim())
+          .filter(Boolean);
+        if (!lines.length) return toast("Paste at least one item.", "error");
+        pendingBatchMatches = [];
+        renderBatch();
+        els.batchImportBtn.disabled = true;
+        try {
+          for (let i = 0; i < lines.length; i++) {
+            setStatus(`Matching ${i + 1}/${lines.length}...`);
+            try {
+              const results = await lookupItem(lines[i]);
+              const selected =
+                results.find((m) => !mediaOnBoard(m)) || results[0] || null;
+              pendingBatchMatches.push({
+                input: lines[i],
+                results,
+                selectedKey: selected ? mediaKey(selected) : null,
+                skipped: !selected,
+                error: null,
+              });
+            } catch (e) {
+              pendingBatchMatches.push({
+                input: lines[i],
+                results: [],
+                selectedKey: null,
+                skipped: true,
+                error: e.message || "failed",
+              });
+            }
+            renderBatch();
+          }
+        } finally {
+          els.batchImportBtn.disabled = false;
+          setStatus("System Ready");
+        }
+        toast(
+          addableMatches().length
+            ? `Review ${addableMatches().length} matches.`
+            : "No addable matches found.",
+          addableMatches().length ? "" : "error",
+        );
+      }
+      function renderBatch() {
+        if (!pendingBatchMatches.length) {
+          els.batchReview.hidden = true;
+          els.batchReviewList.innerHTML = "";
+          els.batchReviewSummary.textContent = "No matches prepared.";
+          els.batchConfirmBtn.disabled = true;
+          return;
+        }
+        els.batchReview.hidden = false;
+        const addable = addableMatches();
+        els.batchReviewSummary.textContent = `${addable.length} selected matches`;
+        els.batchConfirmBtn.disabled = !addable.length;
+        els.batchReviewList.innerHTML = pendingBatchMatches
+          .map((m, i) => {
+            const sel = selectedMedia(m),
+              dup = sel && mediaOnBoard(sel),
+              info = sel
+                ? matchInfo(m.input, sel)
+                : { label: m.error ? "Failed" : "No match" },
+              temp = sel && sel.needsAnilist;
+            const opts = m.results.length
+              ? m.results
+                  .map(
+                    (r) =>
+                      `<option value="${escapeAttr(mediaKey(r))}" ${mediaKey(r) === m.selectedKey ? "selected" : ""}>${escapeHtml(getMediaTitle(r) + (mediaOnBoard(r) ? " (Already Added)" : ""))}</option>`,
+                  )
+                  .join("")
+              : '<option value="">No results</option>';
+            return `<div class="review-item" style="opacity:${m.skipped ? ".5" : "1"}"><div><div class="result-meta">Input: <strong>${escapeHtml(m.input)}</strong></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge ${dup ? "done" : temp ? "need" : info.level === "high" ? "found" : "watch"}">${dup ? "Duplicate" : temp ? "Needs AniList" : escapeHtml(info.label)}</span><strong>${escapeHtml(sel ? getMediaTitle(sel) : "No result")}</strong></div></div><div style="display:flex;gap:8px"><select data-batch-select="${i}" ${m.results.length ? "" : "disabled"} style="height:32px;max-width:190px">${opts}</select><button class="btn" type="button" data-batch-skip="${i}" style="height:32px;padding:0 12px">${m.skipped ? "Include" : "Skip"}</button></div></div>`;
+          })
+          .join("");
+        qa("[data-batch-select]").forEach((s) =>
+          on(s, "change", () => {
+            const m = pendingBatchMatches[Number(s.dataset.batchSelect)];
+            m.selectedKey = s.value || null;
+            m.skipped = !m.selectedKey;
+            renderBatch();
+          }),
+        );
+        qa("[data-batch-skip]").forEach((b) =>
+          on(b, "click", () => {
+            const m = pendingBatchMatches[Number(b.dataset.batchSkip)];
+            m.skipped = !m.skipped;
+            if (!m.selectedKey && m.results[0])
+              m.selectedKey = mediaKey(m.results[0]);
+            renderBatch();
+          }),
+        );
+      }
+      async function confirmBatch() {
+        const arr = addableMatches();
+        if (!arr.length) return;
+        els.batchConfirmBtn.disabled = true;
+        els.batchConfirmBtn.textContent = "Adding...";
+        let added = 0;
+        for (let i = 0; i < arr.length; i++) {
+          setStatus(`Adding ${i + 1}/${arr.length}...`);
+          const m = arr[i].media;
+          if (!mediaOnBoard(m)) {
+            const s = showFromMedia(m);
+            state.shows.unshift(s);
+            await refreshShow(s, { forceMove: true, markFoundUpdate: false });
+            insertAZ(state.order[getBoard(s)], s.id);
+            added++;
+            render();
+            save();
+            await sleep(s.anilistId ? 600 : 100);
+          }
+        }
+        els.batchConfirmBtn.disabled = false;
+        els.batchConfirmBtn.textContent = "Add Selected";
+        els.batchInput.value = "";
+        pendingBatchMatches = [];
+        renderBatch();
+        setStatus("System Ready");
+        toast(`Successfully added ${added} shows!`);
+      }
+
+      async function readImage(file) {
+        if (!file) return "";
+        if (!file.type.startsWith("image/"))
+          throw new Error("Selected file is not an image.");
+        if (file.size > 900 * 1024)
+          throw new Error(
+            "Image file is too large. Use a small cover under 900 KB.",
+          );
+        return new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onerror = () => rej(new Error("Could not read image file."));
+          r.onload = () => res(String(r.result || ""));
+          r.readAsDataURL(file);
+        });
+      }
+      async function addManual() {
+        const title = els.manualTitle.value.trim(),
+          year = Number(els.manualYear.value),
+          format = normalizeFormat(els.manualFormat.value),
+          url = els.manualImageUrl.value.trim(),
+          file = els.manualImageFile.files?.[0] || null,
+          aid = Number(els.manualAniListId.value) || null,
+          mid = Number(els.manualMalId.value) || null,
+          notes = els.manualNotes.value || "";
+        if (!title || !year || !format)
+          return toast("Title, year, and format are required.", "error");
+        if (!url && !file)
+          return toast(
+            "Add an image URL or upload a small local image.",
+            "error",
+          );
+        try {
+          const cover = url || (await readImage(file));
+          const m = {
+            source: aid ? "anilist" : "manual",
+            id: aid,
+            anilistId: aid,
+            malId: mid,
+            title: { english: title, romaji: title, native: "" },
+            coverImage: { medium: cover, large: cover },
+            format,
+            seasonYear: year,
+            siteUrl: aid ? `https://anilist.co/anime/${aid}` : "",
+            comments: notes,
+          };
+          if (mediaOnBoard(m))
+            return toast(
+              "That entry already appears to be on the board.",
+              "error",
+            );
+          const s = showFromMedia(m);
+          state.shows.unshift(s);
+          await refreshShow(s, { forceMove: true, markFoundUpdate: false });
+          insertAZ(state.order[getBoard(s)], s.id);
+          render();
+          save();
+          [
+            "manualTitle",
+            "manualYear",
+            "manualImageUrl",
+            "manualAniListId",
+            "manualMalId",
+            "manualNotes",
+          ].forEach((k) => (els[k].value = ""));
+          els.manualFormat.value = "";
+          els.manualImageFile.value = "";
+          toast(
+            s.needsAnilist
+              ? "Manual entry added. Needs AniList."
+              : "Manual AniList entry added.",
+          );
+        } catch (e) {
+          toast(e.message || "Manual add failed.", "error");
+        } finally {
+          setStatus("System Ready");
+        }
+      }
+
+      async function regenerateOne(s) {
+        if (!s || s.anilistId) return true;
+        const queries = [
+          `${s.title} ${s.seasonYear || ""}`,
+          s.titleEnglish,
+          s.titleRomaji,
+          s.title,
+        ].filter(Boolean);
+        let best = null,
+          bestInfo = { score: 0 };
+        for (const term of [...new Set(queries)]) {
+          try {
+            const res = await searchAniList(term);
+            for (const m of res) {
+              const info = matchInfo(`${s.title} ${s.seasonYear || ""}`, m);
+              if (info.score > bestInfo.score) {
+                best = m;
+                bestInfo = info;
+              }
+            }
+            if (bestInfo.score >= 0.9) break;
+          } catch (e) {}
+          await sleep(300);
+        }
+        if (!best || bestInfo.score < 0.6) return false;
+        const comments = s.comments,
+          oldCover = s.coverImage;
+        s.anilistId = Number(best.id);
+        s.source = "anilist";
+        s.temporary = false;
+        s.needsAnilist = false;
+        s.title = best.title?.english || best.title?.romaji || s.title;
+        s.titleEnglish = best.title?.english || "";
+        s.titleRomaji = best.title?.romaji || "";
+        s.coverImage =
+          best.coverImage?.medium || best.coverImage?.large || oldCover || "";
+        s.coverImageIsEmbedded = String(s.coverImage).startsWith("data:");
+        s.format = normalizeFormat(best.format || s.format);
+        s.seasonYear = best.seasonYear || s.seasonYear;
+        s.episodes = best.episodes || s.episodes;
+        s.siteUrl = best.siteUrl || `https://anilist.co/anime/${best.id}`;
+        s.comments = comments;
+        s.relationsFetched = false;
+        await refreshShow(s, { forceMove: true });
+        return true;
+      }
+      async function regenerateId(id) {
+        const s = byId(id);
+        if (!s) return;
+        const ok = await regenerateOne(s);
+        render();
+        save();
+        toast(
+          ok ? `Regenerated ${s.title}` : `No AniList match for ${s.title}`,
+          ok ? "" : "error",
+        );
+      }
+      async function regenerateAll() {
+        const arr = state.shows.filter((s) => !s.anilistId || s.needsAnilist);
+        if (!arr.length) return toast("No entries need AniList regeneration.");
+        els.regenerateAniListBtn.disabled = true;
+        els.regenerateAniListBtn.textContent = "Regenerating...";
+        let ok = 0;
+        try {
+          for (let i = 0; i < arr.length; i++) {
+            setStatus(`Regenerating ${i + 1}/${arr.length}...`, "sync");
+            if (await regenerateOne(arr[i])) ok++;
+            render();
+            save();
+            await sleep(500);
+          }
+          toast(`Regenerated ${ok}/${arr.length} entries.`);
+        } finally {
+          els.regenerateAniListBtn.disabled = false;
+          els.regenerateAniListBtn.textContent = "Regenerate AniList";
+          setStatus("System Ready");
+        }
+      }
+
+      function fmtAgo(v) {
+        if (!v) return "Never";
+        const d = (Date.now() - new Date(v).getTime()) / 1000;
+        if (!Number.isFinite(d)) return "Never";
+        if (d < 60) return "Just now";
+        if (d < 3600) return Math.floor(d / 60) + "m ago";
+        if (d < 72 * 3600) return Math.floor(d / 3600) + "h ago";
+        return Math.floor(d / 86400) + "d ago";
+      }
+      function releaseUpdateAt(s) {
+        const release = defaultRelease(s?.releasesMoe);
+        return release.latestUpdated || release.updated || null;
+      }
+      function formatUpdateDate(v) {
+        const d = new Date(v || "");
+        if (!Number.isFinite(d.getTime())) return "";
+        const options = { month: "short", day: "numeric" };
+        if (d.getFullYear() !== new Date().getFullYear()) options.year = "numeric";
+        try {
+          return new Intl.DateTimeFormat(undefined, options).format(d);
+        } catch (e) {
+          return d.toLocaleDateString();
+        }
+      }
+      function formatUpdateTooltip(v) {
+        const d = new Date(v || "");
+        if (!Number.isFinite(d.getTime())) return "Update date unavailable";
+        let full;
+        try {
+          full = new Intl.DateTimeFormat(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(d);
+        } catch (e) {
+          full = d.toLocaleString();
+        }
+        return `Updated ${full} · ${fmtAgo(d.toISOString())}`;
+      }
+      function renderUpdateMarker(v) {
+        const shortDate = formatUpdateDate(v);
+        const tooltip = formatUpdateTooltip(v);
+        return `<span class="update-marker" title="${escapeAttr(tooltip)}"><span class="badge update">Updated</span>${shortDate ? `<span class="update-date">${escapeHtml(shortDate)}</span>` : ""}</span>`;
+      }
+      function newestPendingUpdateAt(shows) {
+        let newest = null;
+        let newestTime = 0;
+        (shows || []).forEach((s) => {
+          const release = defaultRelease(s?.releasesMoe);
+          if (!release.updateAvailable) return;
+          const value = releaseUpdateAt(s);
+          const time = Date.parse(value || "");
+          if (Number.isFinite(time) && time > newestTime) {
+            newest = value;
+            newestTime = time;
+          }
+        });
+        return newest;
+      }
+      function releaseLink(s) {
+        return s.anilistId && s.releasesMoe?.found
+          ? `${RELEASES_SITE_URL}/${encodeURIComponent(s.anilistId)}/`
+          : s.siteUrl || "";
+      }
+      function folderChildren(gid) {
+        return state.shows.filter(
+          (s) => s.groupId === gid && getBoard(s) === "downloaded",
+        );
+      }
+      function isFolderComplete(g, kids = folderChildren(g?.id)) {
+        if (!g) return false;
+        return kids.length
+          ? kids.every((s) => !!s.allAvailableDownloaded)
+          : !!g.allAvailableDownloaded;
+      }
+      function syncFolderCompleteState(gid) {
+        const g = groupById(gid);
+        if (!g) return;
+        const kids = folderChildren(gid);
+        if (kids.length)
+          g.allAvailableDownloaded = kids.every(
+            (s) => !!s.allAvailableDownloaded,
+          );
+      }
+      function folderHasUpdate(g) {
+        return folderChildren(g?.id).some((s) =>
+          defaultRelease(s.releasesMoe).updateAvailable,
+        );
+      }
+      function folderAllows(g) {
+        if (!g || g.board !== "downloaded") return true;
+        const complete = isFolderComplete(g);
+        if (state.ui.filterUpdated) return folderHasUpdate(g);
+        if (state.ui.filterComplete) return complete;
+        if (state.ui.filterIncomplete) return !complete;
+        return true;
+      }
+      function setFolderComplete(id, complete) {
+        const g = groupById(id);
+        if (!g) return;
+        const kids = folderChildren(id);
+        const now = new Date().toISOString();
+        g.allAvailableDownloaded = !!complete;
+        kids.forEach((s) => {
+          s.allAvailableDownloaded = !!complete;
+          s.updatedAt = now;
+        });
+        render();
+        save();
+        toast(
+          complete
+            ? `Marked folder complete${kids.length ? ` (${kids.length} shows)` : ""}.`
+            : "Marked folder incomplete.",
+        );
+      }
+      function updatedLibraryShows() {
+        return state.shows.filter(
+          (s) =>
+            getBoard(s) === "downloaded" &&
+            defaultRelease(s.releasesMoe).updateAvailable,
+        );
+      }
+      function updateLibraryUpdateIndicator() {
+        const updates = updatedLibraryShows().length;
+        if (els.filterUpdatedBtn) {
+          els.filterUpdatedBtn.hidden = updates < 1;
+          els.filterUpdatedBtn.setAttribute(
+            "aria-label",
+            updates === 1
+              ? "Show the 1 archived show with a pending update"
+              : `Show the ${updates} archived shows with pending updates`,
+          );
+        }
+        if (!updates && state.ui.filterUpdated) state.ui.filterUpdated = false;
+        return updates;
+      }
+      function toastLibraryUpdates({ force = false } = {}) {
+        const updates = updateLibraryUpdateIndicator();
+        if (!updates) {
+          lastLibraryUpdateToastCount = 0;
+          return 0;
+        }
+        if (force || lastLibraryUpdateToastCount !== updates) {
+          toast(
+            `${updates} library ${updates === 1 ? "update" : "updates"} available.`,
+          );
+          lastLibraryUpdateToastCount = updates;
+        }
+        return updates;
+      }
+      function pluralCount(count, singular, plural = singular + "s") {
+        return `${count} ${count === 1 ? singular : plural}`;
+      }
+      function autoReleaseSummaryMessage({ watching, library } = {}) {
+        const watchingChecked = Number(watching?.checked) || 0,
+          libraryChecked = Number(library?.checked) || 0,
+          totalChecked = watchingChecked + libraryChecked,
+          updates = Number(library?.updatesFound) || 0,
+          found = Number(watching?.found) || 0,
+          notListed =
+            (Number(watching?.notListed) || 0) +
+            (Number(library?.notListed) || 0),
+          errors =
+            (Number(watching?.errors) || 0) +
+            (Number(library?.errors) || 0);
+        if (totalChecked < 1) return "No stale releases due.";
+        const parts = [`${totalChecked} checked`];
+        if (updates > 0) parts.push(`${updates} updates`);
+        if (found > 0) parts.push(`${found} new`);
+        if (notListed > 0) parts.push(`${notListed} not listed`);
+        if (errors > 0) parts.push(`${errors} failed`);
+        if (!updates && !found && !notListed && !errors) parts.push("no changes");
+        return parts.join(" · ");
+      }
+      function toastAutoReleaseSummary(summary) {
+        const msg = autoReleaseSummaryMessage(summary);
+        if (!msg) return;
+        const errors =
+            (Number(summary?.watching?.errors) || 0) +
+            (Number(summary?.library?.errors) || 0),
+          findings =
+            (Number(summary?.watching?.found) || 0) +
+            (Number(summary?.library?.updatesFound) || 0);
+        toast(msg, errors && !findings ? "error" : "");
+      }
+      async function runAutoReleaseCheck({ announce = false, force = false, manual = false } = {}) {
+        if (releaseCheckRunning) {
+          if (manual) toast("A release refresh is already running.", "error");
+          return;
+        }
+        const now = Date.now();
+        if (!force && now - lastAutoReleaseCheckAt < RESUME_RELEASE_CHECK_STALE_MS)
+          return;
+
+        releaseCheckRunning = true;
+        releaseQueueCancelRequested = false;
+        releaseQueuePauseReason = "";
+        lastAutoReleaseCheckAt = now;
+
+        const activeEntries = staleActiveEntries(now);
+        const libraryEntries = staleLibraryEntries(AUTO_LIBRARY_RELEASE_CHECK_LIMIT, now);
+        const etaState = {
+          startedAt: Date.now(),
+          total: activeEntries.length + libraryEntries.length,
+          completed: 0,
+        };
+
+        let progressToast = null;
+        const progressToastStartedAt = Date.now();
+        if (manual) {
+          setReleaseRefreshUi(true, "Refresh stale");
+          setReleaseRefreshProgress(
+            etaState.total
+              ? releaseProgressText("Refreshing stale queued", 0, etaState.total, "waiting to start", etaState.startedAt, 0)
+              : "No stale releases due.",
+            true,
+          );
+        }
+        if (announce) {
+          progressToast = toast(
+            etaState.total > 0
+              ? `Checking ${etaState.total} stale release${etaState.total === 1 ? "" : "s"}...`
+              : "No stale releases due.",
+            "",
+            { duration: 0 },
+          );
+          setStatus(etaState.total > 0 ? "Checking releases..." : "System Ready", etaState.total > 0 ? "sync" : "ready");
+        }
+
+        try {
+          suppressCloudSync = true;
+          const activeSummary = await checkActive({ manual, entries: activeEntries, etaState });
+          const librarySummary = releaseQueueCancelRequested || releaseQueuePauseReason
+            ? { checked: 0, updatesFound: 0, errors: 0, notListed: 0, pendingUpdates: updateLibraryUpdateIndicator() }
+            : await checkLibrary(AUTO_LIBRARY_RELEASE_CHECK_LIMIT, { manual, entries: libraryEntries, etaState });
+          const checked =
+            (Number(activeSummary?.checked) || 0) +
+            (Number(librarySummary?.checked) || 0);
+
+          const summaryPayload = {
+            watching: activeSummary,
+            library: librarySummary,
+          };
+          const msg = autoReleaseSummaryMessage(summaryPayload);
+          const errors =
+            (Number(activeSummary?.errors) || 0) +
+            (Number(librarySummary?.errors) || 0);
+          const findings =
+            (Number(activeSummary?.found) || 0) +
+            (Number(librarySummary?.updatesFound) || 0);
+          const type = errors && !findings ? "error" : "";
+
+          if (releaseQueueCancelRequested) {
+            await keepToastVisible(progressToastStartedAt);
+            if (announce) finishToast(progressToast, `Refresh stopped. ${msg}`);
+            else toast(`Refresh stopped. ${msg}`);
+            progressToast = null;
+            if (manual) setReleaseRefreshProgress(`Stopped after ${checked}/${etaState.total}. ${msg}`);
+          } else {
+            suppressCloudSync = false;
+            if (checked > 0) {
+              updateToast(progressToast, hasCloudCredentials() ? `${checked} checked. Saving to Cloud...` : `${checked} checked. Finishing...`);
+            }
+            const cloud = checked > 0
+              ? await syncReleaseRefreshToCloud()
+              : { text: "Cloud backup skipped: nothing changed." };
+            await keepToastVisible(progressToastStartedAt);
+            const completion = releaseQueuePauseReason
+              ? `Paused after ${checked}/${etaState.total}: ${releaseQueuePauseReason} Failed checks kept their existing data.`
+              : "Finished stale refresh.";
+            const resultMessage = releaseQueuePauseReason ? `${completion} ${msg}` : msg;
+            const finalMessage = manual
+              ? `${resultMessage} · ${cloud.text}`
+              : resultMessage;
+            if (announce) finishToast(progressToast, finalMessage, type);
+            else toast(finalMessage, type);
+            progressToast = null;
+            if (manual) setReleaseRefreshProgress(`${completion} ${msg} · ${cloud.text}`);
+          }
+        } catch (e) {
+          console.warn(e);
+          await keepToastVisible(progressToastStartedAt);
+          if (announce) finishToast(progressToast, "Release check failed", "error");
+          else toast("Release check failed", "error");
+          progressToast = null;
+          setStatus("System Ready");
+          if (manual) setReleaseRefreshProgress("Release check failed. Try again later.");
+        } finally {
+          dismissToast(progressToast);
+          suppressCloudSync = false;
+          releaseCheckRunning = false;
+          if (manual) {
+            setReleaseRefreshUi(false);
+            if (els.cancelReleaseRefreshBtn) els.cancelReleaseRefreshBtn.textContent = "Cancel";
+          }
+        }
+      }
+      function libraryAllows(s) {
+        if (state.ui.filterUpdated)
+          return !!defaultRelease(s.releasesMoe).updateAvailable;
+        if (state.ui.filterComplete) return !!s.allAvailableDownloaded;
+        if (state.ui.filterIncomplete) return !s.allAvailableDownloaded;
+        return true;
+      }
+      function updateButtons() {
+        const filtering =
+          !!state.ui.filterComplete ||
+          !!state.ui.filterIncomplete ||
+          !!state.ui.filterUpdated;
+        els.editOrderBtn?.classList.toggle("active", !!state.ui.sortMode);
+        els.filterAllBtn?.classList.toggle("active", !filtering);
+        els.filterCompleteBtn?.classList.toggle(
+          "active",
+          !!state.ui.filterComplete,
+        );
+        els.filterIncompleteBtn?.classList.toggle(
+          "active",
+          !!state.ui.filterIncomplete,
+        );
+        els.filterUpdatedBtn?.classList.toggle(
+          "active",
+          !!state.ui.filterUpdated,
+        );
+      }
+      function render() {
+        reconcile();
+        let visible = state.shows;
+        if (state.localSearch) {
+          const term = state.localSearch.toLowerCase();
+          visible = visible.filter((s) =>
+            [
+              s.title,
+              s.titleEnglish,
+              s.titleRomaji,
+              s.format,
+              s.seasonYear,
+              s.comments,
+              s.anilistId,
+              s.malId,
+            ].some((x) =>
+              String(x || "")
+                .toLowerCase()
+                .includes(term),
+            ),
+          );
+        }
+        updateLibraryUpdateIndicator();
+        renderBoard(
+          "found",
+          visible.filter((s) => getBoard(s) === "found"),
+          els.foundList,
+          els.foundCount,
+        );
+        renderBoard(
+          "watching",
+          visible.filter((s) => getBoard(s) === "watching"),
+          els.watchingList,
+          els.watchingCount,
+        );
+        renderBoard(
+          "downloaded",
+          visible.filter(
+            (s) => getBoard(s) === "downloaded" && libraryAllows(s),
+          ),
+          els.downloadedList,
+          els.downloadedCount,
+        );
+        updateButtons();
+      }
+      function renderBoard(board, shows, list, count) {
+        if (!list || !count) return;
+        count.textContent = shows.length;
+        if (state.localSearch) {
+          list.innerHTML =
+            shows.map(renderCard).join("") ||
+            `<div class="empty">${board === "downloaded" ? "Library is empty." : board === "found" ? "No matching releases found yet." : "All caught up."}</div>`;
+          return;
+        }
+        const html = [];
+        state.order[board].forEach((id) => {
+          const g = groupById(id),
+            s = byId(id);
+          if (g) {
+            if (board === "downloaded" && !folderAllows(g)) return;
+            const kids = shows.filter((x) => x.groupId === g.id);
+            html.push(renderFolder(g, kids));
+          } else if (s && shows.includes(s)) html.push(renderCard(s));
+        });
+        list.innerHTML =
+          html.join("") ||
+          `<div class="empty">${board === "downloaded" ? "Library is empty." : board === "found" ? "No matching releases found yet." : "All caught up."}</div>`;
+      }
+      function renderFolder(g, kids) {
+        sortGroup(g.id);
+        const allKids = folderChildren(g.id);
+        const allOrdered = (state.groupOrder[g.id] || [])
+          .map((id) => allKids.find((s) => s.id === id))
+          .filter(Boolean);
+        const ordered = (state.groupOrder[g.id] || [])
+          .map((id) => kids.find((s) => s.id === id))
+          .filter(Boolean);
+        const first = allOrdered[0] || ordered[0];
+        const cover = first?.coverImage || "";
+        const complete = allKids.filter((s) => s.allAvailableDownloaded).length;
+        const folderComplete = isFolderComplete(g, allKids);
+        const hasUpdate = allKids.some((s) => defaultRelease(s.releasesMoe).updateAvailable);
+        const folderUpdateAt = hasUpdate ? newestPendingUpdateAt(allKids) : null;
+        const updateBadge = hasUpdate ? renderUpdateMarker(folderUpdateAt) : "";
+        const folderCountText = allKids.length
+          ? `${allKids.length} ${allKids.length === 1 ? "show" : "shows"}`
+          : "Empty";
+        const canEdit = state.ui.sortMode && !state.localSearch;
+        const completeAction = `<button class="menu-action ${folderComplete ? "active" : ""}" type="button" data-complete-group="${escapeAttr(g.id)}">✓ ${folderComplete ? "Mark folder incomplete" : "Mark folder complete"}</button>`;
+        const editActions = canEdit
+          ? `<button class="menu-action" type="button" data-move-group="${escapeAttr(g.id)}" data-dir="up">▲ Move folder up</button><button class="menu-action" type="button" data-move-group="${escapeAttr(g.id)}" data-dir="down">▼ Move folder down</button><button class="menu-action danger" type="button" data-remove-group="${escapeAttr(g.id)}">× Delete folder</button>`
+          : "";
+        const menuHtml = `<details class="menu folder-menu"><summary class="icon-btn" aria-label="Folder actions">⋯</summary><div class="menu-panel">${completeAction}${editActions}</div></details>`;
+        return `<article class="card folder ${hasUpdate ? "has-update" : ""}" data-item-id="${escapeAttr(g.id)}" data-type="group"><div class="card-main has-folder-menu" data-collapse-group="${escapeAttr(g.id)}"><img class="thumb" src="${escapeAttr(cover)}" alt="" loading="lazy"><div class="content"><input class="folder-name" data-group-name="${escapeAttr(g.id)}" value="${escapeAttr(g.name)}" ${canEdit ? "" : "readonly tabindex='-1'"}><div class="meta"><span class="badge done">Folder</span><span class="folder-completion">${folderCountText}</span>${updateBadge}</div></div><button class="folder-toggle ${g.collapsed ? "collapsed" : ""}" type="button" aria-label="${g.collapsed ? "Expand folder" : "Collapse folder"}">▼</button>${menuHtml}</div><div class="folder-list ${g.collapsed ? "collapsed" : ""}">${ordered.map(renderCard).join("")}</div></article>`;
+      }
+      function renderCard(s) {
+        s.releasesMoe = defaultRelease(s.releasesMoe);
+        const board = getBoard(s),
+          isDl = board === "downloaded",
+          notes = !!state.ui.openNotes[s.id],
+          showUpdateBadge = !!s.releasesMoe.updateAvailable && (isDl || board === "found"),
+          hasUpdate = showUpdateBadge,
+          sort = state.ui.sortMode && isDl,
+          link = releaseLink(s),
+          poster = link
+            ? `<a href="${escapeAttr(link)}" target="_blank" rel="noopener"><img class="thumb" src="${escapeAttr(s.coverImage || "")}" alt="${escapeAttr(s.title)}" loading="lazy"></a>`
+            : `<img class="thumb" src="${escapeAttr(s.coverImage || "")}" alt="${escapeAttr(s.title)}" loading="lazy">`,
+          title = link
+            ? `<a href="${escapeAttr(link)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a>`
+            : escapeHtml(s.title);
+        const updateAt = showUpdateBadge ? releaseUpdateAt(s) : null;
+        let badge =
+          s.needsAnilist || !s.anilistId
+            ? '<span class="badge need">Needs AniList</span>'
+            : showUpdateBadge
+              ? renderUpdateMarker(updateAt)
+              : isDl
+                ? ""
+                : s.releasesMoe.found
+                  ? '<span class="badge found">Found</span>'
+                  : '<span class="badge watch">Watching</span>';
+        if (s.releasesMoe.error)
+          badge += ` <span class="badge need" title="${escapeAttr(s.releasesMoe.error + ' Existing release data kept; retry after ' + (s.releasesMoe.retryAfter || 'the cooldown') + '.')}">Check failed</span>`;
+        const actions = sort
+          ? `<button class="icon-btn" data-send-root="${escapeAttr(s.id)}" type="button">⤒</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="up" type="button">▲</button><button class="icon-btn" data-move-show="${escapeAttr(s.id)}" data-dir="down" type="button">▼</button>`
+          : `<details class="menu"><summary class="icon-btn">⋯</summary><div class="menu-panel"><button class="menu-action" data-explore-id="${escapeAttr(s.id)}" type="button">🔗 Related shows</button>${s.needsAnilist || !s.anilistId ? `<button class="menu-action active" data-regenerate-id="${escapeAttr(s.id)}" type="button">A Regenerate AniList</button>` : ""}${s.releasesMoe.updateAvailable ? `<button class="menu-action active" data-ack-id="${escapeAttr(s.id)}" type="button">✓ Acknowledge update</button>` : ""}${isDl ? `<button class="menu-action ${s.allAvailableDownloaded ? "active" : ""}" data-complete-id="${escapeAttr(s.id)}" type="button">✓ ${s.allAvailableDownloaded ? "Mark incomplete" : "Mark complete"}</button>` : ""}${s.nyaaUrl ? `<a class="menu-action" href="${escapeAttr(s.nyaaUrl)}" target="_blank" rel="noopener">N Nyaa</a>` : ""}<button class="menu-action" data-refresh-id="${escapeAttr(s.id)}" type="button">↻ Refresh releases</button><button class="menu-action ${notes ? "active" : ""}" data-notes-id="${escapeAttr(s.id)}" type="button">✎ Notes</button><button class="menu-action danger" data-remove-id="${escapeAttr(s.id)}" type="button">× Remove</button></div></details>`;
+        const downloadControl = isDl ? "" : `<input class="check" type="checkbox" data-download-id="${escapeAttr(s.id)}">`;
+        const checkedAtMs = releaseLastCheckedAt(s, isDl);
+        const checkedAt = checkedAtMs ? new Date(checkedAtMs).toISOString() : "";
+        return `<article class="card ${hasUpdate ? "has-update" : ""} ${notes ? "notes-open" : ""}" data-item-id="${escapeAttr(s.id)}" data-type="show" ${sort ? 'draggable="true"' : ''}><div class="card-main ${isDl ? "no-download" : ""}">${downloadControl}${poster}<div class="content"><div class="title">${title}</div><div class="meta${s.releasesMoe.error ? " has-error" : ""}"><span>${escapeHtml([s.format, s.seasonYear].filter(Boolean).join(" · ") || "Anime")}</span>${badge}</div><div class="time">Checked: ${fmtAgo(checkedAt)}</div></div><div>${actions}</div></div><div class="notes"><textarea data-comment-id="${escapeAttr(s.id)}" placeholder="Notes...">${escapeHtml(s.comments || "")}</textarea><button class="btn compact primary" data-notes-id="${escapeAttr(s.id)}" type="button" style="margin-top: 10px; width: auto;">✓ Save & Close</button></div></article>`;
+      }
+      function moveWithin(arr, id, dir) {
+        const i = arr.indexOf(id),
+          j = dir === "up" ? i - 1 : i + 1;
+        if (i < 0 || j < 0 || j >= arr.length) return;
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      function addFolder() {
+        if (!state.ui.sortMode)
+          return toast("Turn on Edit Order first.", "error");
+        const id = "grp_" + uuid();
+        state.groups.push({
+          id,
+          name: "New Folder",
+          collapsed: false,
+          board: "downloaded",
+          allAvailableDownloaded: false,
+        });
+        state.groupOrder[id] = [];
+        state.order.downloaded.unshift(id);
+        render();
+        save();
+        
+        setTimeout(() => {
+          const input = document.querySelector(`input[data-group-name="${id}"]`);
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 50);
+      }
+      function sortLibraryAZ() {
+        state.order.downloaded.sort((a, b) => {
+          const ga = groupById(a),
+            gb = groupById(b),
+            sa = byId(a),
+            sb = byId(b),
+            na = ga?.name || showTitle(sa),
+            nb = gb?.name || showTitle(sb);
+          return na.localeCompare(nb, undefined, {
+            sensitivity: "base",
+            numeric: true,
+          });
+        });
+        render();
+        save();
+      }
+      function handleBoardsClick(e) {
+        const t = e.target,
+          menu = t.closest(".menu");
+        qa(".menu[open]").forEach((m) => {
+          if (m !== menu && !m.contains(t)) m.removeAttribute("open");
+        });
+        
+        if (t.closest(".menu-action") && menu) {
+          menu.removeAttribute("open");
+        }
+
+        const id = (sel) => t.closest(sel)?.dataset;
+        if (
+          t.closest("[data-collapse-group]") &&
+          !t.closest("input,button,textarea,select,a,.menu")
+        ) {
+          const header = t.closest("[data-collapse-group]");
+          const g = groupById(header.dataset.collapseGroup);
+          if (g) {
+            g.collapsed = !g.collapsed;
+            const folder = header.closest(".folder");
+            const list = folder?.querySelector(".folder-list");
+            const toggle = header.querySelector(".folder-toggle");
+            list?.classList.toggle("collapsed", g.collapsed);
+            toggle?.classList.toggle("collapsed", g.collapsed);
+            toggle?.setAttribute("aria-label", g.collapsed ? "Expand folder" : "Collapse folder");
+            save();
+          }
+          return;
+        }
+        let d;
+        if ((d = id("[data-explore-id]"))) return openExplorer(d.exploreId);
+        if ((d = id("[data-regenerate-id]")))
+          return regenerateId(d.regenerateId);
+        if ((d = id("[data-refresh-id]"))) return refreshOne(d.refreshId);
+        if ((d = id("[data-notes-id]"))) {
+          state.ui.openNotes[d.notesId] = !state.ui.openNotes[d.notesId];
+          render();
+          save();
+          return;
+        }
+        if ((d = id("[data-complete-id]"))) {
+          const s = byId(d.completeId);
+          if (s) {
+            s.allAvailableDownloaded = !s.allAvailableDownloaded;
+            s.updatedAt = new Date().toISOString();
+            if (s.groupId) syncFolderCompleteState(s.groupId);
+            render();
+            save();
+          }
+          return;
+        }
+        if ((d = id("[data-complete-group]"))) {
+          const g = groupById(d.completeGroup);
+          if (g) setFolderComplete(g.id, !isFolderComplete(g));
+          return;
+        }
+        if ((d = id("[data-ack-id]"))) {
+          ackUpdate(d.ackId);
+          return;
+        }
+        if ((d = id("[data-remove-id]"))) {
+          removeShow(d.removeId);
+          return;
+        }
+        if ((d = id("[data-send-root]"))) {
+          sendRoot(d.sendRoot);
+          return;
+        }
+        if ((d = id("[data-move-show]"))) {
+          moveShow(d.moveShow, d.dir);
+          return;
+        }
+        if ((d = id("[data-move-group]"))) {
+          const g = groupById(d.moveGroup);
+          if (g) {
+            moveWithin(state.order[g.board], g.id, d.dir);
+            render();
+            save();
+          }
+          return;
+        }
+        if ((d = id("[data-remove-group]"))) {
+          removeGroup(d.removeGroup);
+          return;
+        }
+      }
+      function handleBoardsChange(e) {
+        const c = e.target.closest("[data-download-id]");
+        if (!c) return;
+        const s = byId(c.dataset.downloadId);
+        if (!s) return;
+        const prev = getBoard(s);
+        const prevGroupId = s.groupId;
+        s.downloaded = c.checked;
+        s.board = c.checked
+          ? "downloaded"
+          : s.releasesMoe?.found
+            ? "found"
+            : "watching";
+        if (!c.checked) {
+          s.allAvailableDownloaded = false;
+          s.groupId = null;
+        }
+        if (c.checked && s.releasesMoe.latestUpdated) {
+          s.releasesMoe.updated = s.releasesMoe.latestUpdated;
+          s.releasesMoe.latestUpdated = null;
+        }
+        s.releasesMoe.updateAvailable = false;
+        s.updatedAt = new Date().toISOString();
+        moveBoard(s.id, prev, getBoard(s));
+        if (prevGroupId) syncFolderCompleteState(prevGroupId);
+        render();
+        save();
+        toast(c.checked ? "Moved to Library" : "Moved back to Active");
+      }
+      function handleBoardsInput(e) {
+        const c = e.target.closest("[data-comment-id]");
+        if (c) {
+          const s = byId(c.dataset.commentId);
+          if (s) s.comments = c.value;
+          clearTimeout(commentTimers.get(c.dataset.commentId));
+          commentTimers.set(c.dataset.commentId, setTimeout(save, 500));
+          return;
+        }
+        const g = e.target.closest("[data-group-name]");
+        if (g) {
+          const group = groupById(g.dataset.groupName);
+          if (group) group.name = g.value;
+          clearTimeout(groupNameTimers.get(g.dataset.groupName));
+          groupNameTimers.set(g.dataset.groupName, setTimeout(save, 500));
+        }
+      }
+      function sendRoot(id) {
+        const s = byId(id);
+        if (!s) return;
+        const prevGroupId = s.groupId;
+        removeFromOrders(id);
+        s.groupId = null;
+        state.order[getBoard(s)].unshift(id);
+        if (prevGroupId) syncFolderCompleteState(prevGroupId);
+        render();
+        save();
+        toast("Sent to root");
+      }
+      function moveShow(id, dir) {
+        const s = byId(id);
+        if (!s) return;
+        const arr = s.groupId
+          ? state.groupOrder[s.groupId]
+          : state.order[getBoard(s)];
+        moveWithin(arr, id, dir);
+        if (s.groupId) sortGroup(s.groupId);
+        render();
+        save();
+      }
+      function removeGroup(id) {
+        if (!confirm("Delete this folder? (Shows will be safely moved back to the root)")) return;
+        const g = groupById(id);
+        if (!g) return;
+        state.shows.forEach((s) => {
+          if (s.groupId === id) s.groupId = null;
+        });
+        state.groups = state.groups.filter((x) => x.id !== id);
+        delete state.groupOrder[id];
+        render();
+        save();
+        toast("Folder deleted. Shows moved to root.");
+      }
+      function removeShow(id) {
+        if (!confirm("Remove this show entirely?")) return;
+        const s = byId(id);
+        const prevGroupId = s?.groupId || null;
+        removeFromOrders(id);
+        state.shows = state.shows.filter((s) => s.id !== id);
+        if (prevGroupId) syncFolderCompleteState(prevGroupId);
+        render();
+        save();
+        toast("Removed.");
+      }
+
+      async function refreshOne(id) {
+        const s = byId(id);
+        if (!s) return;
+        const result = await refreshShow(s, { forceMove: true });
+        if (result.cancelled) return;
+        render();
+        save();
+        if (!result.ok) toast(`Could not refresh ${s.title}: ${result.error?.message || "API unavailable"} Existing data kept.`, "error");
+        else if (result.skipped) toast("This entry needs an AniList ID before release checks.", "error");
+        else toast(`Refreshed ${s.title}`);
+      }
+      function ackUpdate(id) {
+        const s = byId(id);
+        if (!s) return;
+        if (s.releasesMoe.latestUpdated) {
+          s.releasesMoe.updated = s.releasesMoe.latestUpdated;
+          s.releasesMoe.latestUpdated = null;
+        }
+        s.releasesMoe.updateAvailable = false;
+        if (!updatedLibraryShows().some((show) => show.id !== s.id))
+          state.ui.filterUpdated = false;
+        render();
+        save();
+        toast("Update acknowledged.");
+      }
+
+      async function openExplorer(id) {
+        const s = byId(id);
+        if (!s) return;
+        if (!s.anilistId)
+          return toast(
+            "Regenerate AniList before scanning relations.",
+            "error",
+          );
+        els.exploreModal.classList.add("open");
+        els.exploreModalTitle.textContent = `Franchise: ${s.title}`;
+        els.exploreModalBody.innerHTML =
+          '<div class="empty">Scanning franchise tree...</div>';
+        try {
+          let queue = [Number(s.anilistId)],
+            visited = new Set(queue),
+            found = new Map();
+          for (let pass = 0; pass < 3; pass++) {
+            if (!queue.length) break;
+            const next = [];
+            for (let i = 0; i < queue.length; i += 50) {
+              const chunk = queue.slice(i, i + 50);
+              const query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{relationType node{id title{english romaji native} coverImage{medium large} format seasonYear episodes siteUrl}}}}}}`;
+              const j = await aniRequest(query, { ids: chunk });
+              (j.data?.Page?.media || []).forEach((m) =>
+                (m.relations?.edges || []).forEach((e) => {
+                  const n = e.node;
+                  if (!visited.has(n.id)) {
+                    visited.add(n.id);
+                    if (
+                      !["MANGA", "NOVEL", "ONE_SHOT", "MUSIC"].includes(
+                        n.format,
+                      )
+                    ) {
+                      found.set(n.id, { ...n, relationType: e.relationType });
+                      next.push(n.id);
+                    }
+                  }
+                }),
+              );
+            }
+            queue = next;
+          }
+          const addable = Array.from(found.values()).filter(
+            (m) => !mediaOnBoard(m),
+          );
+          window._exploreCache = addable;
+          els.exploreModalBody.innerHTML = addable.length
+            ? addable
+                .map(
+                  (m) =>
+                    `<div class="relation"><img class="poster" src="${escapeAttr(m.coverImage?.medium || "")}" alt="" loading="lazy"><span class="result-info"><span class="result-meta">${escapeHtml(String(m.relationType || "").replace(/_/g, " "))}</span><span class="result-title">${escapeHtml(getMediaTitle(m))}</span><span class="result-meta">${escapeHtml(mediaMeta(m))}</span></span><button class="btn primary" type="button" data-add-explore="${escapeAttr(mediaKey(m))}" style="height:32px">Add</button></div>`,
+                )
+                .join("")
+            : '<div class="empty">All related anime are already on your board.</div>';
+        } catch (e) {
+          els.exploreModalBody.innerHTML =
+            '<div class="empty">Failed to load relations.</div>';
+        }
+      }
+      async function smartGroup() {
+        const ids = state.shows
+          .filter((s) => s.anilistId && !s.relationsFetched)
+          .map((s) => Number(s.anilistId));
+        if (ids.length) {
+          setStatus(`Analyzing ${ids.length} entries...`, "sync");
+          for (let i = 0; i < ids.length; i += 50) {
+            try {
+              const chunk = ids.slice(i, i + 50),
+                query = `query($ids:[Int]){Page(perPage:50){media(id_in:$ids){id relations{edges{node{id}relationType}}}}}`;
+              const j = await aniRequest(query, { ids: chunk });
+              (j.data?.Page?.media || []).forEach((m) => {
+                const s = state.shows.find((x) => Number(x.anilistId) === m.id);
+                if (s) {
+                  s.relations = (m.relations?.edges || [])
+                    .filter((e) =>
+                      ["PREQUEL", "SEQUEL", "SUMMARY", "SPIN_OFF", "ALTERNATIVE", "FRANCHISE"].includes(e.relationType),
+                    )
+                    .map((e) => Number(e.node.id));
+                  s.relationsFetched = true;
+                }
+              });
+            } catch (e) {
+              toast("Smart grouping interrupted.", "error");
+              break;
+            }
+            await sleep(500);
+          }
+        }
+        clusterLocal();
+      }
+      function clusterLocal() {
+        const fams = [];
+        state.shows
+          .filter((s) => s.anilistId)
+          .forEach((s) => {
+            const mine = new Set([
+              Number(s.anilistId),
+              ...(s.relations || []).map(Number),
+            ]);
+            const hits = [];
+            fams.forEach((f, i) => {
+              if ([...mine].some((id) => f.has(id))) hits.push(i);
+            });
+            if (hits.length) {
+              mine.forEach((id) => fams[hits[0]].add(id));
+              hits
+                .slice(1)
+                .reverse()
+                .forEach((i) => {
+                  fams[i].forEach((id) => fams[hits[0]].add(id));
+                  fams.splice(i, 1);
+                });
+            } else fams.push(mine);
+          });
+        fams.forEach((f) => {
+          const shows = state.shows.filter(
+              (s) => f.has(Number(s.anilistId)) && getBoard(s) === "downloaded",
+            ),
+            grouped = shows.filter((s) => s.groupId),
+            ungrouped = shows.filter((s) => !s.groupId);
+          if (!ungrouped.length) return;
+          let gid = grouped[0]?.groupId;
+          if (!gid && ungrouped.length > 1) {
+            const oldest = [...ungrouped].sort(compareFolder)[0];
+            gid = "grp_" + uuid();
+            state.groups.push({
+              id: gid,
+              name: String(oldest.title || "New Folder")
+                .split(/[:\-(]/)[0]
+                .trim(),
+              collapsed: true,
+              board: "downloaded",
+              allAvailableDownloaded: false,
+            });
+            state.groupOrder[gid] = [];
+            state.order.downloaded.unshift(gid);
+          }
+          if (gid)
+            ungrouped.forEach((s) => {
+              s.groupId = gid;
+              state.order.downloaded = state.order.downloaded.filter(
+                (x) => x !== s.id,
+              );
+              if (!state.groupOrder[gid].includes(s.id))
+                state.groupOrder[gid].push(s.id);
+              sortGroup(gid);
+            });
+        });
+        render();
+        save();
+        setStatus("System Ready");
+        toast("Dashboard organized!");
+      }
+
+      function downloadJson(filename, obj) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(
+          new Blob([JSON.stringify(obj, null, 2)], {
+            type: "application/json",
+          }),
+        );
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      function exportJson() {
+        reconcile();
+        downloadJson("anilist-releases-board.json", stripEmbedded(state));
+        toast("Exported lightweight JSON");
+      }
+      function isDataUrl(v) {
+        return typeof v === "string" && v.startsWith("data:");
+      }
+      async function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onerror = () => reject(new Error("Could not read cover blob."));
+          r.onload = () => resolve(String(r.result || ""));
+          r.readAsDataURL(blob);
+        });
+      }
+      async function fetchCoverDataUrl(url) {
+        if (!url || isDataUrl(url)) return url || "";
+        try {
+          const res = await fetch(url, {
+            mode: "cors",
+            signal: timeoutSignal(10000),
+          });
+          if (!res.ok) return "";
+          const blob = await res.blob();
+          if (blob.size > MAX_PORTABLE_COVER_BYTES) return "";
+          return await blobToDataUrl(blob);
+        } catch (e) {
+          return "";
+        }
+      }
+      async function makePortableArchive() {
+        reconcile();
+        const portable = clonePlain(state);
+        portable.portableArchive = true;
+        portable.archiveVersion = 1;
+        portable.exportedAt = new Date().toISOString();
+        for (let i = 0; i < (portable.shows || []).length; i++) {
+          const s = portable.shows[i];
+          if (!s.coverImage) continue;
+          if (isDataUrl(s.coverImage)) {
+            s.coverImageIsEmbedded = true;
+            continue;
+          }
+          setStatus(
+            `Embedding covers ${i + 1}/${portable.shows.length}...`,
+            "sync",
+          );
+          const data = await fetchCoverDataUrl(s.coverImage);
+          if (data) {
+            s.coverImageOriginalUrl = s.coverImage;
+            s.coverImage = data;
+            s.coverImageIsEmbedded = true;
+          }
+          await sleep(20);
+        }
+        return portable;
+      }
+      async function exportPortableArchive() {
+        if (!els.portableExportBtn) return;
+        els.portableExportBtn.disabled = true;
+        els.portableExportBtn.textContent = "Preparing Archive...";
+        try {
+          const archive = await makePortableArchive();
+          downloadJson("anilist-releases-board-portable-archive.json", archive);
+          toast("Exported portable archive.");
+        } catch (e) {
+          console.warn(e);
+          toast("Portable export failed.", "error");
+        } finally {
+          els.portableExportBtn.disabled = false;
+          els.portableExportBtn.textContent = "Export Portable Archive";
+          setStatus("System Ready");
+        }
+      }
+      function prepareImportedData(data) {
+        if (data?.portableArchive || data?.archiveVersion) {
+          (data.shows || []).forEach((s) => {
+            if (s.coverImageData && !s.coverImage)
+              s.coverImage = s.coverImageData;
+            if (isDataUrl(s.coverImage)) s.coverImageIsEmbedded = true;
+          });
+        }
+        return data;
+      }
+      function matchExistingShow(incoming) {
+        const aid = Number(incoming?.anilistId),
+          mid = Number(incoming?.malId);
+        if (Number.isFinite(aid) && aid > 0) {
+          const hit = state.shows.find((s) => Number(s.anilistId) === aid);
+          if (hit) return hit;
+        }
+        if (Number.isFinite(mid) && mid > 0) {
+          const hit = state.shows.find((s) => Number(s.malId) === mid);
+          if (hit) return hit;
+        }
+        if (incoming?.id) {
+          const hit = state.shows.find((s) => s.id === incoming.id);
+          if (hit) return hit;
+        }
+        const title = normalizeTitle(
+            incoming?.title || incoming?.titleEnglish || incoming?.titleRomaji,
+          ),
+          year = Number(incoming?.seasonYear);
+        if (title && Number.isFinite(year)) {
+          return (
+            state.shows.find(
+              (s) =>
+                normalizeTitle(s.title || s.titleEnglish || s.titleRomaji) ===
+                  title && Number(s.seasonYear) === year,
+            ) || null
+          );
+        }
+        return null;
+      }
+      function mergeShowInto(existing, incoming) {
+        const keepId = existing.id,
+          oldComments = existing.comments || "",
+          newComments = incoming.comments || "";
+        Object.assign(existing, { ...existing, ...incoming, id: keepId });
+        if (oldComments && newComments && oldComments !== newComments)
+          existing.comments =
+            oldComments + "\n\n--- Imported notes ---\n" + newComments;
+        else existing.comments = oldComments || newComments;
+        existing.releasesMoe = defaultRelease({
+          ...existing.releasesMoe,
+          ...incoming.releasesMoe,
+        });
+        normalizeShow(existing);
+      }
+      function mergeStateData(data) {
+        const incoming = {
+          shows: savedShows(data).map(clonePlain),
+          groups:
+            !Array.isArray(data) && Array.isArray(data?.groups)
+              ? clonePlain(data.groups)
+              : [],
+          groupOrder:
+            !Array.isArray(data) && data?.groupOrder
+              ? clonePlain(data.groupOrder)
+              : {},
+          order: {
+            ...defaultOrder(),
+            ...(!Array.isArray(data) && data?.order
+              ? clonePlain(data.order)
+              : {}),
+          },
+        };
+        const groupMap = {},
+          showMap = {};
+        incoming.groups.forEach((g) => {
+          let target = state.groups.find(
+            (x) =>
+              x.board === g.board &&
+              normalizeTitle(x.name) === normalizeTitle(g.name),
+          );
+          if (!target) {
+            target = {
+              ...g,
+              id: state.groups.some((x) => x.id === g.id)
+                ? "grp_" + uuid()
+                : g.id || "grp_" + uuid(),
+            };
+            state.groups.push(target);
+            state.groupOrder[target.id] = state.groupOrder[target.id] || [];
+          }
+          groupMap[g.id] = target.id;
+        });
+        incoming.shows.forEach((raw) => {
+          const inc = clonePlain(raw);
+          if (inc.groupId && groupMap[inc.groupId])
+            inc.groupId = groupMap[inc.groupId];
+          const existing = matchExistingShow(inc);
+          if (existing) {
+            showMap[raw.id] = existing.id;
+            mergeShowInto(existing, inc);
+          } else {
+            if (!inc.id || state.shows.some((s) => s.id === inc.id))
+              inc.id = uuid();
+            showMap[raw.id] = inc.id;
+            normalizeShow(inc);
+            state.shows.push(inc);
+          }
+        });
+        reconcile();
+        Object.entries(incoming.groupOrder || {}).forEach(([oldG, ids]) => {
+          const gid = groupMap[oldG];
+          if (!gid) return;
+          state.groupOrder[gid] = state.groupOrder[gid] || [];
+          (ids || []).forEach((oldId) => {
+            const sid = showMap[oldId];
+            const show = byId(sid);
+            if (show) {
+              show.groupId = gid;
+              if (!state.groupOrder[gid].includes(sid))
+                state.groupOrder[gid].push(sid);
+            }
+          });
+          sortGroup(gid);
+        });
+        BOARDS.forEach((board) => {
+          (incoming.order[board] || []).forEach((oldId) => {
+            const id = groupMap[oldId] || showMap[oldId];
+            if (!id) return;
+            if (
+              !state.order[board].includes(id) &&
+              !Object.values(state.groupOrder).some((arr) => arr.includes(id))
+            )
+              state.order[board].push(id);
+          });
+        });
+        reconcile();
+      }
+      async function importJson(e) {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        try {
+          const data = prepareImportedData(JSON.parse(await f.text()));
+          const mode = els.importMode?.value || "replace";
+          if (mode === "merge") {
+            mergeStateData(data);
+            toast("Merged import successfully");
+          } else {
+            applyState(data);
+            toast("Imported successfully");
+          }
+          render();
+          save();
+        } catch (err) {
+          console.warn(err);
+          toast("Import failed", "error");
+        } finally {
+          e.target.value = "";
+        }
+      }
+      function clearBoard() {
+        if (!confirm("Nuke everything?")) return;
+        state.shows = [];
+        state.groups = [];
+        state.groupOrder = {};
+        state.order = defaultOrder();
+        state.ui.openNotes = {};
+        render();
+        save();
+        toast("Board cleared");
+      }
+
+      function updateAddMode() {
+        const mode = state.ui.addMode || "search";
+        els.addModeTabs
+          ?.querySelectorAll("[data-add-mode]")
+          .forEach((btn) =>
+            btn.classList.toggle("active", btn.dataset.addMode === mode),
+          );
+        els.addPanels?.forEach((panel) =>
+          panel.classList.toggle("active", panel.id === `add-${mode}-panel`),
+        );
+      }
+      function clearManualForm() {
+        [
+          els.manualTitle,
+          els.manualYear,
+          els.manualImageUrl,
+          els.manualAniListId,
+          els.manualMalId,
+          els.manualNotes,
+        ].forEach((el) => {
+          if (el) el.value = "";
+        });
+        if (els.manualFormat) els.manualFormat.value = "";
+        if (els.manualImageFile) els.manualImageFile.value = "";
+      }
+
+      function bind() {
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            els.exploreModal?.classList.remove("open");
+            els.results?.classList.remove("open");
+            qa(".menu[open]").forEach((m) => m.removeAttribute("open"));
+          }
+        });
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible")
+            runAutoReleaseCheck({ announce: true });
+        });
+        window.addEventListener("pageshow", (e) => {
+          if (e.persisted) runAutoReleaseCheck({ announce: true });
+        });
+        
+        els.tabs.forEach((tab) =>
+          on(tab, "click", () => {
+            els.tabs.forEach((t) => t.classList.remove("active"));
+            els.views.forEach((v) => v.classList.remove("active"));
+            tab.classList.add("active");
+            q("#" + tab.dataset.target)?.classList.add("active");
+            els.boardSearchInput.placeholder =
+              tab.dataset.target === "view-downloaded"
+                ? "Search library..."
+                : "Filter active shows...";
+                
+            // Clear the local search filter when switching tabs
+            if (els.boardSearchInput.value) {
+              els.boardSearchInput.value = "";
+              state.localSearch = "";
+              render();
+            }
+          }),
+        );
+        on(els.toggleSettingsBtn, "click", () => {
+          const open = els.settingsPanel.style.display === "none";
+          els.settingsPanel.style.display = open ? "grid" : "none";
+          els.toggleSettingsBtn.classList.toggle("active", open);
+          els.toggleSettingsBtn.setAttribute("aria-expanded", String(open));
+        });
+        on(els.addModeTabs, "click", (e) => {
+          const btn = e.target.closest("[data-add-mode]");
+          if (!btn) return;
+          state.ui.addMode = btn.dataset.addMode;
+          updateAddMode();
+          save();
+          
+          // Auto-focus the relevant input for the active tab
+          setTimeout(() => {
+            if (state.ui.addMode === "search" && els.searchInput) els.searchInput.focus();
+            if (state.ui.addMode === "paste" && els.batchInput) els.batchInput.focus();
+            if (state.ui.addMode === "manual" && els.manualTitle) els.manualTitle.focus();
+          }, 50);
+        });
+        on(els.searchBtn, "click", runSearch);
+        on(els.searchInput, "input", debounce(runSearch, 350));
+        on(els.searchInput, "keydown", (e) => {
+          if (e.key === "Escape") els.results.classList.remove("open");
+          if (e.key === "Enter") return runSearch();
+        });
+        
+        // Allow the Enter key to submit the Manual Add form
+        const manualInputs = [els.manualTitle, els.manualYear, els.manualFormat, els.manualImageUrl, els.manualAniListId, els.manualMalId];
+        manualInputs.forEach(input => {
+          if (input) {
+            on(input, "keydown", (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                return addManual();
+              }
+            });
+          }
+        });
+        
+        on(els.boardSearchInput, "input", (e) => {
+          state.localSearch = e.target.value.toLowerCase();
+          render();
+        });
+        document.addEventListener("click", (e) => {
+          // Changed .search-card to #add-search-panel so clicking outside actually closes it
+          if (!e.target.closest("#add-search-panel"))
+            els.results.classList.remove("open");
+            
+          if (!e.target.closest(".menu"))
+            qa(".menu[open]").forEach((m) => m.removeAttribute("open"));
+        });
+        on(els.boards, "click", handleBoardsClick);
+        on(els.boards, "change", handleBoardsChange);
+        on(els.boards, "input", handleBoardsInput);
+        on(els.editOrderBtn, "click", () => {
+          state.ui.sortMode = !state.ui.sortMode;
+          render();
+          save();
+        });
+        on(els.addFolderBtn, "click", addFolder);
+        on(els.sortLibraryBtn, "click", sortLibraryAZ);
+        on(els.filterAllBtn, "click", () => {
+          state.ui.filterComplete = false;
+          state.ui.filterIncomplete = false;
+          state.ui.filterUpdated = false;
+          render();
+          save();
+        });
+        on(els.filterCompleteBtn, "click", () => {
+          state.ui.filterComplete = true;
+          state.ui.filterIncomplete = false;
+          state.ui.filterUpdated = false;
+          render();
+          save();
+        });
+        on(els.filterIncompleteBtn, "click", () => {
+          state.ui.filterComplete = false;
+          state.ui.filterIncomplete = true;
+          state.ui.filterUpdated = false;
+          render();
+          save();
+        });
+        on(els.filterUpdatedBtn, "click", () => {
+          if (!updatedLibraryShows().length) return;
+          state.ui.filterComplete = false;
+          state.ui.filterIncomplete = false;
+          state.ui.filterUpdated = true;
+          render();
+          save();
+        });
+        on(els.batchImportBtn, "click", prepareBatch);
+        on(els.batchClearBtn, "click", () => {
+          els.batchInput.value = "";
+          pendingBatchMatches = [];
+          renderBatch();
+        });
+        on(els.batchConfirmBtn, "click", confirmBatch);
+        on(els.batchCancelBtn, "click", () => {
+          pendingBatchMatches = [];
+          renderBatch();
+          setStatus("System Ready");
+        });
+        on(els.manualAddBtn, "click", addManual);
+        on(els.manualClearBtn, "click", clearManualForm);
+        on(els.smartGroupBtn, "click", smartGroup);
+        on(els.regenerateAniListBtn, "click", regenerateAll);
+        on(els.refreshReleasesBtn, "click", () => runAutoReleaseCheck({ announce: true, force: true, manual: true }));
+        on(els.refreshAllReleasesBtn, "click", refreshAllReleases);
+        on(els.testReleasesApiBtn, "click", testReleasesApi);
+        on(els.cancelReleaseRefreshBtn, "click", requestReleaseRefreshCancel);
+        on(els.exportBtn, "click", exportJson);
+        on(els.portableExportBtn, "click", exportPortableArchive);
+        on(els.importBtn, "click", () => els.importFile.click());
+        on(els.importFile, "change", importJson);
+        on(els.clearBtn, "click", clearBoard);
+        on(els.githubPat, "change", saveSyncSettings);
+        on(els.githubPat, "blur", saveSyncSettings);
+        on(els.gistId, "change", saveSyncSettings);
+        on(els.gistId, "blur", saveSyncSettings);
+        on(els.syncNowBtn, "click", pullAndSync);
+        on(els.closeExploreBtn, "click", () =>
+          els.exploreModal.classList.remove("open"),
+        );
+        on(els.exploreModal, "click", (e) => {
+          if (e.target === els.exploreModal)
+            els.exploreModal.classList.remove("open");
+        });
+        on(els.exploreModalBody, "click", (e) => {
+          const b = e.target.closest("[data-add-explore]");
+          if (!b) return;
+          const m = window._exploreCache?.find(
+            (x) => mediaKey(x) === b.dataset.addExplore,
+          );
+          if (m) {
+            return addShow(m).finally(() => {
+              b.textContent = "Added ✓";
+              b.classList.remove("primary");
+              b.disabled = true;
+            });
+          }
+        });
+      }
+      function debounce(fn, ms) {
+        let t;
+        return (...a) => {
+          clearTimeout(t);
+          t = setTimeout(() => fn(...a), ms);
+        };
+      }
+
+      function initDragAndDrop() {
+        document.addEventListener('dragstart', (e) => {
+          const card = e.target.closest('.card[data-type="show"]');
+          if (!card || !state.ui.sortMode) return;
+          e.dataTransfer.setData('text/plain', card.dataset.itemId);
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => card.style.opacity = '0.4', 0); // Dim while dragging
+        });
+
+        document.addEventListener('dragend', (e) => {
+          const card = e.target.closest('.card[data-type="show"]');
+          if (card) card.style.opacity = '1';
+          document.querySelectorAll('.folder').forEach(f => f.style.borderColor = 'var(--line)');
+        });
+
+        document.addEventListener('dragover', (e) => {
+          if (!state.ui.sortMode) return;
+          const folder = e.target.closest('.folder');
+          const boardArea = e.target.closest('.board-list') || e.target.closest('.active-boards');
+          
+          if (folder || boardArea) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+            if (folder) folder.style.borderColor = 'var(--brand)'; // Highlight folder
+          }
+        });
+
+        document.addEventListener('dragleave', (e) => {
+          const folder = e.target.closest('.folder');
+          if (folder) folder.style.borderColor = 'var(--line)';
+        });
+
+        document.addEventListener('drop', (e) => {
+          if (!state.ui.sortMode) return;
+          e.preventDefault();
+          
+          const folder = e.target.closest('.folder');
+          if (folder) folder.style.borderColor = 'var(--line)';
+
+          const showId = e.dataTransfer.getData('text/plain');
+          const show = byId(showId);
+          if (!show) return;
+
+          // Dropping INTO a folder
+          if (folder) {
+            const targetGroupId = folder.dataset.itemId;
+            if (targetGroupId && show.groupId !== targetGroupId) {
+              const prevGroupId = show.groupId;
+              removeFromOrders(show.id); 
+              show.groupId = targetGroupId; 
+              if (!state.groupOrder[targetGroupId]) state.groupOrder[targetGroupId] = [];
+              state.groupOrder[targetGroupId].unshift(show.id); 
+              if (prevGroupId) syncFolderCompleteState(prevGroupId);
+              syncFolderCompleteState(targetGroupId);
+              render();
+              save();
+              toast("Moved show into folder");
+            }
+          } 
+          // Dropping OUT to the root board
+          else if (e.target.closest('.board-list') || e.target.closest('.active-boards')) {
+            if (show.groupId) {
+              const prevGroupId = show.groupId;
+              removeFromOrders(show.id);
+              show.groupId = null;
+              state.order[getBoard(show)].unshift(show.id);
+              syncFolderCompleteState(prevGroupId);
+              render();
+              save();
+              toast("Moved show to root");
+            }
+          }
+        });
+      }
+
+      function init() {
+        try {
+          loadSyncSettings();
+          load();
+          bind();
+          initDragAndDrop();
+          render();
+          updateAddMode();
+          setStatus("System Ready");
+        } catch (e) {
+          console.error("boot", e);
+          try {
+            bind();
+            render();
+          } catch (_e) {}
+          setStatus("System Ready");
+          toast("Recovered from startup error.", "error");
+        }
+        setTimeout(async () => {
+          if (startupTasksStarted) return;
+          startupTasksStarted = true;
+          await withActivity("Starting...", async () => {
+            try {
+              setActivityLabel("Loading board...");
+              await hydrateWorkingStorage();
+            } catch (e) {
+              console.warn(e);
+              setStatus("System Ready");
+            }
+            try {
+              if (hasCloudCredentials()) setActivityLabel("Pulling from Cloud...");
+              await autoCloud({ announce: true, toastResults: true, toastErrors: true });
+            } catch (e) {
+              console.warn(e);
+              setStatus("System Ready");
+            }
+            try {
+              setActivityLabel("Checking releases...");
+              await runAutoReleaseCheck({ announce: true, force: false });
+            } catch (e) {
+              console.warn(e);
+              setStatus("System Ready");
+            }
+          });
+        }, 0);
+      }
+      init();
+</script>
+</body>
+</html>
