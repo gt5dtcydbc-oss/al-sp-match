@@ -25,13 +25,13 @@
             flex-wrap: wrap;
             align-items: flex-start;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            max-width: 1000px;
+            max-width: 1100px;
         }
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            min-width: 140px;
+            min-width: 150px;
         }
         label {
             font-size: 12px;
@@ -53,7 +53,6 @@
             accent-color: #a6a6a2;
         }
         
-        /* Button Styles */
         button {
             background: #a6a6a2;
             color: #000;
@@ -67,14 +66,12 @@
         button:hover { background: #8c8c88; }
         button:disabled { background: #555; color: #888; cursor: not-allowed; }
         
-        /* Process Button specific */
         #processBtn {
             padding: 12px 24px;
             margin-top: 24px;
             width: 100%;
         }
 
-        /* Add Color Button specific */
         #addColorBtn {
             background: #444;
             color: #fff;
@@ -104,7 +101,6 @@
             height: auto;
         }
         
-        /* Color Picker UI */
         .color-pickers {
             display: flex;
             flex-direction: column;
@@ -134,7 +130,7 @@
             padding: 2px 6px;
             font-size: 12px;
             cursor: pointer;
-            margin-left: auto; /* Push to the right */
+            margin-left: auto;
         }
         .remove-color:hover {
             background: #555;
@@ -169,7 +165,7 @@
         </div>
 
         <div class="control-group">
-            <label>3. Settings</label>
+            <label>3. Detection Settings</label>
             <label>Tolerance: <span id="tolVal">40</span></label>
             <input type="range" id="tolerance" min="5" max="150" value="40">
             
@@ -181,11 +177,26 @@
                 <option value="circle">Circle</option>
                 <option value="square">Square</option>
             </select>
+        </div>
+
+        <div class="control-group">
+            <label>4. Drawing Settings</label>
             
-            <label style="margin-top:10px;">Line Settings</label>
+            <label style="margin-top:5px;">Connecting Lines</label>
             <label style="display: flex; align-items: center; gap: 5px;">
-                <input type="checkbox" id="connectLines" checked> Connect Shapes
+                <input type="checkbox" id="connectLines" checked> Enable Lines
             </label>
+            
+            <select id="lineStyle" style="margin-bottom: 10px;">
+                <option value="solid">Solid Line</option>
+                <option value="dashed">Dashed Line</option>
+            </select>
+
+            <label style="margin-top:5px;">Shape Fill</label>
+            <label class="toggle-group">
+                <input type="checkbox" id="solidFillToggle"> Solid Fill (Keying)
+            </label>
+            <input type="color" id="fillColor" value="#ffffff" style="display: none; margin-top: 5px;">
         </div>
 
         <div class="control-group" style="justify-content: flex-end; flex-grow: 1;">
@@ -209,6 +220,10 @@
         const minSizeSlider = document.getElementById('minSize');
         const shapeStyle = document.getElementById('shapeStyle');
         const connectLines = document.getElementById('connectLines');
+        const lineStyle = document.getElementById('lineStyle');
+        
+        const solidFillToggle = document.getElementById('solidFillToggle');
+        const fillColorPicker = document.getElementById('fillColor');
         
         const tolVal = document.getElementById('tolVal');
         const sizeVal = document.getElementById('sizeVal');
@@ -216,7 +231,6 @@
         let uploadedImage = new Image();
         let currentImageLoaded = false;
         
-        // Start with just one color
         let activeColors = [
             { hex: '#ff0000' }
         ];
@@ -224,6 +238,11 @@
         // --- UI Setup ---
         toleranceSlider.addEventListener('input', (e) => tolVal.innerText = e.target.value);
         minSizeSlider.addEventListener('input', (e) => sizeVal.innerText = e.target.value);
+
+        // Show/hide the fill color picker based on the toggle
+        solidFillToggle.addEventListener('change', (e) => {
+            fillColorPicker.style.display = e.target.checked ? 'block' : 'none';
+        });
 
         function renderColorPickers() {
             const container = document.getElementById('colorPickers');
@@ -242,7 +261,6 @@
                 
                 row.appendChild(input);
 
-                // Only show remove button if there is more than 1 color
                 if (activeColors.length > 1) {
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'remove-color';
@@ -259,12 +277,9 @@
             });
         }
 
-        // Initial render
         renderColorPickers();
 
-        // Add color button logic
         document.getElementById('addColorBtn').addEventListener('click', () => {
-            // Generate a random bright hex color for the new picker
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
             activeColors.push({ hex: randomColor });
             renderColorPickers();
@@ -305,7 +320,7 @@
             } : null;
         }
 
-        // --- Nearest Neighbor Sorting (for lines) ---
+        // --- Nearest Neighbor Sorting ---
         function sortNearestNeighbor(points) {
             if (points.length < 2) return points;
             let unvisited = [...points];
@@ -343,6 +358,10 @@
             const minSize = parseInt(minSizeSlider.value);
             const style = shapeStyle.value;
             const doConnect = connectLines.checked;
+            const lineType = lineStyle.value;
+            
+            const doSolidFill = solidFillToggle.checked;
+            const fillColorValue = fillColorPicker.value;
 
             processBtn.disabled = true;
             statusText.innerText = "Scanning image pixels...";
@@ -358,11 +377,11 @@
                 const visited = new Uint8Array(width * height);
                 let totalBlobsFound = 0;
 
+                // Default blend mode for ink effects
                 ctx.globalCompositeOperation = 'multiply';
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
 
-                // Process each color currently in the array
                 for (let c = 0; c < activeColors.length; c++) {
                     const targetRgb = hexToRgb(activeColors[c].hex);
                     const targetHex = activeColors[c].hex;
@@ -397,35 +416,64 @@
                     if (blobs.length > 0) {
                         const centers = [];
 
+                        // Step 1: Draw all shapes (with either transparent or solid fill)
                         blobs.forEach(blob => {
                             const centerX = (blob.minX + blob.maxX) / 2;
                             const centerY = (blob.minY + blob.maxY) / 2;
                             centers.push({ x: centerX, y: centerY });
 
-                            ctx.strokeStyle = targetHex;
-                            ctx.fillStyle = targetHex + '40'; 
-                            ctx.lineWidth = 3;
-                            ctx.globalAlpha = 1.0;
+                            // Handle Fill
+                            if (doSolidFill) {
+                                ctx.globalCompositeOperation = 'source-over'; // Opaque overlay
+                                ctx.fillStyle = fillColorValue;
+                            } else {
+                                ctx.globalCompositeOperation = 'multiply'; // Ink effect
+                                ctx.fillStyle = targetHex + '40'; // 25% opacity fill
+                            }
 
+                            // Draw Fill
                             if (style === 'circle') {
                                 ctx.beginPath();
                                 const radius = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2);
                                 ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
                                 ctx.fill();
-                                ctx.stroke();
                             } else {
                                 const w = (blob.maxX - blob.minX) + 10;
                                 const h = (blob.maxY - blob.minY) + 10;
                                 ctx.fillRect(blob.minX - 5, blob.minY - 5, w, h);
+                            }
+
+                            // Handle Stroke (Always use the detected color for the outline)
+                            ctx.globalCompositeOperation = 'multiply';
+                            ctx.strokeStyle = targetHex;
+                            ctx.lineWidth = 3;
+                            
+                            if (style === 'circle') {
+                                const radius = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2);
+                                ctx.beginPath();
+                                ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
+                                ctx.stroke();
+                            } else {
+                                const w = (blob.maxX - blob.minX) + 10;
+                                const h = (blob.maxY - blob.minY) + 10;
                                 ctx.strokeRect(blob.minX - 5, blob.minY - 5, w, h);
                             }
                         });
 
+                        // Step 2: Draw connecting lines
                         if (doConnect && centers.length > 1) {
                             const sortedCenters = sortNearestNeighbor(centers);
                             ctx.strokeStyle = targetHex;
                             ctx.lineWidth = 4;
                             ctx.globalAlpha = 0.7;
+
+                            // Apply dashed line setting
+                            if (lineType === 'dashed') {
+                                // Scale dash length slightly with line width for better visibility
+                                ctx.setLineDash([10, 10]); 
+                            } else {
+                                ctx.setLineDash([]);
+                            }
 
                             ctx.beginPath();
                             ctx.moveTo(sortedCenters[0].x, sortedCenters[0].y);
@@ -433,11 +481,18 @@
                                 ctx.lineTo(sortedCenters[i].x, sortedCenters[i].y);
                             }
                             ctx.stroke();
+                            
+                            // Reset dash for the next color iteration
+                            ctx.setLineDash([]);
                         }
                     }
                 }
 
+                // Reset canvas modes
                 ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = 1.0;
+                ctx.setLineDash([]);
+
                 statusText.innerText = `Done! Found ${totalBlobsFound} color regions.`;
                 statusText.style.color = "#00ff00";
                 processBtn.disabled = false;
