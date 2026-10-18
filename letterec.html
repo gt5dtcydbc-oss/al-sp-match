@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Text Tracery</title>
+    <!-- Load Tesseract.js from CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            max-width: 900px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 160px;
+        }
+        label {
+            font-size: 12px;
+            color: #aaa;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        input[type="text"], input[type="file"] {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: #a6a6a2;
+        }
+        
+        button {
+            background: #a6a6a2;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+            width: 100%;
+        }
+        button:hover { background: #8c8c88; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .btn-secondary {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px;
+            font-size: 13px;
+            margin-top: 0;
+        }
+        .btn-secondary:hover { background: #333; }
+        
+        .btn-video {
+            background: #457b9d;
+            color: #fff;
+        }
+        .btn-video:hover { background: #356183; }
+
+        #status {
+            font-size: 13px;
+            color: #ffd700;
+            margin-top: 10px;
+            min-height: 15px;
+        }
+        .canvas-container {
+            position: relative;
+            border: 1px solid #444;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 100%;
+            overflow: auto;
+            background: #fff;
+        }
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        .color-pickers {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        input[type="color"] {
+            background: none;
+            border: none;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #ccc;
+        }
+        .toggle-group input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>1. Upload Image</label>
+            <input type="file" id="imageUpload" accept="image/*">
+        </div>
+        <div class="control-group">
+            <label>2. Target Letters</label>
+            <input type="text" id="targetLetters" value="N, A, W" placeholder="e.g. A, B, C">
+        </div>
+        <div class="control-group">
+            <label>3. Colors</label>
+            <div id="colorPickers" class="color-pickers"></div>
+        </div>
+        
+        <div class="control-group">
+            <label>Thickness: <span id="thickVal">20</span>px</label>
+            <input type="range" id="thickness" min="2" max="60" value="20">
+            
+            <label>Opacity: <span id="opacVal">0.6</span></label>
+            <input type="range" id="opacity" min="0.1" max="1" step="0.05" value="0.6">
+            
+            <label>Roundness: <span id="roundVal">0.8</span></label>
+            <input type="range" id="roundness" min="0" max="1" step="0.1" value="0.8">
+            
+            <label class="toggle-group">
+                <input type="checkbox" id="highlightToggle" checked> Highlight Letters
+            </label>
+            <label class="toggle-group">
+                <input type="checkbox" id="animateToggle" checked> Animate Drawing
+            </label>
+        </div>
+
+        <div class="control-group" style="justify-content: flex-end; min-width: 200px;">
+            <button id="processBtn">Process Image</button>
+            <span id="status"></span>
+            
+            <div class="btn-group hidden" id="actionButtons">
+                <button id="replayBtn" class="btn-secondary">Replay Animation</button>
+                <button id="downloadPngBtn" class="btn-secondary">Download PNG</button>
+                <button id="downloadVideoBtn" class="btn-secondary btn-video">Download Video (WebM)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const processBtn = document.getElementById('processBtn');
+        const replayBtn = document.getElementById('replayBtn');
+        const downloadPngBtn = document.getElementById('downloadPngBtn');
+        const downloadVideoBtn = document.getElementById('downloadVideoBtn');
+        const actionButtons = document.getElementById('actionButtons');
+        
+        const targetLettersInput = document.getElementById('targetLetters');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status');
+        
+        // Sliders
+        const thicknessSlider = document.getElementById('thickness');
+        const opacitySlider = document.getElementById('opacity');
+        const roundnessSlider = document.getElementById('roundness');
+        
+        // Value displays
+        const thickVal = document.getElementById('thickVal');
+        const opacVal = document.getElementById('opacVal');
+        const roundVal = document.getElementById('roundVal');
+
+        // State
+        let uploadedImage = new Image();
+        let currentImageLoaded = false;
+        let letterColors = {};
+        
+        // Animation State
+        let animationFrameId = null;
+        let pathsToDraw = []; 
+        let isRecording = false;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+
+        // --- UI Updates ---
+        thicknessSlider.addEventListener('input', (e) => thickVal.innerText = e.target.value);
+        opacitySlider.addEventListener('input', (e) => opacVal.innerText = e.target.value);
+        roundnessSlider.addEventListener('input', (e) => roundVal.innerText = e.target.value);
+
+        function generateColorPickers() {
+            const raw = targetLettersInput.value;
+            const letters = raw.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
+            const container = document.getElementById('colorPickers');
+            container.innerHTML = '';
+            
+            const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e', '#9e2a2b'];
+            
+            letters.forEach((letter, index) => {
+                if (!letterColors[letter]) {
+                    letterColors[letter] = defaultPalette[index % defaultPalette.length];
+                }
+                
+                const row = document.createElement('div');
+                row.className = 'color-row';
+                
+                const label = document.createElement('span');
+                label.innerText = letter;
+                
+                const input = document.createElement('input');
+                input.type = 'color';
+                input.value = letterColors[letter];
+                input.addEventListener('input', (e) => {
+                    letterColors[letter] = e.target.value;
+                });
+                
+                row.appendChild(label);
+                row.appendChild(input);
+                container.appendChild(row);
+            });
+        }
+        
+        targetLettersInput.addEventListener('input', generateColorPickers);
+        generateColorPickers();
+
+        // --- Image Loading ---
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                uploadedImage.onload = () => {
+                    // To prevent performance issues on massive images, we cap the canvas size
+                    const MAX_SIZE = 1400;
+                    let w = uploadedImage.width;
+                    let h = uploadedImage.height;
+                    if (w > MAX_SIZE || h > MAX_SIZE) {
+                        if (w > h) { h = Math.round(h * (MAX_SIZE / w)); w = MAX_SIZE; }
+                        else { w = Math.round(w * (MAX_SIZE / h)); h = MAX_SIZE; }
+                    }
+                    
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(uploadedImage, 0, 0, w, h);
+                    currentImageLoaded = true;
+                    statusText.innerText = "Image loaded. Ready to process.";
+                    statusText.style.color = "#00ff00";
+                    actionButtons.classList.add('hidden'); 
+                };
+                uploadedImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- Algorithms ---
+        function sortNearestNeighbor(points) {
+            if (points.length < 2) return points;
+            let unvisited = [...points];
+            let sorted = [];
+            
+            unvisited.sort((a, b) => a.y - b.y || a.x - b.x);
+            let current = unvisited.shift();
+            sorted.push(current);
+
+            while (unvisited.length > 0) {
+                let nearestIdx = 0;
+                let minDist = Infinity;
+                for (let i = 0; i < unvisited.length; i++) {
+                    let dist = Math.hypot(current.x - unvisited[i].x, current.y - unvisited[i].y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestIdx = i;
+                    }
+                }
+                current = unvisited[nearestIdx];
+                sorted.push(current);
+                unvisited.splice(nearestIdx, 1);
+            }
+            return sorted;
+        }
+
+        function generateSmoothPoints(points, roundness) {
+            let result = [];
+            if (points.length < 2) return points;
+            
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = i > 0 ? points[i - 1] : points[0];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = i != points.length - 2 ? points[i + 2] : p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
+                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
+                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
+                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
+
+                const steps = 40; // Higher = smoother animation
+                for (let t = 0; t <= 1; t += 1/steps) {
+                    const mt = 1 - t;
+                    const x = mt*mt*mt*p1.x + 3*mt*mt*t*cp1x + 3*mt*t*t*cp2x + t*t*t*p2.x;
+                    const y = mt*mt*mt*p1.y + 3*mt*mt*t*cp1y + 3*mt*t*t*cp2y + t*t*t*p2.y;
+                    result.push({x, y});
+                }
+            }
+            result.push(points[points.length - 1]); 
+            return result;
+        }
+
+        // --- Drawing Logic ---
+        function drawFrame(progress) {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1.0;
+            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+
+            const thickness = parseInt(thicknessSlider.value);
+            const opacity = parseFloat(opacitySlider.value);
+            const doHighlight = document.getElementById('highlightToggle').checked;
+
+            pathsToDraw.forEach(pathData => {
+                const { dots, pathPoints, color } = pathData;
+
+                if (doHighlight) {
+                    ctx.globalAlpha = opacity;
+                    ctx.fillStyle = color;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = thickness * 0.2; 
+                    for (const p of dots) {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, Math.max(thickness * 0.7, 6), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.shadowBlur = 0;
+                }
+
+                if (pathPoints.length > 1) {
+                    const totalPoints = pathPoints.length;
+                    const currentPointIndex = Math.floor(progress * totalPoints);
+                    
+                    ctx.strokeStyle = color;
+                    ctx.globalAlpha = opacity;
+                    ctx.lineWidth = thickness;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+                    
+                    for(let i = 1; i <= currentPointIndex && i < totalPoints; i++) {
+                        ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+                    }
+                    ctx.stroke();
+                }
+            });
+            
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // --- Animation Loop ---
+        function startAnimation(onComplete) {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            
+            const duration = 2000; 
+            let startTime = null;
+
+            function animate(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
+                
+                let linearProgress = Math.min(elapsed / duration, 1);
+                let easedProgress = linearProgress * (2 - linearProgress); 
+
+                drawFrame(easedProgress);
+
+                if (linearProgress < 1) {
+                    animationFrameId = requestAnimationFrame(animate);
+                } else if (onComplete) {
+                    onComplete();
+                }
+            }
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // --- Video Recording Logic ---
+        downloadVideoBtn.addEventListener('click', () => {
+            if (pathsToDraw.length === 0) return;
+            
+            statusText.innerText = "Recording video... Please wait.";
+            statusText.style.color = "#ffd700";
+            downloadVideoBtn.disabled = true;
+            replayBtn.disabled = true;
+            isRecording = true;
+            recordedChunks = [];
+
+            // Capture the canvas stream at 60 FPS
+            const stream = canvas.captureStream(60);
+            // Use VP9 codec if supported, otherwise default
+            const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+                ? { mimeType: 'video/webm;codecs=vp9' } 
+                : { mimeType: 'video/webm' };
+            
+            mediaRecorder = new MediaRecorder(stream, options);
+            
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+            
+            mediaRecorder.onstop = function() {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'tracery-animation.webm';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                statusText.innerText = "Video downloaded!";
+                statusText.style.color = "#00ff00";
+                downloadVideoBtn.disabled = false;
+                replayBtn.disabled = false;
+                isRecording = false;
+            };
+            
+            mediaRecorder.start();
+            
+            // Start the animation and stop recording when it finishes
+            startAnimation(() => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            });
+        });
+
+        // --- Download PNG Logic ---
+        downloadPngBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'tracery-image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // --- Main Process ---
+        processBtn.addEventListener('click', async () => {
+            if (!currentImageLoaded) {
+                alert("Please upload an image first!");
+                return;
+            }
+
+            const targets = Object.keys(letterColors);
+            if (targets.length === 0) {
+                alert("Please enter at least one letter!");
+                return;
+            }
+
+            processBtn.disabled = true;
+            actionButtons.classList.add('hidden');
+            statusText.innerText = "Scanning image (OCR)... (Please wait)";
+            statusText.style.color = "#ffd700";
+
+            try {
+                const worker = await Tesseract.createWorker('eng');
+                const ret = await worker.recognize(uploadedImage);
+                await worker.terminate();
+
+                const words = ret.data.words;
+                pathsToDraw = []; 
+                let totalFound = 0;
+                
+                const roundness = parseFloat(roundnessSlider.value);
+
+                for (const targetChar of targets) {
+                    let dots = [];
+
+                    for (const word of words) {
+                        if (word.symbols) {
+                            for (const symbol of word.symbols) {
+                                if (symbol.text.toUpperCase() === targetChar) {
+                                    dots.push({
+                                        x: (symbol.bbox.x0 + symbol.bbox.x1) / 2,
+                                        y: (symbol.bbox.y0 + symbol.bbox.y1) / 2
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    totalFound += dots.length;
+
+                    if (dots.length > 0) {
+                        const sortedDots = sortNearestNeighbor(dots);
+                        const pathPoints = generateSmoothPoints(sortedDots, roundness);
+                        
+                        pathsToDraw.push({
+                            dots: sortedDots,
+                            pathPoints: pathPoints,
+                            color: letterColors[targetChar]
+                        });
+                    }
+                }
+
+                if (totalFound === 0) {
+                    statusText.innerText = "Finished, but found 0 instances.";
+                    statusText.style.color = "#ff4444";
+                    drawFrame(0); 
+                } else {
+                    statusText.innerText = `Done! Found ${totalFound} letters.`;
+                    statusText.style.color = "#00ff00";
+                    
+                    actionButtons.classList.remove('hidden'); // Show download buttons
+                    
+                    const shouldAnimate = document.getElementById('animateToggle').checked;
+                    if (shouldAnimate) {
+                        startAnimation();
+                    } else {
+                        drawFrame(1); 
+                    }
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "Error during OCR. See console.";
+                statusText.style.color = "#ff4444";
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+
+        // --- Replay Button ---
+        replayBtn.addEventListener('click', () => {
+            if (pathsToDraw.length > 0) {
+                startAnimation();
+            }
+        });
+    </script>
+</body>
+</html>
