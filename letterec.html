@@ -234,7 +234,6 @@
         // Animation State
         let animationFrameId = null;
         let pathsToDraw = []; 
-        let isRecording = false;
         let mediaRecorder = null;
         let recordedChunks = [];
 
@@ -446,12 +445,9 @@
             statusText.style.color = "#ffd700";
             downloadVideoBtn.disabled = true;
             replayBtn.disabled = true;
-            isRecording = true;
             recordedChunks = [];
 
-            // Capture the canvas stream at 60 FPS
             const stream = canvas.captureStream(60);
-            // Use VP9 codec if supported, otherwise default
             const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
                 ? { mimeType: 'video/webm;codecs=vp9' } 
                 : { mimeType: 'video/webm' };
@@ -477,12 +473,10 @@
                 statusText.style.color = "#00ff00";
                 downloadVideoBtn.disabled = false;
                 replayBtn.disabled = false;
-                isRecording = false;
             };
             
             mediaRecorder.start();
             
-            // Start the animation and stop recording when it finishes
             startAnimation(() => {
                 if (mediaRecorder.state === 'recording') {
                     mediaRecorder.stop();
@@ -518,7 +512,9 @@
 
             try {
                 const worker = await Tesseract.createWorker('eng');
-                const ret = await worker.recognize(uploadedImage);
+                
+                // BUG FIX: Scan the scaled canvas, not the original raw image
+                const ret = await worker.recognize(canvas);
                 await worker.terminate();
 
                 const words = ret.data.words;
