@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Color Tracery Connector</title>
+    <title>Dynamic Color Tracery Connector</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -52,19 +52,39 @@
             width: 100%;
             accent-color: #a6a6a2;
         }
+        
+        /* Button Styles */
         button {
             background: #a6a6a2;
             color: #000;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 16px;
             border-radius: 5px;
             font-weight: bold;
             cursor: pointer;
             transition: background 0.2s;
-            margin-top: 24px;
         }
         button:hover { background: #8c8c88; }
         button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        
+        /* Process Button specific */
+        #processBtn {
+            padding: 12px 24px;
+            margin-top: 24px;
+            width: 100%;
+        }
+
+        /* Add Color Button specific */
+        #addColorBtn {
+            background: #444;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 12px;
+            margin-top: 5px;
+            width: fit-content;
+        }
+        #addColorBtn:hover { background: #555; }
+
         #status {
             font-size: 13px;
             color: #ffd700;
@@ -83,19 +103,21 @@
             max-width: 100%;
             height: auto;
         }
+        
+        /* Color Picker UI */
         .color-pickers {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
             max-height: 150px;
             overflow-y: auto;
+            padding-right: 10px;
         }
         .color-row {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 14px;
-            font-weight: bold;
         }
         input[type="color"] {
             background: none;
@@ -105,6 +127,19 @@
             cursor: pointer;
             padding: 0;
         }
+        .remove-color {
+            background: #333;
+            color: #ff4444;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: auto; /* Push to the right */
+        }
+        .remove-color:hover {
+            background: #555;
+        }
+
         .toggle-group {
             display: flex;
             align-items: center;
@@ -127,9 +162,10 @@
             <input type="file" id="imageUpload" accept="image/*">
         </div>
         
-        <div class="control-group">
+        <div class="control-group" style="min-width: 180px;">
             <label>2. Target Colors</label>
             <div id="colorPickers" class="color-pickers"></div>
+            <button id="addColorBtn">+ Add Color</button>
         </div>
 
         <div class="control-group">
@@ -140,10 +176,10 @@
             <label>Min Blob Size: <span id="sizeVal">50</span>px</label>
             <input type="range" id="minSize" min="10" max="500" value="50">
             
-            <label>Shape Style</label>
+            <label style="margin-top:5px;">Shape Style</label>
             <select id="shapeStyle">
                 <option value="circle">Circle</option>
-                <option value="square">Square (Bounding Box)</option>
+                <option value="square">Square</option>
             </select>
             
             <label style="margin-top:10px;">Line Settings</label>
@@ -152,7 +188,7 @@
             </label>
         </div>
 
-        <div class="control-group" style="justify-content: flex-end;">
+        <div class="control-group" style="justify-content: flex-end; flex-grow: 1;">
             <button id="processBtn">Process Image</button>
             <span id="status"></span>
         </div>
@@ -180,11 +216,9 @@
         let uploadedImage = new Image();
         let currentImageLoaded = false;
         
-        // Default colors for the picker
+        // Start with just one color
         let activeColors = [
-            { hex: '#ff0000', name: 'Red' },
-            { hex: '#0000ff', name: 'Blue' },
-            { hex: '#00ff00', name: 'Green' }
+            { hex: '#ff0000' }
         ];
 
         // --- UI Setup ---
@@ -206,15 +240,36 @@
                     activeColors[index].hex = e.target.value;
                 });
                 
-                const label = document.createElement('span');
-                label.innerText = `Color ${index + 1}`;
-                
                 row.appendChild(input);
-                row.appendChild(label);
+
+                // Only show remove button if there is more than 1 color
+                if (activeColors.length > 1) {
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-color';
+                    removeBtn.innerText = '✕';
+                    removeBtn.title = "Remove Color";
+                    removeBtn.onclick = () => {
+                        activeColors.splice(index, 1);
+                        renderColorPickers();
+                    };
+                    row.appendChild(removeBtn);
+                }
+                
                 container.appendChild(row);
             });
         }
+
+        // Initial render
         renderColorPickers();
+
+        // Add color button logic
+        document.getElementById('addColorBtn').addEventListener('click', () => {
+            // Generate a random bright hex color for the new picker
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            activeColors.push({ hex: randomColor });
+            renderColorPickers();
+        });
+
 
         // --- Image Loading ---
         imageUpload.addEventListener('change', (e) => {
@@ -237,7 +292,6 @@
         });
 
         // --- Color Distance Algorithm ---
-        // Calculates how close two colors are in RGB space
         function colorDistance(r1, g1, b1, r2, g2, b2) {
             return Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
         }
@@ -294,7 +348,6 @@
             statusText.innerText = "Scanning image pixels...";
             statusText.style.color = "#ffd700";
 
-            // Use a short timeout to allow UI to update before blocking thread
             setTimeout(() => {
                 ctx.drawImage(uploadedImage, 0, 0);
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -302,24 +355,21 @@
                 const width = canvas.width;
                 const height = canvas.height;
 
-                // Track visited pixels so we don't scan the same blob twice
                 const visited = new Uint8Array(width * height);
                 let totalBlobsFound = 0;
 
-                // Setup drawing styles
                 ctx.globalCompositeOperation = 'multiply';
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
 
-                // Process each color one by one
+                // Process each color currently in the array
                 for (let c = 0; c < activeColors.length; c++) {
                     const targetRgb = hexToRgb(activeColors[c].hex);
                     const targetHex = activeColors[c].hex;
                     
                     const blobs = [];
 
-                    // Scan the image grid
-                    for (let y = 0; y < height; y+=2) { // Skip every other pixel for speed
+                    for (let y = 0; y < height; y+=2) { 
                         for (let x = 0; x < width; x+=2) {
                             const idx = (y * width + x) * 4;
                             const pVisitedIdx = y * width + x;
@@ -331,15 +381,10 @@
                             const b = data[idx + 2];
                             const a = data[idx + 3];
 
-                            // Ignore fully transparent pixels
                             if (a < 50) continue;
 
-                            // Check if this pixel matches our target color
                             if (colorDistance(r, g, b, targetRgb.r, targetRgb.g, targetRgb.b) <= tolerance) {
-                                // Found a match! Start a Flood Fill to find the whole blob
                                 const blob = floodFill(x, y, targetRgb, tolerance, data, width, height, visited);
-                                
-                                // Only keep it if it's big enough (filters out noise)
                                 if (blob.pixelCount > minSize) {
                                     blobs.push(blob);
                                 }
@@ -349,7 +394,6 @@
 
                     totalBlobsFound += blobs.length;
 
-                    // Now draw the shapes and lines for this color
                     if (blobs.length > 0) {
                         const centers = [];
 
@@ -359,19 +403,17 @@
                             centers.push({ x: centerX, y: centerY });
 
                             ctx.strokeStyle = targetHex;
-                            ctx.fillStyle = targetHex + '40'; // 25% opacity fill
+                            ctx.fillStyle = targetHex + '40'; 
                             ctx.lineWidth = 3;
                             ctx.globalAlpha = 1.0;
 
                             if (style === 'circle') {
                                 ctx.beginPath();
-                                // Radius is based on the bounding box size
                                 const radius = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2);
                                 ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
                                 ctx.fill();
                                 ctx.stroke();
                             } else {
-                                // Square
                                 const w = (blob.maxX - blob.minX) + 10;
                                 const h = (blob.maxY - blob.minY) + 10;
                                 ctx.fillRect(blob.minX - 5, blob.minY - 5, w, h);
@@ -379,12 +421,11 @@
                             }
                         });
 
-                        // Draw connecting lines
                         if (doConnect && centers.length > 1) {
                             const sortedCenters = sortNearestNeighbor(centers);
                             ctx.strokeStyle = targetHex;
                             ctx.lineWidth = 4;
-                            ctx.globalAlpha = 0.7; // Slightly transparent ink
+                            ctx.globalAlpha = 0.7;
 
                             ctx.beginPath();
                             ctx.moveTo(sortedCenters[0].x, sortedCenters[0].y);
@@ -404,7 +445,6 @@
         });
 
         // --- Flood Fill Algorithm ---
-        // Finds all connected pixels that match the color to form a "blob"
         function floodFill(startX, startY, targetRgb, tolerance, data, width, height, visited) {
             const queue = [[startX, startY]];
             const blob = {
@@ -413,22 +453,19 @@
                 pixelCount: 0
             };
 
-            // Mark starting pixel as visited immediately
             visited[startY * width + startX] = 1;
 
             while (queue.length > 0) {
                 const [x, y] = queue.pop();
                 blob.pixelCount++;
 
-                // Expand bounding box
                 if (x < blob.minX) blob.minX = x;
                 if (x > blob.maxX) blob.maxX = x;
                 if (y < blob.minY) blob.minY = y;
                 if (y > blob.maxY) blob.maxY = y;
 
-                // Check 4 neighbors (Up, Down, Left, Right)
                 const neighbors = [
-                    [x + 2, y], [x - 2, y], // Step by 2 to match the outer loop
+                    [x + 2, y], [x - 2, y],
                     [x, y + 2], [x, y - 2]
                 ];
 
