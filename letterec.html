@@ -6,9 +6,9 @@
     <title>Animated Text Tracery</title>
     <!-- Load Tesseract.js from CDN -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <style>
+   Name < = 'style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            fontcolor-family: --rowapple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #1a1a1a;
             color: #fff;
             margin: 0;
@@ -220,6 +220,7 @@
         const thicknessSlider = document.getElementById('thickness');
         const opacitySlider = document.getElementById('opacity');
         const roundnessSlider = document.getElementById('roundness');
+        const highlightToggle = document.getElementById('highlightToggle');
         
         // Value displays
         const thickVal = document.getElementById('thickVal');
@@ -241,10 +242,29 @@
         let mediaRecorder = null;
         let recordedChunks = [];
 
-        // --- UI Updates ---
-        thicknessSlider.addEventListener('input', (e) => thickVal.innerText = e.target.value);
-        opacitySlider.addEventListener('input', (e) => opacVal.innerText = e.target.value);
-        roundnessSlider.addEventListener('input', (e) => roundVal.innerText = e.target.value);
+        // --- Helpers ---
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // --- Live Preview Logic ---
+        function updatePreview() {
+            thickVal.innerText = thicknessSlider.value;
+            opacVal.innerText = opacitySlider.value;
+            roundVal.innerText = roundnessSlider.value;
+            
+            if (pathsToDraw.length > 0) {
+                drawFrame(1); 
+            }
+        }
+
+        thicknessSlider.addEventListener('input', updatePreview);
+        opacitySlider.addEventListener('input', updatePreview);
+        roundnessSlider.addEventListener('input', updatePreview);
+        highlightToggle.addEventListener('change', updatePreview);
 
         function generateColorPickers() {
             const raw = targetLettersInput.value;
@@ -254,11 +274,9 @@
             
             const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e', '#9e2a2b'];
             
-            // Create a clean object for only the current letters
             const newLetterColors = {};
             
             letters.forEach((letter, index) => {
-                // Preserve the color if we already had it, otherwise assign a default
                 if (letterColors[letter]) {
                     newLetterColors[letter] = letterColors[letter];
                 } else {
@@ -266,7 +284,7 @@
                 }
                 
                 const row = document.createElement('div');
-                row.className = 'color-row';
+                row';
                 
                 const label = document.createElement('span');
                 label.innerText = letter;
@@ -276,6 +294,8 @@
                 input.value = newLetterColors[letter];
                 input.addEventListener('input', (e) => {
                     newLetterColors[letter] = e.target.value;
+                    letterColors = newLetterColors; 
+                    updatePreview();
                 });
                 
                 row.appendChild(label);
@@ -283,10 +303,8 @@
                 container.appendChild(row);
             });
             
-            // Overwrite the old global object so deleted letters are forgotten
             letterColors = newLetterColors;
             
-            // Hide download buttons since changing letters means the canvas is now out of date
             actionButtons.classList.add('hidden');
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
         }
@@ -322,6 +340,7 @@
                     statusText.innerText = "Image loaded. Ready to process.";
                     statusText.style.color = "#00ff00";
                     actionButtons.classList.add('hidden'); 
+                    pathsToDraw = []; 
                 };
                 uploadedImage.src = event.target.result;
             };
@@ -394,15 +413,18 @@
 
             const thickness = parseInt(thicknessSlider.value);
             const opacity = parseFloat(opacitySlider.value);
-            const doHighlight = document.getElementById('highlightToggle').checked;
+            const doHighlight = highlightToggle.checked;
 
             pathsToDraw.forEach(pathData => {
                 const { dots, pathPoints, color } = pathData;
+                
+                // FIX: The highlight dots now use 50% of the line's opacity
+                const highlightColor = hexToRgba(color, opacity * 0.5);
+                const lineColor = hexToRgba(color, opacity);
 
                 if (doHighlight) {
-                    ctx.globalAlpha = opacity;
-                    ctx.fillStyle = color;
-                    ctx.shadowColor = color;
+                    ctx.fillStyle = highlightColor;
+                    ctx.shadowColor = highlightColor;
                     ctx.shadowBlur = thickness * 0.2; 
                     for (const p of dots) {
                         ctx.beginPath();
@@ -416,8 +438,7 @@
                     const totalPoints = pathPoints.length;
                     const currentPointIndex = Math.floor(progress * totalPoints);
                     
-                    ctx.strokeStyle = color;
-                    ctx.globalAlpha = opacity;
+                    ctx.strokeStyle = lineColor;
                     ctx.lineWidth = thickness;
                     
                     ctx.beginPath();
@@ -534,7 +555,6 @@
             try {
                 const worker = await Tesseract.createWorker('eng');
                 
-                // Scan the pristine ocrCanvas
                 const ret = await worker.recognize(ocrCanvas);
                 await worker.terminate();
 
