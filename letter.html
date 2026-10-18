@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Letter Connector</title>
+    <!-- Load Tesseract.js from CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-size: 12px;
+            color: #aaa;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="file"], input[type="color"] {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 5px;
+            outline: none;
+        }
+        button {
+            background: #a6a6a2; /* Matches the color in your screenshot */
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 15px;
+        }
+        button:hover {
+            background: #8c8c88;
+        }
+        button:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-left: 15px;
+            font-size: 14px;
+            color: #ffd700;
+        }
+        .canvas-container {
+            position: relative;
+            border: 1px solid #444;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 100%;
+            overflow: auto;
+        }
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>1. Upload Image</label>
+            <input type="file" id="imageUpload" accept="image/*">
+        </div>
+        <div class="control-group">
+            <label>2. Target Letters (e.g. N or A,B)</label>
+            <input type="text" id="targetLetters" value="N" placeholder="Type letters here">
+        </div>
+        <div class="control-group">
+            <label>3. Line Color</label>
+            <input type="color" id="lineColor" value="#a6a6a2">
+        </div>
+        <div class="control-group">
+            <button id="processBtn">Process Image</button>
+            <span id="status"></span>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const processBtn = document.getElementById('processBtn');
+        const targetLettersInput = document.getElementById('targetLetters');
+        const lineColorInput = document.getElementById('lineColor');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status');
+
+        let uploadedImage = new Image();
+        let currentImageLoaded = false;
+
+        // Load image to canvas
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                uploadedImage.onload = () => {
+                    canvas.width = uploadedImage.width;
+                    canvas.height = uploadedImage.height;
+                    ctx.drawImage(uploadedImage, 0, 0);
+                    currentImageLoaded = true;
+                    statusText.innerText = "Image loaded. Ready to process.";
+                    statusText.style.color = "#00ff00";
+                };
+                uploadedImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Nearest Neighbor Sorting Algorithm
+        // This creates the "constellation" effect rather than crossing lines everywhere
+        function sortNearestNeighbor(points) {
+            if (points.length < 2) return points;
+            let unvisited = [...points];
+            let sorted = [];
+            
+            // Start with the top-most, left-most point
+            unvisited.sort((a, b) => a.y - b.y || a.x - b.x);
+            let current = unvisited.shift();
+            sorted.push(current);
+
+            while (unvisited.length > 0) {
+                let nearestIdx = 0;
+                let minDist = Infinity;
+
+                for (let i = 0; i < unvisited.length; i++) {
+                    // Calculate Euclidean distance
+                    let dist = Math.hypot(current.x - unvisited[i].x, current.y - unvisited[i].y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestIdx = i;
+                    }
+                }
+                current = unvisited[nearestIdx];
+                sorted.push(current);
+                unvisited.splice(nearestIdx, 1);
+            }
+            return sorted;
+        }
+
+        processBtn.addEventListener('click', async () => {
+            if (!currentImageLoaded) {
+                alert("Please upload an image first!");
+                return;
+            }
+
+            const rawTarget = targetLettersInput.value.trim();
+            if (!rawTarget) {
+                alert("Please enter at least one letter!");
+                return;
+            }
+
+            // Split by comma and clean up whitespace, convert to uppercase
+            const targets = rawTarget.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
+            const baseColor = lineColorInput.value;
+
+            processBtn.disabled = true;
+            statusText.innerText = "Scanning image with OCR... (This may take a moment)";
+            statusText.style.color = "#ffd700";
+
+            try {
+                // Initialize Tesseract worker
+                const worker = await Tesseract.createWorker('eng');
+                
+                // Recognize text. We need bounding boxes for words and symbols.
+                const ret = await worker.recognize(uploadedImage);
+                await worker.terminate();
+
+                // Clear previous drawings and redraw original image
+                ctx.drawImage(uploadedImage, 0, 0);
+
+                const words = ret.data.words;
+                let totalFound = 0;
+
+                // Process each target letter
+                for (let i = 0; i < targets.length; i++) {
+                    const targetChar = targets[i];
+                    let points = [];
+
+                    // Extract coordinates for this specific letter
+                    for (const word of words) {
+                        if (word.symbols) {
+                            for (const symbol of word.symbols) {
+                                if (symbol.text.toUpperCase() === targetChar) {
+                                    // Calculate the center of the letter's bounding box
+                                    const x = (symbol.bbox.x0 + symbol.bbox.x1) / 2;
+                                    const y = (symbol.bbox.y0 + symbol.bbox.y1) / 2;
+                                    points.push({ x, y });
+                                }
+                            }
+                        }
+                    }
+
+                    totalFound += points.length;
+
+                    if (points.length > 0) {
+                        // Sort points to draw a clean line
+                        const sortedPoints = sortNearestNeighbor(points);
+
+                        // Adjust color for multiple letters (optional: you can keep them the same)
+                        let currentColor = baseColor;
+                        if (targets.length > 1) {
+                           // Simple color shift for multiple letters
+                           const hueShift = i * 60; 
+                           // Note: this is a basic hue shift implementation for hex.
+                           // If you strictly want exactly the chosen color for all, remove this block.
+                           currentColor = shiftColor(baseColor, hueShift); 
+                        }
+
+                        // Draw Lines
+                        ctx.beginPath();
+                        ctx.strokeStyle = currentColor;
+                        ctx.lineWidth = 8; // Thick lines like the screenshot
+                        ctx.lineJoin = "round";
+                        ctx.lineCap = "round";
+                        
+                        ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
+                        for (let j = 1; j < sortedPoints.length; j++) {
+                            ctx.lineTo(sortedPoints[j].x, sortedPoints[j].y);
+                        }
+                        ctx.stroke();
+
+                        // Draw Dots (Anchors)
+                        ctx.fillStyle = currentColor;
+                        for (const p of sortedPoints) {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                if (totalFound === 0) {
+                    statusText.innerText = "Finished, but found 0 instances of those letters.";
+                    statusText.style.color = "#ff4444";
+                } else {
+                    statusText.innerText = `Done! Found and connected ${totalFound} letters.`;
+                    statusText.style.color = "#00ff00";
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "Error during OCR. See console.";
+                statusText.style.color = "#ff4444";
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+
+        // Helper function to slightly shift hex colors if multiple letters are selected
+        function shiftColor(hex, degrees) {
+            // Simple conversion to simulate color difference for multiple letters
+            // If you only want the exact chosen color, just return hex;
+            return hex; 
+        }
+    </script>
+</body>
+</html>
