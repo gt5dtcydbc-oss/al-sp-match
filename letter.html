@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OCR Letter Connector</title>
-    <!-- Load Tesseract.js from CDN -->
+    <title>Felt-Tip OCR Letter Connector</title>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
         body {
@@ -23,22 +22,26 @@
             border-radius: 10px;
             margin-bottom: 20px;
             display: flex;
-            gap: 15px;
+            gap: 20px;
             flex-wrap: wrap;
-            align-items: center;
+            align-items: flex-start;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            max-width: 1000px;
         }
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            min-width: 150px;
         }
         label {
             font-size: 12px;
             color: #aaa;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        input[type="text"], input[type="file"], input[type="color"] {
+        input[type="text"], input[type="file"] {
             background: #333;
             color: white;
             border: 1px solid #555;
@@ -46,29 +49,28 @@
             border-radius: 5px;
             outline: none;
         }
+        input[type="range"] {
+            width: 100%;
+            accent-color: #a6a6a2;
+        }
         button {
-            background: #a6a6a2; /* Matches the color in your screenshot */
+            background: #a6a6a2;
             color: #000;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 5px;
             font-weight: bold;
             cursor: pointer;
             transition: background 0.2s;
-            margin-top: 15px;
+            margin-top: 24px;
         }
-        button:hover {
-            background: #8c8c88;
-        }
-        button:disabled {
-            background: #555;
-            color: #888;
-            cursor: not-allowed;
-        }
+        button:hover { background: #8c8c88; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
         #status {
-            margin-left: 15px;
-            font-size: 14px;
+            font-size: 13px;
             color: #ffd700;
+            margin-top: 10px;
+            height: 15px;
         }
         .canvas-container {
             position: relative;
@@ -76,11 +78,34 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             max-width: 100%;
             overflow: auto;
+            background: url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="%23222"/><rect x="10" y="10" width="10" height="10" fill="%23222"/></svg>');
         }
         canvas {
             display: block;
             max-width: 100%;
             height: auto;
+        }
+        .color-pickers {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        input[type="color"] {
+            background: none;
+            border: none;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            padding: 0;
         }
     </style>
 </head>
@@ -92,14 +117,26 @@
             <input type="file" id="imageUpload" accept="image/*">
         </div>
         <div class="control-group">
-            <label>2. Target Letters (e.g. N or A,B)</label>
-            <input type="text" id="targetLetters" value="N" placeholder="Type letters here">
+            <label>2. Target Letters (comma separated)</label>
+            <input type="text" id="targetLetters" value="N, A, W" placeholder="e.g. A, B, C">
         </div>
         <div class="control-group">
-            <label>3. Line Color</label>
-            <input type="color" id="lineColor" value="#a6a6a2">
+            <label>3. Colors (auto-generated)</label>
+            <div id="colorPickers" class="color-pickers"></div>
         </div>
+        
         <div class="control-group">
+            <label>Thickness: <span id="thickVal">20</span>px</label>
+            <input type="range" id="thickness" min="2" max="60" value="20">
+            
+            <label>Opacity: <span id="opacVal">0.6</span></label>
+            <input type="range" id="opacity" min="0.1" max="1" step="0.05" value="0.6">
+            
+            <label>Roundness: <span id="roundVal">0.8</span></label>
+            <input type="range" id="roundness" min="0" max="1" step="0.1" value="0.8">
+        </div>
+
+        <div class="control-group" style="justify-content: flex-end;">
             <button id="processBtn">Process Image</button>
             <span id="status"></span>
         </div>
@@ -113,15 +150,68 @@
         const imageUpload = document.getElementById('imageUpload');
         const processBtn = document.getElementById('processBtn');
         const targetLettersInput = document.getElementById('targetLetters');
-        const lineColorInput = document.getElementById('lineColor');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const statusText = document.getElementById('status');
+        
+        // Sliders
+        const thicknessSlider = document.getElementById('thickness');
+        const opacitySlider = document.getElementById('opacity');
+        const roundnessSlider = document.getElementById('roundness');
+        
+        // Value displays
+        const thickVal = document.getElementById('thickVal');
+        const opacVal = document.getElementById('opacVal');
+        const roundVal = document.getElementById('roundVal');
 
+        // State
         let uploadedImage = new Image();
         let currentImageLoaded = false;
+        let letterColors = {};
 
-        // Load image to canvas
+        // --- UI Updates ---
+        thicknessSlider.addEventListener('input', (e) => thickVal.innerText = e.target.value);
+        opacitySlider.addEventListener('input', (e) => opacVal.innerText = e.target.value);
+        roundnessSlider.addEventListener('input', (e) => roundVal.innerText = e.target.value);
+
+        // Generate color pickers based on input
+        function generateColorPickers() {
+            const raw = targetLettersInput.value;
+            const letters = raw.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
+            const container = document.getElementById('colorPickers');
+            container.innerHTML = '';
+            
+            const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e', '#9e2a2b'];
+            
+            letters.forEach((letter, index) => {
+                // Keep existing color if it exists, otherwise assign a new one
+                if (!letterColors[letter]) {
+                    letterColors[letter] = defaultPalette[index % defaultPalette.length];
+                }
+                
+                const row = document.createElement('div');
+                row.className = 'color-row';
+                
+                const label = document.createElement('span');
+                label.innerText = letter;
+                
+                const input = document.createElement('input');
+                input.type = 'color';
+                input.value = letterColors[letter];
+                input.addEventListener('input', (e) => {
+                    letterColors[letter] = e.target.value;
+                });
+                
+                row.appendChild(label);
+                row.appendChild(input);
+                container.appendChild(row);
+            });
+        }
+        
+        targetLettersInput.addEventListener('input', generateColorPickers);
+        generateColorPickers(); // Init on load
+
+        // --- Image Loading ---
         imageUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -141,14 +231,14 @@
             reader.readAsDataURL(file);
         });
 
-        // Nearest Neighbor Sorting Algorithm
-        // This creates the "constellation" effect rather than crossing lines everywhere
+        // --- Algorithms ---
+        
+        // Sort points by nearest distance to create a constellation line
         function sortNearestNeighbor(points) {
             if (points.length < 2) return points;
             let unvisited = [...points];
             let sorted = [];
             
-            // Start with the top-most, left-most point
             unvisited.sort((a, b) => a.y - b.y || a.x - b.x);
             let current = unvisited.shift();
             sorted.push(current);
@@ -156,9 +246,7 @@
             while (unvisited.length > 0) {
                 let nearestIdx = 0;
                 let minDist = Infinity;
-
                 for (let i = 0; i < unvisited.length; i++) {
-                    // Calculate Euclidean distance
                     let dist = Math.hypot(current.x - unvisited[i].x, current.y - unvisited[i].y);
                     if (dist < minDist) {
                         minDist = dist;
@@ -172,54 +260,82 @@
             return sorted;
         }
 
+        // Draws a path that smoothly interpolates between points based on the roundness value
+        function drawPath(roundness) {
+            ctx.beginPath();
+            // Start point is handled in the main loop
+            for (let i = 0; i < window.currentPoints.length - 1; i++) {
+                const p0 = i > 0 ? window.currentPoints[i - 1] : window.currentPoints[0];
+                const p1 = window.currentPoints[i];
+                const p2 = window.currentPoints[i + 1];
+                const p3 = i != window.currentPoints.length - 2 ? window.currentPoints[i + 2] : p2;
+
+                // Calculate control points for Catmull-Rom to Bezier conversion
+                // The roundness slider scales how "curvy" the control points are. 
+                // If roundness is 0, it becomes a straight line.
+                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
+                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
+
+                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
+                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
+
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            }
+            ctx.stroke();
+        }
+
+
+        // --- Main Process ---
         processBtn.addEventListener('click', async () => {
             if (!currentImageLoaded) {
                 alert("Please upload an image first!");
                 return;
             }
 
-            const rawTarget = targetLettersInput.value.trim();
-            if (!rawTarget) {
+            const targets = Object.keys(letterColors); // Use the keys from our color generator
+            if (targets.length === 0) {
                 alert("Please enter at least one letter!");
                 return;
             }
 
-            // Split by comma and clean up whitespace, convert to uppercase
-            const targets = rawTarget.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
-            const baseColor = lineColorInput.value;
+            const thickness = parseInt(thicknessSlider.value);
+            const opacity = parseFloat(opacitySlider.value);
+            const roundness = parseFloat(roundnessSlider.value);
 
             processBtn.disabled = true;
-            statusText.innerText = "Scanning image with OCR... (This may take a moment)";
+            statusText.innerText = "Scanning image... (Please wait)";
             statusText.style.color = "#ffd700";
 
             try {
-                // Initialize Tesseract worker
                 const worker = await Tesseract.createWorker('eng');
-                
-                // Recognize text. We need bounding boxes for words and symbols.
                 const ret = await worker.recognize(uploadedImage);
                 await worker.terminate();
 
-                // Clear previous drawings and redraw original image
+                // Reset canvas to original image
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = 1.0;
                 ctx.drawImage(uploadedImage, 0, 0);
 
                 const words = ret.data.words;
                 let totalFound = 0;
 
-                // Process each target letter
-                for (let i = 0; i < targets.length; i++) {
-                    const targetChar = targets[i];
+                // Set global blend mode for the "ink" effect
+                ctx.globalCompositeOperation = 'multiply';
+                ctx.lineJoin = "round";
+                ctx.lineCap = "round";
+
+                for (const targetChar of targets) {
                     let points = [];
 
-                    // Extract coordinates for this specific letter
+                    // Extract coordinates
                     for (const word of words) {
                         if (word.symbols) {
                             for (const symbol of word.symbols) {
                                 if (symbol.text.toUpperCase() === targetChar) {
-                                    // Calculate the center of the letter's bounding box
-                                    const x = (symbol.bbox.x0 + symbol.bbox.x1) / 2;
-                                    const y = (symbol.bbox.y0 + symbol.bbox.y1) / 2;
-                                    points.push({ x, y });
+                                    points.push({
+                                        x: (symbol.bbox.x0 + symbol.bbox.x1) / 2,
+                                        y: (symbol.bbox.y0 + symbol.bbox.y1) / 2
+                                    });
                                 }
                             }
                         }
@@ -228,47 +344,52 @@
                     totalFound += points.length;
 
                     if (points.length > 0) {
-                        // Sort points to draw a clean line
                         const sortedPoints = sortNearestNeighbor(points);
-
-                        // Adjust color for multiple letters (optional: you can keep them the same)
-                        let currentColor = baseColor;
-                        if (targets.length > 1) {
-                           // Simple color shift for multiple letters
-                           const hueShift = i * 60; 
-                           // Note: this is a basic hue shift implementation for hex.
-                           // If you strictly want exactly the chosen color for all, remove this block.
-                           currentColor = shiftColor(baseColor, hueShift); 
-                        }
-
-                        // Draw Lines
-                        ctx.beginPath();
-                        ctx.strokeStyle = currentColor;
-                        ctx.lineWidth = 8; // Thick lines like the screenshot
-                        ctx.lineJoin = "round";
-                        ctx.lineCap = "round";
+                        window.currentPoints = sortedPoints; // pass to drawPath
                         
+                        ctx.strokeStyle = letterColors[targetChar];
                         ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
-                        for (let j = 1; j < sortedPoints.length; j++) {
-                            ctx.lineTo(sortedPoints[j].x, sortedPoints[j].y);
-                        }
-                        ctx.stroke();
 
-                        // Draw Dots (Anchors)
-                        ctx.fillStyle = currentColor;
+                        // --- FELT TIP PEN RENDERING TECHNIQUE ---
+
+                        // 1. The "Bleed" (Soft, wide, highly transparent)
+                        ctx.globalAlpha = opacity * 0.5;
+                        ctx.lineWidth = thickness * 1.4;
+                        ctx.shadowColor = letterColors[targetChar];
+                        ctx.shadowBlur = thickness * 0.4; // Soft edges
+                        drawPath(roundness);
+
+                        // 2. The Main Stroke (Solid, medium transparency)
+                        ctx.globalAlpha = opacity;
+                        ctx.lineWidth = thickness;
+                        ctx.shadowBlur = 0; // Turn off shadow for the core stroke
+                        drawPath(roundness);
+
+                        // 3. The "Core" (Thinner, slightly darker ink center)
+                        ctx.globalAlpha = Math.min(opacity * 1.5, 1.0);
+                        ctx.lineWidth = thickness * 0.4;
+                        drawPath(roundness);
+                        
+                        // Draw the anchor dots at the end
+                        ctx.globalAlpha = opacity;
+                        ctx.fillStyle = letterColors[targetChar];
                         for (const p of sortedPoints) {
                             ctx.beginPath();
-                            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                            ctx.arc(p.x, p.y, thickness * 0.3, 0, Math.PI * 2);
                             ctx.fill();
                         }
                     }
                 }
+                
+                // Reset composite operation
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.shadowBlur = 0;
 
                 if (totalFound === 0) {
-                    statusText.innerText = "Finished, but found 0 instances of those letters.";
+                    statusText.innerText = "Finished, but found 0 instances.";
                     statusText.style.color = "#ff4444";
                 } else {
-                    statusText.innerText = `Done! Found and connected ${totalFound} letters.`;
+                    statusText.innerText = `Done! Connected ${totalFound} letters.`;
                     statusText.style.color = "#00ff00";
                 }
 
@@ -280,13 +401,6 @@
                 processBtn.disabled = false;
             }
         });
-
-        // Helper function to slightly shift hex colors if multiple letters are selected
-        function shiftColor(hex, degrees) {
-            // Simple conversion to simulate color difference for multiple letters
-            // If you only want the exact chosen color, just return hex;
-            return hex; 
-        }
     </script>
 </body>
 </html>
