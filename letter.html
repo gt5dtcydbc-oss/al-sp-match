@@ -166,27 +166,22 @@
         const ctx = canvas.getContext('2d');
         const statusText = document.getElementById('status');
         
-        // Sliders
         const thicknessSlider = document.getElementById('thickness');
         const opacitySlider = document.getElementById('opacity');
         const roundnessSlider = document.getElementById('roundness');
         
-        // Value displays
         const thickVal = document.getElementById('thickVal');
         const opacVal = document.getElementById('opacVal');
         const roundVal = document.getElementById('roundVal');
 
-        // State
         let uploadedImage = new Image();
         let currentImageLoaded = false;
         let letterColors = {};
 
-        // --- UI Updates ---
         thicknessSlider.addEventListener('input', (e) => thickVal.innerText = e.target.value);
         opacitySlider.addEventListener('input', (e) => opacVal.innerText = e.target.value);
         roundnessSlider.addEventListener('input', (e) => roundVal.innerText = e.target.value);
 
-        // Generate color pickers and the toggle based on input
         function generateColorPickers() {
             const raw = targetLettersInput.value;
             const letters = raw.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
@@ -218,14 +213,13 @@
                 container.appendChild(row);
             });
 
-            // Add Toggle Checkbox at the bottom of the color list
             const toggleGroup = document.createElement('label');
             toggleGroup.className = 'toggle-group';
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.id = 'highlightToggle';
-            checkbox.checked = true; // Checked by default
+            checkbox.checked = true;
             
             const toggleLabel = document.createElement('span');
             toggleLabel.innerText = 'Highlight Letters';
@@ -238,9 +232,8 @@
         }
         
         targetLettersInput.addEventListener('input', generateColorPickers);
-        generateColorPickers(); // Init on load
+        generateColorPickers();
 
-        // --- Image Loading ---
         imageUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -260,9 +253,6 @@
             reader.readAsDataURL(file);
         });
 
-        // --- Algorithms ---
-        
-        // Sort points by nearest distance to create a constellation line
         function sortNearestNeighbor(points) {
             if (points.length < 2) return points;
             let unvisited = [...points];
@@ -289,9 +279,11 @@
             return sorted;
         }
 
-        // Draws a smooth path
         function drawPath(roundness) {
             ctx.beginPath();
+            // FIX: We must explicitly move to the first point before drawing curves!
+            ctx.moveTo(window.currentPoints[0].x, window.currentPoints[0].y);
+
             for (let i = 0; i < window.currentPoints.length - 1; i++) {
                 const p0 = i > 0 ? window.currentPoints[i - 1] : window.currentPoints[0];
                 const p1 = window.currentPoints[i];
@@ -309,8 +301,6 @@
             ctx.stroke();
         }
 
-
-        // --- Main Process ---
         processBtn.addEventListener('click', async () => {
             if (!currentImageLoaded) {
                 alert("Please upload an image first!");
@@ -337,7 +327,6 @@
                 const ret = await worker.recognize(uploadedImage);
                 await worker.terminate();
 
-                // Reset canvas to original image
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.globalAlpha = 1.0;
                 ctx.drawImage(uploadedImage, 0, 0);
@@ -353,7 +342,6 @@
                 for (const targetChar of targets) {
                     let points = [];
 
-                    // Extract coordinates
                     for (const word of words) {
                         if (word.symbols) {
                             for (const symbol of word.symbols) {
@@ -375,48 +363,37 @@
                         
                         const color = letterColors[targetChar];
 
-                        // --- 1. DRAW HIGHLIGHT CIRCLES (If toggled) ---
+                        // --- 1. DRAW FELT-TIP HIGHLIGHT DABS ---
                         if (doHighlight) {
-                            ctx.globalAlpha = opacity * 0.3; // Very soft background tint
+                            ctx.globalAlpha = opacity;
                             ctx.fillStyle = color;
-                            ctx.strokeStyle = color;
-                            ctx.lineWidth = 2;
                             
+                            // Add a slight blur to the highlight so it looks like a marker dab
+                            ctx.shadowColor = color;
+                            ctx.shadowBlur = thickness * 0.2; 
+
                             for (const p of sortedPoints) {
                                 ctx.beginPath();
-                                // Radius is based on thickness so it scales nicely
-                                ctx.arc(p.x, p.y, thickness * 0.8, 0, Math.PI * 2);
+                                // Make the circle scale with the thickness, with a minimum size
+                                const radius = Math.max(thickness * 0.7, 6); 
+                                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
                                 ctx.fill();
-                                
-                                // Draw a subtle ring outline to make it pop
-                                ctx.globalAlpha = opacity * 0.6;
-                                ctx.stroke();
-                                ctx.globalAlpha = opacity * 0.3; // Reset for next circle fill
                             }
+                            // Turn off shadow so it doesn't affect the line
+                            ctx.shadowBlur = 0;
                         }
 
                         // --- 2. DRAW CONNECTING LINE ---
                         ctx.strokeStyle = color;
-                        ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
-
-                        // All layers now share the exact same opacity
                         ctx.globalAlpha = opacity;
 
-                        // Felt Tip Layer 1: Bleed/Shadow
-                        ctx.lineWidth = thickness * 1.4;
-                        ctx.shadowColor = color;
-                        ctx.shadowBlur = thickness * 0.4; 
-                        drawPath(roundness);
-
-                        // Felt Tip Layer 2: Main Solid Body
+                        // Main Body
                         ctx.lineWidth = thickness;
-                        ctx.shadowBlur = 0; 
                         drawPath(roundness);
                         
                     }
                 }
                 
-                // Reset canvas modes
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.shadowBlur = 0;
 
