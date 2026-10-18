@@ -254,9 +254,15 @@
             
             const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e', '#9e2a2b'];
             
+            // Create a clean object for only the current letters
+            const newLetterColors = {};
+            
             letters.forEach((letter, index) => {
-                if (!letterColors[letter]) {
-                    letterColors[letter] = defaultPalette[index % defaultPalette.length];
+                // Preserve the color if we already had it, otherwise assign a default
+                if (letterColors[letter]) {
+                    newLetterColors[letter] = letterColors[letter];
+                } else {
+                    newLetterColors[letter] = defaultPalette[index % defaultPalette.length];
                 }
                 
                 const row = document.createElement('div');
@@ -267,15 +273,22 @@
                 
                 const input = document.createElement('input');
                 input.type = 'color';
-                input.value = letterColors[letter];
+                input.value = newLetterColors[letter];
                 input.addEventListener('input', (e) => {
-                    letterColors[letter] = e.target.value;
+                    newLetterColors[letter] = e.target.value;
                 });
                 
                 row.appendChild(label);
                 row.appendChild(input);
                 container.appendChild(row);
             });
+            
+            // Overwrite the old global object so deleted letters are forgotten
+            letterColors = newLetterColors;
+            
+            // Hide download buttons since changing letters means the canvas is now out of date
+            actionButtons.classList.add('hidden');
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
         }
         
         targetLettersInput.addEventListener('input', generateColorPickers);
@@ -289,7 +302,6 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 uploadedImage.onload = () => {
-                    // To prevent performance issues on massive images, we cap the canvas size
                     const MAX_SIZE = 1400;
                     let w = uploadedImage.width;
                     let h = uploadedImage.height;
@@ -298,12 +310,10 @@
                         else { w = Math.round(w * (MAX_SIZE / h)); h = MAX_SIZE; }
                     }
                     
-                    // Setup visible canvas
                     canvas.width = w;
                     canvas.height = h;
                     ctx.drawImage(uploadedImage, 0, 0, w, h);
                     
-                    // Setup pristine OCR canvas
                     ocrCanvas.width = w;
                     ocrCanvas.height = h;
                     ocrCtx.drawImage(uploadedImage, 0, 0, w, h);
@@ -524,7 +534,7 @@
             try {
                 const worker = await Tesseract.createWorker('eng');
                 
-                // FIXED: Scan the pristine ocrCanvas so thickness lines don't block the text
+                // Scan the pristine ocrCanvas
                 const ret = await worker.recognize(ocrCanvas);
                 await worker.terminate();
 
