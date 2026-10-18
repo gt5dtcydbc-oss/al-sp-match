@@ -107,6 +107,18 @@
             cursor: pointer;
             padding: 0;
         }
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        .toggle-group input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -117,11 +129,11 @@
             <input type="file" id="imageUpload" accept="image/*">
         </div>
         <div class="control-group">
-            <label>2. Target Letters (comma separated)</label>
+            <label>2. Target Letters</label>
             <input type="text" id="targetLetters" value="N, A, W" placeholder="e.g. A, B, C">
         </div>
         <div class="control-group">
-            <label>3. Colors (auto-generated)</label>
+            <label>3. Colors</label>
             <div id="colorPickers" class="color-pickers"></div>
         </div>
         
@@ -174,7 +186,7 @@
         opacitySlider.addEventListener('input', (e) => opacVal.innerText = e.target.value);
         roundnessSlider.addEventListener('input', (e) => roundVal.innerText = e.target.value);
 
-        // Generate color pickers based on input
+        // Generate color pickers and the toggle based on input
         function generateColorPickers() {
             const raw = targetLettersInput.value;
             const letters = raw.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
@@ -184,7 +196,6 @@
             const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e', '#9e2a2b'];
             
             letters.forEach((letter, index) => {
-                // Keep existing color if it exists, otherwise assign a new one
                 if (!letterColors[letter]) {
                     letterColors[letter] = defaultPalette[index % defaultPalette.length];
                 }
@@ -206,6 +217,24 @@
                 row.appendChild(input);
                 container.appendChild(row);
             });
+
+            // Add Toggle Checkbox at the bottom of the color list
+            const toggleGroup = document.createElement('label');
+            toggleGroup.className = 'toggle-group';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'highlightToggle';
+            checkbox.checked = true; // Checked by default
+            
+            const toggleLabel = document.createElement('span');
+            toggleLabel.innerText = 'Highlight Letters';
+            toggleLabel.style.fontSize = '12px';
+            toggleLabel.style.color = '#aaa';
+            
+            toggleGroup.appendChild(checkbox);
+            toggleGroup.appendChild(toggleLabel);
+            container.appendChild(toggleGroup);
         }
         
         targetLettersInput.addEventListener('input', generateColorPickers);
@@ -260,19 +289,15 @@
             return sorted;
         }
 
-        // Draws a path that smoothly interpolates between points based on the roundness value
+        // Draws a smooth path
         function drawPath(roundness) {
             ctx.beginPath();
-            // Start point is handled in the main loop
             for (let i = 0; i < window.currentPoints.length - 1; i++) {
                 const p0 = i > 0 ? window.currentPoints[i - 1] : window.currentPoints[0];
                 const p1 = window.currentPoints[i];
                 const p2 = window.currentPoints[i + 1];
                 const p3 = i != window.currentPoints.length - 2 ? window.currentPoints[i + 2] : p2;
 
-                // Calculate control points for Catmull-Rom to Bezier conversion
-                // The roundness slider scales how "curvy" the control points are. 
-                // If roundness is 0, it becomes a straight line.
                 const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
                 const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
 
@@ -292,7 +317,7 @@
                 return;
             }
 
-            const targets = Object.keys(letterColors); // Use the keys from our color generator
+            const targets = Object.keys(letterColors);
             if (targets.length === 0) {
                 alert("Please enter at least one letter!");
                 return;
@@ -301,6 +326,7 @@
             const thickness = parseInt(thicknessSlider.value);
             const opacity = parseFloat(opacitySlider.value);
             const roundness = parseFloat(roundnessSlider.value);
+            const doHighlight = document.getElementById('highlightToggle').checked;
 
             processBtn.disabled = true;
             statusText.innerText = "Scanning image... (Please wait)";
@@ -345,43 +371,52 @@
 
                     if (points.length > 0) {
                         const sortedPoints = sortNearestNeighbor(points);
-                        window.currentPoints = sortedPoints; // pass to drawPath
+                        window.currentPoints = sortedPoints; 
                         
-                        ctx.strokeStyle = letterColors[targetChar];
+                        const color = letterColors[targetChar];
+
+                        // --- 1. DRAW HIGHLIGHT CIRCLES (If toggled) ---
+                        if (doHighlight) {
+                            ctx.globalAlpha = opacity * 0.3; // Very soft background tint
+                            ctx.fillStyle = color;
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = 2;
+                            
+                            for (const p of sortedPoints) {
+                                ctx.beginPath();
+                                // Radius is based on thickness so it scales nicely
+                                ctx.arc(p.x, p.y, thickness * 0.8, 0, Math.PI * 2);
+                                ctx.fill();
+                                
+                                // Draw a subtle ring outline to make it pop
+                                ctx.globalAlpha = opacity * 0.6;
+                                ctx.stroke();
+                                ctx.globalAlpha = opacity * 0.3; // Reset for next circle fill
+                            }
+                        }
+
+                        // --- 2. DRAW CONNECTING LINE ---
+                        ctx.strokeStyle = color;
                         ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
 
-                        // --- FELT TIP PEN RENDERING TECHNIQUE ---
-
-                        // 1. The "Bleed" (Soft, wide, highly transparent)
-                        ctx.globalAlpha = opacity * 0.5;
-                        ctx.lineWidth = thickness * 1.4;
-                        ctx.shadowColor = letterColors[targetChar];
-                        ctx.shadowBlur = thickness * 0.4; // Soft edges
-                        drawPath(roundness);
-
-                        // 2. The Main Stroke (Solid, medium transparency)
+                        // All layers now share the exact same opacity
                         ctx.globalAlpha = opacity;
-                        ctx.lineWidth = thickness;
-                        ctx.shadowBlur = 0; // Turn off shadow for the core stroke
+
+                        // Felt Tip Layer 1: Bleed/Shadow
+                        ctx.lineWidth = thickness * 1.4;
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur = thickness * 0.4; 
                         drawPath(roundness);
 
-                        // 3. The "Core" (Thinner, slightly darker ink center)
-                        ctx.globalAlpha = Math.min(opacity * 1.5, 1.0);
-                        ctx.lineWidth = thickness * 0.4;
+                        // Felt Tip Layer 2: Main Solid Body
+                        ctx.lineWidth = thickness;
+                        ctx.shadowBlur = 0; 
                         drawPath(roundness);
                         
-                        // Draw the anchor dots at the end
-                        ctx.globalAlpha = opacity;
-                        ctx.fillStyle = letterColors[targetChar];
-                        for (const p of sortedPoints) {
-                            ctx.beginPath();
-                            ctx.arc(p.x, p.y, thickness * 0.3, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
                     }
                 }
                 
-                // Reset composite operation
+                // Reset canvas modes
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.shadowBlur = 0;
 
