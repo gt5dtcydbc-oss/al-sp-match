@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate Visual Tracery Tool</title>
+    <title>Visual Tracery Tool</title>
     <!-- Load Tesseract.js from CDN for Text Mode -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
@@ -154,8 +154,7 @@
             color: #888;
             border-radius: 0;
             border-bottom: 2px solid transparent;
-            padding: 10px 5px;
-            font-size: 13px;
+            padding: 10px;
         }
         .mode-switch button.active {
             color: #fff;
@@ -220,9 +219,10 @@
             background: #fff;
         }
 
+        /* Ensure the image is treated like a standard media item for long-press */
         #resultImage {
             object-fit: contain;
-            -webkit-touch-callout: default;
+            -webkit-touch-callout: default; /* iOS long press menu */
         }
 
         .status {
@@ -247,18 +247,13 @@
             cursor: pointer;
         }
         
-        .download-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        #downloadBtn, #svgBtn {
+        #downloadBtn {
             background: #2a2a2a;
             color: #fff;
             border: 1px solid var(--border);
+            margin-top: 10px;
         }
-        #downloadBtn:hover, #svgBtn:hover { background: #333; }
+        #downloadBtn:hover { background: #333; }
     </style>
 </head>
 <body>
@@ -277,11 +272,10 @@
             <div class="mode-switch">
                 <button id="modeTextBtn" class="active">Text</button>
                 <button id="modeColorBtn">Color</button>
-                <button id="modeAsciiBtn">ASCII</button>
             </div>
         </div>
 
-        <!-- ================= TEXT MODE ================= -->
+        <!-- ================= TEXT MODE CONTROLS ================= -->
         <div id="textControls">
             <div class="control-group">
                 <div class="section-title">Text Settings</div>
@@ -310,7 +304,7 @@
             </div>
         </div>
 
-        <!-- ================= COLOR MODE ================= -->
+        <!-- ================= COLOR MODE CONTROLS ================= -->
         <div id="colorControls" class="hidden">
             <div class="control-group">
                 <div class="section-title">Target Colors</div>
@@ -356,32 +350,10 @@
             </div>
         </div>
 
-        <!-- ================= ASCII MODE ================= -->
-        <div id="asciiControls" class="hidden">
-            <div class="control-group">
-                <div class="section-title">ASCII Settings</div>
-                <label>Target Characters</label>
-                <input type="text" id="asciiTargets" value="@, #, %" placeholder="e.g. @, #, %">
-                
-                <label>Resolution (Lower is sharper)</label>
-                <input type="range" id="asciiResolution" min="4" max="16" value="8">
-                
-                <label>Line Thickness: <span id="asciiThickVal">12</span>px</label>
-                <input type="range" id="asciiThickness" min="2" max="40" value="12">
-
-                <label>Line Roundness: <span id="asciiRoundVal">0.8</span></label>
-                <input type="range" id="asciiRoundness" min="0" max="1" step="0.1" value="0.8">
-            </div>
-        </div>
-
         <!-- ACTION BUTTONS -->
         <div class="control-group" style="margin-top: auto; padding-top: 20px;">
             <button id="processBtn">Process Image</button>
-            
-            <div class="download-group hidden" id="downloadGroup">
-                <button id="downloadBtn">PNG</button>
-                <button id="svgBtn">SVG</button>
-            </div>
+            <button id="downloadBtn" class="hidden">Download Image</button>
             <div id="status" class="status"></div>
         </div>
     </div>
@@ -389,7 +361,9 @@
     <!-- MAIN CANVAS AREA -->
     <div class="main-content">
         <div class="output-container">
+            <!-- Canvas used for rendering -->
             <canvas id="canvas"></canvas>
+            <!-- Image tag used for long-press saving on mobile -->
             <img id="resultImage" class="hidden" alt="Processed Tracery">
         </div>
     </div>
@@ -400,18 +374,14 @@
         const ctx = canvas.getContext('2d');
         const resultImage = document.getElementById('resultImage');
         const downloadBtn = document.getElementById('downloadBtn');
-        const svgBtn = document.getElementById('svgBtn');
-        const downloadGroup = document.getElementById('downloadGroup');
         const statusText = document.getElementById('status');
         const processBtn = document.getElementById('processBtn');
         
         // Mode switching
         const modeTextBtn = document.getElementById('modeTextBtn');
         const modeColorBtn = document.getElementById('modeColorBtn');
-        const modeAsciiBtn = document.getElementById('modeAsciiBtn');
         const textControls = document.getElementById('textControls');
         const colorControls = document.getElementById('colorControls');
-        const asciiControls = document.getElementById('asciiControls');
 
         // Text Mode Elements
         const targetLettersInput = document.getElementById('targetLetters');
@@ -431,113 +401,108 @@
         const fillStyleDropdown = document.getElementById('fillStyle');
         const fillColorPicker = document.getElementById('fillColor');
 
-        // ASCII Mode Elements
-        const asciiTargets = document.getElementById('asciiTargets');
-        const asciiResolution = document.getElementById('asciiResolution');
-        const asciiThickness = document.getElementById('asciiThickness');
-        const asciiRoundness = document.getElementById('asciiRoundness');
-
         // --- State ---
         let uploadedImage = new Image();
         let currentImageLoaded = false;
         let currentMode = 'text'; 
-        let lastSvgString = ''; 
         
         let textLetterColors = {};
         let colorModeColors = [{ hex: '#ff0000' }]; 
-        let asciiCharColors = {};
 
         // --- UI Setup: Mode Switching ---
-        function switchMode(mode) {
-            currentMode = mode;
-            modeTextBtn.classList.remove('active');
+        modeTextBtn.addEventListener('click', () => {
+            currentMode = 'text';
+            modeTextBtn.classList.add('active');
             modeColorBtn.classList.remove('active');
-            modeAsciiBtn.classList.remove('active');
-            
-            textControls.classList.add('hidden');
+            textControls.classList.remove('hidden');
             colorControls.classList.add('hidden');
-            asciiControls.classList.add('hidden');
+        });
 
-            if (mode === 'text') {
-                modeTextBtn.classList.add('active');
-                textControls.classList.remove('hidden');
-            } else if (mode === 'color') {
-                modeColorBtn.classList.add('active');
-                colorControls.classList.remove('hidden');
-            } else {
-                modeAsciiBtn.classList.add('active');
-                asciiControls.classList.remove('hidden');
-            }
-        }
-
-        modeTextBtn.addEventListener('click', () => switchMode('text'));
-        modeColorBtn.addEventListener('click', () => switchMode('color'));
-        modeAsciiBtn.addEventListener('click', () => switchMode('ascii'));
+        modeColorBtn.addEventListener('click', () => {
+            currentMode = 'color';
+            modeColorBtn.classList.add('active');
+            modeTextBtn.classList.remove('active');
+            colorControls.classList.remove('hidden');
+            textControls.classList.add('hidden');
+        });
 
         // UI: Live Value Updates
-        const updateTextVals = () => {
-            document.getElementById('textThickVal').innerText = textThickness.value;
-            document.getElementById('textOpacVal').innerText = textOpacity.value;
-            document.getElementById('textRoundVal').innerText = textRoundness.value;
-        };
-        updateTextVals();
-        textThickness.addEventListener('input', updateTextVals);
-        textOpacity.addEventListener('input', updateTextVals);
-        textRoundness.addEventListener('input', updateTextVals);
+        document.getElementById('textThickVal').innerText = textThickness.value;
+        document.getElementById('textOpacVal').innerText = textOpacity.value;
+        document.getElementById('textRoundVal').innerText = textRoundness.value;
+        document.getElementById('colorTolVal').innerText = colorTolerance.value;
+        document.getElementById('colorSizeVal').innerText = colorMinSize.value;
 
-        const updateColorVals = () => {
-            document.getElementById('colorTolVal').innerText = colorTolerance.value;
-            document.getElementById('colorSizeVal').innerText = colorMinSize.value;
-        };
-        updateColorVals();
-        colorTolerance.addEventListener('input', updateColorVals);
-        colorMinSize.addEventListener('input', updateColorVals);
+        textThickness.addEventListener('input', (e) => document.getElementById('textThickVal').innerText = e.target.value);
+        textOpacity.addEventListener('input', (e) => document.getElementById('textOpacVal').innerText = e.target.value);
+        textRoundness.addEventListener('input', (e) => document.getElementById('textRoundVal').innerText = e.target.value);
+        colorTolerance.addEventListener('input', (e) => document.getElementById('colorTolVal').innerText = e.target.value);
+        colorMinSize.addEventListener('input', (e) => document.getElementById('colorSizeVal').innerText = e.target.value);
 
-        const updateAsciiVals = () => {
-            document.getElementById('asciiThickVal').innerText = asciiThickness.value;
-            document.getElementById('asciiRoundVal').innerText = asciiRoundness.value;
-        };
-        updateAsciiVals();
-        asciiThickness.addEventListener('input', updateAsciiVals);
-        asciiRoundness.addEventListener('input', updateAsciiVals);
-
+        // UI: Color Mode Fill toggle
         fillStyleDropdown.addEventListener('change', (e) => {
-            fillColorPicker.classList.toggle('hidden', e.target.value !== 'solid');
+            if (e.target.value === 'solid') {
+                fillColorPicker.classList.remove('hidden');
+            } else {
+                fillColorPicker.classList.add('hidden');
+            }
+        });
+
+        // --- Download Button Logic ---
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'visual-tracery.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
         });
 
         // --- Dynamic Color Pickers ---
+        
+        // Text Mode Color Pickers
         function renderTextColorPickers() {
             const letters = targetLettersInput.value.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
             textColorPickers.innerHTML = '';
             const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e'];
             
             letters.forEach((letter, index) => {
-                if (!textLetterColors[letter]) textLetterColors[letter] = defaultPalette[index % defaultPalette.length];
+                if (!textLetterColors[letter]) {
+                    textLetterColors[letter] = defaultPalette[index % defaultPalette.length];
+                }
                 
                 const row = document.createElement('div');
                 row.className = 'color-row';
+                
                 const input = document.createElement('input');
                 input.type = 'color';
                 input.value = textLetterColors[letter];
                 input.addEventListener('input', (e) => textLetterColors[letter] = e.target.value);
+                
+                const label = document.createElement('span');
+                label.innerText = `Letter: ${letter}`;
+                
                 row.appendChild(input);
-                row.appendChild(Object.assign(document.createElement('span'), {innerText: `Letter: ${letter}`}));
+                row.appendChild(label);
                 textColorPickers.appendChild(row);
             });
         }
         targetLettersInput.addEventListener('input', renderTextColorPickers);
         renderTextColorPickers();
 
+        // Color Mode Color Pickers
         function renderColorModePickers() {
             colorColorPickers.innerHTML = '';
+            
             colorModeColors.forEach((colorObj, index) => {
                 const row = document.createElement('div');
                 row.className = 'color-row';
+                
                 const input = document.createElement('input');
                 input.type = 'color';
                 input.value = colorObj.hex;
                 input.addEventListener('input', (e) => colorModeColors[index].hex = e.target.value);
+                
                 row.appendChild(input);
+
                 if (colorModeColors.length > 1) {
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'remove-color';
@@ -552,7 +517,8 @@
             });
         }
         document.getElementById('addColorBtn').addEventListener('click', () => {
-            colorModeColors.push({ hex: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0') });
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            colorModeColors.push({ hex: randomColor });
             renderColorModePickers();
         });
         renderColorModePickers();
@@ -561,24 +527,18 @@
         document.getElementById('imageUpload').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 uploadedImage.onload = () => {
+                    // Reset Canvas and Image visibility
                     canvas.classList.remove('hidden');
                     resultImage.classList.add('hidden');
-                    downloadGroup.classList.add('hidden');
+                    downloadBtn.classList.add('hidden');
 
-                    // Set canvas to max 1200px width/height to prevent browser crashes on huge images
-                    const MAX_SIZE = 1200;
-                    let w = uploadedImage.width;
-                    let h = uploadedImage.height;
-                    if (w > MAX_SIZE || h > MAX_SIZE) {
-                        if (w > h) { h = Math.round(h * (MAX_SIZE / w)); w = MAX_SIZE; }
-                        else { w = Math.round(w * (MAX_SIZE / h)); h = MAX_SIZE; }
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    ctx.drawImage(uploadedImage, 0, 0, w, h);
+                    canvas.width = uploadedImage.width;
+                    canvas.height = uploadedImage.height;
+                    ctx.drawImage(uploadedImage, 0, 0);
                     currentImageLoaded = true;
                     statusText.innerText = "Image loaded. Ready.";
                     statusText.style.color = "#00ff00";
@@ -586,25 +546,6 @@
                 uploadedImage.src = event.target.result;
             };
             reader.readAsDataURL(file);
-        });
-
-        // --- Download Logic ---
-        downloadBtn.addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'visual-tracery.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        });
-
-        svgBtn.addEventListener('click', () => {
-            if (!lastSvgString) return;
-            const blob = new Blob([lastSvgString], {type: "image/svg+xml"});
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.download = 'visual-tracery.svg';
-            link.href = url;
-            link.click();
-            URL.revokeObjectURL(url);
         });
 
         // --- Shared Math Functions ---
@@ -638,33 +579,14 @@
         }
 
         // --- TEXT MODE LOGIC ---
-        function getBezierPathData(points, roundness) {
-            if (points.length < 2) return "";
-            let d = `M ${points[0].x} ${points[0].y} `;
-            for (let i = 0; i < points.length - 1; i++) {
-                const p0 = i > 0 ? points[i - 1] : points[0];
-                const p1 = points[i];
-                const p2 = points[i + 1];
-                const p3 = i != points.length - 2 ? points[i + 2] : p2;
-
-                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
-                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
-                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
-                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
-
-                d += `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y} `;
-            }
-            return d;
-        }
-
-        function drawSmoothPath(points, roundness) {
+        function drawSmoothPath(roundness) {
             ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 0; i < points.length - 1; i++) {
-                const p0 = i > 0 ? points[i - 1] : points[0];
-                const p1 = points[i];
-                const p2 = points[i + 1];
-                const p3 = i != points.length - 2 ? points[i + 2] : p2;
+            ctx.moveTo(window.currentTextPoints[0].x, window.currentTextPoints[0].y);
+            for (let i = 0; i < window.currentTextPoints.length - 1; i++) {
+                const p0 = i > 0 ? window.currentTextPoints[i - 1] : window.currentTextPoints[0];
+                const p1 = window.currentTextPoints[i];
+                const p2 = window.currentTextPoints[i + 1];
+                const p3 = i != window.currentTextPoints.length - 2 ? window.currentTextPoints[i + 2] : p2;
 
                 const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
                 const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
@@ -692,7 +614,6 @@
             await worker.terminate();
 
             const words = ret.data.words;
-            let svgElements = '';
 
             ctx.globalCompositeOperation = 'multiply';
             ctx.lineJoin = "round";
@@ -715,9 +636,10 @@
 
                 if (points.length > 0) {
                     const sortedPoints = sortNearestNeighbor(points);
+                    window.currentTextPoints = sortedPoints;
                     const color = textLetterColors[targetChar];
 
-                    // Canvas Drawing
+                    // Highlight Dabs
                     if (doHighlight) {
                         ctx.globalAlpha = opacity;
                         ctx.fillStyle = color;
@@ -730,28 +652,14 @@
                         }
                         ctx.shadowBlur = 0;
                     }
+
+                    // Lines
                     ctx.strokeStyle = color;
                     ctx.globalAlpha = opacity;
                     ctx.lineWidth = thickness;
-                    drawSmoothPath(sortedPoints, roundness);
-
-                    // SVG Data Generation
-                    svgElements += `<g id="text-${targetChar}">`;
-                    if (doHighlight) {
-                        for (const p of sortedPoints) {
-                            svgElements += `<circle cx="${p.x}" cy="${p.y}" r="${Math.max(thickness * 0.7, 6)}" fill="${color}" opacity="${opacity}" />`;
-                        }
-                    }
-                    const pathData = getBezierPathData(sortedPoints, roundness);
-                    svgElements += `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}" />`;
-                    svgElements += `</g>`;
+                    drawSmoothPath(roundness);
                 }
             }
-            
-            lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">
-                <image href="${uploadedImage.src}" width="${canvas.width}" height="${canvas.height}" />
-                ${svgElements}
-            </svg>`;
         }
 
         // --- COLOR MODE LOGIC ---
@@ -804,7 +712,6 @@
                 const width = canvas.width;
                 const height = canvas.height;
                 const visited = new Uint8Array(width * height);
-                let svgElements = '';
                 
                 ctx.globalCompositeOperation = 'multiply';
                 ctx.lineJoin = "round";
@@ -828,8 +735,6 @@
 
                     if (blobs.length > 0) {
                         const centers = [];
-                        svgElements += `<g id="color-${targetHex}">`;
-                        
                         blobs.forEach(blob => {
                             const centerX = (blob.minX + blob.maxX) / 2;
                             const centerY = (blob.minY + blob.maxY) / 2;
@@ -839,20 +744,13 @@
                             if (fillMode !== 'none') {
                                 ctx.globalCompositeOperation = fillMode === 'solid' ? 'source-over' : 'multiply';
                                 ctx.fillStyle = fillMode === 'solid' ? fillColorValue : targetHex + '40';
-                                const svgFill = fillMode === 'solid' ? fillColorValue : targetHex;
-                                const svgOpacity = fillMode === 'solid' ? 1 : 0.25;
 
                                 if (style === 'circle') {
-                                    const r = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2) + 5;
                                     ctx.beginPath();
-                                    ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                                    ctx.arc(centerX, centerY, Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2) + 5, 0, Math.PI * 2);
                                     ctx.fill();
-                                    svgElements += `<circle cx="${centerX}" cy="${centerY}" r="${r}" fill="${svgFill}" opacity="${svgOpacity}" />`;
                                 } else {
-                                    const w = (blob.maxX - blob.minX) + 10;
-                                    const h = (blob.maxY - blob.minY) + 10;
-                                    ctx.fillRect(blob.minX - 5, blob.minY - 5, w, h);
-                                    svgElements += `<rect x="${blob.minX - 5}" y="${blob.minY - 5}" width="${w}" height="${h}" fill="${svgFill}" opacity="${svgOpacity}" />`;
+                                    ctx.fillRect(blob.minX - 5, blob.minY - 5, (blob.maxX - blob.minX) + 10, (blob.maxY - blob.minY) + 10);
                                 }
                             }
 
@@ -861,16 +759,12 @@
                             ctx.strokeStyle = targetHex;
                             ctx.lineWidth = 3;
                             if (style === 'circle') {
-                                const r = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2) + 5;
+                                const radius = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2);
                                 ctx.beginPath();
-                                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                                ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
                                 ctx.stroke();
-                                svgElements += `<circle cx="${centerX}" cy="${centerY}" r="${r}" fill="none" stroke="${targetHex}" stroke-width="3" />`;
                             } else {
-                                const w = (blob.maxX - blob.minX) + 10;
-                                const h = (blob.maxY - blob.minY) + 10;
-                                ctx.strokeRect(blob.minX - 5, blob.minY - 5, w, h);
-                                svgElements += `<rect x="${blob.minX - 5}" y="${blob.minY - 5}" width="${w}" height="${h}" fill="none" stroke="${targetHex}" stroke-width="3" />`;
+                                ctx.strokeRect(blob.minX - 5, blob.minY - 5, (blob.maxX - blob.minX) + 10, (blob.maxY - blob.minY) + 10);
                             }
                         });
 
@@ -882,127 +776,15 @@
                             ctx.setLineDash(lineType === 'dashed' ? [10, 10] : []);
                             ctx.beginPath();
                             ctx.moveTo(sortedCenters[0].x, sortedCenters[0].y);
-                            
-                            let pathD = `M ${sortedCenters[0].x} ${sortedCenters[0].y} `;
-                            for (let i = 1; i < sortedCenters.length; i++) {
-                                ctx.lineTo(sortedCenters[i].x, sortedCenters[i].y);
-                                pathD += `L ${sortedCenters[i].x} ${sortedCenters[i].y} `;
-                            }
+                            for (let i = 1; i < sortedCenters.length; i++) ctx.lineTo(sortedCenters[i].x, sortedCenters[i].y);
                             ctx.stroke();
                             ctx.setLineDash([]);
-                            
-                            const dashArray = lineType === 'dashed' ? 'stroke-dasharray="10,10"' : '';
-                            svgElements += `<path d="${pathD}" fill="none" stroke="${targetHex}" stroke-width="4" opacity="0.7" ${dashArray} />`;
                         }
-                        svgElements += `</g>`;
                     }
                 });
-
-                lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">
-                    <image href="${uploadedImage.src}" width="${canvas.width}" height="${canvas.height}" />
-                    ${svgElements}
-                </svg>`;
                 resolve();
             });
         }
-
-        // --- ASCII MODE LOGIC ---
-        function processAsciiMode() {
-            return new Promise((resolve) => {
-                const targets = asciiTargets.value.split(',').map(c => c.trim()).filter(c => c.length > 0);
-                const res = parseInt(asciiResolution.value);
-                const thickness = parseInt(asciiThickness.value);
-                const roundness = parseFloat(asciiRoundness.value);
-                
-                // ASCII character ramp from dark to light
-                const density = "Ñ@#W$9876543210?!abc;:+=-,._ ";
-                
-                // Get image data for sampling
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imgData.data;
-                const width = canvas.width;
-                const height = canvas.height;
-
-                // Clear canvas for ASCII drawing (white background)
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, width, height);
-
-                ctx.fillStyle = '#000000';
-                ctx.font = `bold ${res}px monospace`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                const charPositions = {};
-                targets.forEach(t => charPositions[t] = []);
-
-                // Draw ASCII art grid
-                for (let y = 0; y < height; y += res) {
-                    for (let x = 0; x < width; x += res) {
-                        // Sample center of the cell
-                        const sampleX = Math.min(x + Math.floor(res/2), width - 1);
-                        const sampleY = Math.min(y + Math.floor(res/2), height - 1);
-                        const idx = (sampleY * width + sampleX) * 4;
-                        
-                        const r = data[idx];
-                        const g = data[idx + 1];
-                        const b = data[idx + 2];
-                        
-                        // Calculate brightness (0 - 255)
-                        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
-                        
-                        // Map brightness to a character
-                        const charIndex = Math.floor((brightness / 255) * (density.length - 1));
-                        const char = density[charIndex];
-
-                        // Draw the character
-                        ctx.fillText(char, x + res/2, y + res/2);
-
-                        // Save position if it's one of our targets
-                        if (targets.includes(char)) {
-                            charPositions[char].push({ x: x + res/2, y: y + res/2 });
-                        }
-                    }
-                }
-
-                // Now draw the constellation lines
-                let svgElements = '';
-                ctx.globalCompositeOperation = 'multiply';
-                ctx.lineJoin = "round";
-                ctx.lineCap = "round";
-
-                const palette = ['#e63946', '#457b9d', '#2a9d8f', '#f4a261', '#9b5de5'];
-                let colorIndex = 0;
-
-                targets.forEach(char => {
-                    const points = charPositions[char];
-                    if (points.length > 1) {
-                        const sortedPoints = sortNearestNeighbor(points);
-                        const color = palette[colorIndex % palette.length];
-                        colorIndex++;
-
-                        // Canvas Draw
-                        ctx.strokeStyle = color;
-                        ctx.globalAlpha = 0.8;
-                        ctx.lineWidth = thickness;
-                        drawSmoothPath(sortedPoints, roundness);
-
-                        // SVG Generation
-                        const pathData = getBezierPathData(sortedPoints, roundness);
-                        svgElements += `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />`;
-                    }
-                });
-
-                // Create SVG String (We embed the image as a background, but also need to generate the text)
-                // Generating all the text for SVG is heavy, so let's just make a transparent SVG of the lines for overlay
-                lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">
-                    ${svgElements}
-                </svg>`;
-
-                resolve();
-            });
-        }
-
 
         // --- Main Process Router ---
         processBtn.addEventListener('click', async () => {
@@ -1012,39 +794,42 @@
             statusText.innerText = "Processing...";
             statusText.style.color = "#ffd700";
             
+            // Make sure canvas is visible while processing, hide the image
             canvas.classList.remove('hidden');
             resultImage.classList.add('hidden');
-            downloadGroup.classList.add('hidden');
-            lastSvgString = '';
+            downloadBtn.classList.add('hidden');
 
             // Reset canvas
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = 1.0;
             ctx.setLineDash([]);
-            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(uploadedImage, 0, 0);
 
             try {
                 if (currentMode === 'text') {
                     await processTextMode();
-                } else if (currentMode === 'color') {
-                    await new Promise(r => setTimeout(r, 50));
-                    await processColorMode();
                 } else {
                     await new Promise(r => setTimeout(r, 50));
-                    await processAsciiMode();
+                    await processColorMode();
                 }
                 
+                // Final Reset on canvas
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.globalAlpha = 1.0;
                 
-                // --- MOBILE LONG-PRESS MAGIC ---
+                // --- MOBILE LONG-PRESS & DOWNLOAD MAGIC ---
+                // Convert canvas to image data url
                 const dataUrl = canvas.toDataURL('image/png');
+                
+                // Set the image source, hide the canvas, show the image
                 resultImage.src = dataUrl;
                 resultImage.classList.remove('hidden');
                 canvas.classList.add('hidden');
-                downloadGroup.classList.remove('hidden');
                 
-                statusText.innerText = "Done! Long-press (mobile) or download.";
+                // Show the download button
+                downloadBtn.classList.remove('hidden');
+                
+                statusText.innerText = "Done! Long-press (mobile) or click Download.";
                 statusText.style.color = "#00ff00";
             } catch (err) {
                 console.error(err);
