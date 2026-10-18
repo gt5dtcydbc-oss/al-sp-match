@@ -193,10 +193,13 @@
             </select>
 
             <label style="margin-top:5px;">Shape Fill</label>
-            <label class="toggle-group">
-                <input type="checkbox" id="solidFillToggle"> Solid Fill (Keying)
-            </label>
-            <input type="color" id="fillColor" value="#ffffff" style="display: none; margin-top: 5px;">
+            <select id="fillStyle" style="margin-bottom: 5px;">
+                <option value="none">Outline Only</option>
+                <option value="transparent" selected>Transparent Overlay</option>
+                <option value="solid">Solid Fill (Keying)</option>
+            </select>
+            
+            <input type="color" id="fillColor" value="#ffffff" style="display: none; width: 100%; height: 30px;">
         </div>
 
         <div class="control-group" style="justify-content: flex-end; flex-grow: 1;">
@@ -222,7 +225,7 @@
         const connectLines = document.getElementById('connectLines');
         const lineStyle = document.getElementById('lineStyle');
         
-        const solidFillToggle = document.getElementById('solidFillToggle');
+        const fillStyleDropdown = document.getElementById('fillStyle');
         const fillColorPicker = document.getElementById('fillColor');
         
         const tolVal = document.getElementById('tolVal');
@@ -239,9 +242,13 @@
         toleranceSlider.addEventListener('input', (e) => tolVal.innerText = e.target.value);
         minSizeSlider.addEventListener('input', (e) => sizeVal.innerText = e.target.value);
 
-        // Show/hide the fill color picker based on the toggle
-        solidFillToggle.addEventListener('change', (e) => {
-            fillColorPicker.style.display = e.target.checked ? 'block' : 'none';
+        // Show/hide the fill color picker based on the dropdown selection
+        fillStyleDropdown.addEventListener('change', (e) => {
+            if (e.target.value === 'solid') {
+                fillColorPicker.style.display = 'block';
+            } else {
+                fillColorPicker.style.display = 'none';
+            }
         });
 
         function renderColorPickers() {
@@ -360,7 +367,7 @@
             const doConnect = connectLines.checked;
             const lineType = lineStyle.value;
             
-            const doSolidFill = solidFillToggle.checked;
+            const fillMode = fillStyleDropdown.value;
             const fillColorValue = fillColorPicker.value;
 
             processBtn.disabled = true;
@@ -377,7 +384,7 @@
                 const visited = new Uint8Array(width * height);
                 let totalBlobsFound = 0;
 
-                // Default blend mode for ink effects
+                // Default blend mode
                 ctx.globalCompositeOperation = 'multiply';
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
@@ -416,34 +423,34 @@
                     if (blobs.length > 0) {
                         const centers = [];
 
-                        // Step 1: Draw all shapes (with either transparent or solid fill)
                         blobs.forEach(blob => {
                             const centerX = (blob.minX + blob.maxX) / 2;
                             const centerY = (blob.minY + blob.maxY) / 2;
                             centers.push({ x: centerX, y: centerY });
 
-                            // Handle Fill
-                            if (doSolidFill) {
-                                ctx.globalCompositeOperation = 'source-over'; // Opaque overlay
-                                ctx.fillStyle = fillColorValue;
-                            } else {
-                                ctx.globalCompositeOperation = 'multiply'; // Ink effect
-                                ctx.fillStyle = targetHex + '40'; // 25% opacity fill
+                            // --- DRAW FILL ---
+                            if (fillMode !== 'none') {
+                                if (fillMode === 'solid') {
+                                    ctx.globalCompositeOperation = 'source-over'; // Opaque
+                                    ctx.fillStyle = fillColorValue;
+                                } else {
+                                    ctx.globalCompositeOperation = 'multiply'; // Transparent Overlay
+                                    ctx.fillStyle = targetHex + '40'; // 25% opacity
+                                }
+
+                                if (style === 'circle') {
+                                    ctx.beginPath();
+                                    const radius = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2);
+                                    ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
+                                    ctx.fill();
+                                } else {
+                                    const w = (blob.maxX - blob.minX) + 10;
+                                    const h = (blob.maxY - blob.minY) + 10;
+                                    ctx.fillRect(blob.minX - 5, blob.minY - 5, w, h);
+                                }
                             }
 
-                            // Draw Fill
-                            if (style === 'circle') {
-                                ctx.beginPath();
-                                const radius = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2);
-                                ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
-                                ctx.fill();
-                            } else {
-                                const w = (blob.maxX - blob.minX) + 10;
-                                const h = (blob.maxY - blob.minY) + 10;
-                                ctx.fillRect(blob.minX - 5, blob.minY - 5, w, h);
-                            }
-
-                            // Handle Stroke (Always use the detected color for the outline)
+                            // --- DRAW STROKE (Always the detected color) ---
                             ctx.globalCompositeOperation = 'multiply';
                             ctx.strokeStyle = targetHex;
                             ctx.lineWidth = 3;
@@ -460,16 +467,14 @@
                             }
                         });
 
-                        // Step 2: Draw connecting lines
+                        // --- DRAW LINES ---
                         if (doConnect && centers.length > 1) {
                             const sortedCenters = sortNearestNeighbor(centers);
                             ctx.strokeStyle = targetHex;
                             ctx.lineWidth = 4;
                             ctx.globalAlpha = 0.7;
 
-                            // Apply dashed line setting
                             if (lineType === 'dashed') {
-                                // Scale dash length slightly with line width for better visibility
                                 ctx.setLineDash([10, 10]); 
                             } else {
                                 ctx.setLineDash([]);
@@ -482,7 +487,6 @@
                             }
                             ctx.stroke();
                             
-                            // Reset dash for the next color iteration
                             ctx.setLineDash([]);
                         }
                     }
