@@ -231,6 +231,10 @@
         let currentImageLoaded = false;
         let letterColors = {};
         
+        // Offscreen Canvas for pristine OCR
+        const ocrCanvas = document.createElement('canvas');
+        const ocrCtx = ocrCanvas.getContext('2d');
+        
         // Animation State
         let animationFrameId = null;
         let pathsToDraw = []; 
@@ -294,9 +298,16 @@
                         else { w = Math.round(w * (MAX_SIZE / h)); h = MAX_SIZE; }
                     }
                     
+                    // Setup visible canvas
                     canvas.width = w;
                     canvas.height = h;
                     ctx.drawImage(uploadedImage, 0, 0, w, h);
+                    
+                    // Setup pristine OCR canvas
+                    ocrCanvas.width = w;
+                    ocrCanvas.height = h;
+                    ocrCtx.drawImage(uploadedImage, 0, 0, w, h);
+
                     currentImageLoaded = true;
                     statusText.innerText = "Image loaded. Ready to process.";
                     statusText.style.color = "#00ff00";
@@ -349,7 +360,7 @@
                 const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
                 const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
 
-                const steps = 40; // Higher = smoother animation
+                const steps = 40; 
                 for (let t = 0; t <= 1; t += 1/steps) {
                     const mt = 1 - t;
                     const x = mt*mt*mt*p1.x + 3*mt*mt*t*cp1x + 3*mt*t*t*cp2x + t*t*t*p2.x;
@@ -513,8 +524,8 @@
             try {
                 const worker = await Tesseract.createWorker('eng');
                 
-                // BUG FIX: Scan the scaled canvas, not the original raw image
-                const ret = await worker.recognize(canvas);
+                // FIXED: Scan the pristine ocrCanvas so thickness lines don't block the text
+                const ret = await worker.recognize(ocrCanvas);
                 await worker.terminate();
 
                 const words = ret.data.words;
@@ -561,7 +572,7 @@
                     statusText.innerText = `Done! Found ${totalFound} letters.`;
                     statusText.style.color = "#00ff00";
                     
-                    actionButtons.classList.remove('hidden'); // Show download buttons
+                    actionButtons.classList.remove('hidden');
                     
                     const shouldAnimate = document.getElementById('animateToggle').checked;
                     if (shouldAnimate) {
