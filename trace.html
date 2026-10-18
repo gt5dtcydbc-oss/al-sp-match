@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outline Tracery Tool</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #a6a6a2;
+            --accent-hover: #c0c0bc;
+            --border: #333;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 340px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="%23181818"/><rect x="10" y="10" width="10" height="10" fill="%23181818"/></svg>');
+            overflow: auto;
+            position: relative;
+        }
+
+        /* --- UI Elements --- */
+        h1 { font-size: 18px; margin: 0 0 10px 0; color: #fff; }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #888;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        label { font-size: 12px; color: #aaa; display: flex; justify-content: space-between; }
+
+        input[type="text"], input[type="file"], select {
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 4px;
+            outline: none;
+            width: 100%;
+            font-size: 13px;
+        }
+
+        input[type="range"] { width: 100%; accent-color: var(--accent); margin-top: 5px; }
+        input[type="color"] { background: none; border: 1px solid var(--border); border-radius: 4px; width: 100%; height: 35px; cursor: pointer; padding: 2px; }
+
+        button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        button:hover { background: var(--accent-hover); }
+        button:disabled { background: #444; color: #777; cursor: not-allowed; }
+
+        .download-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #downloadBtn, #svgBtn {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid var(--border);
+        }
+        #downloadBtn:hover, #svgBtn:hover { background: #333; }
+
+        .hidden { display: none !important; }
+
+        .status { font-size: 12px; color: #ffd700; text-align: center; min-height: 15px; margin-top: 10px;}
+
+        /* --- Canvas Output --- */
+        canvas, #resultImage {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            background: #fff;
+        }
+        
+        #resultImage {
+            object-fit: contain;
+            -webkit-touch-callout: default;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #ccc;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .toggle-group input { width: 16px; height: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h1>Outline Tracery</h1>
+        
+        <div class="control-group">
+            <div class="section-title">1. Base Image</div>
+            <input type="file" id="imageUpload" accept="image/*">
+        </div>
+
+        <div class="control-group">
+            <div class="section-title">2. Edge Detection</div>
+            
+            <label>Edge Character</label>
+            <input type="text" id="edgeChar" value="X" maxlength="1">
+            
+            <label>Edge Sensitivity: <span id="edgeThreshVal">50</span></label>
+            <input type="range" id="edgeThreshold" min="10" max="200" value="50">
+            
+            <label>Grid Resolution (Size): <span id="resolutionVal">8</span>px</label>
+            <input type="range" id="resolution" min="4" max="16" value="8">
+            
+            <label class="toggle-group">
+                <input type="checkbox" id="bgAsciiToggle" checked> Draw Background ASCII
+            </label>
+        </div>
+
+        <div class="control-group">
+            <div class="section-title">3. Color Isolation (Optional)</div>
+            <label>Filter Edges by Color</label>
+            <select id="colorFilterMode">
+                <option value="all">All Edges (Ignore Color)</option>
+                <option value="custom">Specific Color Only</option>
+            </select>
+            <input type="color" id="targetColor" value="#ff0000" class="hidden" style="margin-top: 5px;">
+            <label style="font-size: 10px; color: #666; margin-top: 2px;">*Useful for separating a red flower from green leaves.</label>
+        </div>
+
+        <div class="control-group">
+            <div class="section-title">4. Connecting Lines</div>
+            <label>Line Thickness: <span id="lineThickVal">4</span>px</label>
+            <input type="range" id="lineThickness" min="1" max="20" value="4">
+            
+            <label>Line Opacity: <span id="lineOpacVal">0.8</span></label>
+            <input type="range" id="lineOpacity" min="0.1" max="1" step="0.05" value="0.8">
+
+            <label>Line Roundness: <span id="lineRoundVal">0.8</span></label>
+            <input type="range" id="lineRoundness" min="0" max="1" step="0.1" value="0.8">
+            
+            <input type="color" id="lineColor" value="#000000" style="margin-top: 5px;">
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="control-group" style="margin-top: auto; padding-top: 20px;">
+            <button id="processBtn">Process Image</button>
+            
+            <div class="download-group hidden" id="downloadGroup">
+                <button id="downloadBtn">PNG</button>
+                <button id="svgBtn">SVG</button>
+            </div>
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+
+    <!-- MAIN OUTPUT -->
+    <div class="main-content">
+        <div class="output-container">
+            <canvas id="canvas"></canvas>
+            <img id="resultImage" class="hidden" alt="Outline Tracery">
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const resultImage = document.getElementById('resultImage');
+        const processBtn = document.getElementById('processBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const svgBtn = document.getElementById('svgBtn');
+        const downloadGroup = document.getElementById('downloadGroup');
+        const statusText = document.getElementById('status');
+        
+        // Inputs
+        const imageUpload = document.getElementById('imageUpload');
+        const edgeCharInput = document.getElementById('edgeChar');
+        const edgeThreshold = document.getElementById('edgeThreshold');
+        const resolution = document.getElementById('resolution');
+        const bgAsciiToggle = document.getElementById('bgAsciiToggle');
+        
+        const colorFilterMode = document.getElementById('colorFilterMode');
+        const targetColor = document.getElementById('targetColor');
+        
+        const lineThickness = document.getElementById('lineThickness');
+        const lineOpacity = document.getElementById('lineOpacity');
+        const lineRoundness = document.getElementById('lineRoundness');
+        const lineColor = document.getElementById('lineColor');
+
+        // --- State ---
+        let uploadedImage = new Image();
+        let currentImageLoaded = false;
+        let lastSvgString = '';
+
+        // --- UI Sync ---
+        resolution.addEventListener('input', (e) => document.getElementById('resolutionVal').innerText = e.target.value);
+        edgeThreshold.addEventListener('input', (e) => document.getElementById('edgeThreshVal').innerText = e.target.value);
+        lineThickness.addEventListener('input', (e) => document.getElementById('lineThickVal').innerText = e.target.value);
+        lineOpacity.addEventListener('input', (e) => document.getElementById('lineOpacVal').innerText = e.target.value);
+        lineRoundness.addEventListener('input', (e) => document.getElementById('lineRoundVal').innerText = e.target.value);
+        
+        colorFilterMode.addEventListener('change', (e) => {
+            targetColor.classList.toggle('hidden', e.target.value !== 'custom');
+        });
+
+        // --- Image Upload ---
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                uploadedImage.onload = () => {
+                    canvas.classList.remove('hidden');
+                    resultImage.classList.add('hidden');
+                    downloadGroup.classList.add('hidden');
+
+                    // Scale down massive images for performance
+                    const MAX_SIZE = 1400;
+                    let w = uploadedImage.width;
+                    let h = uploadedImage.height;
+                    if (w > MAX_SIZE || h > MAX_SIZE) {
+                        if (w > h) { h = Math.round(h * (MAX_SIZE / w)); w = MAX_SIZE; }
+                        else { w = Math.round(w * (MAX_SIZE / h)); h = MAX_SIZE; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(uploadedImage, 0, 0, w, h);
+                    
+                    currentImageLoaded = true;
+                    statusText.innerText = "Image loaded. Ready to process.";
+                    statusText.style.color = "#00ff00";
+                };
+                uploadedImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- Math Helpers ---
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function colorDistance(r1, g1, b1, r2, g2, b2) {
+            return Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
+        }
+
+        // --- Nearest Neighbor Algorithm ---
+        function sortNearestNeighbor(points) {
+            if (points.length < 2) return points;
+            let unvisited = [...points];
+            let sorted = [];
+            unvisited.sort((a, b) => a.y - b.y || a.x - b.x);
+            let current = unvisited.shift();
+            sorted.push(current);
+
+            while (unvisited.length > 0) {
+                let nearestIdx = 0;
+                let minDist = Infinity;
+                for (let i = 0; i < unvisited.length; i++) {
+                    let dist = Math.hypot(current.x - unvisited[i].x, current.y - unvisited[i].y);
+                    if (dist < minDist) { minDist = dist; nearestIdx = i; }
+                }
+                current = unvisited[nearestIdx];
+                sorted.push(current);
+                unvisited.splice(nearestIdx, 1);
+            }
+            return sorted;
+        }
+
+        // --- Bezier Path Helpers ---
+        function getBezierPathData(points, roundness) {
+            if (points.length < 2) return "";
+            let d = `M ${points[0].x} ${points[0].y} `;
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = i > 0 ? points[i - 1] : points[0];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = i != points.length - 2 ? points[i + 2] : p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
+                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
+                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
+                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
+
+                d += `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y} `;
+            }
+            return d;
+        }
+
+        function drawSmoothPath(points, roundness) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = i > 0 ? points[i - 1] : points[0];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = i != points.length - 2 ? points[i + 2] : p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
+                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
+                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
+                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
+
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            }
+            ctx.stroke();
+        }
+
+        // --- Sobel Edge Detection Matrix ---
+        function getEdgeMatrix(data, width, height) {
+            // Convert to grayscale first
+            const gray = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i/4] = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+            }
+            
+            // Apply Sobel operator
+            const edges = new Uint8ClampedArray(width * height);
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const i = y * width + x;
+                    // X direction
+                    const gx = 
+                        -1 * gray[i - width - 1] + 1 * gray[i - width + 1] +
+                        -2 * gray[i - 1]         + 2 * gray[i + 1] +
+                        -1 * gray[i + width - 1] + 1 * gray[i + width + 1];
+                    // Y direction
+                    const gy = 
+                        -1 * gray[i - width - 1] - 2 * gray[i - width] - 1 * gray[i - width + 1] +
+                         1 * gray[i + width - 1] + 2 * gray[i + width] + 1 * gray[i + width + 1];
+                    
+                    // Magnitude
+                    edges[i] = Math.sqrt(gx * gx + gy * gy);
+                }
+            }
+            return edges;
+        }
+
+        // --- Main Processing ---
+        processBtn.addEventListener('click', () => {
+            if (!currentImageLoaded) return alert("Please upload an image first!");
+            
+            processBtn.disabled = true;
+            statusText.innerText = "Analyzing edges...";
+            statusText.style.color = "#ffd700";
+            
+            canvas.classList.remove('hidden');
+            resultImage.classList.add('hidden');
+            downloadGroup.classList.add('hidden');
+            lastSvgString = '';
+
+            // Use setTimeout to allow the browser to render the "Analyzing..." text before blocking the thread
+            setTimeout(() => {
+                try {
+                    const res = parseInt(resolution.value);
+                    const threshold = parseInt(edgeThreshold.value);
+                    const targetChar = edgeCharInput.value || 'X';
+                    const drawBg = bgAsciiToggle.checked;
+                    
+                    const filterMode = colorFilterMode.value;
+                    const filterRgb = hexToRgb(targetColor.value);
+                    
+                    const lColor = lineColor.value;
+                    const lThick = parseInt(lineThickness.value);
+                    const lOpac = parseFloat(lineOpacity.value);
+                    const lRound = parseFloat(lineRoundness.value);
+
+                    // 1. Get pristine image data
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imgData.data;
+                    const width = canvas.width;
+                    const height = canvas.height;
+
+                    // 2. Calculate edges
+                    const edges = getEdgeMatrix(data, width, height);
+
+                    // 3. Setup canvas for ASCII drawing
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, width, height);
+                    
+                    ctx.font = `bold ${res}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    const edgePoints = [];
+                    
+                    // Background ASCII density ramp (light to dark)
+                    const bgDensity = " ._-=+*#%@";
+
+                    // 4. Draw the grid
+                    for (let y = 0; y < height; y += res) {
+                        for (let x = 0; x < width; x += res) {
+                            const sampleX = Math.min(x + Math.floor(res/2), width - 1);
+                            const sampleY = Math.min(y + Math.floor(res/2), height - 1);
+                            const idx = (sampleY * width + sampleX) * 4;
+                            const edgeIdx = sampleY * width + sampleX;
+
+                            // Check color filter
+                            let matchesColor = true;
+                            if (filterMode === 'custom') {
+                                const dist = colorDistance(data[idx], data[idx+1], data[idx+2], filterRgb.r, filterRgb.g, filterRgb.b);
+                                matchesColor = dist < 80; // Color tolerance
+                            }
+
+                            const isEdge = edges[edgeIdx] > threshold;
+
+                            if (isEdge && matchesColor) {
+                                // DRAW TARGET EDGE CHARACTER
+                                ctx.fillStyle = '#000000';
+                                ctx.fillText(targetChar, x + res/2, y + res/2);
+                                edgePoints.push({ x: x + res/2, y: y + res/2 });
+                            } else if (drawBg) {
+                                // DRAW FAINT BACKGROUND CHARACTER
+                                const brightness = (data[idx] * 0.299 + data[idx+1] * 0.587 + data[idx+2] * 0.114);
+                                const charIndex = Math.floor((brightness / 255) * (bgDensity.length - 1));
+                                const char = bgDensity[charIndex];
+                                
+                                ctx.fillStyle = '#e0e0e0'; // Very light gray
+                                ctx.fillText(char, x + res/2, y + res/2);
+                            }
+                        }
+                    }
+
+                    // 5. Draw the constellation lines over the edges
+                    let svgElements = '';
+                    
+                    if (edgePoints.length > 1) {
+                        const sortedPoints = sortNearestNeighbor(edgePoints);
+                        
+                        ctx.globalCompositeOperation = 'multiply';
+                        ctx.lineJoin = "round";
+                        ctx.lineCap = "round";
+                        ctx.strokeStyle = lColor;
+                        ctx.globalAlpha = lOpac;
+                        ctx.lineWidth = lThick;
+                        
+                        drawSmoothPath(sortedPoints, lRound);
+
+                        // SVG generation for the lines
+                        const pathData = getBezierPathData(sortedPoints, lRound);
+                        svgElements += `<path d="${pathData}" fill="none" stroke="${lColor}" stroke-width="${lThick}" stroke-linecap="round" stroke-linejoin="round" opacity="${lOpac}" />`;
+                    }
+
+                    // 6. Finalize SVG string
+                    lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+                        ${svgElements}
+                    </svg>`;
+
+                    // 7. Mobile Save Trick
+                    const dataUrl = canvas.toDataURL('image/png');
+                    resultImage.src = dataUrl;
+                    resultImage.classList.remove('hidden');
+                    canvas.classList.add('hidden');
+                    
+                    downloadGroup.classList.remove('hidden');
+                    statusText.innerText = `Done! Found ${edgePoints.length} edge points.`;
+                    statusText.style.color = "#00ff00";
+
+                } catch (err) {
+                    console.error(err);
+                    statusText.innerText = "Error during processing.";
+                    statusText.style.color = "#ff4444";
+                } finally {
+                    processBtn.disabled = false;
+                }
+            }, 50);
+        });
+
+        // --- Downloads ---
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'outline-tracery.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        svgBtn.addEventListener('click', () => {
+            if (!lastSvgString) return;
+            const blob = new Blob([lastSvgString], {type: "image/svg+xml"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'outline-tracery.svg';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
