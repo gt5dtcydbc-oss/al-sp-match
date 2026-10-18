@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Visual Tracery Tool</title>
+    <!-- Load Tesseract.js from CDN for Text Mode -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #a6a6a2;
+            --accent-hover: #c0c0bc;
+            --border: #333;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar Layout --- */
+        .sidebar {
+            width: 340px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="%23181818"/><rect x="10" y="10" width="10" height="10" fill="%23181818"/></svg>');
+            overflow: auto;
+            position: relative;
+        }
+
+        /* --- UI Elements --- */
+        h1 {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #888;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-size: 12px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="text"], input[type="file"], select {
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 4px;
+            outline: none;
+            width: 100%;
+            font-size: 13px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+            margin-top: 5px;
+        }
+
+        input[type="color"] {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            width: 100%;
+            height: 35px;
+            cursor: pointer;
+            padding: 2px;
+        }
+
+        button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        button:hover { background: var(--accent-hover); }
+        button:disabled { background: #444; color: #777; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            font-size: 12px;
+            width: auto;
+        }
+        .btn-secondary:hover { background: #333; }
+
+        /* --- Mode Switcher --- */
+        .mode-switch {
+            display: flex;
+            background: #111;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .mode-switch button {
+            background: transparent;
+            color: #888;
+            border-radius: 0;
+            border-bottom: 2px solid transparent;
+            padding: 10px 5px;
+            font-size: 13px;
+        }
+        .mode-switch button.active {
+            color: #fff;
+            background: #2a2a2a;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        /* --- Color Pickers --- */
+        .color-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .color-row input[type="color"] {
+            width: 40px;
+            height: 30px;
+            flex-shrink: 0;
+        }
+        .color-row span {
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .remove-color {
+            background: #331111;
+            color: #ff5555;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: auto;
+            width: auto;
+        }
+        .remove-color:hover { background: #441111; }
+
+        /* --- Hidden States --- */
+        .hidden { display: none !important; }
+
+        /* --- Canvas & Image Output --- */
+        .output-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        canvas, #resultImage {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            background: #fff;
+        }
+
+        #resultImage {
+            object-fit: contain;
+            -webkit-touch-callout: default;
+        }
+
+        .status {
+            font-size: 12px;
+            color: #ffd700;
+            text-align: center;
+            min-height: 15px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #ccc;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .checkbox-group input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .download-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #downloadBtn, #svgBtn {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid var(--border);
+        }
+        #downloadBtn:hover, #svgBtn:hover { background: #333; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR CONTROLS -->
+    <div class="sidebar">
+        <h1>Visual Tracery Tool</h1>
+        
+        <div class="control-group">
+            <div class="section-title">1. Base Image</div>
+            <input type="file" id="imageUpload" accept="image/*">
+        </div>
+
+        <div class="control-group">
+            <div class="section-title">2. Mode</div>
+            <div class="mode-switch">
+                <button id="modeTextBtn" class="active">Text</button>
+                <button id="modeColorBtn">Color</button>
+                <button id="modeAsciiBtn">ASCII</button>
+            </div>
+        </div>
+
+        <!-- ================= TEXT MODE ================= -->
+        <div id="textControls">
+            <div class="control-group">
+                <div class="section-title">Text Settings</div>
+                <label>Target Letters (comma separated)</label>
+                <input type="text" id="targetLetters" value="N, A, W" placeholder="e.g. A, B, C">
+            </div>
+
+            <div class="control-group">
+                <label>Colors (auto-generated)</label>
+                <div id="textColorPickers" class="color-list"></div>
+            </div>
+
+            <div class="control-group">
+                <label>Thickness: <span id="textThickVal">20</span>px</label>
+                <input type="range" id="textThickness" min="2" max="60" value="20">
+                
+                <label>Opacity: <span id="textOpacVal">0.6</span></label>
+                <input type="range" id="textOpacity" min="0.1" max="1" step="0.05" value="0.6">
+                
+                <label>Roundness: <span id="textRoundVal">0.8</span></label>
+                <input type="range" id="textRoundness" min="0" max="1" step="0.1" value="0.8">
+                
+                <label class="checkbox-group">
+                    <input type="checkbox" id="textHighlightToggle" checked> Highlight Letters
+                </label>
+            </div>
+        </div>
+
+        <!-- ================= COLOR MODE ================= -->
+        <div id="colorControls" class="hidden">
+            <div class="control-group">
+                <div class="section-title">Target Colors</div>
+                <div id="colorColorPickers" class="color-list"></div>
+                <button id="addColorBtn" class="btn-secondary" style="margin-top:5px;">+ Add Color</button>
+            </div>
+
+            <div class="control-group">
+                <div class="section-title">Detection Settings</div>
+                <label>Tolerance: <span id="colorTolVal">40</span></label>
+                <input type="range" id="colorTolerance" min="5" max="150" value="40">
+                
+                <label>Min Blob Size: <span id="colorSizeVal">50</span>px</label>
+                <input type="range" id="colorMinSize" min="10" max="500" value="50">
+                
+                <label>Shape Style</label>
+                <select id="shapeStyle">
+                    <option value="circle">Circle</option>
+                    <option value="square">Square</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="section-title">Drawing Settings</div>
+                
+                <label class="checkbox-group">
+                    <input type="checkbox" id="colorConnectLines" checked> Connect Shapes
+                </label>
+                
+                <select id="colorLineStyle">
+                    <option value="solid">Solid Lines</option>
+                    <option value="dashed">Dashed Lines</option>
+                </select>
+
+                <label style="margin-top:10px;">Shape Fill</label>
+                <select id="fillStyle">
+                    <option value="none">Outline Only</option>
+                    <option value="transparent" selected>Transparent Overlay</option>
+                    <option value="solid">Solid Fill (Keying)</option>
+                </select>
+                
+                <input type="color" id="fillColor" value="#ffffff" class="hidden" style="margin-top: 5px;">
+            </div>
+        </div>
+
+        <!-- ================= ASCII MODE ================= -->
+        <div id="asciiControls" class="hidden">
+            <div class="control-group">
+                <div class="section-title">ASCII Settings</div>
+                <label>Target Characters</label>
+                <input type="text" id="asciiTargets" value="@, #, %" placeholder="e.g. @, #, %">
+                
+                <label>Resolution (Lower is sharper)</label>
+                <input type="range" id="asciiResolution" min="4" max="16" value="8">
+                
+                <label>Line Thickness: <span id="asciiThickVal">12</span>px</label>
+                <input type="range" id="asciiThickness" min="2" max="40" value="12">
+
+                <label>Line Roundness: <span id="asciiRoundVal">0.8</span></label>
+                <input type="range" id="asciiRoundness" min="0" max="1" step="0.1" value="0.8">
+            </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="control-group" style="margin-top: auto; padding-top: 20px;">
+            <button id="processBtn">Process Image</button>
+            
+            <div class="download-group hidden" id="downloadGroup">
+                <button id="downloadBtn">PNG</button>
+                <button id="svgBtn">SVG</button>
+            </div>
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+
+    <!-- MAIN CANVAS AREA -->
+    <div class="main-content">
+        <div class="output-container">
+            <canvas id="canvas"></canvas>
+            <img id="resultImage" class="hidden" alt="Processed Tracery">
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const resultImage = document.getElementById('resultImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const svgBtn = document.getElementById('svgBtn');
+        const downloadGroup = document.getElementById('downloadGroup');
+        const statusText = document.getElementById('status');
+        const processBtn = document.getElementById('processBtn');
+        
+        // Mode switching
+        const modeTextBtn = document.getElementById('modeTextBtn');
+        const modeColorBtn = document.getElementById('modeColorBtn');
+        const modeAsciiBtn = document.getElementById('modeAsciiBtn');
+        const textControls = document.getElementById('textControls');
+        const colorControls = document.getElementById('colorControls');
+        const asciiControls = document.getElementById('asciiControls');
+
+        // Text Mode Elements
+        const targetLettersInput = document.getElementById('targetLetters');
+        const textColorPickers = document.getElementById('textColorPickers');
+        const textThickness = document.getElementById('textThickness');
+        const textOpacity = document.getElementById('textOpacity');
+        const textRoundness = document.getElementById('textRoundness');
+        const textHighlightToggle = document.getElementById('textHighlightToggle');
+
+        // Color Mode Elements
+        const colorColorPickers = document.getElementById('colorColorPickers');
+        const colorTolerance = document.getElementById('colorTolerance');
+        const colorMinSize = document.getElementById('colorMinSize');
+        const shapeStyle = document.getElementById('shapeStyle');
+        const colorConnectLines = document.getElementById('colorConnectLines');
+        const colorLineStyle = document.getElementById('colorLineStyle');
+        const fillStyleDropdown = document.getElementById('fillStyle');
+        const fillColorPicker = document.getElementById('fillColor');
+
+        // ASCII Mode Elements
+        const asciiTargets = document.getElementById('asciiTargets');
+        const asciiResolution = document.getElementById('asciiResolution');
+        const asciiThickness = document.getElementById('asciiThickness');
+        const asciiRoundness = document.getElementById('asciiRoundness');
+
+        // --- State ---
+        let uploadedImage = new Image();
+        let currentImageLoaded = false;
+        let currentMode = 'text'; 
+        let lastSvgString = ''; 
+        
+        let textLetterColors = {};
+        let colorModeColors = [{ hex: '#ff0000' }]; 
+        let asciiCharColors = {};
+
+        // --- UI Setup: Mode Switching ---
+        function switchMode(mode) {
+            currentMode = mode;
+            modeTextBtn.classList.remove('active');
+            modeColorBtn.classList.remove('active');
+            modeAsciiBtn.classList.remove('active');
+            
+            textControls.classList.add('hidden');
+            colorControls.classList.add('hidden');
+            asciiControls.classList.add('hidden');
+
+            if (mode === 'text') {
+                modeTextBtn.classList.add('active');
+                textControls.classList.remove('hidden');
+            } else if (mode === 'color') {
+                modeColorBtn.classList.add('active');
+                colorControls.classList.remove('hidden');
+            } else {
+                modeAsciiBtn.classList.add('active');
+                asciiControls.classList.remove('hidden');
+            }
+        }
+
+        modeTextBtn.addEventListener('click', () => switchMode('text'));
+        modeColorBtn.addEventListener('click', () => switchMode('color'));
+        modeAsciiBtn.addEventListener('click', () => switchMode('ascii'));
+
+        // UI: Live Value Updates
+        const updateTextVals = () => {
+            document.getElementById('textThickVal').innerText = textThickness.value;
+            document.getElementById('textOpacVal').innerText = textOpacity.value;
+            document.getElementById('textRoundVal').innerText = textRoundness.value;
+        };
+        updateTextVals();
+        textThickness.addEventListener('input', updateTextVals);
+        textOpacity.addEventListener('input', updateTextVals);
+        textRoundness.addEventListener('input', updateTextVals);
+
+        const updateColorVals = () => {
+            document.getElementById('colorTolVal').innerText = colorTolerance.value;
+            document.getElementById('colorSizeVal').innerText = colorMinSize.value;
+        };
+        updateColorVals();
+        colorTolerance.addEventListener('input', updateColorVals);
+        colorMinSize.addEventListener('input', updateColorVals);
+
+        const updateAsciiVals = () => {
+            document.getElementById('asciiThickVal').innerText = asciiThickness.value;
+            document.getElementById('asciiRoundVal').innerText = asciiRoundness.value;
+        };
+        updateAsciiVals();
+        asciiThickness.addEventListener('input', updateAsciiVals);
+        asciiRoundness.addEventListener('input', updateAsciiVals);
+
+        fillStyleDropdown.addEventListener('change', (e) => {
+            fillColorPicker.classList.toggle('hidden', e.target.value !== 'solid');
+        });
+
+        // --- Dynamic Color Pickers ---
+        function renderTextColorPickers() {
+            const letters = targetLettersInput.value.split(',').map(l => l.trim().toUpperCase()).filter(l => l.length > 0);
+            textColorPickers.innerHTML = '';
+            const defaultPalette = ['#9d8189', '#6b705c', '#b56576', '#457b9d', '#e09f3e'];
+            
+            letters.forEach((letter, index) => {
+                if (!textLetterColors[letter]) textLetterColors[letter] = defaultPalette[index % defaultPalette.length];
+                
+                const row = document.createElement('div');
+                row.className = 'color-row';
+                const input = document.createElement('input');
+                input.type = 'color';
+                input.value = textLetterColors[letter];
+                input.addEventListener('input', (e) => textLetterColors[letter] = e.target.value);
+                row.appendChild(input);
+                row.appendChild(Object.assign(document.createElement('span'), {innerText: `Letter: ${letter}`}));
+                textColorPickers.appendChild(row);
+            });
+        }
+        targetLettersInput.addEventListener('input', renderTextColorPickers);
+        renderTextColorPickers();
+
+        function renderColorModePickers() {
+            colorColorPickers.innerHTML = '';
+            colorModeColors.forEach((colorObj, index) => {
+                const row = document.createElement('div');
+                row.className = 'color-row';
+                const input = document.createElement('input');
+                input.type = 'color';
+                input.value = colorObj.hex;
+                input.addEventListener('input', (e) => colorModeColors[index].hex = e.target.value);
+                row.appendChild(input);
+                if (colorModeColors.length > 1) {
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-color';
+                    removeBtn.innerText = '✕';
+                    removeBtn.onclick = () => {
+                        colorModeColors.splice(index, 1);
+                        renderColorModePickers();
+                    };
+                    row.appendChild(removeBtn);
+                }
+                colorColorPickers.appendChild(row);
+            });
+        }
+        document.getElementById('addColorBtn').addEventListener('click', () => {
+            colorModeColors.push({ hex: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0') });
+            renderColorModePickers();
+        });
+        renderColorModePickers();
+
+        // --- Image Loading ---
+        document.getElementById('imageUpload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                uploadedImage.onload = () => {
+                    canvas.classList.remove('hidden');
+                    resultImage.classList.add('hidden');
+                    downloadGroup.classList.add('hidden');
+
+                    // Set canvas to max 1200px width/height to prevent browser crashes on huge images
+                    const MAX_SIZE = 1200;
+                    let w = uploadedImage.width;
+                    let h = uploadedImage.height;
+                    if (w > MAX_SIZE || h > MAX_SIZE) {
+                        if (w > h) { h = Math.round(h * (MAX_SIZE / w)); w = MAX_SIZE; }
+                        else { w = Math.round(w * (MAX_SIZE / h)); h = MAX_SIZE; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(uploadedImage, 0, 0, w, h);
+                    currentImageLoaded = true;
+                    statusText.innerText = "Image loaded. Ready.";
+                    statusText.style.color = "#00ff00";
+                };
+                uploadedImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- Download Logic ---
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'visual-tracery.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        svgBtn.addEventListener('click', () => {
+            if (!lastSvgString) return;
+            const blob = new Blob([lastSvgString], {type: "image/svg+xml"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'visual-tracery.svg';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // --- Shared Math Functions ---
+        function sortNearestNeighbor(points) {
+            if (points.length < 2) return points;
+            let unvisited = [...points];
+            let sorted = [];
+            unvisited.sort((a, b) => a.y - b.y || a.x - b.x);
+            let current = unvisited.shift();
+            sorted.push(current);
+
+            while (unvisited.length > 0) {
+                let nearestIdx = 0;
+                let minDist = Infinity;
+                for (let i = 0; i < unvisited.length; i++) {
+                    let dist = Math.hypot(current.x - unvisited[i].x, current.y - unvisited[i].y);
+                    if (dist < minDist) { minDist = dist; nearestIdx = i; }
+                }
+                current = unvisited[nearestIdx];
+                sorted.push(current);
+                unvisited.splice(nearestIdx, 1);
+            }
+            return sorted;
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        // --- TEXT MODE LOGIC ---
+        function getBezierPathData(points, roundness) {
+            if (points.length < 2) return "";
+            let d = `M ${points[0].x} ${points[0].y} `;
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = i > 0 ? points[i - 1] : points[0];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = i != points.length - 2 ? points[i + 2] : p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
+                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
+                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
+                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
+
+                d += `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y} `;
+            }
+            return d;
+        }
+
+        function drawSmoothPath(points, roundness) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = i > 0 ? points[i - 1] : points[0];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = i != points.length - 2 ? points[i + 2] : p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) / 6 * roundness;
+                const cp1y = p1.y + (p2.y - p0.y) / 6 * roundness;
+                const cp2x = p2.x - (p3.x - p1.x) / 6 * roundness;
+                const cp2y = p2.y - (p3.y - p1.y) / 6 * roundness;
+
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            }
+            ctx.stroke();
+        }
+
+        async function processTextMode() {
+            const targets = Object.keys(textLetterColors);
+            if (targets.length === 0) return alert("Enter at least one letter.");
+
+            const thickness = parseInt(textThickness.value);
+            const opacity = parseFloat(textOpacity.value);
+            const roundness = parseFloat(textRoundness.value);
+            const doHighlight = textHighlightToggle.checked;
+
+            statusText.innerText = "Scanning image (OCR)... Please wait.";
+            
+            const worker = await Tesseract.createWorker('eng');
+            const ret = await worker.recognize(uploadedImage);
+            await worker.terminate();
+
+            const words = ret.data.words;
+            let svgElements = '';
+
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+
+            for (const targetChar of targets) {
+                let points = [];
+                for (const word of words) {
+                    if (word.symbols) {
+                        for (const symbol of word.symbols) {
+                            if (symbol.text.toUpperCase() === targetChar) {
+                                points.push({
+                                    x: (symbol.bbox.x0 + symbol.bbox.x1) / 2,
+                                    y: (symbol.bbox.y0 + symbol.bbox.y1) / 2
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (points.length > 0) {
+                    const sortedPoints = sortNearestNeighbor(points);
+                    const color = textLetterColors[targetChar];
+
+                    // Canvas Drawing
+                    if (doHighlight) {
+                        ctx.globalAlpha = opacity;
+                        ctx.fillStyle = color;
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur = thickness * 0.2; 
+                        for (const p of sortedPoints) {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, Math.max(thickness * 0.7, 6), 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.strokeStyle = color;
+                    ctx.globalAlpha = opacity;
+                    ctx.lineWidth = thickness;
+                    drawSmoothPath(sortedPoints, roundness);
+
+                    // SVG Data Generation
+                    svgElements += `<g id="text-${targetChar}">`;
+                    if (doHighlight) {
+                        for (const p of sortedPoints) {
+                            svgElements += `<circle cx="${p.x}" cy="${p.y}" r="${Math.max(thickness * 0.7, 6)}" fill="${color}" opacity="${opacity}" />`;
+                        }
+                    }
+                    const pathData = getBezierPathData(sortedPoints, roundness);
+                    svgElements += `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}" />`;
+                    svgElements += `</g>`;
+                }
+            }
+            
+            lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">
+                <image href="${uploadedImage.src}" width="${canvas.width}" height="${canvas.height}" />
+                ${svgElements}
+            </svg>`;
+        }
+
+        // --- COLOR MODE LOGIC ---
+        function colorDistance(r1, g1, b1, r2, g2, b2) {
+            return Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
+        }
+
+        function floodFill(startX, startY, targetRgb, tolerance, data, width, height, visited) {
+            const queue = [[startX, startY]];
+            const blob = { minX: startX, maxX: startX, minY: startY, maxY: startY, pixelCount: 0 };
+            visited[startY * width + startX] = 1;
+
+            while (queue.length > 0) {
+                const [x, y] = queue.pop();
+                blob.pixelCount++;
+                if (x < blob.minX) blob.minX = x;
+                if (x > blob.maxX) blob.maxX = x;
+                if (y < blob.minY) blob.minY = y;
+                if (y > blob.maxY) blob.maxY = y;
+
+                const neighbors = [[x + 2, y], [x - 2, y], [x, y + 2], [x, y - 2]];
+                for (const [nx, ny] of neighbors) {
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        const nVisitedIdx = ny * width + nx;
+                        if (!visited[nVisitedIdx]) {
+                            const idx = (ny * width + nx) * 4;
+                            if (colorDistance(data[idx], data[idx+1], data[idx+2], targetRgb.r, targetRgb.g, targetRgb.b) <= tolerance) {
+                                visited[nVisitedIdx] = 1;
+                                queue.push([nx, ny]);
+                            }
+                        }
+                    }
+                }
+            }
+            return blob;
+        }
+
+        function processColorMode() {
+            return new Promise((resolve) => {
+                const tolerance = parseInt(colorTolerance.value);
+                const minSize = parseInt(colorMinSize.value);
+                const style = shapeStyle.value;
+                const doConnect = colorConnectLines.checked;
+                const lineType = colorLineStyle.value;
+                const fillMode = fillStyleDropdown.value;
+                const fillColorValue = fillColorPicker.value;
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                const width = canvas.width;
+                const height = canvas.height;
+                const visited = new Uint8Array(width * height);
+                let svgElements = '';
+                
+                ctx.globalCompositeOperation = 'multiply';
+                ctx.lineJoin = "round";
+                ctx.lineCap = "round";
+
+                colorModeColors.forEach((colorObj) => {
+                    const targetRgb = hexToRgb(colorObj.hex);
+                    const targetHex = colorObj.hex;
+                    const blobs = [];
+
+                    for (let y = 0; y < height; y+=2) { 
+                        for (let x = 0; x < width; x+=2) {
+                            const idx = (y * width + x) * 4;
+                            if (visited[y * width + x] || data[idx+3] < 50) continue;
+                            if (colorDistance(data[idx], data[idx+1], data[idx+2], targetRgb.r, targetRgb.g, targetRgb.b) <= tolerance) {
+                                const blob = floodFill(x, y, targetRgb, tolerance, data, width, height, visited);
+                                if (blob.pixelCount > minSize) blobs.push(blob);
+                            }
+                        }
+                    }
+
+                    if (blobs.length > 0) {
+                        const centers = [];
+                        svgElements += `<g id="color-${targetHex}">`;
+                        
+                        blobs.forEach(blob => {
+                            const centerX = (blob.minX + blob.maxX) / 2;
+                            const centerY = (blob.minY + blob.maxY) / 2;
+                            centers.push({ x: centerX, y: centerY });
+
+                            // Fills
+                            if (fillMode !== 'none') {
+                                ctx.globalCompositeOperation = fillMode === 'solid' ? 'source-over' : 'multiply';
+                                ctx.fillStyle = fillMode === 'solid' ? fillColorValue : targetHex + '40';
+                                const svgFill = fillMode === 'solid' ? fillColorValue : targetHex;
+                                const svgOpacity = fillMode === 'solid' ? 1 : 0.25;
+
+                                if (style === 'circle') {
+                                    const r = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2) + 5;
+                                    ctx.beginPath();
+                                    ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                                    ctx.fill();
+                                    svgElements += `<circle cx="${centerX}" cy="${centerY}" r="${r}" fill="${svgFill}" opacity="${svgOpacity}" />`;
+                                } else {
+                                    const w = (blob.maxX - blob.minX) + 10;
+                                    const h = (blob.maxY - blob.minY) + 10;
+                                    ctx.fillRect(blob.minX - 5, blob.minY - 5, w, h);
+                                    svgElements += `<rect x="${blob.minX - 5}" y="${blob.minY - 5}" width="${w}" height="${h}" fill="${svgFill}" opacity="${svgOpacity}" />`;
+                                }
+                            }
+
+                            // Strokes
+                            ctx.globalCompositeOperation = 'multiply';
+                            ctx.strokeStyle = targetHex;
+                            ctx.lineWidth = 3;
+                            if (style === 'circle') {
+                                const r = Math.max((blob.maxX - blob.minX) / 2, (blob.maxY - blob.minY) / 2) + 5;
+                                ctx.beginPath();
+                                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                                ctx.stroke();
+                                svgElements += `<circle cx="${centerX}" cy="${centerY}" r="${r}" fill="none" stroke="${targetHex}" stroke-width="3" />`;
+                            } else {
+                                const w = (blob.maxX - blob.minX) + 10;
+                                const h = (blob.maxY - blob.minY) + 10;
+                                ctx.strokeRect(blob.minX - 5, blob.minY - 5, w, h);
+                                svgElements += `<rect x="${blob.minX - 5}" y="${blob.minY - 5}" width="${w}" height="${h}" fill="none" stroke="${targetHex}" stroke-width="3" />`;
+                            }
+                        });
+
+                        if (doConnect && centers.length > 1) {
+                            const sortedCenters = sortNearestNeighbor(centers);
+                            ctx.strokeStyle = targetHex;
+                            ctx.lineWidth = 4;
+                            ctx.globalAlpha = 0.7;
+                            ctx.setLineDash(lineType === 'dashed' ? [10, 10] : []);
+                            ctx.beginPath();
+                            ctx.moveTo(sortedCenters[0].x, sortedCenters[0].y);
+                            
+                            let pathD = `M ${sortedCenters[0].x} ${sortedCenters[0].y} `;
+                            for (let i = 1; i < sortedCenters.length; i++) {
+                                ctx.lineTo(sortedCenters[i].x, sortedCenters[i].y);
+                                pathD += `L ${sortedCenters[i].x} ${sortedCenters[i].y} `;
+                            }
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            
+                            const dashArray = lineType === 'dashed' ? 'stroke-dasharray="10,10"' : '';
+                            svgElements += `<path d="${pathD}" fill="none" stroke="${targetHex}" stroke-width="4" opacity="0.7" ${dashArray} />`;
+                        }
+                        svgElements += `</g>`;
+                    }
+                });
+
+                lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">
+                    <image href="${uploadedImage.src}" width="${canvas.width}" height="${canvas.height}" />
+                    ${svgElements}
+                </svg>`;
+                resolve();
+            });
+        }
+
+        // --- ASCII MODE LOGIC ---
+        function processAsciiMode() {
+            return new Promise((resolve) => {
+                const targets = asciiTargets.value.split(',').map(c => c.trim()).filter(c => c.length > 0);
+                const res = parseInt(asciiResolution.value);
+                const thickness = parseInt(asciiThickness.value);
+                const roundness = parseFloat(asciiRoundness.value);
+                
+                // ASCII character ramp from dark to light
+                const density = "Ñ@#W$9876543210?!abc;:+=-,._ ";
+                
+                // Get image data for sampling
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                const width = canvas.width;
+                const height = canvas.height;
+
+                // Clear canvas for ASCII drawing (white background)
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.fillStyle = '#000000';
+                ctx.font = `bold ${res}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const charPositions = {};
+                targets.forEach(t => charPositions[t] = []);
+
+                // Draw ASCII art grid
+                for (let y = 0; y < height; y += res) {
+                    for (let x = 0; x < width; x += res) {
+                        // Sample center of the cell
+                        const sampleX = Math.min(x + Math.floor(res/2), width - 1);
+                        const sampleY = Math.min(y + Math.floor(res/2), height - 1);
+                        const idx = (sampleY * width + sampleX) * 4;
+                        
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        
+                        // Calculate brightness (0 - 255)
+                        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+                        
+                        // Map brightness to a character
+                        const charIndex = Math.floor((brightness / 255) * (density.length - 1));
+                        const char = density[charIndex];
+
+                        // Draw the character
+                        ctx.fillText(char, x + res/2, y + res/2);
+
+                        // Save position if it's one of our targets
+                        if (targets.includes(char)) {
+                            charPositions[char].push({ x: x + res/2, y: y + res/2 });
+                        }
+                    }
+                }
+
+                // Now draw the constellation lines
+                let svgElements = '';
+                ctx.globalCompositeOperation = 'multiply';
+                ctx.lineJoin = "round";
+                ctx.lineCap = "round";
+
+                const palette = ['#e63946', '#457b9d', '#2a9d8f', '#f4a261', '#9b5de5'];
+                let colorIndex = 0;
+
+                targets.forEach(char => {
+                    const points = charPositions[char];
+                    if (points.length > 1) {
+                        const sortedPoints = sortNearestNeighbor(points);
+                        const color = palette[colorIndex % palette.length];
+                        colorIndex++;
+
+                        // Canvas Draw
+                        ctx.strokeStyle = color;
+                        ctx.globalAlpha = 0.8;
+                        ctx.lineWidth = thickness;
+                        drawSmoothPath(sortedPoints, roundness);
+
+                        // SVG Generation
+                        const pathData = getBezierPathData(sortedPoints, roundness);
+                        svgElements += `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />`;
+                    }
+                });
+
+                // Create SVG String (We embed the image as a background, but also need to generate the text)
+                // Generating all the text for SVG is heavy, so let's just make a transparent SVG of the lines for overlay
+                lastSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">
+                    ${svgElements}
+                </svg>`;
+
+                resolve();
+            });
+        }
+
+
+        // --- Main Process Router ---
+        processBtn.addEventListener('click', async () => {
+            if (!currentImageLoaded) return alert("Please upload an image first!");
+            
+            processBtn.disabled = true;
+            statusText.innerText = "Processing...";
+            statusText.style.color = "#ffd700";
+            
+            canvas.classList.remove('hidden');
+            resultImage.classList.add('hidden');
+            downloadGroup.classList.add('hidden');
+            lastSvgString = '';
+
+            // Reset canvas
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1.0;
+            ctx.setLineDash([]);
+            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+
+            try {
+                if (currentMode === 'text') {
+                    await processTextMode();
+                } else if (currentMode === 'color') {
+                    await new Promise(r => setTimeout(r, 50));
+                    await processColorMode();
+                } else {
+                    await new Promise(r => setTimeout(r, 50));
+                    await processAsciiMode();
+                }
+                
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = 1.0;
+                
+                // --- MOBILE LONG-PRESS MAGIC ---
+                const dataUrl = canvas.toDataURL('image/png');
+                resultImage.src = dataUrl;
+                resultImage.classList.remove('hidden');
+                canvas.classList.add('hidden');
+                downloadGroup.classList.remove('hidden');
+                
+                statusText.innerText = "Done! Long-press (mobile) or download.";
+                statusText.style.color = "#00ff00";
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = "Error during processing.";
+                statusText.style.color = "#ff4444";
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
