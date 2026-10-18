@@ -27,7 +27,7 @@
             flex-wrap: wrap;
             align-items: flex-start;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            max-width: 900px;
+            max-width: 950px;
         }
         .control-group {
             display: flex;
@@ -42,13 +42,14 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        input[type="text"], input[type="file"] {
+        input[type="text"], input[type="file"], select {
             background: #333;
             color: white;
             border: 1px solid #555;
             padding: 8px;
             border-radius: 5px;
             outline: none;
+            width: 100%;
         }
         input[type="range"] {
             width: 100%;
@@ -187,6 +188,15 @@
             </label>
         </div>
 
+        <div class="control-group">
+            <label>Blend Mode</label>
+            <select id="blendMode">
+                <option value="multiply" selected>Multiply (Ink - Best for Light Images)</option>
+                <option value="screen">Screen (Glow - Best for Dark Images)</option>
+                <option value="source-over">Normal (Solid - Any Image)</option>
+            </select>
+        </div>
+
         <div class="control-group" style="justify-content: flex-end; min-width: 200px;">
             <button id="processBtn">Process Image</button>
             <span id="status"></span>
@@ -216,11 +226,12 @@
         const ctx = canvas.getContext('2d');
         const statusText = document.getElementById('status');
         
-        // Sliders
+        // Sliders & Inputs
         const thicknessSlider = document.getElementById('thickness');
         const opacitySlider = document.getElementById('opacity');
         const roundnessSlider = document.getElementById('roundness');
         const highlightToggle = document.getElementById('highlightToggle');
+        const blendModeSelect = document.getElementById('blendMode');
         
         // Value displays
         const thickVal = document.getElementById('thickVal');
@@ -265,6 +276,7 @@
         opacitySlider.addEventListener('input', updatePreview);
         roundnessSlider.addEventListener('input', updatePreview);
         highlightToggle.addEventListener('change', updatePreview);
+        blendModeSelect.addEventListener('change', updatePreview);
 
         function generateColorPickers() {
             const raw = targetLettersInput.value;
@@ -284,7 +296,7 @@
                 }
                 
                 const row = document.createElement('div');
-                row.className = 'color-row'; // Fixed typo here
+                row.className = 'color-row';
                 
                 const label = document.createElement('span');
                 label.innerText = letter;
@@ -403,11 +415,15 @@
 
         // --- Drawing Logic ---
         function drawFrame(progress) {
+            // 1. Draw the background image normally
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = 1.0;
             ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
 
-            ctx.globalCompositeOperation = 'multiply';
+            // 2. Set the chosen blend mode for the ink/lines
+            const mode = blendModeSelect.value;
+            ctx.globalCompositeOperation = mode;
+            
             ctx.lineJoin = "round";
             ctx.lineCap = "round";
 
@@ -418,7 +434,9 @@
             pathsToDraw.forEach(pathData => {
                 const { dots, pathPoints, color } = pathData;
                 
-                const highlightColor = hexToRgba(color, opacity * 0.5);
+                // Adjust highlight opacity based on blend mode so it doesn't wash out
+                const highlightOpacity = (mode === 'multiply') ? opacity * 0.5 : opacity * 0.8;
+                const highlightColor = hexToRgba(color, highlightOpacity);
                 const lineColor = hexToRgba(color, opacity);
 
                 if (doHighlight) {
@@ -450,6 +468,7 @@
                 }
             });
             
+            // Reset composite operation
             ctx.globalCompositeOperation = 'source-over';
         }
 
