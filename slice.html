@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slice & Repeat Tool</title>
+    <title>Intentional Slice & Repeat Tool</title>
     <style>
         * { box-sizing: border-box; }
         
@@ -19,94 +19,51 @@
 
         /* --- UI Sidebar --- */
         .sidebar {
-            width: 300px;
+            width: 320px;
             background: #1e1e1e;
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
             border-right: 1px solid #333;
             overflow-y: auto;
             flex-shrink: 0;
         }
 
-        h1 {
-            font-size: 1.2rem;
-            margin: 0 0 10px 0;
-            color: #fff;
-            letter-spacing: 1px;
-        }
+        h1 { font-size: 1.2rem; margin: 0 0 10px 0; color: #fff; letter-spacing: 1px; }
+        h2 { font-size: 0.8rem; text-transform: uppercase; color: #888; margin: 10px 0 0 0; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 5px;}
 
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .control-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #aaa;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            accent-color: #ff4757; /* Highlight color */
-            cursor: pointer;
-        }
+        .control-group { display: flex; flex-direction: column; gap: 6px; }
+        .control-header { display: flex; justify-content: space-between; font-size: 0.85rem; color: #ccc; }
+        
+        input[type="range"] { width: 100%; accent-color: #ff4757; cursor: pointer; }
+        select { padding: 8px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; outline: none; font-size: 0.9rem;}
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; cursor: pointer;}
+        input[type="checkbox"] { width: 16px; height: 16px; accent-color: #ff4757; cursor: pointer;}
 
         button, input[type="file"]::file-selector-button {
-            padding: 12px;
-            background: #333;
-            color: #fff;
-            border: 1px solid #444;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            text-align: center;
-            width: 100%;
+            padding: 10px; background: #333; color: #fff; border: 1px solid #444; border-radius: 6px;
+            cursor: pointer; font-weight: 600; transition: all 0.2s; text-align: center; width: 100%; font-size: 0.9rem;
         }
-
-        button:hover, input[type="file"]::file-selector-button:hover {
-            background: #444;
-            border-color: #555;
-        }
-
-        .primary-btn {
-            background: #ff4757;
-            border-color: #ff4757;
-            color: white;
-        }
-
-        .primary-btn:hover {
-            background: #ff6b81;
-            border-color: #ff6b81;
-        }
+        button:hover, input[type="file"]::file-selector-button:hover { background: #444; border-color: #555; }
+        
+        .primary-btn { background: #ff4757; border-color: #ff4757; color: white; margin-top: 10px; }
+        .primary-btn:hover { background: #ff6b81; border-color: #ff6b81; }
 
         /* --- Canvas Area --- */
         .canvas-container {
-            flex-grow: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            overflow: hidden;
-            background: #0a0a0a;
+            flex-grow: 1; display: flex; justify-content: center; align-items: center;
+            padding: 20px; overflow: hidden; background: #0a0a0a; position: relative;
         }
 
-        canvas {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        }
+        canvas { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
 
-        /* --- Mobile Responsive --- */
+        .hidden { display: none !important; }
+
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
-            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #333; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #333; }
             .canvas-container { padding: 10px; height: 60vh; }
         }
     </style>
@@ -115,49 +72,67 @@
 
     <!-- UI Controls -->
     <div class="sidebar">
-        <h1>Slice & Repeat</h1>
+        <h1>Slice & Repeat Pro</h1>
         
         <div class="control-group">
-            <label class="control-header">Upload Image</label>
             <input type="file" id="imageLoader" accept="image/*">
         </div>
 
-        <hr style="border-color: #333; width: 100%; margin: 5px 0;">
-
+        <h2>Grid Area</h2>
         <div class="control-group">
-            <div class="control-header">
-                <label for="colSlider">Columns</label>
-                <span id="colValue">4</span>
-            </div>
-            <input type="range" id="colSlider" min="2" max="20" value="4" step="1">
+            <div class="control-header"><label>Columns</label><span id="colValue">5</span></div>
+            <input type="range" id="colSlider" min="2" max="30" value="5" step="1">
         </div>
-
         <div class="control-group">
-            <div class="control-header">
-                <label for="rowSlider">Rows</label>
-                <span id="rowValue">5</span>
-            </div>
-            <input type="range" id="rowSlider" min="2" max="20" value="5" step="1">
+            <div class="control-header"><label>Rows</label><span id="rowValue">6</span></div>
+            <input type="range" id="rowSlider" min="2" max="30" value="6" step="1">
         </div>
-
         <div class="control-group">
-            <div class="control-header">
-                <label for="widthSlider">Effect Width (%)</label>
-                <span id="widthValue">50</span>
-            </div>
-            <input type="range" id="widthSlider" min="10" max="100" value="50" step="1">
+            <div class="control-header"><label>Area Width %</label><span id="widthValue">40</span></div>
+            <input type="range" id="widthSlider" min="10" max="100" value="40" step="1">
         </div>
-
         <div class="control-group">
-            <div class="control-header">
-                <label for="heightSlider">Effect Height (%)</label>
-                <span id="heightValue">60</span>
-            </div>
+            <div class="control-header"><label>Area Height %</label><span id="heightValue">60</span></div>
             <input type="range" id="heightSlider" min="10" max="100" value="60" step="1">
         </div>
 
-        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
-            <button id="randomizeBtn" class="primary-btn">Randomize Slices</button>
+        <h2>Placement</h2>
+        <div class="control-group">
+            <div class="control-header"><label>Offset X</label><span id="offsetXValue">0</span></div>
+            <input type="range" id="offsetXSlider" min="-50" max="50" value="0" step="1">
+        </div>
+        <div class="control-group">
+            <div class="control-header"><label>Offset Y</label><span id="offsetYValue">0</span></div>
+            <input type="range" id="offsetYSlider" min="-50" max="50" value="0" step="1">
+        </div>
+
+        <h2>Slice Logic</h2>
+        <select id="patternSelect">
+            <option value="random">Random Chaos</option>
+            <option value="rowRepeat">Repeat Specific Row</option>
+            <option value="colRepeat">Repeat Specific Column</option>
+            <option value="hSmear">Horizontal Smear (Glitch)</option>
+            <option value="vSmear">Vertical Smear (Glitch)</option>
+            <option value="mirrorX">Mirror Horizontal (Kaleidoscope)</option>
+            <option value="mirrorY">Mirror Vertical (Kaleidoscope)</option>
+        </select>
+
+        <!-- Conditional controls for Repeat modes -->
+        <div id="rowControl" class="control-group hidden">
+            <div class="control-header"><label>Source Row</label><span id="srcRowValue">0</span></div>
+            <input type="range" id="srcRowSlider" min="0" max="5" value="0" step="1">
+        </div>
+        <div id="colControl" class="control-group hidden">
+            <div class="control-header"><label>Source Col</label><span id="srcColValue">0</span></div>
+            <input type="range" id="srcColSlider" min="0" max="5" value="0" step="1">
+        </div>
+
+        <label class="checkbox-group" style="margin-top: 10px;">
+            <input type="checkbox" id="showGrid"> Show Alignment Grid
+        </label>
+
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 20px;">
+            <button id="randomizeBtn" class="primary-btn">Apply Effect</button>
             <button id="downloadBtn">Download Image</button>
         </div>
     </div>
@@ -172,104 +147,197 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
+        // Inputs
         const imageLoader = document.getElementById('imageLoader');
         const colSlider = document.getElementById('colSlider');
         const rowSlider = document.getElementById('rowSlider');
         const widthSlider = document.getElementById('widthSlider');
         const heightSlider = document.getElementById('heightSlider');
+        const offsetXSlider = document.getElementById('offsetXSlider');
+        const offsetYSlider = document.getElementById('offsetYSlider');
+        const patternSelect = document.getElementById('patternSelect');
+        const showGridCheck = document.getElementById('showGrid');
         
-        const colValue = document.getElementById('colValue');
-        const rowValue = document.getElementById('rowValue');
-        const widthValue = document.getElementById('widthValue');
-        const heightValue = document.getElementById('heightValue');
-        
-        const randomizeBtn = document.getElementById('randomizeBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
+        // Source Selectors
+        const rowControl = document.getElementById('rowControl');
+        const colControl = document.getElementById('colControl');
+        const srcRowSlider = document.getElementById('srcRowSlider');
+        const srcColSlider = document.getElementById('srcColSlider');
+
+        // Labels
+        const labels = {
+            col: document.getElementById('colValue'),
+            row: document.getElementById('rowValue'),
+            width: document.getElementById('widthValue'),
+            height: document.getElementById('heightValue'),
+            offX: document.getElementById('offsetXValue'),
+            offY: document.getElementById('offsetYValue'),
+            srcRow: document.getElementById('srcRowValue'),
+            srcCol: document.getElementById('srcColValue')
+        };
 
         let img = new Image();
-        // Default placeholder image
-        img.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop';
+        // Default image: A high-res portrait (change this to your desired default)
+        img.src = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&auto=format&fit=crop';
+        let imageLoaded = false;
 
         img.onload = () => {
-            // Set canvas resolution to match image
             canvas.width = img.width;
             canvas.height = img.height;
+            imageLoaded = true;
             drawEffect();
         };
 
         // --- Event Listeners ---
-
-        // Image Upload
         imageLoader.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    img.src = event.target.result;
-                };
+                reader.onload = (event) => { img.src = event.target.result; };
                 reader.readAsDataURL(file);
             }
         });
 
-        // Update slider text values
-        colSlider.addEventListener('input', (e) => { colValue.textContent = e.target.value; drawEffect(); });
-        rowSlider.addEventListener('input', (e) => { rowValue.textContent = e.target.value; drawEffect(); });
-        widthSlider.addEventListener('input', (e) => { widthValue.textContent = e.target.value; drawEffect(); });
-        heightSlider.addEventListener('input', (e) => { heightValue.textContent = e.target.value; drawEffect(); });
+        // Update UI Text & Max values based on sliders
+        function updateUI() {
+            labels.col.textContent = colSlider.value;
+            labels.row.textContent = rowSlider.value;
+            labels.width.textContent = widthSlider.value;
+            labels.height.textContent = heightSlider.value;
+            labels.offX.textContent = offsetXSlider.value;
+            labels.offY.textContent = offsetYSlider.value;
+            
+            // Dynamically update max values for source rows/cols
+            srcRowSlider.max = parseInt(rowSlider.value) - 1;
+            srcColSlider.max = parseInt(colSlider.value) - 1;
+            if(parseInt(srcRowSlider.value) > parseInt(srcRowSlider.max)) srcRowSlider.value = srcRowSlider.max;
+            if(parseInt(srcColSlider.value) > parseInt(srcColSlider.max)) srcColSlider.value = srcColSlider.max;
+            
+            labels.srcRow.textContent = srcRowSlider.value;
+            labels.srcCol.textContent = srcColSlider.value;
 
-        // Buttons
-        randomizeBtn.addEventListener('click', drawEffect);
-        downloadBtn.addEventListener('click', () => {
+            // Show/hide conditional controls
+            const pattern = patternSelect.value;
+            rowControl.classList.toggle('hidden', pattern !== 'rowRepeat');
+            colControl.classList.toggle('hidden', pattern !== 'colRepeat');
+        }
+
+        // Add listeners to all inputs
+        const allInputs = [colSlider, rowSlider, widthSlider, heightSlider, offsetXSlider, offsetYSlider, srcRowSlider, srcColSlider, patternSelect, showGridCheck];
+        allInputs.forEach(input => {
+            input.addEventListener('input', () => { updateUI(); drawEffect(); });
+        });
+
+        document.getElementById('randomizeBtn').addEventListener('click', drawEffect);
+        document.getElementById('downloadBtn').addEventListener('click', () => {
             const link = document.createElement('a');
-            link.download = 'slice_repeat_art.png';
+            link.download = 'intentional_slice_art.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
         });
 
         // --- Main Drawing Function ---
         function drawEffect() {
-            if (!img.complete || img.naturalWidth === 0) return;
+            if (!imageLoaded) return;
+            updateUI();
 
-            // 1. Draw the original base image
+            // 1. Draw original image
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
 
-            // 2. Get values from UI
+            // 2. Get UI Values
             const cols = parseInt(colSlider.value);
             const rows = parseInt(rowSlider.value);
             const widthPct = parseInt(widthSlider.value) / 100;
             const heightPct = parseInt(heightSlider.value) / 100;
+            const offX = (parseInt(offsetXSlider.value) / 100) * canvas.width;
+            const offY = (parseInt(offsetYSlider.value) / 100) * canvas.height;
+            const pattern = patternSelect.value;
 
-            // 3. Calculate the grid bounding box (centered)
+            // 3. Calculate Grid Bounding Box
             const gridW = canvas.width * widthPct;
             const gridH = canvas.height * heightPct;
-            const gridX = (canvas.width - gridW) / 2;
-            const gridY = (canvas.height - gridH) / 2;
-
+            const gridX = (canvas.width - gridW) / 2 + offX;
+            const gridY = (canvas.height - gridH) / 2 + offY;
             const cellW = gridW / cols;
             const cellH = gridH / rows;
 
-            // 4. Loop through the grid and draw random slices
+            // 4. Iterate through the grid
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     
-                    // Destination coordinates on the canvas
                     const destX = gridX + (c * cellW);
                     const destY = gridY + (r * cellH);
 
-                    // Pick a random source cell from within the grid area
-                    const randomCol = Math.floor(Math.random() * cols);
-                    const randomRow = Math.floor(Math.random() * rows);
+                    let srcColIndex = c;
+                    let srcRowIndex = r;
 
-                    const srcX = gridX + (randomCol * cellW);
-                    const srcY = gridY + (randomRow * cellH);
+                    // Determine source based on chosen logic
+                    switch (pattern) {
+                        case 'random':
+                            srcColIndex = Math.floor(Math.random() * cols);
+                            srcRowIndex = Math.floor(Math.random() * rows);
+                            break;
+                        case 'rowRepeat':
+                            // Keep column same, force row to the selected source row
+                            srcRowIndex = parseInt(srcRowSlider.value);
+                            break;
+                        case 'colRepeat':
+                            // Keep row same, force column to the selected source column
+                            srcColIndex = parseInt(srcColSlider.value);
+                            break;
+                        case 'hSmear':
+                            // Shift left or right by 1 or 2 cells randomly, keep row
+                            let hShift = Math.floor(Math.random() * 5) - 2; 
+                            srcColIndex = (c + hShift + cols) % cols;
+                            break;
+                        case 'vSmear':
+                            // Shift up or down randomly, keep column
+                            let vShift = Math.floor(Math.random() * 5) - 2;
+                            srcRowIndex = (r + vShift + rows) % rows;
+                            break;
+                        case 'mirrorX':
+                            // Flip horizontally
+                            srcColIndex = (cols - 1) - c;
+                            break;
+                        case 'mirrorY':
+                            // Flip vertically
+                            srcRowIndex = (rows - 1) - r;
+                            break;
+                    }
 
-                    // Draw the slice
+                    const srcX = gridX + (srcColIndex * cellW);
+                    const srcY = gridY + (srcRowIndex * cellH);
+
+                    // Draw the sliced piece
                     ctx.drawImage(
                         img, 
                         srcX, srcY, cellW, cellH, 
                         destX, destY, cellW, cellH
                     );
+                }
+            }
+
+            // 5. Draw Alignment Grid Overlay (if checked)
+            if (showGridCheck.checked) {
+                ctx.strokeStyle = 'rgba(255, 71, 87, 0.4)'; // Reddish overlay
+                ctx.lineWidth = Math.max(1, canvas.width / 1000); // Scale line width
+                
+                // Draw outer boundary
+                ctx.strokeRect(gridX, gridY, gridW, gridH);
+
+                // Draw inner lines
+                for (let c = 1; c < cols; c++) {
+                    ctx.beginPath();
+                    ctx.moveTo(gridX + c * cellW, gridY);
+                    ctx.lineTo(gridX + c * cellW, gridY + gridH);
+                    ctx.stroke();
+                }
+                for (let r = 1; r < rows; r++) {
+                    ctx.beginPath();
+                    ctx.moveTo(gridX, gridY + r * cellH);
+                    ctx.lineTo(gridX + gridW, gridY + r * cellH);
+                    ctx.stroke();
                 }
             }
         }
