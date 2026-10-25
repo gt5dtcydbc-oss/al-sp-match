@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intentional Slice & Repeat Tool</title>
+    <title>Slice & Repeat Pro</title>
     <style>
         * { box-sizing: border-box; }
         
@@ -42,27 +42,16 @@
         .checkbox-group { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; cursor: pointer;}
         input[type="checkbox"] { width: 16px; height: 16px; accent-color: #ff4757; cursor: pointer;}
 
-        /* --- Custom File Upload Button --- */
+        /* --- Custom File Upload --- */
         .custom-file-upload {
-            padding: 10px; 
-            background: #333; 
-            color: #fff; 
-            border: 1px solid #444; 
-            border-radius: 6px;
-            cursor: pointer; 
-            font-weight: 600; 
-            transition: all 0.2s; 
-            text-align: center; 
-            width: 100%; 
-            font-size: 0.9rem;
-            display: block;
+            padding: 10px; background: #333; color: #fff; border: 1px solid #444; border-radius: 6px;
+            cursor: pointer; font-weight: 600; transition: all 0.2s; text-align: center; width: 100%; font-size: 0.9rem; display: block;
         }
         .custom-file-upload:hover { background: #444; border-color: #555; }
 
         button {
             padding: 10px; background: #333; color: #fff; border: 1px solid #444; border-radius: 6px;
-            cursor: pointer; font-weight: 600; transition: all 0.2s; text-align: center; width: 100%; font-size: 0.9rem;
-            font-family: inherit;
+            cursor: pointer; font-weight: 600; transition: all 0.2s; text-align: center; width: 100%; font-size: 0.9rem; font-family: inherit;
         }
         button:hover { background: #444; border-color: #555; }
         
@@ -71,18 +60,31 @@
 
         /* --- Canvas Area --- */
         .canvas-container {
-            flex-grow: 1; display: flex; justify-content: center; align-items: center;
-            padding: 20px; overflow: hidden; background: #0a0a0a; position: relative;
+            flex: 1; /* Takes up all remaining space */
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            padding: 20px; 
+            background: #0a0a0a; 
+            overflow: hidden;
+            min-width: 0; /* Crucial for flexbox to not overflow */
         }
 
-        canvas { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        canvas { 
+            background-color: #2a2a2a; /* Visible background just in case */
+            border: 1px dashed #555;
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
+        }
 
         .hidden { display: none !important; }
 
         @media (max-width: 768px) {
-            body { flex-direction: column; overflow: auto; }
-            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #333; }
-            .canvas-container { padding: 10px; height: 60vh; }
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: 50vh; border-right: none; border-bottom: 1px solid #333; }
+            .canvas-container { height: 50vh; padding: 10px; }
         }
     </style>
 </head>
@@ -155,14 +157,21 @@
         </div>
     </div>
 
+    <!-- Visible Canvas -->
     <div class="canvas-container">
-        <canvas id="canvas"></canvas>
+        <canvas id="canvas" width="800" height="600"></canvas>
     </div>
 
     <script>
+        // --- DOM Elements ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
+        // Hidden Buffer Canvas to prevent browser rendering glitches
+        const bufferCanvas = document.createElement('canvas');
+        const bufferCtx = bufferCanvas.getContext('2d');
+
+        // Inputs
         const imageLoader = document.getElementById('imageLoader');
         const colSlider = document.getElementById('colSlider');
         const rowSlider = document.getElementById('rowSlider');
@@ -189,72 +198,74 @@
             srcCol: document.getElementById('srcColValue')
         };
 
-        let img = new Image();
-        let imageLoaded = false;
+        let isImageLoaded = false;
 
-        // --- 1. GENERATE LOCAL PLACEHOLDER (No network required) ---
-        function generatePlaceholder() {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 800;
-            tempCanvas.height = 1000;
-            const tCtx = tempCanvas.getContext('2d');
+        // --- 1. BULLETPROOF IMAGE LOADING ---
+        function loadImageIntoBuffer(src) {
+            const img = new Image();
             
-            tCtx.fillStyle = '#222';
-            tCtx.fillRect(0, 0, 800, 1000);
-            
-            tCtx.fillStyle = '#ff4757';
-            tCtx.beginPath();
-            tCtx.arc(400, 400, 200, 0, Math.PI * 2);
-            tCtx.fill();
-            
-            tCtx.fillStyle = '#1e90ff';
-            tCtx.fillRect(100, 700, 600, 150);
+            img.onload = () => {
+                // Scale down massive images so the browser doesn't crash
+                const MAX_SIZE = 2000; 
+                let w = img.width;
+                let h = img.height;
+                
+                if (w > MAX_SIZE || h > MAX_SIZE) {
+                    const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+                    w = w * ratio;
+                    h = h * ratio;
+                }
 
-            tCtx.fillStyle = '#fff';
-            tCtx.font = 'bold 40px sans-serif';
-            tCtx.textAlign = 'center';
-            tCtx.fillText('Upload an Image', 400, 880);
+                // Set both canvases to match the image size
+                bufferCanvas.width = w;
+                bufferCanvas.height = h;
+                canvas.width = w;
+                canvas.height = h;
 
-            const newImg = new Image();
-            newImg.onload = () => {
-                img = newImg;
-                canvas.width = img.width;
-                canvas.height = img.height;
-                imageLoaded = true;
+                // Draw the image onto the hidden buffer canvas
+                bufferCtx.drawImage(img, 0, 0, w, h);
+                
+                isImageLoaded = true;
                 drawEffect();
             };
-            newImg.src = tempCanvas.toDataURL();
+
+            img.onerror = () => {
+                alert("There was an error loading this image. Please try a standard JPG or PNG.");
+            };
+
+            img.src = src;
         }
 
-        // Initialize with the placeholder
-        generatePlaceholder();
+        // Create a guaranteed-to-work SVG placeholder locally (no internet needed)
+        function loadDefaultImage() {
+            const svgString = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+                <rect width="800" height="1000" fill="#1e1e1e"/>
+                <circle cx="400" cy="400" r="180" fill="#ff4757"/>
+                <rect x="150" y="700" width="500" height="120" fill="#1e90ff"/>
+                <text x="50%" y="850" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="36" font-weight="bold">Upload an Image</text>
+            </svg>`;
+            
+            const blob = new Blob([svgString], {type: 'image/svg+xml'});
+            const url = URL.createObjectURL(blob);
+            loadImageIntoBuffer(url);
+        }
 
-        // --- 2. ROBUST IMAGE UPLOAD LOGIC ---
+        // Start with the placeholder
+        loadDefaultImage();
+
+        // --- 2. EVENT LISTENERS ---
         imageLoader.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                const newImg = new Image();
-                
-                newImg.onload = () => {
-                    img = newImg;
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    imageLoaded = true;
-                    drawEffect();
-                    // Free up memory
-                    URL.revokeObjectURL(newImg.src); 
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    loadImageIntoBuffer(event.target.result);
                 };
-
-                newImg.onerror = () => {
-                    alert("Oops! The browser couldn't read this image format. Please try a JPG or PNG. (Note: Apple HEIC files often don't work in browsers).");
-                };
-
-                // Use ObjectURL instead of FileReader for better performance
-                newImg.src = URL.createObjectURL(file);
+                reader.readAsDataURL(file);
             }
         });
 
-        // --- 3. UI UPDATES ---
         function updateUI() {
             labels.col.textContent = colSlider.value;
             labels.row.textContent = rowSlider.value;
@@ -278,29 +289,35 @@
 
         const allInputs = [colSlider, rowSlider, widthSlider, heightSlider, offsetXSlider, offsetYSlider, srcRowSlider, srcColSlider, patternSelect, showGridCheck];
         allInputs.forEach(input => {
-            input.addEventListener('input', () => { updateUI(); drawEffect(); });
+            input.addEventListener('input', () => { 
+                updateUI(); 
+                if (isImageLoaded) drawEffect(); 
+            });
         });
 
-        document.getElementById('randomizeBtn').addEventListener('click', drawEffect);
+        document.getElementById('randomizeBtn').addEventListener('click', () => {
+            if (isImageLoaded) drawEffect();
+        });
         
         document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!isImageLoaded) return;
             try {
                 const link = document.createElement('a');
-                link.download = 'slice_repeat_art.png';
+                link.download = 'slice_art.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             } catch (err) {
-                alert("Cannot download due to browser security settings.");
+                alert("Your browser blocked the download. Try uploading an image from your computer first.");
             }
         });
 
-        // --- 4. MAIN DRAWING LOGIC ---
+        // --- 3. DRAWING LOGIC ---
         function drawEffect() {
-            if (!imageLoaded || img.width === 0) return;
+            if (!isImageLoaded) return;
             updateUI();
 
+            // Clear the visible canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
 
             const cols = parseInt(colSlider.value);
             const rows = parseInt(rowSlider.value);
@@ -317,6 +334,10 @@
             const cellW = gridW / cols;
             const cellH = gridH / rows;
 
+            // First, draw the untouched background image from the buffer
+            ctx.drawImage(bufferCanvas, 0, 0);
+
+            // Then, draw the slices on top
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     
@@ -356,10 +377,12 @@
                     const srcX = gridX + (srcColIndex * cellW);
                     const srcY = gridY + (srcRowIndex * cellH);
 
-                    ctx.drawImage(img, srcX, srcY, cellW, cellH, destX, destY, cellW, cellH);
+                    // Draw slice from Buffer Canvas to Visible Canvas
+                    ctx.drawImage(bufferCanvas, srcX, srcY, cellW, cellH, destX, destY, cellW, cellH);
                 }
             }
 
+            // Draw Grid Overlay
             if (showGridCheck.checked) {
                 ctx.strokeStyle = 'rgba(255, 71, 87, 0.6)'; 
                 ctx.lineWidth = Math.max(1, canvas.width / 1000); 
