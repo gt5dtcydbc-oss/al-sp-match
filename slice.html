@@ -42,11 +42,29 @@
         .checkbox-group { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; cursor: pointer;}
         input[type="checkbox"] { width: 16px; height: 16px; accent-color: #ff4757; cursor: pointer;}
 
-        button, input[type="file"]::file-selector-button {
+        /* --- Custom File Upload Button --- */
+        .custom-file-upload {
+            padding: 10px; 
+            background: #333; 
+            color: #fff; 
+            border: 1px solid #444; 
+            border-radius: 6px;
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: all 0.2s; 
+            text-align: center; 
+            width: 100%; 
+            font-size: 0.9rem;
+            display: block;
+        }
+        .custom-file-upload:hover { background: #444; border-color: #555; }
+
+        button {
             padding: 10px; background: #333; color: #fff; border: 1px solid #444; border-radius: 6px;
             cursor: pointer; font-weight: 600; transition: all 0.2s; text-align: center; width: 100%; font-size: 0.9rem;
+            font-family: inherit;
         }
-        button:hover, input[type="file"]::file-selector-button:hover { background: #444; border-color: #555; }
+        button:hover { background: #444; border-color: #555; }
         
         .primary-btn { background: #ff4757; border-color: #ff4757; color: white; margin-top: 10px; }
         .primary-btn:hover { background: #ff6b81; border-color: #ff6b81; }
@@ -75,7 +93,10 @@
         <h1>Slice & Repeat Pro</h1>
         
         <div class="control-group">
-            <input type="file" id="imageLoader" accept="image/*">
+            <!-- Hidden actual file input -->
+            <input type="file" id="imageLoader" accept="image/*" style="display: none;">
+            <!-- Styled Label acting as the button -->
+            <label for="imageLoader" class="custom-file-upload">Upload New Image</label>
         </div>
 
         <h2>Grid Area</h2>
@@ -177,7 +198,8 @@
         };
 
         let img = new Image();
-        // Default image: A high-res portrait (change this to your desired default)
+        // Important: crossOrigin prevents canvas tainting so the Download button works
+        img.crossOrigin = "Anonymous"; 
         img.src = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&auto=format&fit=crop';
         let imageLoaded = false;
 
@@ -189,11 +211,24 @@
         };
 
         // --- Event Listeners ---
+        
+        // Fixed File Upload Logic
         imageLoader.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (event) => { img.src = event.target.result; };
+                reader.onload = (event) => {
+                    // Create a NEW image object to force onload to fire properly
+                    const newImg = new Image();
+                    newImg.onload = () => {
+                        img = newImg; // Replace global image
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        imageLoaded = true;
+                        drawEffect();
+                    };
+                    newImg.src = event.target.result;
+                };
                 reader.readAsDataURL(file);
             }
         });
@@ -229,11 +264,16 @@
         });
 
         document.getElementById('randomizeBtn').addEventListener('click', drawEffect);
+        
         document.getElementById('downloadBtn').addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'intentional_slice_art.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            try {
+                const link = document.createElement('a');
+                link.download = 'intentional_slice_art.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert("Cannot download: The image might be cross-origin. Try uploading a file from your computer instead.");
+            }
         });
 
         // --- Main Drawing Function ---
@@ -279,29 +319,23 @@
                             srcRowIndex = Math.floor(Math.random() * rows);
                             break;
                         case 'rowRepeat':
-                            // Keep column same, force row to the selected source row
                             srcRowIndex = parseInt(srcRowSlider.value);
                             break;
                         case 'colRepeat':
-                            // Keep row same, force column to the selected source column
                             srcColIndex = parseInt(srcColSlider.value);
                             break;
                         case 'hSmear':
-                            // Shift left or right by 1 or 2 cells randomly, keep row
                             let hShift = Math.floor(Math.random() * 5) - 2; 
                             srcColIndex = (c + hShift + cols) % cols;
                             break;
                         case 'vSmear':
-                            // Shift up or down randomly, keep column
                             let vShift = Math.floor(Math.random() * 5) - 2;
                             srcRowIndex = (r + vShift + rows) % rows;
                             break;
                         case 'mirrorX':
-                            // Flip horizontally
                             srcColIndex = (cols - 1) - c;
                             break;
                         case 'mirrorY':
-                            // Flip vertically
                             srcRowIndex = (rows - 1) - r;
                             break;
                     }
@@ -320,13 +354,11 @@
 
             // 5. Draw Alignment Grid Overlay (if checked)
             if (showGridCheck.checked) {
-                ctx.strokeStyle = 'rgba(255, 71, 87, 0.4)'; // Reddish overlay
-                ctx.lineWidth = Math.max(1, canvas.width / 1000); // Scale line width
+                ctx.strokeStyle = 'rgba(255, 71, 87, 0.6)'; 
+                ctx.lineWidth = Math.max(1, canvas.width / 1000); 
                 
-                // Draw outer boundary
                 ctx.strokeRect(gridX, gridY, gridW, gridH);
 
-                // Draw inner lines
                 for (let c = 1; c < cols; c++) {
                     ctx.beginPath();
                     ctx.moveTo(gridX + c * cellW, gridY);
