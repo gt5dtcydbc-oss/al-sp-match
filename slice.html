@@ -93,10 +93,8 @@
         <h1>Slice & Repeat Pro</h1>
         
         <div class="control-group">
-            <!-- Hidden actual file input -->
             <input type="file" id="imageLoader" accept="image/*" style="display: none;">
-            <!-- Styled Label acting as the button -->
-            <label for="imageLoader" class="custom-file-upload">Upload New Image</label>
+            <label for="imageLoader" class="custom-file-upload">Upload Your Image</label>
         </div>
 
         <h2>Grid Area</h2>
@@ -138,7 +136,6 @@
             <option value="mirrorY">Mirror Vertical (Kaleidoscope)</option>
         </select>
 
-        <!-- Conditional controls for Repeat modes -->
         <div id="rowControl" class="control-group hidden">
             <div class="control-header"><label>Source Row</label><span id="srcRowValue">0</span></div>
             <input type="range" id="srcRowSlider" min="0" max="5" value="0" step="1">
@@ -158,17 +155,14 @@
         </div>
     </div>
 
-    <!-- Output Area -->
     <div class="canvas-container">
         <canvas id="canvas"></canvas>
     </div>
 
     <script>
-        // DOM Elements
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Inputs
         const imageLoader = document.getElementById('imageLoader');
         const colSlider = document.getElementById('colSlider');
         const rowSlider = document.getElementById('rowSlider');
@@ -179,13 +173,11 @@
         const patternSelect = document.getElementById('patternSelect');
         const showGridCheck = document.getElementById('showGrid');
         
-        // Source Selectors
         const rowControl = document.getElementById('rowControl');
         const colControl = document.getElementById('colControl');
         const srcRowSlider = document.getElementById('srcRowSlider');
         const srcColSlider = document.getElementById('srcColSlider');
 
-        // Labels
         const labels = {
             col: document.getElementById('colValue'),
             row: document.getElementById('rowValue'),
@@ -198,42 +190,71 @@
         };
 
         let img = new Image();
-        // Important: crossOrigin prevents canvas tainting so the Download button works
-        img.crossOrigin = "Anonymous"; 
-        img.src = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&auto=format&fit=crop';
         let imageLoaded = false;
 
-        img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            imageLoaded = true;
-            drawEffect();
-        };
+        // --- 1. GENERATE LOCAL PLACEHOLDER (No network required) ---
+        function generatePlaceholder() {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 800;
+            tempCanvas.height = 1000;
+            const tCtx = tempCanvas.getContext('2d');
+            
+            tCtx.fillStyle = '#222';
+            tCtx.fillRect(0, 0, 800, 1000);
+            
+            tCtx.fillStyle = '#ff4757';
+            tCtx.beginPath();
+            tCtx.arc(400, 400, 200, 0, Math.PI * 2);
+            tCtx.fill();
+            
+            tCtx.fillStyle = '#1e90ff';
+            tCtx.fillRect(100, 700, 600, 150);
 
-        // --- Event Listeners ---
-        
-        // Fixed File Upload Logic
+            tCtx.fillStyle = '#fff';
+            tCtx.font = 'bold 40px sans-serif';
+            tCtx.textAlign = 'center';
+            tCtx.fillText('Upload an Image', 400, 880);
+
+            const newImg = new Image();
+            newImg.onload = () => {
+                img = newImg;
+                canvas.width = img.width;
+                canvas.height = img.height;
+                imageLoaded = true;
+                drawEffect();
+            };
+            newImg.src = tempCanvas.toDataURL();
+        }
+
+        // Initialize with the placeholder
+        generatePlaceholder();
+
+        // --- 2. ROBUST IMAGE UPLOAD LOGIC ---
         imageLoader.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    // Create a NEW image object to force onload to fire properly
-                    const newImg = new Image();
-                    newImg.onload = () => {
-                        img = newImg; // Replace global image
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        imageLoaded = true;
-                        drawEffect();
-                    };
-                    newImg.src = event.target.result;
+                const newImg = new Image();
+                
+                newImg.onload = () => {
+                    img = newImg;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    imageLoaded = true;
+                    drawEffect();
+                    // Free up memory
+                    URL.revokeObjectURL(newImg.src); 
                 };
-                reader.readAsDataURL(file);
+
+                newImg.onerror = () => {
+                    alert("Oops! The browser couldn't read this image format. Please try a JPG or PNG. (Note: Apple HEIC files often don't work in browsers).");
+                };
+
+                // Use ObjectURL instead of FileReader for better performance
+                newImg.src = URL.createObjectURL(file);
             }
         });
 
-        // Update UI Text & Max values based on sliders
+        // --- 3. UI UPDATES ---
         function updateUI() {
             labels.col.textContent = colSlider.value;
             labels.row.textContent = rowSlider.value;
@@ -242,7 +263,6 @@
             labels.offX.textContent = offsetXSlider.value;
             labels.offY.textContent = offsetYSlider.value;
             
-            // Dynamically update max values for source rows/cols
             srcRowSlider.max = parseInt(rowSlider.value) - 1;
             srcColSlider.max = parseInt(colSlider.value) - 1;
             if(parseInt(srcRowSlider.value) > parseInt(srcRowSlider.max)) srcRowSlider.value = srcRowSlider.max;
@@ -251,13 +271,11 @@
             labels.srcRow.textContent = srcRowSlider.value;
             labels.srcCol.textContent = srcColSlider.value;
 
-            // Show/hide conditional controls
             const pattern = patternSelect.value;
             rowControl.classList.toggle('hidden', pattern !== 'rowRepeat');
             colControl.classList.toggle('hidden', pattern !== 'colRepeat');
         }
 
-        // Add listeners to all inputs
         const allInputs = [colSlider, rowSlider, widthSlider, heightSlider, offsetXSlider, offsetYSlider, srcRowSlider, srcColSlider, patternSelect, showGridCheck];
         allInputs.forEach(input => {
             input.addEventListener('input', () => { updateUI(); drawEffect(); });
@@ -268,24 +286,22 @@
         document.getElementById('downloadBtn').addEventListener('click', () => {
             try {
                 const link = document.createElement('a');
-                link.download = 'intentional_slice_art.png';
+                link.download = 'slice_repeat_art.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             } catch (err) {
-                alert("Cannot download: The image might be cross-origin. Try uploading a file from your computer instead.");
+                alert("Cannot download due to browser security settings.");
             }
         });
 
-        // --- Main Drawing Function ---
+        // --- 4. MAIN DRAWING LOGIC ---
         function drawEffect() {
-            if (!imageLoaded) return;
+            if (!imageLoaded || img.width === 0) return;
             updateUI();
 
-            // 1. Draw original image
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
 
-            // 2. Get UI Values
             const cols = parseInt(colSlider.value);
             const rows = parseInt(rowSlider.value);
             const widthPct = parseInt(widthSlider.value) / 100;
@@ -294,7 +310,6 @@
             const offY = (parseInt(offsetYSlider.value) / 100) * canvas.height;
             const pattern = patternSelect.value;
 
-            // 3. Calculate Grid Bounding Box
             const gridW = canvas.width * widthPct;
             const gridH = canvas.height * heightPct;
             const gridX = (canvas.width - gridW) / 2 + offX;
@@ -302,7 +317,6 @@
             const cellW = gridW / cols;
             const cellH = gridH / rows;
 
-            // 4. Iterate through the grid
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     
@@ -312,7 +326,6 @@
                     let srcColIndex = c;
                     let srcRowIndex = r;
 
-                    // Determine source based on chosen logic
                     switch (pattern) {
                         case 'random':
                             srcColIndex = Math.floor(Math.random() * cols);
@@ -343,20 +356,13 @@
                     const srcX = gridX + (srcColIndex * cellW);
                     const srcY = gridY + (srcRowIndex * cellH);
 
-                    // Draw the sliced piece
-                    ctx.drawImage(
-                        img, 
-                        srcX, srcY, cellW, cellH, 
-                        destX, destY, cellW, cellH
-                    );
+                    ctx.drawImage(img, srcX, srcY, cellW, cellH, destX, destY, cellW, cellH);
                 }
             }
 
-            // 5. Draw Alignment Grid Overlay (if checked)
             if (showGridCheck.checked) {
                 ctx.strokeStyle = 'rgba(255, 71, 87, 0.6)'; 
                 ctx.lineWidth = Math.max(1, canvas.width / 1000); 
-                
                 ctx.strokeRect(gridX, gridY, gridW, gridH);
 
                 for (let c = 1; c < cols; c++) {
