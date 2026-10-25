@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slice & Repeat Tool</title>
+    <style>
+        * { box-sizing: border-box; }
+        
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- UI Sidebar --- */
+        .sidebar {
+            width: 300px;
+            background: #1e1e1e;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border-right: 1px solid #333;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 10px 0;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #ff4757; /* Highlight color */
+            cursor: pointer;
+        }
+
+        button, input[type="file"]::file-selector-button {
+            padding: 12px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
+            width: 100%;
+        }
+
+        button:hover, input[type="file"]::file-selector-button:hover {
+            background: #444;
+            border-color: #555;
+        }
+
+        .primary-btn {
+            background: #ff4757;
+            border-color: #ff4757;
+            color: white;
+        }
+
+        .primary-btn:hover {
+            background: #ff6b81;
+            border-color: #ff6b81;
+        }
+
+        /* --- Canvas Area --- */
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+
+        /* --- Mobile Responsive --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #333; }
+            .canvas-container { padding: 10px; height: 60vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UI Controls -->
+    <div class="sidebar">
+        <h1>Slice & Repeat</h1>
+        
+        <div class="control-group">
+            <label class="control-header">Upload Image</label>
+            <input type="file" id="imageLoader" accept="image/*">
+        </div>
+
+        <hr style="border-color: #333; width: 100%; margin: 5px 0;">
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="colSlider">Columns</label>
+                <span id="colValue">4</span>
+            </div>
+            <input type="range" id="colSlider" min="2" max="20" value="4" step="1">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="rowSlider">Rows</label>
+                <span id="rowValue">5</span>
+            </div>
+            <input type="range" id="rowSlider" min="2" max="20" value="5" step="1">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="widthSlider">Effect Width (%)</label>
+                <span id="widthValue">50</span>
+            </div>
+            <input type="range" id="widthSlider" min="10" max="100" value="50" step="1">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="heightSlider">Effect Height (%)</label>
+                <span id="heightValue">60</span>
+            </div>
+            <input type="range" id="heightSlider" min="10" max="100" value="60" step="1">
+        </div>
+
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+            <button id="randomizeBtn" class="primary-btn">Randomize Slices</button>
+            <button id="downloadBtn">Download Image</button>
+        </div>
+    </div>
+
+    <!-- Output Area -->
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const imageLoader = document.getElementById('imageLoader');
+        const colSlider = document.getElementById('colSlider');
+        const rowSlider = document.getElementById('rowSlider');
+        const widthSlider = document.getElementById('widthSlider');
+        const heightSlider = document.getElementById('heightSlider');
+        
+        const colValue = document.getElementById('colValue');
+        const rowValue = document.getElementById('rowValue');
+        const widthValue = document.getElementById('widthValue');
+        const heightValue = document.getElementById('heightValue');
+        
+        const randomizeBtn = document.getElementById('randomizeBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let img = new Image();
+        // Default placeholder image
+        img.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop';
+
+        img.onload = () => {
+            // Set canvas resolution to match image
+            canvas.width = img.width;
+            canvas.height = img.height;
+            drawEffect();
+        };
+
+        // --- Event Listeners ---
+
+        // Image Upload
+        imageLoader.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Update slider text values
+        colSlider.addEventListener('input', (e) => { colValue.textContent = e.target.value; drawEffect(); });
+        rowSlider.addEventListener('input', (e) => { rowValue.textContent = e.target.value; drawEffect(); });
+        widthSlider.addEventListener('input', (e) => { widthValue.textContent = e.target.value; drawEffect(); });
+        heightSlider.addEventListener('input', (e) => { heightValue.textContent = e.target.value; drawEffect(); });
+
+        // Buttons
+        randomizeBtn.addEventListener('click', drawEffect);
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'slice_repeat_art.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // --- Main Drawing Function ---
+        function drawEffect() {
+            if (!img.complete || img.naturalWidth === 0) return;
+
+            // 1. Draw the original base image
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            // 2. Get values from UI
+            const cols = parseInt(colSlider.value);
+            const rows = parseInt(rowSlider.value);
+            const widthPct = parseInt(widthSlider.value) / 100;
+            const heightPct = parseInt(heightSlider.value) / 100;
+
+            // 3. Calculate the grid bounding box (centered)
+            const gridW = canvas.width * widthPct;
+            const gridH = canvas.height * heightPct;
+            const gridX = (canvas.width - gridW) / 2;
+            const gridY = (canvas.height - gridH) / 2;
+
+            const cellW = gridW / cols;
+            const cellH = gridH / rows;
+
+            // 4. Loop through the grid and draw random slices
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    
+                    // Destination coordinates on the canvas
+                    const destX = gridX + (c * cellW);
+                    const destY = gridY + (r * cellH);
+
+                    // Pick a random source cell from within the grid area
+                    const randomCol = Math.floor(Math.random() * cols);
+                    const randomRow = Math.floor(Math.random() * rows);
+
+                    const srcX = gridX + (randomCol * cellW);
+                    const srcY = gridY + (randomRow * cellH);
+
+                    // Draw the slice
+                    ctx.drawImage(
+                        img, 
+                        srcX, srcY, cellW, cellH, 
+                        destX, destY, cellW, cellH
+                    );
+                }
+            }
+        }
+    </script>
+</body>
+</html>
