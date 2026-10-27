@@ -2389,18 +2389,21 @@
         const history = Array.isArray(cached?.history) ? cached.history : [];
         if (history.length < 2) continue;
 
-        const expectedDay = WEEKDAYS.includes(cached?.rssScheduleDay)
-          ? cached.rssScheduleDay
-          : mostCommonRssHistoryDay(history, history[history.length - 1]?.day);
-        const historyMinutes = history.map(sample => Number(sample?.mins)).filter(Number.isFinite);
-        const expectedTime = isValidTime(cached?.rssScheduleTime)
-          ? cached.rssScheduleTime
-          : (historyMinutes.length ? minutesToHHMM(medianTime(historyMinutes)) : "");
+        // Compare weekly release slots in UTC, not cached local clock times.
+        // releaseAtMs already includes the feed correction used when it was saved.
+        // Do NOT add today's correction again: the feed's clock may have changed.
+        const utcSlot = inferUtcReleaseSlot(history.map(sample => sample?.releaseAtMs));
+
+        // Undated legacy samples cannot safely distinguish a seasonal clock change
+        // from a feed error. Skip this reference; the existing fallback still applies.
+        if (!utcSlot || utcSlot.sampleCount < 2) continue;
+        const expectedDay = utcSlot.day;
+        const expectedTime = utcSlot.time;
         if (!WEEKDAYS.includes(expectedDay) || !isValidTime(expectedTime)) continue;
 
-        const anchorDateKey = localDateKeyFromMs(rawMs, timeZone);
-        const expectedDateKey = closestDateKeyForWeekday(anchorDateKey, expectedDay, timeZone);
-        const expectedMs = localTimestampFromDateKeyAndTime(expectedDateKey, expectedTime, timeZone);
+        const anchorDateKey = localDateKeyFromMs(rawMs, "UTC");
+        const expectedDateKey = closestDateKeyForWeekday(anchorDateKey, expectedDay, "UTC");
+        const expectedMs = localTimestampFromDateKeyAndTime(expectedDateKey, expectedTime, "UTC");
         if (!Number.isFinite(expectedMs)) continue;
 
         const observedOffset = expectedMs - rawMs;
@@ -2499,27 +2502,85 @@
       return ((Math.round(med) % 1440) + 1440) % 1440;
     }
 
-    function inferSlotFromReleases(releases, timeZone) {
-      const sample = releases.slice(0, 3).map(item => {
-        const slot = dateToWeekdayTime(item.date, timeZone);
-        return slot ? { weekday: slot.weekday, time: slot.time, minutes: toMinutes(slot.time) } : null;
-      }).filter(Boolean);
-      if (!sample.length) return null;
-      const counts = new Map();
-      sample.forEach(item => counts.set(item.weekday, (counts.get(item.weekday) || 0) + 1));
-      let chosenDay = sample[0].weekday;
-      let bestCount = counts.get(chosenDay) || 0;
-      for (const [day, count] of counts.entries()) {
-        if (count > bestCount) { bestCount = count; chosenDay = day; }
+    function inferUtcReleaseSlot(timestamps) {
+      const dated = (timestamps || [])
+        .map(value => value instanceof Date ? value.getTime() : Number(value))
+        .filter(value => Number.isFinite(value) && value > 0 && Number.isFinite(new Date(value).getTime()))
+        .sort((a, b) => b - a)
+        .slice(0, 3);
+      if (!dated.length) return null;
+
+      // Keep weekday and time together. A circular weekly median also handles
+      // releases on either side of midnight or the Sunday/Monday boundary.
+      const weekMinutes = 7 * 1440;
+      const minutes = dated.map(value => {
+        const date = new Date(value);
+        return ((date.getUTCDay() + 6) % 7) * 1440 + date.getUTCHours() * 60 + date.getUTCMinutes();
+      });
+      const base = minutes[0];
+      let adjusted = minutes.map(value => base + ((value - base + weekMinutes * 1.5) % weekMinutes) - weekMinutes / 2)
+        .sort((a, b) => a - b);
+      if (adjusted[adjusted.length - 1] - adjusted[0] > 720) {
+        // A move to another broadcast day is different from midnight jitter.
+        // Retain weekday majority voting, with the newest day winning a tie.
+        const counts = new Map();
+        for (const value of minutes) {
+          const day = Math.floor(value / 1440);
+          counts.set(day, (counts.get(day) || 0) + 1);
+        }
+        let chosenDay = Math.floor(minutes[0] / 1440);
+        for (const [day, count] of counts) {
+          if (count > counts.get(chosenDay)) chosenDay = day;
+        }
+        adjusted = minutes.filter(value => Math.floor(value / 1440) === chosenDay).sort((a, b) => a - b);
       }
-      const dayItems = sample.filter(item => item.weekday === chosenDay);
-      const timeItems = dayItems.length ? dayItems : sample;
-      const chosenMinutes = medianTime(timeItems.map(item => item.minutes));
+      const mid = Math.floor(adjusted.length / 2);
+      const median = adjusted.length % 2 ? adjusted[mid] : (adjusted[mid - 1] + adjusted[mid]) / 2;
+      const slotMinutes = ((Math.round(median) % weekMinutes) + weekMinutes) % weekMinutes;
       return {
-        day: chosenDay,
-        time: minutesToHHMM(chosenMinutes ?? sample[0].minutes),
-        sampleCount: sample.length
+        day: WEEKDAYS[Math.floor(slotMinutes / 1440)],
+        time: minutesToHHMM(slotMinutes % 1440),
+        sampleCount: dated.length
       };
+    }
+
+    function hasUtcReleaseTiming(timing) {
+      return WEEKDAYS.includes(timing?.utcDay) && isValidTime(timing?.utcTime);
+    }
+
+    function projectUtcReleaseSlot(slot, timeZone, airingAt = null, nowMs = Date.now()) {
+      if (!slot || !WEEKDAYS.includes(slot.day) || !isValidTime(slot.time)) return null;
+      const nextAirMs = Number(airingAt) * 1000;
+      let releaseAtMs;
+      if (Number.isFinite(nextAirMs) && nextAirMs > 0) {
+        const airDateKey = localDateKeyFromMs(nextAirMs, "UTC");
+        const releaseDateKey = closestDateKeyForWeekday(airDateKey, slot.day, "UTC");
+        releaseAtMs = localTimestampFromDateKeyAndTime(releaseDateKey, slot.time, "UTC");
+      } else {
+        const todayKey = localDateKeyFromMs(nowMs, "UTC");
+        const todayIndex = WEEKDAYS.indexOf(weekdayForLocalDateKey(todayKey, "UTC"));
+        const dayOffset = (WEEKDAYS.indexOf(slot.day) - todayIndex + 7) % 7;
+        let releaseDateKey = shiftLocalDateKey(todayKey, dayOffset);
+        releaseAtMs = localTimestampFromDateKeyAndTime(releaseDateKey, slot.time, "UTC");
+        if (Number.isFinite(releaseAtMs) && releaseAtMs + AIRING_NOW_WINDOW_MINUTES * 60000 <= nowMs) {
+          releaseDateKey = shiftLocalDateKey(releaseDateKey, 7);
+          releaseAtMs = localTimestampFromDateKeyAndTime(releaseDateKey, slot.time, "UTC");
+        }
+      }
+      if (!Number.isFinite(releaseAtMs)) return null;
+      const local = dateToWeekdayTime(new Date(releaseAtMs), timeZone);
+      return local ? {
+        day: local.weekday, time: local.time,
+        rssUtcDay: slot.day, rssUtcTime: slot.time,
+        ...(Number.isFinite(slot.sampleCount) ? { sampleCount: slot.sampleCount } : {})
+      } : null;
+    }
+
+    function inferSlotFromReleases(releases, timeZone, airingAt = null) {
+      const utcSlot = inferUtcReleaseSlot((releases || []).slice(0, 3).map(item =>
+        item.date instanceof Date ? item.date.getTime() : new Date(item.date).getTime()
+      ));
+      return projectUtcReleaseSlot(utcSlot, timeZone, airingAt);
     }
 
     // Keep the existing RSS title scoring and tie order: this extracts its original
@@ -2551,7 +2612,7 @@
       const airingAt = Number(media?.nextAiringEpisode?.airingAt);
       if (!Number.isFinite(airingAt) || airingAt <= 0) return 0;
       const aniSlot = getAniListWeekdayAndTime(airingAt, timeZone);
-      const rssSlot = inferSlotFromReleases(candidate?.items || [], timeZone);
+      const rssSlot = inferSlotFromReleases(candidate?.items || [], timeZone, airingAt);
       if (!aniSlot || !rssSlot || !isValidTime(aniSlot.time) || !isValidTime(rssSlot.time)) return 0;
 
       const aniDayIndex = WEEKDAYS.indexOf(aniSlot.weekday);
@@ -2641,7 +2702,7 @@
         best = alternate.candidate;
       }
 
-      const slot = inferSlotFromReleases(best.items, timeZone);
+      const slot = inferSlotFromReleases(best.items, timeZone, media?.nextAiringEpisode?.airingAt);
       if (!slot) return null;
 
       const latestRelease = best.items[0];
@@ -2656,6 +2717,8 @@
         time: slot.time,
         source: sourceName,
         sampleCount: slot.sampleCount || 1,
+        rssUtcDay: slot.rssUtcDay,
+        rssUtcTime: slot.rssUtcTime,
         matchedTitle: best.title,
         matchedEpisode: latestRelease?.episode || null,
         latestReleaseDay: latestSlot?.weekday || null,
@@ -2992,7 +3055,9 @@
         day: item?.day,
         time: item?.time,
         finalTimingDay: item?.day,
-        finalTimingTime: item?.time
+        finalTimingTime: item?.time,
+        rssUtcDay: item.source === "manual" || item.source === "schedule" ? null : item.rssUtcDay,
+        rssUtcTime: item.source === "manual" || item.source === "schedule" ? null : item.rssUtcTime
       }, timeZone);
       if (Number.isFinite(scheduledReleaseAtMs) && scheduledReleaseAtMs > 0) {
         return scheduledReleaseAtMs;
@@ -3264,6 +3329,12 @@
       if (!Number.isFinite(nextAiringAt) || nextAiringAt <= 0) return null;
       if (!isValidTime(sampledTime)) return null;
 
+      const timing = {
+        day: sampledDay, time: sampledTime,
+        utcDay: options.rssUtcDay, utcTime: options.rssUtcTime
+      };
+      if (hasUtcReleaseTiming(timing)) return releaseOccurrenceForAiring(nextAiringAt, timing, timeZone);
+
       const finalDateKey = localDateKeyFromMs(nextAiringAt * 1000, timeZone);
       if (!finalDateKey) return null;
 
@@ -3298,7 +3369,9 @@
             day: options.day,
             time: options.time,
             finalTimingDay: options.finalTimingDay,
-            finalTimingTime: options.finalTimingTime
+            finalTimingTime: options.finalTimingTime,
+            rssUtcDay: options.rssUtcDay,
+            rssUtcTime: options.rssUtcTime
           }, timeZone)
         : null;
       const fallbackFinalAiringAtMs = hasNextAiringAt ? nextAiringAt * 1000 : null;
@@ -3564,6 +3637,8 @@
                   time: primary.time,
                   source: "rss",
                   sampleCount: primary.sampleCount || 1,
+                  rssUtcDay: primary.rssUtcDay,
+                  rssUtcTime: primary.rssUtcTime,
                   matchedTitle: primary.matchedTitle || "",
                   matchedEpisode: primary.matchedEpisode || null,
                   latestReleaseDay: primary.latestReleaseDay || null,
@@ -3763,6 +3838,8 @@
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: primary.day, time: primary.time,
             format: media.format || "", source: primary.source,
             sampleCount: Math.min(primary.sampleCount || 1, 3),
+            rssUtcDay: primary.rssUtcDay,
+            rssUtcTime: primary.rssUtcTime,
             matchedTitle: primary.matchedTitle || "", matchedEpisode: primary.matchedEpisode || null,
             latestReleaseDay: primary.latestReleaseDay || null,
             latestReleaseTime: primary.latestReleaseTime || null,
@@ -3944,7 +4021,14 @@
           entry.history = Array.isArray(entry.history) ? entry.history : [];
           entry.origin = "rss";
 
-          if (entry.history.length > 0) {
+          // Historical timestamps stay unchanged. Project their UTC pattern for
+          // the predicted episode's date, so DST needs no new RSS observations.
+          const utcSlot = inferUtcReleaseSlot(entry.history.map(sample => sample?.releaseAtMs));
+          const learnedTiming = projectUtcReleaseSlot(utcSlot, DEFAULT_TIMEZONE, item.nextAiringAt);
+
+          if (learnedTiming) {
+            Object.assign(item, learnedTiming);
+          } else if (entry.history.length > 0) {
             const medMins = medianTime(entry.history.map(h => h.mins));
             item.time = minutesToHHMM(medMins);
             item.sampleCount = entry.history.length;
@@ -3955,7 +4039,7 @@
           const latestHistoryDay = entry.history.length
             ? entry.history[entry.history.length - 1]?.day
             : null;
-          const rssScheduleDay = mostCommonRssHistoryDay(
+          const rssScheduleDay = learnedTiming?.day || mostCommonRssHistoryDay(
             entry.history,
             latestHistoryDay || item.latestReleaseDay || item.day
           );
@@ -3968,8 +4052,10 @@
             latestReleaseDate: item.latestReleaseDate,
             day: item.day,
             time: item.time,
-            finalTimingDay: latestHistoryDay || item.latestReleaseDay || item.day,
+            finalTimingDay: learnedTiming?.day || latestHistoryDay || item.latestReleaseDay || item.day,
             finalTimingTime: item.time,
+            rssUtcDay: item.rssUtcDay,
+            rssUtcTime: item.rssUtcTime,
             nextAiringAt: item.nextAiringAt,
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
@@ -3998,7 +4084,12 @@
           output.push(item);
         } else if (entry.origin && (isValidTime(entry.time) || Array.isArray(entry.history))) {
           const rememberedHistory = Array.isArray(entry.history) ? entry.history.slice(-3) : [];
-          const rememberedTime = rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time;
+          const utcSlot = entry.origin === "rss"
+            ? inferUtcReleaseSlot(rememberedHistory.map(sample => sample?.releaseAtMs))
+            : null;
+          const learnedTiming = projectUtcReleaseSlot(utcSlot, DEFAULT_TIMEZONE, item.nextAiringAt);
+          const rememberedTime = learnedTiming?.time || (rememberedHistory.length ? minutesToHHMM(medianTime(rememberedHistory.map(h => h.mins))) : entry.time);
+          const rememberedDay = learnedTiming?.day || item.day;
           
           const isFreshRss = entry.latestReleaseDate && (Date.now() - entry.latestReleaseDate) <= RECENT_RELEASE_WINDOW_MS;
           
@@ -4009,7 +4100,7 @@
             ? rememberedHistory[rememberedHistory.length - 1]?.day
             : null;
           const rssScheduleDay = entry.origin === "rss"
-            ? mostCommonRssHistoryDay(rememberedHistory, entry.rssScheduleDay || latestRememberedDay || item.latestReleaseDay || item.day)
+            ? (learnedTiming?.day || mostCommonRssHistoryDay(rememberedHistory, entry.rssScheduleDay || latestRememberedDay || item.latestReleaseDay || item.day))
             : null;
           const rssScheduleTime = entry.origin === "rss"
             ? (isValidTime(rememberedTime) ? rememberedTime : (isValidTime(entry.rssScheduleTime) ? entry.rssScheduleTime : null))
@@ -4020,10 +4111,12 @@
             totalEpisodeNumber: item.totalEpisodeNumber,
             matchedEpisode: latestRememberedEpisode,
             latestReleaseDate: entry.latestReleaseDate,
-            day: item.day,
+            day: rememberedDay,
             time: rememberedTime,
-            finalTimingDay: latestRememberedDay || item.latestReleaseDay || item.day,
+            finalTimingDay: learnedTiming?.day || latestRememberedDay || item.latestReleaseDay || item.day,
             finalTimingTime: rememberedTime,
+            rssUtcDay: learnedTiming?.rssUtcDay,
+            rssUtcTime: learnedTiming?.rssUtcTime,
             nextAiringAt: item.nextAiringAt,
             isUpcomingSeason: item.isUpcomingSeason,
             isScheduleMoved: item.isScheduleMoved,
@@ -4032,7 +4125,9 @@
           });
 
           output.push({
-            ...item, day: item.day, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
+            ...item, day: rememberedDay, time: rememberedTime, source: "cache", sampleCount: rememberedHistory.length || Math.min(entry.sampleCount || 1, 3),
+            rssUtcDay: learnedTiming?.rssUtcDay,
+            rssUtcTime: learnedTiming?.rssUtcTime,
             matchedTitle: entry.matchedTitle || "", cacheOrigin: entry.origin || "saved",
             matchedEpisode: latestRememberedEpisode || item.matchedEpisode || null,
             latestReleaseDate: entry.latestReleaseDate || item.latestReleaseDate || null,
@@ -4174,7 +4269,10 @@
         const rssDay = String(item.rssScheduleDay || item.latestReleaseDay || "");
         const rssTime = String(item.rssScheduleTime || (rssBacked ? item.time : "") || "");
         if (rssBacked && WEEKDAYS.includes(rssDay) && isValidTime(rssTime)) {
-          return { day: rssDay, time: rssTime, source: "rss" };
+          return {
+            day: rssDay, time: rssTime, source: "rss",
+            utcDay: item.rssUtcDay, utcTime: item.rssUtcTime
+          };
         }
       }
 
@@ -4188,9 +4286,13 @@
       const airingMs = Number(airingAt) * 1000;
       if (!Number.isFinite(airingMs) || airingMs <= 0 ||
           !WEEKDAYS.includes(timing?.day) || !isValidTime(timing?.time)) return null;
-      const airDateKey = localDateKeyFromMs(airingMs, timeZone);
-      const releaseDateKey = closestDateKeyForWeekday(airDateKey, timing.day, timeZone);
-      return localTimestampFromDateKeyAndTime(releaseDateKey, timing.time, timeZone);
+      const utcBased = hasUtcReleaseTiming(timing);
+      const basisZone = utcBased ? "UTC" : timeZone;
+      const day = utcBased ? timing.utcDay : timing.day;
+      const time = utcBased ? timing.utcTime : timing.time;
+      const airDateKey = localDateKeyFromMs(airingMs, basisZone);
+      const releaseDateKey = closestDateKeyForWeekday(airDateKey, day, basisZone);
+      return localTimestampFromDateKeyAndTime(releaseDateKey, time, basisZone);
     }
 
     function resolveNextUpOccurrence(item, timing, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
@@ -4219,7 +4321,7 @@
           const learnedRssDay = String(item.rssScheduleDay || "");
           const learnedRssTime = String(item.rssScheduleTime || "");
           const previousTiming = WEEKDAYS.includes(learnedRssDay) && isValidTime(learnedRssTime)
-            ? { day: learnedRssDay, time: learnedRssTime, source: "rss" }
+            ? { ...timing, day: learnedRssDay, time: learnedRssTime, source: "rss" }
             : timing;
           const previousAtMs = releaseOccurrenceForAiring(previousAiringAt, previousTiming, timeZone);
           if (Number.isFinite(previousAtMs)) {
@@ -4245,9 +4347,11 @@
           const inferredReleaseDateKey = previousAirDateKey
             ? closestDateKeyForWeekday(previousAirDateKey, timing.day, timeZone)
             : "";
-          const inferredPreviousAtMs = inferredReleaseDateKey
-            ? localTimestampFromDateKeyAndTime(inferredReleaseDateKey, timing.time, timeZone)
-            : null;
+          const inferredPreviousAtMs = hasUtcReleaseTiming(timing)
+            ? releaseOccurrenceForAiring(nextAiringAt - 7 * 86400, timing, timeZone)
+            : (inferredReleaseDateKey
+              ? localTimestampFromDateKeyAndTime(inferredReleaseDateKey, timing.time, timeZone)
+              : null);
 
           if (Number.isFinite(inferredPreviousAtMs) &&
               inferredPreviousAtMs > nowMs && inferredPreviousAtMs < nextAtMs) {
@@ -4270,18 +4374,22 @@
 
       // A usable weekly slot can exist without an exact AniList episode/date pair.
       // Keep the countdown, but show EP ? instead of attaching a guessed episode.
-      const todayKey = localDateKeyFromMs(nowMs, timeZone);
-      const todayIndex = WEEKDAYS.indexOf(weekdayForLocalDateKey(todayKey, timeZone));
-      const targetIndex = WEEKDAYS.indexOf(timing.day);
+      const utcBased = hasUtcReleaseTiming(timing);
+      const basisZone = utcBased ? "UTC" : timeZone;
+      const targetDay = utcBased ? timing.utcDay : timing.day;
+      const targetTime = utcBased ? timing.utcTime : timing.time;
+      const todayKey = localDateKeyFromMs(nowMs, basisZone);
+      const todayIndex = WEEKDAYS.indexOf(weekdayForLocalDateKey(todayKey, basisZone));
+      const targetIndex = WEEKDAYS.indexOf(targetDay);
       if (todayIndex < 0 || targetIndex < 0 || !isValidTime(timing.time)) return null;
       const dayOffset = (targetIndex - todayIndex + 7) % 7;
       let dateKey = shiftLocalDateKey(todayKey, dayOffset);
-      let occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
+      let occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, targetTime, basisZone);
       if (!Number.isFinite(occurrenceAtMs)) return null;
       if (occurrenceAtMs <= nowMs) {
         if (nowMs - occurrenceAtMs < AIRING_NOW_WINDOW_MINUTES * 60000) return null;
         dateKey = shiftLocalDateKey(dateKey, 7);
-        occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, timing.time, timeZone);
+        occurrenceAtMs = localTimestampFromDateKeyAndTime(dateKey, targetTime, basisZone);
       }
       return Number.isFinite(occurrenceAtMs) && occurrenceAtMs > nowMs
         ? { occurrenceAtMs, episodeNumber: null }
@@ -4313,7 +4421,12 @@
           if (!normallyActive && !imminentUpcomingRecovery) return null;
 
           const status = { isNow: false, minutesUntil };
-          return { item, status, timing, ...occurrence };
+          const localSlot = dateToWeekdayTime(new Date(occurrence.occurrenceAtMs), timeZone);
+          const occurrenceTiming = occurrence.timing || timing;
+          return {
+            item, status, ...occurrence,
+            timing: { ...occurrenceTiming, day: localSlot.weekday, time: localSlot.time }
+          };
         })
         .filter(Boolean)
         .sort((a, b) => a.occurrenceAtMs - b.occurrenceAtMs || a.item.title.localeCompare(b.item.title))
@@ -4784,6 +4897,9 @@
 
         output.push({
           ...item,
+          ...(item.source !== "manual" && item.source !== "schedule" && item.rssUtcDay && item.rssUtcTime
+            ? (projectUtcReleaseSlot({ day: item.rssUtcDay, time: item.rssUtcTime }, DEFAULT_TIMEZONE, item.nextAiringAt) || {})
+            : {}),
           isFinalEpisode: true,
           isFinalAired: released,
           isEnded: released,
@@ -4799,7 +4915,7 @@
           diffDays: 0,
           source: item.source || "final-holdover",
           latestReleaseDate,
-          finalAiredAtMs: holdover.finalAiredAtMs || item.finalAiredAtMs || null,
+          finalAiredAtMs: finalHoldoverReleaseAtMs(holdover, DEFAULT_TIMEZONE) || holdover.finalAiredAtMs || item.finalAiredAtMs || null,
           usesRssFinalTiming: Boolean(holdover.usesRssFinalTiming || item.usesRssFinalTiming),
           rssFinalReleaseSeen: Boolean(holdover.rssFinalReleaseSeen || item.rssFinalReleaseSeen),
           isFreshRss: Boolean(item.isFreshRss) || isRecentTimestamp(latestReleaseDate)
@@ -5577,10 +5693,20 @@
       loadBoard({ reason, userName: state.userName });
     }
 
+    function scheduleClockKey(nowMs = Date.now(), timeZone = DEFAULT_TIMEZONE) {
+      const parts = getTimeZoneParts(new Date(nowMs), timeZone);
+      const renderedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+      const offsetMs = renderedUtc - Math.floor(nowMs / 1000) * 1000;
+      return `${localDateKeyFromMs(nowMs, timeZone)}:${offsetMs}`;
+    }
+
     function startAutoRefresh() {
+      let lastScheduleClockKey = scheduleClockKey();
       setInterval(() => { maybeRefreshBoard("refresh"); }, REFRESH_INTERVAL_MS);
       setInterval(async () => {
         const now = Date.now();
+        const currentScheduleClockKey = scheduleClockKey(now);
+        const scheduleClockChanged = currentScheduleClockKey !== lastScheduleClockKey;
         const todayDateKey = localDateKeyFromMs(now, DEFAULT_TIMEZONE);
         const finalDisplayNeedsRefresh = state.items.some(item => (
           item.isFinalEpisode &&
@@ -5600,8 +5726,9 @@
         ));
 
         try {
-          if (finalDisplayNeedsRefresh || finaleDotDateRolledOver || episodeTickerGateExpired) {
+          if (scheduleClockChanged || finalDisplayNeedsRefresh || finaleDotDateRolledOver || episodeTickerGateExpired) {
             await refreshBoardFromState({ allowPrune: false });
+            lastScheduleClockKey = currentScheduleClockKey;
           } else if (state.items.length) {
             updateBoardHighlights();
           }
