@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SubsPlease API - Browser CORS Check</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #101013; color: #f4f4f5; font: 16px/1.5 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+    main { margin: 0 auto; max-width: 720px; padding: 30px 20px; }
+    h1 { font-size: 1.35rem; }
+    button { padding: 13px 20px; background: #fafafa; color: #101013; border: 0; border-radius: 12px; font: inherit; font-weight: 700; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid #35353a; border-radius: 12px; background: #19191e; }
+    code { overflow-wrap: anywhere; }
+    .muted { color: #a1a1aa; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SubsPlease schedule - browser access test</h1>
+    <p class="muted">Host this file on your actual GitHub Pages site; opening it directly from Downloads or Files does not test the same origin as your board.</p>
+    <p>Page origin: <code id="origin"></code></p>
+    <button type="button" id="testBtn">Test direct API fetch</button>
+    <pre id="result" aria-live="polite">Ready.</pre>
+  </main>
+  <script>
+    const url = 'https://subsplease.org/api/?f=schedule&tz=Europe%2FBerlin';
+    const output = document.getElementById('result');
+    document.getElementById('origin').textContent = location.origin;
+    async function runTest() {
+      output.textContent = 'Fetching ' + url + '\n\nPlease wait...';
+      try {
+        const response = await fetch(url, { mode: 'cors', cache: 'no-store', credentials: 'omit' });
+        if (!response.ok) throw new Error('HTTP ' + response.status + ' ' + response.statusText);
+        const payload = await response.json();
+        const days = payload && payload.schedule && typeof payload.schedule === 'object' ? Object.keys(payload.schedule) : [];
+        const total = days.reduce((count, day) => count + (Array.isArray(payload.schedule[day]) ? payload.schedule[day].length : 0), 0);
+        if (!days.length || !total) throw new Error('Response was JSON but not a populated weekly schedule.');
+        output.textContent = 'SUCCESS: Your browser can read the SubsPlease API.\n' +
+          'Site origin: ' + location.origin + '\n' +
+          'Reported time zone: ' + (payload.tz || '(missing)') + '\n' +
+          'Weekdays returned: ' + days.join(', ') + '\n' +
+          'Number of scheduled entries: ' + total + '\n\n' +
+          'Direct API integration is technically possible from this origin.';
+      } catch (error) {
+        output.textContent = 'FAILED: The browser could not read the SubsPlease schedule.\n' +
+          'Message: ' + (error && error.message ? error.message : String(error)) + '\n\n' +
+          'Possible causes: missing CORS permission, rate limiting, network failure, or anti-bot protection.\n' +
+          'A browser developer console can distinguish the specific cause.\n' +
+          'A GitHub Actions server-side fetch is a separate test and is not blocked by browser CORS.';
+      }
+    }
+    document.getElementById('testBtn').addEventListener('click', runTest);
+    runTest();
+  </script>
+</body>
+</html>
