@@ -1,4 +1,4 @@
-name: Publish site with SubsPlease JSON schedule
+name: Publish site with dated SubsPlease JSON schedule
 
 on:
   push:
@@ -39,23 +39,55 @@ jobs:
             --exclude='/_site/' \
             ./ _site/
 
-      - name: Fetch SubsPlease schedule JSON
+      - name: Fetch dated SubsPlease schedules
+        shell: bash
         run: |
-          curl --fail --location --silent --show-error \
-            --retry 3 --retry-all-errors --max-time 30 \
-            --user-agent 'AiringBoard-JsonSchedule/1.0' \
-            --output /tmp/subsplease-schedule.json \
-            'https://subsplease.org/api/?f=schedule&tz=UTC'
+          set -euo pipefail
+          export TZ=Europe/Berlin
+
+          # Publish the current Monday-Sunday plus next Monday/Tuesday.
+          # This keeps every card in the visible week date-specific and lets
+          # Next Up cross the week boundary without guessing a DST offset.
+          today="$(date +'%Y-%m-%d')"
+          weekday_num="$(date +'%u')"
+          range_start="$(date -d "$today - $((weekday_num - 1)) days" +'%Y-%m-%d')"
+          echo '[]' > /tmp/subsplease-days.json
+
+          for offset in $(seq 0 8); do
+            day_date="$(date -d "$range_start + $offset days" +'%Y-%m-%d')"
+            day_name="$(date -d "$day_date" +'%A')"
+            day_file="/tmp/subsplease-$day_date.json"
+
+            curl --fail --location --silent --show-error \
+              --retry 3 --retry-all-errors --max-time 30 \
+              --user-agent 'AiringBoard-DatedJsonSchedule/1.0' \
+              --output "$day_file" \
+              "https://subsplease.org/api/?f=schedule&h=true&tz=Europe%2FBerlin&date=$day_date"
+
+            jq -e '
+              .tz == "Europe/Berlin" and
+              (.schedule | type == "array")
+            ' "$day_file" > /dev/null
+
+            jq --arg date "$day_date" --arg day "$day_name" --slurpfile src "$day_file" \
+              '. + [{date:$date, day:$day, schedule:($src[0].schedule // [])}]' \
+              /tmp/subsplease-days.json > /tmp/subsplease-days.next.json
+            mv /tmp/subsplease-days.next.json /tmp/subsplease-days.json
+          done
+
+          jq -n \
+            --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --arg rangeStart "$range_start" \
+            --slurpfile days /tmp/subsplease-days.json \
+            '{tz:"Europe/Berlin", rangeStart:$rangeStart, days:$days[0], fetchedAtUtc:$fetchedAtUtc}' \
+            > _site/subsplease-schedule.json
 
           jq -e '
-            (.tz as $tz | (["UTC", "Etc/GMT", "Etc/UTC"] | index($tz)) != null) and
-            (.schedule | type == "object") and
-            ([.schedule[][]] | length > 0)
-          ' /tmp/subsplease-schedule.json > /dev/null
-
-          jq --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            '. + {fetchedAtUtc: $fetchedAtUtc}' \
-            /tmp/subsplease-schedule.json > _site/subsplease-schedule.json
+            .tz == "Europe/Berlin" and
+            (.days | type == "array") and
+            (.days | length == 9) and
+            ([.days[].schedule[]] | length > 0)
+          ' _site/subsplease-schedule.json > /dev/null
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
