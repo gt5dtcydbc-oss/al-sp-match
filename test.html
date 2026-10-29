@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Airing" />
   <meta name="theme-color" content="#000000" />
   
-  <title>Currently airing · Timetable Test</title>
+  <title>Currently airing · DST-safe Timetable Test</title>
   
   <style>
     /* ---------- Premium App Theme Variables ---------- */
@@ -926,13 +926,23 @@
         opacity: 1 !important;
       }
     }
+
+    /* Live JSON diagnostics are read-only and stay inside App Configuration. */
+    .live-json-file-link { color: var(--text); font-size: 0.82rem; font-weight: 700; text-decoration: underline; width: fit-content; }
+    .live-json-list { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .live-json-list > summary { padding: 12px 14px; font-size: 0.83rem; font-weight: 800; cursor: pointer; }
+    .live-json-list[open] > summary { border-bottom: 1px solid var(--line); }
+    .live-json-rows { display: grid; gap: 0; max-height: 350px; overflow-y: auto; }
+    .live-json-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px 12px; padding: 10px 14px; align-items: start; }
+    .live-json-row + .live-json-row { border-top: 1px solid rgba(255,255,255,0.065); }
+    .live-json-name { min-width: 0; font-size: 0.81rem; font-weight: 700; overflow-wrap: anywhere; }
+    .live-json-slot { text-align: right; font-size: 0.81rem; font-weight: 800; white-space: nowrap; }
+    .live-json-source { grid-column: 1 / -1; color: var(--text-muted); font-size: 0.73rem; line-height: 1.3; overflow-wrap: anywhere; }
+    .live-json-empty { color: var(--text-muted); font-size: 0.81rem; padding: 13px 14px; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div id="liveScheduleTestStatus" role="status" aria-live="polite" style="margin: max(10px, env(safe-area-inset-top)) 0 12px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text-muted); font-size: 0.81rem; line-height: 1.4;">
-      TEST BUILD · Checking published SubsPlease timetable…
-    </div>
     <div id="board-container"></div>
 
     <details class="panel top-dropdown" style="margin-top: 24px;">
@@ -974,6 +984,28 @@
             <input id="rssProxyTemplate" type="text" spellcheck="false" placeholder="https://your-proxy.example/fetch?url=%URL%" autocomplete="off" />
           </div>
 
+          <details class="schedule-override-panel" id="liveJsonSettingsPanel" style="grid-column: 1 / -1;">
+            <summary>
+              <div>
+                <div style="font-weight: 800;">Live JSON timetable · Test</div>
+                <div id="liveJsonSettingsSummary" class="manager-toggle-copy">Checking published UTC timetable…</div>
+              </div>
+              <span class="manager-toggle-icon" aria-hidden="true">▾</span>
+            </summary>
+            <div class="schedule-override-body">
+              <div id="liveJsonSettingsStatus" class="modal-note" role="status" aria-live="polite">Loading live timetable…</div>
+              <div class="modal-note">The JSON provides <strong>planned times</strong>. UTC slots are converted to local time using each episode's date, including CET/CEST. RSS still confirms actual episodes and controls the white pulsing release-time outline. Manual &gt; Pasted &gt; Live JSON &gt; RSS &gt; AniList.</div>
+              <a class="live-json-file-link" href="./subsplease-schedule-utc.json" target="_blank" rel="noopener noreferrer">Open published UTC JSON</a>
+              <details class="live-json-list" open>
+                <summary id="liveJsonMatchedTitle">Live JSON matches (0)</summary>
+                <div id="liveJsonMatchedShows" class="live-json-rows">No matches yet.</div>
+              </details>
+              <details class="live-json-list">
+                <summary id="liveJsonFallbackTitle">Other schedule sources (0)</summary>
+                <div id="liveJsonFallbackShows" class="live-json-rows">Waiting for shows.</div>
+              </details>
+            </div>
+          </details>
           <details class="schedule-override-panel" id="scheduleOverridePanel" style="grid-column: 1 / -1;">
             <summary>
               <div>
@@ -1622,7 +1654,12 @@
       message: document.getElementById("message"),
       summary: document.getElementById("summary"),
       boardContainer: document.getElementById("board-container"),
-      liveScheduleTestStatus: document.getElementById("liveScheduleTestStatus"),
+      liveJsonSettingsSummary: document.getElementById("liveJsonSettingsSummary"),
+      liveJsonSettingsStatus: document.getElementById("liveJsonSettingsStatus"),
+      liveJsonMatchedTitle: document.getElementById("liveJsonMatchedTitle"),
+      liveJsonMatchedShows: document.getElementById("liveJsonMatchedShows"),
+      liveJsonFallbackTitle: document.getElementById("liveJsonFallbackTitle"),
+      liveJsonFallbackShows: document.getElementById("liveJsonFallbackShows"),
       footer: document.getElementById("footer"),
       updateIndicator: document.getElementById("updateIndicator"),
       openAddShowBtn: document.getElementById("openAddShowBtn"),
@@ -2158,7 +2195,7 @@
 
     // TEST BUILD: fetch the JSON produced by the GitHub Pages publishing Action.
     // Same-origin relative URL works at /al-sp-match/test.html; no SubsPlease CORS required.
-    const PUBLISHED_SCHEDULE_URL = "./subsplease-schedule.json";
+    const PUBLISHED_SCHEDULE_URL = "./subsplease-schedule-utc.json";
     const PUBLISHED_SCHEDULE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
     async function fetchPublishedSubsPleaseSchedule(nowMs = Date.now()) {
@@ -2167,12 +2204,11 @@
       });
       if (!response.ok) throw new Error(`Published JSON HTTP ${response.status}`);
       const data = await response.json();
-      if (data?.tz !== "Europe/Berlin") throw new Error("Published timetable timezone is not Europe/Berlin");
-      // The publishing Action requests Berlin wall-clock times. Never interpret
-      // those as another timezone: that would silently shift all show times.
-      if (DEFAULT_TIMEZONE !== "Europe/Berlin") {
-        throw new Error(`Device timezone ${DEFAULT_TIMEZONE} differs from published Europe/Berlin schedule`);
+      if (!["UTC", "Etc/GMT", "Etc/UTC"].includes(data?.tz)) {
+        throw new Error("Published timetable timezone must be UTC/Etc-GMT");
       }
+      // Keep the API's UTC weekday/time as the recurring reference. Converting
+      // its wall time once at download would freeze the present DST offset.
       const fetchedMs = Date.parse(data.fetchedAtUtc || "");
       if (!Number.isFinite(fetchedMs) || fetchedMs <= 0 ||
           nowMs - fetchedMs > PUBLISHED_SCHEDULE_MAX_AGE_MS ||
@@ -2192,7 +2228,7 @@
           const time = normalizeScheduleTime(entry?.time);
           if (!title || !time) continue;
           rows.push({
-            title, day, time, page: String(entry.page || ""),
+            title, utcDay: day, utcTime: time, page: String(entry.page || ""),
             variants: generateVariants([title]).map(prepareVariant)
           });
         }
@@ -2204,17 +2240,29 @@
     // Schedules contain planned releases, not episode confirmations.
     // Reuse the existing AniList title score and use timing ONLY to resolve a
     // contested timetable title. No hard block on ties or missing AniList data.
+    function projectLiveTimetableSlot(media, candidate, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
+      if (!WEEKDAYS.includes(candidate?.utcDay) || !isValidTime(candidate?.utcTime)) return null;
+      // Reuse exactly the existing RSS UTC projection. For a show with AniList
+      // nextAiringEpisode, the *episode date* determines CET vs CEST. Without
+      // one, the next UTC weekly occurrence is the anchor instead.
+      return projectUtcReleaseSlot(
+        { day: candidate.utcDay, time: candidate.utcTime },
+        timeZone, media?.nextAiringEpisode?.airingAt, nowMs
+      );
+    }
+
     function liveTimetableAniListBonus(media, candidate, timeZone = DEFAULT_TIMEZONE) {
       const airingAt = Number(media?.nextAiringEpisode?.airingAt);
       if (media?.status === "NOT_YET_RELEASED" ||
           !Number.isFinite(airingAt) || airingAt <= 0) return 0;
       const airing = getAniListWeekdayAndTime(airingAt, timeZone);
+      const projected = projectLiveTimetableSlot(media, candidate, timeZone);
       const ai = WEEKDAYS.indexOf(airing?.weekday);
-      const ci = WEEKDAYS.indexOf(candidate?.day);
-      if (ai < 0 || ci < 0 || !isValidTime(candidate?.time)) return 0;
+      const ci = WEEKDAYS.indexOf(projected?.day);
+      if (ai < 0 || ci < 0 || !isValidTime(projected?.time)) return 0;
       const weekMinutes = 7 * 1440;
       const airMinutes = ai * 1440 + toMinutes(airing.time);
-      const candidateMinutes = ci * 1440 + toMinutes(candidate.time);
+      const candidateMinutes = ci * 1440 + toMinutes(projected.time);
       const delay = (candidateMinutes - airMinutes + weekMinutes) % weekMinutes;
       if (delay <= 210) return 30; // ordinary subtitle lag; handles midnight rollover
       if (delay <= 360) return 22;
@@ -2279,9 +2327,13 @@
         }));
       }
       if (!match) return null; // normal RSS/AniList fallback remains available
+      const projected = projectLiveTimetableSlot(media, match.candidate);
+      if (!projected) return null;
       return {
-        day: match.candidate.day,
-        time: match.candidate.time,
+        day: projected.day,
+        time: projected.time,
+        utcDay: match.candidate.utcDay,
+        utcTime: match.candidate.utcTime,
         source: "schedule",
         sampleCount: 1,
         matchedTitle: match.candidate.title,
@@ -2290,22 +2342,62 @@
       };
     }
 
-    function renderLiveScheduleTestStatus() {
-      const el = els.liveScheduleTestStatus;
-      if (!el) return;
-      const matched = (state.items || []).filter(item => item.scheduleOrigin === "live").length;
-      const count = state.liveScheduleEntries.length;
+    function liveJsonSourceLabel(item) {
+      if (item.source === "manual") return "Manual override";
+      if (item.scheduleOrigin === "pasted") return "Pasted timetable";
+      if (item.scheduleOrigin === "live") return "Live JSON";
+      if (item.source === "rss") return "RSS history";
+      if (item.source === "cache" && item.cacheOrigin === "rss") return "Cached RSS history";
+      if (item.source === "cache") return "Cached schedule";
+      if (item.source === "fallback") return "AniList fallback";
+      return "Other schedule";
+    }
+
+    function renderLiveJsonSettings() {
+      if (!els.liveJsonSettingsSummary || !els.liveJsonSettingsStatus) return;
+      const list = state.items || [];
+      const live = list.filter(item => item.scheduleOrigin === "live");
+      const other = list.filter(item => item.scheduleOrigin !== "live");
+      const total = state.liveScheduleEntries.length;
+      const localZone = DEFAULT_TIMEZONE;
+      const timeAge = Date.parse(state.liveScheduleFetchedAt || "");
+      const ageMinutes = Number.isFinite(timeAge) ? Math.max(0, Math.round((Date.now() - timeAge) / 60000)) : null;
+
       if (state.liveScheduleStatus === "ready") {
-        const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(state.liveScheduleFetchedAt)) / 60000));
-        el.textContent = `TEST BUILD · Live SubsPlease: ${matched} shows matched / ${count} timetable entries · JSON published ${ageMin} min ago · Manual > Pasted > Live > RSS > AniList`;
-        el.style.borderColor = "rgba(52, 211, 153, 0.45)";
+        els.liveJsonSettingsSummary.textContent = `${live.length} shows using live JSON · ${total} timetable entries`;
+        els.liveJsonSettingsStatus.textContent = `Ready · ${total} UTC timetable entries · published ${ageMinutes} min ago · display timezone ${localZone}`;
+        els.liveJsonSettingsStatus.style.borderColor = "rgba(52, 211, 153, 0.45)";
       } else if (state.liveScheduleStatus === "error") {
-        el.textContent = `TEST BUILD · Timetable unavailable (${state.liveScheduleError}). Existing RSS/AniList fallback remains active.`;
-        el.style.borderColor = "rgba(251, 191, 36, 0.45)";
+        els.liveJsonSettingsSummary.textContent = "Unavailable · RSS/AniList fallback active";
+        els.liveJsonSettingsStatus.textContent = `UTC JSON unavailable: ${state.liveScheduleError}. Existing RSS/AniList scheduling remains active.`;
+        els.liveJsonSettingsStatus.style.borderColor = "rgba(251, 191, 36, 0.45)";
       } else {
-        el.textContent = "TEST BUILD · Checking published SubsPlease timetable…";
-        el.style.borderColor = "var(--line)";
+        els.liveJsonSettingsSummary.textContent = "Checking UTC timetable…";
+        els.liveJsonSettingsStatus.textContent = "Checking published UTC timetable…";
+        els.liveJsonSettingsStatus.style.borderColor = "var(--line)";
       }
+
+      const sorted = values => values.slice().sort((a, b) =>
+        WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) ||
+        String(a.time || "").localeCompare(String(b.time || "")) ||
+        String(a.title || "").localeCompare(String(b.title || "")));
+      const htmlFor = (values, empty) => values.length ? sorted(values).map(item => {
+        const local = WEEKDAYS.includes(item.day) && isValidTime(item.time)
+          ? `${item.day.slice(0, 3)} ${item.time}` : "No time";
+        const detail = item.scheduleOrigin === "live"
+          ? `SubsPlease: ${item.matchedTitle || item.title} · UTC ${item.liveUtcDay || "?"} ${item.liveUtcTime || "?"}`
+          : liveJsonSourceLabel(item);
+        return `<div class="live-json-row">
+          <div class="live-json-name">${escapeHtml(item.title || "Untitled")}</div>
+          <div class="live-json-slot">${escapeHtml(local)}</div>
+          <div class="live-json-source">${escapeHtml(detail)}</div>
+        </div>`;
+      }).join("") : `<div class="live-json-empty">${escapeHtml(empty)}</div>`;
+
+      els.liveJsonMatchedTitle.textContent = `Live JSON matches (${live.length})`;
+      els.liveJsonFallbackTitle.textContent = `Other schedule sources (${other.length})`;
+      els.liveJsonMatchedShows.innerHTML = htmlFor(live, "None of your tracked shows are currently using Live JSON.");
+      els.liveJsonFallbackShows.innerHTML = htmlFor(other, "All visible shows are using Live JSON.");
     }
 
     function tryMatchPastedSchedule(media, scheduleEntries) {
@@ -3217,8 +3309,10 @@
         time: item?.time,
         finalTimingDay: item?.day,
         finalTimingTime: item?.time,
-        rssUtcDay: item.source === "manual" || item.source === "schedule" ? null : item.rssUtcDay,
-        rssUtcTime: item.source === "manual" || item.source === "schedule" ? null : item.rssUtcTime
+        rssUtcDay: item.scheduleOrigin === "live" ? item.liveUtcDay
+          : (item.source === "manual" || item.source === "schedule" ? null : item.rssUtcDay),
+        rssUtcTime: item.scheduleOrigin === "live" ? item.liveUtcTime
+          : (item.source === "manual" || item.source === "schedule" ? null : item.rssUtcTime)
       }, timeZone);
       if (Number.isFinite(scheduledReleaseAtMs) && scheduledReleaseAtMs > 0) {
         return scheduledReleaseAtMs;
@@ -3943,6 +4037,10 @@
             time: selectedSchedule.time,
             finalTimingDay: selectedSchedule.day,
             finalTimingTime: selectedSchedule.time,
+            // A live UTC timetable is a date-specific instant. Preserve UTC
+            // for the finale calculation; pasted times remain local wall time.
+            rssUtcDay: pastedSchedule ? null : selectedSchedule.utcDay,
+            rssUtcTime: pastedSchedule ? null : selectedSchedule.utcTime,
             nextAiringAt: shared.nextAiringAt,
             isUpcomingSeason: shared.isUpcomingSeason,
             isScheduleMoved: shared.isScheduleMoved,
@@ -3955,6 +4053,8 @@
             id: media.id, title, siteUrl: media.siteUrl || "#", cover, day: selectedSchedule.day, time: selectedSchedule.time,
             format: media.format || "", source: "schedule", scheduleOrigin: pastedSchedule ? "pasted" : "live", sampleCount: 1,
             matchedTitle: selectedSchedule.matchedTitle || "", scheduleMatchScore: selectedSchedule.matchScore || 0,
+            liveUtcDay: pastedSchedule ? null : selectedSchedule.utcDay,
+            liveUtcTime: pastedSchedule ? null : selectedSchedule.utcTime,
             matchedEpisode: rssCandidateForFinal?.matchedEpisode || null,
             latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
             latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
@@ -4439,7 +4539,13 @@
       }
 
       if (WEEKDAYS.includes(item.day) && isValidTime(item.time)) {
-        return { day: item.day, time: item.time, source: hasExplicitSchedule ? item.source : "fallback" };
+        return {
+          day: item.day, time: item.time, source: hasExplicitSchedule ? item.source : "fallback",
+          ...(item.source === "schedule" && item.scheduleOrigin === "live" &&
+              WEEKDAYS.includes(item.liveUtcDay) && isValidTime(item.liveUtcTime)
+            ? { utcDay: item.liveUtcDay, utcTime: item.liveUtcTime }
+            : {})
+        };
       }
       return null;
     }
@@ -5061,9 +5167,11 @@
 
         output.push({
           ...item,
-          ...(item.source !== "manual" && item.source !== "schedule" && item.rssUtcDay && item.rssUtcTime
-            ? (projectUtcReleaseSlot({ day: item.rssUtcDay, time: item.rssUtcTime }, DEFAULT_TIMEZONE, item.nextAiringAt) || {})
-            : {}),
+          ...(item.scheduleOrigin === "live" && item.liveUtcDay && item.liveUtcTime
+            ? (projectUtcReleaseSlot({ day: item.liveUtcDay, time: item.liveUtcTime }, DEFAULT_TIMEZONE, item.nextAiringAt) || {})
+            : item.source !== "manual" && item.source !== "schedule" && item.rssUtcDay && item.rssUtcTime
+              ? (projectUtcReleaseSlot({ day: item.rssUtcDay, time: item.rssUtcTime }, DEFAULT_TIMEZONE, item.nextAiringAt) || {})
+              : {}),
           isFinalEpisode: true,
           isFinalAired: released,
           isEnded: released,
@@ -5144,7 +5252,7 @@
         WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day) || sortByTime(a, b)
       );
       renderPastedScheduleStatus();
-      renderLiveScheduleTestStatus();
+      renderLiveJsonSettings();
       renderSummary(state.items, state.primaryCandidates.length);
       renderBoard(state.items);
       renderSearchResults();
@@ -5251,6 +5359,7 @@
         : "Detected: No slot found";
 
       const activeItem = itemMap().get(id);
+
       if (activeItem && activeItem.historyLog) {
         els.modalHistorySlot.innerHTML = `
           <div class="history-actions">
@@ -5576,7 +5685,7 @@
       savePageSettings();
 
       state.liveScheduleStatus = "loading";
-      renderLiveScheduleTestStatus();
+      renderLiveJsonSettings();
       const preserveBoard = state.items.length > 0;
       const loadingText = options.reason === "refresh" ? "Syncing..." : "Loading...";
       showMessage("info", loadingText);
