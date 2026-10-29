@@ -1,4 +1,4 @@
-name: Publish site with dated SubsPlease JSON schedule
+name: Publish site with SubsPlease weekday schedule
 
 on:
   push:
@@ -39,50 +39,65 @@ jobs:
             --exclude='/_site/' \
             ./ _site/
 
-      - name: Fetch dated SubsPlease schedules
+      - name: Fetch SubsPlease weekday schedule
         shell: bash
         run: |
           set -euo pipefail
           export TZ=Europe/Berlin
 
+          # h=true is TODAY'S widget, not a date-specific API. Its date query
+          # parameter is ignored. Fetch the full weekday-keyed timetable once.
+          weekly_file="$(mktemp)"
+          days_file="$(mktemp)"
+          trap 'rm -f "$weekly_file" "$days_file" "$days_file.next"' EXIT
+
+          curl --fail --location --silent --show-error \
+            --retry 3 --retry-all-errors --max-time 30 \
+            --user-agent 'AiringBoard-WeekdaySchedule/2.0' \
+            --output "$weekly_file" \
+            'https://subsplease.org/api/?f=schedule&tz=Europe%2FBerlin'
+
+          # An array is the daily widget response and must never be relabeled
+          # as a full week. Empty days are valid; missing days are not.
+          jq -e '
+            .tz == "Europe/Berlin" and
+            (.schedule | type == "object") and
+            (.schedule as $schedule |
+              ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"] |
+              all(.[]; . as $day | ($schedule[$day] | type == "array"))) and
+            ([.schedule[][]] | length > 0) and
+            all(.schedule[][];
+              (.title | type == "string") and (.title | length > 0) and
+              (.time | type == "string") and (.time | test("^([01][0-9]|2[0-3]):[0-5][0-9]$")))
+          ' "$weekly_file" > /dev/null
+
           # Publish the current Monday-Sunday plus next Monday/Tuesday.
-          # This keeps every card in the visible week date-specific and lets
-          # Next Up cross the week boundary without guessing a DST offset.
+          # Dates are assigned locally from each verified weekday bucket.
+          # These are weekly-template projections, not historical API results.
           today="$(date +'%Y-%m-%d')"
           weekday_num="$(date +'%u')"
           range_start="$(date -d "$today - $((weekday_num - 1)) days" +'%Y-%m-%d')"
-          echo '[]' > /tmp/subsplease-days.json
+          echo '[]' > "$days_file"
 
           for offset in $(seq 0 8); do
             day_date="$(date -d "$range_start + $offset days" +'%Y-%m-%d')"
-            day_name="$(date -d "$day_date" +'%A')"
-            day_file="/tmp/subsplease-$day_date.json"
+            day_name="$(LC_ALL=C date -d "$day_date" +'%A')"
 
-            curl --fail --location --silent --show-error \
-              --retry 3 --retry-all-errors --max-time 30 \
-              --user-agent 'AiringBoard-DatedJsonSchedule/1.0' \
-              --output "$day_file" \
-              "https://subsplease.org/api/?f=schedule&h=true&tz=Europe%2FBerlin&date=$day_date"
-
-            jq -e '
-              .tz == "Europe/Berlin" and
-              (.schedule | type == "array")
-            ' "$day_file" > /dev/null
-
-            jq --arg date "$day_date" --arg day "$day_name" --slurpfile src "$day_file" \
-              '. + [{date:$date, day:$day, schedule:($src[0].schedule // [])}]' \
-              /tmp/subsplease-days.json > /tmp/subsplease-days.next.json
-            mv /tmp/subsplease-days.next.json /tmp/subsplease-days.json
+            jq --arg date "$day_date" --arg day "$day_name" --slurpfile src "$weekly_file" \
+              '. + [{date:$date, day:$day, schedule:$src[0].schedule[$day]}]' \
+              "$days_file" > "$days_file.next"
+            mv "$days_file.next" "$days_file"
           done
 
           jq -n \
             --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             --arg rangeStart "$range_start" \
-            --slurpfile days /tmp/subsplease-days.json \
-            '{tz:"Europe/Berlin", rangeStart:$rangeStart, days:$days[0], fetchedAtUtc:$fetchedAtUtc}' \
+            --slurpfile days "$days_file" \
+            '{schemaVersion:2, source:"subsplease-weekly", tz:"Europe/Berlin", rangeStart:$rangeStart, days:$days[0], fetchedAtUtc:$fetchedAtUtc}' \
             > _site/subsplease-schedule.json
 
           jq -e '
+            .schemaVersion == 2 and .source == "subsplease-weekly" and
             .tz == "Europe/Berlin" and
             (.days | type == "array") and
             (.days | length == 9) and
