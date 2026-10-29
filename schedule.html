@@ -984,7 +984,7 @@
             </summary>
             <div class="schedule-override-body">
               <div id="liveJsonSettingsStatus" class="modal-note" role="status" aria-live="polite">Loading timetable…</div>
-              <div class="modal-note">Automatic day and time come from the SubsPlease weekly timetable in Europe/Berlin. Each weekday is mapped to its calendar date. The time chip pulses for 36 hours after that scheduled time passes. Individual show overrides take priority.</div>
+              <div class="modal-note">Automatic day and time come from the SubsPlease weekly timetable. Times are converted for each Berlin calendar date, including daylight-saving changes. The time chip pulses for 36 hours after that scheduled time passes. Individual show overrides take priority.</div>
               <a class="live-json-file-link" href="./subsplease-schedule.json" target="_blank" rel="noopener noreferrer">Open published JSON</a>
               <details class="live-json-list" open>
                 <summary id="liveJsonMatchedTitle">Live JSON matches (0)</summary>
@@ -2148,7 +2148,7 @@
 
 
     const PUBLISHED_SCHEDULE_URL = "./subsplease-schedule.json";
-    const PUBLISHED_SCHEDULE_SCHEMA_VERSION = 2;
+    const PUBLISHED_SCHEDULE_SCHEMA_VERSION = 3;
     const PUBLISHED_SCHEDULE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
     async function fetchPublishedSubsPleaseSchedule(nowMs = Date.now()) {
@@ -2158,8 +2158,8 @@
     }
 
     function parsePublishedSubsPleaseSchedule(data, nowMs = Date.now()) {
-      // Earlier files relabeled today's widget as nine different dates. Reject
-      // that format instead of silently restoring its incorrect weekdays.
+      // Earlier formats either relabeled today's widget as nine different dates
+      // or reused weekly wall clocks with the wrong DST context.
       if (data?.schemaVersion !== PUBLISHED_SCHEDULE_SCHEMA_VERSION || data?.source !== "subsplease-weekly") {
         throw new Error("Published schedule format is obsolete; deploy the updated schedule workflow");
       }
@@ -2188,8 +2188,14 @@
           if (!title || !isValidTime(value?.time) || !time) {
             throw new Error(`Published schedule has an invalid show time on ${date}`);
           }
-          const occurrenceAtMs = localTimestampFromDateKeyAndTime(date, time, DEFAULT_TIMEZONE);
-          if (!Number.isFinite(occurrenceAtMs)) continue;
+          const occurrenceText = String(value?.occurrenceAtUtc || "");
+          const occurrenceAtMs = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(occurrenceText)
+            ? Date.parse(occurrenceText) : NaN;
+          const localSlot = dateToWeekdayTime(new Date(occurrenceAtMs), DEFAULT_TIMEZONE);
+          if (!Number.isFinite(occurrenceAtMs) || localDateKeyFromMs(occurrenceAtMs) !== date ||
+              localSlot?.weekday !== day || localSlot?.time !== time) {
+            throw new Error(`Published schedule has an invalid occurrence timestamp on ${date}`);
+          }
           rows.push({
             title, day, date, time, occurrenceAtMs,
             aired: Boolean(value?.aired),
