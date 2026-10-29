@@ -1,11 +1,11 @@
-name: Publish site with SubsPlease schedule
+name: Publish site with SubsPlease JSON schedule
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '17,47 * * * *' # approximately every 30 minutes (UTC)
+    - cron: '17,47 * * * *'
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages-schedule-deploy
+  group: github-pages-json-schedule
   cancel-in-progress: false
 
 jobs:
@@ -22,56 +22,40 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Check out the site
+      - name: Check out site
         uses: actions/checkout@v4
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Copy existing site into deployment folder
+      - name: Stage existing site
         run: |
           mkdir -p _site
-          # Assumes your published site files are in the repository root.
-          # If you publish from /docs, copy ./docs/ instead of ./ here.
-          rsync -a --exclude='/.git/' --exclude='/.github/' --exclude='/_site/' ./ _site/
+          rsync -a \
+            --exclude='/.git/' \
+            --exclude='/.github/' \
+            --exclude='/_site/' \
+            ./ _site/
 
-      - name: Fetch and validate SubsPlease JSON
+      - name: Fetch SubsPlease schedule JSON
         run: |
           curl --fail --location --silent --show-error \
             --retry 3 --retry-all-errors --max-time 30 \
-            --user-agent 'AiringBoard-ScheduleSync/1.0' \
-            --output /tmp/subsplease-source.json \
+            --user-agent 'AiringBoard-JsonSchedule/1.0' \
+            --output /tmp/subsplease-schedule.json \
             'https://subsplease.org/api/?f=schedule&tz=Europe%2FBerlin'
 
-          # Fail rather than deploy invalid/empty timetable data.
-          jq -e '.tz == "Europe/Berlin" and (.schedule | type == "object") and ([.schedule[][]] | length > 0)' \
-            /tmp/subsplease-source.json > /dev/null
+          jq -e '
+            .tz == "Europe/Berlin" and
+            (.schedule | type == "object") and
+            ([.schedule[][]] | length > 0)
+          ' /tmp/subsplease-schedule.json > /dev/null
 
-          # Preserve the existing Europe/Berlin JSON for compatibility.
           jq --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             '. + {fetchedAtUtc: $fetchedAtUtc}' \
-            /tmp/subsplease-source.json > _site/subsplease-schedule.json
-
-          # The test page uses *UTC weekday/time* and converts each next release
-          # with that episode's actual date. This survives CET/CEST transitions.
-          # Do not derive UTC by subtracting today's Berlin offset.
-          # Experimental UTC file: do not block normal Pages deployment if
-          # this additional endpoint is temporarily unavailable. The test.html
-          # falls back to RSS/AniList until a valid UTC file is published.
-          if curl --fail --location --silent --show-error \
-            --retry 3 --retry-all-errors --max-time 30 \
-            --user-agent 'AiringBoard-ScheduleSync/1.0' \
-            --output /tmp/subsplease-utc.json \
-            'https://subsplease.org/api/?f=schedule&tz=UTC' \
-            && jq -e '(.tz as $tz | (["UTC", "Etc/GMT", "Etc/UTC"] | index($tz)) != null) and (.schedule | type == "object") and ([.schedule[][]] | length > 0)' \
-              /tmp/subsplease-utc.json > /dev/null; then
-            jq --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-              '. + {fetchedAtUtc: $fetchedAtUtc}' \
-              /tmp/subsplease-utc.json > _site/subsplease-schedule-utc.json
-          else
-            echo '::warning::UTC schedule could not be retrieved; deploying the normal site and Berlin JSON only.'
-          fi
+            /tmp/subsplease-schedule.json > _site/subsplease-schedule.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
