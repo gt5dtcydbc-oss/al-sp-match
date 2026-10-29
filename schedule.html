@@ -984,7 +984,7 @@
             </summary>
             <div class="schedule-override-body">
               <div id="liveJsonSettingsStatus" class="modal-note" role="status" aria-live="polite">Loading timetable…</div>
-              <div class="modal-note">Schedule source: SubsPlease JSON published by GitHub Actions. The Action requests dated daily schedules in Europe/Berlin. Each row carries its actual calendar date, so the API resolves CET/CEST for that occurrence instead of applying one offset to the whole weekly template. The time chip pulses for 36 hours after that scheduled time passes. This test build uses no release-feed timing.</div>
+              <div class="modal-note">Automatic day and time come from the SubsPlease weekly timetable in Europe/Berlin. Each weekday is mapped to its calendar date. The time chip pulses for 36 hours after that scheduled time passes. Individual show overrides take priority.</div>
               <a class="live-json-file-link" href="./subsplease-schedule.json" target="_blank" rel="noopener noreferrer">Open published JSON</a>
               <details class="live-json-list" open>
                 <summary id="liveJsonMatchedTitle">Live JSON matches (0)</summary>
@@ -2148,29 +2148,46 @@
 
 
     const PUBLISHED_SCHEDULE_URL = "./subsplease-schedule.json";
+    const PUBLISHED_SCHEDULE_SCHEMA_VERSION = 2;
     const PUBLISHED_SCHEDULE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
     async function fetchPublishedSubsPleaseSchedule(nowMs = Date.now()) {
       const response = await fetch(PUBLISHED_SCHEDULE_URL, { cache: "no-store", signal: timeoutSignal(10000) });
       if (!response.ok) throw new Error(`Published schedule HTTP ${response.status}`);
-      const data = await response.json();
-      if (data?.tz !== "Europe/Berlin") {
-        throw new Error("Published schedule must contain dated Europe/Berlin occurrences");
+      return parsePublishedSubsPleaseSchedule(await response.json(), nowMs);
+    }
+
+    function parsePublishedSubsPleaseSchedule(data, nowMs = Date.now()) {
+      // Earlier files relabeled today's widget as nine different dates. Reject
+      // that format instead of silently restoring its incorrect weekdays.
+      if (data?.schemaVersion !== PUBLISHED_SCHEDULE_SCHEMA_VERSION || data?.source !== "subsplease-weekly") {
+        throw new Error("Published schedule format is obsolete; deploy the updated schedule workflow");
       }
-      if (!Array.isArray(data.days)) {
-        throw new Error("Published schedule has no dated day list");
+      if (data?.tz !== "Europe/Berlin") {
+        throw new Error("Published schedule must use Europe/Berlin");
+      }
+      if (!Array.isArray(data.days) || data.days.length !== 9 ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(data.rangeStart || "") ||
+          shiftLocalDateKey(data.rangeStart, 0) !== data.rangeStart ||
+          weekdayForLocalDateKey(data.rangeStart) !== "Monday") {
+        throw new Error("Published schedule must cover Monday through the following Tuesday");
       }
       const publishedMs = Date.parse(data.fetchedAtUtc || "");
       const stale = !Number.isFinite(publishedMs) || nowMs - publishedMs > PUBLISHED_SCHEDULE_MAX_AGE_MS;
       const rows = [];
-      for (const block of data.days) {
+      for (const [index, block] of data.days.entries()) {
         const date = String(block?.date || "");
         const day = normalizeScheduleDay(block?.day);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !WEEKDAYS.includes(day) || !Array.isArray(block?.schedule)) continue;
+        if (date !== shiftLocalDateKey(data.rangeStart, index) ||
+            day !== weekdayForLocalDateKey(date) || !Array.isArray(block?.schedule)) {
+          throw new Error(`Published schedule has an invalid date or weekday at day ${index + 1}`);
+        }
         for (const value of block.schedule) {
           const title = String(value?.title || "").trim();
           const time = normalizeScheduleTime(value?.time);
-          if (!title || !time) continue;
+          if (!title || !isValidTime(value?.time) || !time) {
+            throw new Error(`Published schedule has an invalid show time on ${date}`);
+          }
           const occurrenceAtMs = localTimestampFromDateKeyAndTime(date, time, DEFAULT_TIMEZONE);
           if (!Number.isFinite(occurrenceAtMs)) continue;
           rows.push({
@@ -2235,8 +2252,8 @@
       }
       if (!matches.length) return null;
 
-      // First choose the best SubsPlease show identity. Dated rows for the same
-      // show are then resolved by their actual occurrence date, not by a global
+      // First choose the best SubsPlease show identity. Calendar rows for the same
+      // show are then resolved by their occurrence date, not by a global
       // timezone offset or by whichever row happened to appear first.
       const groups = new Map();
       for (const match of matches) {
@@ -2482,6 +2499,7 @@
       const snapshot = {
         savedAt: Date.now(), userName: state.userName,
         currentEntries: state.currentEntries, finalHoldovers: state.finalHoldovers,
+        liveScheduleSchemaVersion: PUBLISHED_SCHEDULE_SCHEMA_VERSION,
         liveScheduleEntries: state.liveScheduleEntries,
         liveScheduleFetchedAt: state.liveScheduleFetchedAt,
         totalAniListEntries: state.totalAniListEntries,
@@ -2504,12 +2522,13 @@
       state.addedShows = await loadAddedShows(state.userName);
       state.finalHoldovers = await loadFinalHoldovers(state.userName);
       if (!Object.keys(state.finalHoldovers || {}).length && snapshot.finalHoldovers && typeof snapshot.finalHoldovers === "object") {
-        state.finalHoldovers = snapshot.finalHoldovers;
+        state.finalHoldovers = trustedFinalHoldovers(snapshot.finalHoldovers);
         await saveFinalHoldovers(state.userName, state.finalHoldovers);
       }
       state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
-      state.liveScheduleEntries = Array.isArray(snapshot.liveScheduleEntries) ? snapshot.liveScheduleEntries : [];
-      state.liveScheduleFetchedAt = String(snapshot.liveScheduleFetchedAt || "");
+      state.liveScheduleEntries = snapshot.liveScheduleSchemaVersion === PUBLISHED_SCHEDULE_SCHEMA_VERSION && Array.isArray(snapshot.liveScheduleEntries)
+        ? snapshot.liveScheduleEntries : [];
+      state.liveScheduleFetchedAt = state.liveScheduleEntries.length ? String(snapshot.liveScheduleFetchedAt || "") : "";
       state.liveScheduleStatus = state.liveScheduleEntries.length ? "ready" : "loading";
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
@@ -2612,8 +2631,14 @@
       return await mutateObjectState(scopedKey(ADDED_SHOWS_KEY, userName), mutator);
     }
 
+    function trustedFinalHoldovers(holdovers) {
+      return Object.fromEntries(Object.entries(holdovers || {}).filter(([, holdover]) =>
+        holdover?.item?.source !== "json" || holdover.item.jsonScheduleSchemaVersion === PUBLISHED_SCHEDULE_SCHEMA_VERSION
+      ));
+    }
+
     async function loadFinalHoldovers(userName) {
-      return await loadObjectState(scopedKey(FINAL_HOLDOVERS_KEY, userName));
+      return trustedFinalHoldovers(await loadObjectState(scopedKey(FINAL_HOLDOVERS_KEY, userName)));
     }
     async function saveFinalHoldovers(userName, finalHoldovers) {
       await saveStateDB(scopedKey(FINAL_HOLDOVERS_KEY, userName), finalHoldovers);
@@ -3089,6 +3114,7 @@
           day: selected.day, time: selected.time, format: media.format || "",
           source: selected.source || "fallback", scheduleOrigin: selected.scheduleOrigin || selected.source || "fallback",
           matchedTitle: selected.matchedTitle || "", matchScore: selected.matchScore || 0,
+          jsonScheduleSchemaVersion: selected.source === "json" ? PUBLISHED_SCHEDULE_SCHEMA_VERSION : null,
           jsonOccurrenceDate: selected.jsonOccurrenceDate || "",
           jsonOccurrenceAtMs: Number.isFinite(Number(selected.jsonOccurrenceAtMs)) ? Number(selected.jsonOccurrenceAtMs) : null,
           jsonAired: Boolean(selected.jsonAired),
