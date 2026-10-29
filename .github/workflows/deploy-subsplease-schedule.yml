@@ -48,10 +48,30 @@ jobs:
           jq -e '.tz == "Europe/Berlin" and (.schedule | type == "object") and ([.schedule[][]] | length > 0)' \
             /tmp/subsplease-source.json > /dev/null
 
-          # Preserve SubsPlease's JSON structure and add freshness metadata.
+          # Preserve the existing Europe/Berlin JSON for compatibility.
           jq --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             '. + {fetchedAtUtc: $fetchedAtUtc}' \
             /tmp/subsplease-source.json > _site/subsplease-schedule.json
+
+          # The test page uses *UTC weekday/time* and converts each next release
+          # with that episode's actual date. This survives CET/CEST transitions.
+          # Do not derive UTC by subtracting today's Berlin offset.
+          # Experimental UTC file: do not block normal Pages deployment if
+          # this additional endpoint is temporarily unavailable. The test.html
+          # falls back to RSS/AniList until a valid UTC file is published.
+          if curl --fail --location --silent --show-error \
+            --retry 3 --retry-all-errors --max-time 30 \
+            --user-agent 'AiringBoard-ScheduleSync/1.0' \
+            --output /tmp/subsplease-utc.json \
+            'https://subsplease.org/api/?f=schedule&tz=UTC' \
+            && jq -e '(.tz as $tz | (["UTC", "Etc/GMT", "Etc/UTC"] | index($tz)) != null) and (.schedule | type == "object") and ([.schedule[][]] | length > 0)' \
+              /tmp/subsplease-utc.json > /dev/null; then
+            jq --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+              '. + {fetchedAtUtc: $fetchedAtUtc}' \
+              /tmp/subsplease-utc.json > _site/subsplease-schedule-utc.json
+          else
+            echo '::warning::UTC schedule could not be retrieved; deploying the normal site and Berlin JSON only.'
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
