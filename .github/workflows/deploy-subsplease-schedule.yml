@@ -45,10 +45,10 @@ jobs:
             --retry 3 --retry-all-errors --max-time 30 \
             --user-agent 'AiringBoard-JsonSchedule/1.0' \
             --output /tmp/subsplease-schedule.json \
-            'https://subsplease.org/api/?f=schedule&tz=Europe%2FBerlin'
+            'https://subsplease.org/api/?f=schedule&tz=UTC'
 
           jq -e '
-            .tz == "Europe/Berlin" and
+            (.tz as $tz | (["UTC", "Etc/GMT", "Etc/UTC"] | index($tz)) != null) and
             (.schedule | type == "object") and
             ([.schedule[][]] | length > 0)
           ' /tmp/subsplease-schedule.json > /dev/null
