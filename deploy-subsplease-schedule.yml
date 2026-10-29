@@ -1,0 +1,63 @@
+name: Publish site with SubsPlease schedule
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *' # approximately every 30 minutes (UTC)
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages-schedule-deploy
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the site
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Copy existing site into deployment folder
+        run: |
+          mkdir -p _site
+          # Assumes your published site files are in the repository root.
+          # If you publish from /docs, copy ./docs/ instead of ./ here.
+          rsync -a --exclude='/.git/' --exclude='/.github/' --exclude='/_site/' ./ _site/
+
+      - name: Fetch and validate SubsPlease JSON
+        run: |
+          curl --fail --location --silent --show-error \
+            --retry 3 --retry-all-errors --max-time 30 \
+            --user-agent 'AiringBoard-ScheduleSync/1.0' \
+            --output /tmp/subsplease-source.json \
+            'https://subsplease.org/api/?f=schedule&tz=Europe%2FBerlin'
+
+          # Fail rather than deploy invalid/empty timetable data.
+          jq -e '.tz == "Europe/Berlin" and (.schedule | type == "object") and ([.schedule[][]] | length > 0)' \
+            /tmp/subsplease-source.json > /dev/null
+
+          # Preserve SubsPlease's JSON structure and add freshness metadata.
+          jq --arg fetchedAtUtc "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            '. + {fetchedAtUtc: $fetchedAtUtc}' \
+            /tmp/subsplease-source.json > _site/subsplease-schedule.json
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
