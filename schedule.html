@@ -984,7 +984,7 @@
             </summary>
             <div class="schedule-override-body">
               <div id="liveJsonSettingsStatus" class="modal-note" role="status" aria-live="polite">Loading timetable…</div>
-              <div class="modal-note">Schedule source: SubsPlease JSON published by GitHub Actions. The published weekday/time is used exactly as-is. The time chip pulses for 36 hours after that scheduled time passes. This test build uses no release-feed timing.</div>
+              <div class="modal-note">Schedule source: SubsPlease JSON published by GitHub Actions. The Action requests the UTC schedule because that endpoint matches the wall-clock times shown by SubsPlease; the returned weekday/time is intentionally used exactly as-is and is not timezone-converted again. The time chip pulses for 36 hours after that scheduled time passes. This test build uses no release-feed timing.</div>
               <a class="live-json-file-link" href="./subsplease-schedule.json" target="_blank" rel="noopener noreferrer">Open published JSON</a>
               <details class="live-json-list" open>
                 <summary id="liveJsonMatchedTitle">Live JSON matches (0)</summary>
@@ -2154,7 +2154,9 @@
       const response = await fetch(PUBLISHED_SCHEDULE_URL, { cache: "no-store", signal: timeoutSignal(10000) });
       if (!response.ok) throw new Error(`Published schedule HTTP ${response.status}`);
       const data = await response.json();
-      if (data?.tz !== "Europe/Berlin") throw new Error("Published schedule timezone must be Europe/Berlin");
+      if (!["UTC", "Etc/GMT", "Etc/UTC"].includes(data?.tz)) {
+        throw new Error("Published schedule must come from the UTC SubsPlease request");
+      }
       if (!data.schedule || typeof data.schedule !== "object" || Array.isArray(data.schedule)) {
         throw new Error("Published schedule has no valid schedule object");
       }
