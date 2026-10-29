@@ -984,7 +984,7 @@
             </summary>
             <div class="schedule-override-body">
               <div id="liveJsonSettingsStatus" class="modal-note" role="status" aria-live="polite">Loading timetable…</div>
-              <div class="modal-note">Schedule source: SubsPlease JSON published by GitHub Actions. The Action requests the UTC schedule because that endpoint matches the wall-clock times shown by SubsPlease; the returned weekday/time is intentionally used exactly as-is and is not timezone-converted again. The time chip pulses for 36 hours after that scheduled time passes. This test build uses no release-feed timing.</div>
+              <div class="modal-note">Schedule source: SubsPlease JSON published by GitHub Actions. The Action requests dated daily schedules in Europe/Berlin. Each row carries its actual calendar date, so the API resolves CET/CEST for that occurrence instead of applying one offset to the whole weekly template. The time chip pulses for 36 hours after that scheduled time passes. This test build uses no release-feed timing.</div>
               <a class="live-json-file-link" href="./subsplease-schedule.json" target="_blank" rel="noopener noreferrer">Open published JSON</a>
               <details class="live-json-list" open>
                 <summary id="liveJsonMatchedTitle">Live JSON matches (0)</summary>
@@ -2154,34 +2154,58 @@
       const response = await fetch(PUBLISHED_SCHEDULE_URL, { cache: "no-store", signal: timeoutSignal(10000) });
       if (!response.ok) throw new Error(`Published schedule HTTP ${response.status}`);
       const data = await response.json();
-      if (!["UTC", "Etc/GMT", "Etc/UTC"].includes(data?.tz)) {
-        throw new Error("Published schedule must come from the UTC SubsPlease request");
+      if (data?.tz !== "Europe/Berlin") {
+        throw new Error("Published schedule must contain dated Europe/Berlin occurrences");
       }
-      if (!data.schedule || typeof data.schedule !== "object" || Array.isArray(data.schedule)) {
-        throw new Error("Published schedule has no valid schedule object");
+      if (!Array.isArray(data.days)) {
+        throw new Error("Published schedule has no dated day list");
       }
       const publishedMs = Date.parse(data.fetchedAtUtc || "");
       const stale = !Number.isFinite(publishedMs) || nowMs - publishedMs > PUBLISHED_SCHEDULE_MAX_AGE_MS;
       const rows = [];
-      for (const [rawDay, values] of Object.entries(data.schedule)) {
-        const day = normalizeScheduleDay(rawDay);
-        if (!WEEKDAYS.includes(day) || !Array.isArray(values)) continue;
-        for (const value of values) {
+      for (const block of data.days) {
+        const date = String(block?.date || "");
+        const day = normalizeScheduleDay(block?.day);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !WEEKDAYS.includes(day) || !Array.isArray(block?.schedule)) continue;
+        for (const value of block.schedule) {
           const title = String(value?.title || "").trim();
           const time = normalizeScheduleTime(value?.time);
           if (!title || !time) continue;
+          const occurrenceAtMs = localTimestampFromDateKeyAndTime(date, time, DEFAULT_TIMEZONE);
+          if (!Number.isFinite(occurrenceAtMs)) continue;
           rows.push({
-            title, day, time, page: String(value?.page || ""),
+            title, day, date, time, occurrenceAtMs,
+            aired: Boolean(value?.aired),
+            page: String(value?.page || ""),
             variants: generateVariants([title]).map(prepareVariant)
           });
         }
       }
-      if (!rows.length) throw new Error("Published schedule contains no valid show times");
+      if (!rows.length) throw new Error("Published schedule contains no valid dated show times");
       return {
         entries: rows,
         fetchedAtUtc: Number.isFinite(publishedMs) ? new Date(publishedMs).toISOString() : "",
         stale
       };
+    }
+
+    function jsonCandidateIdentity(candidate) {
+      return String(candidate?.page || candidate?.title || "").trim().toLowerCase();
+    }
+
+    function selectRelevantJsonOccurrence(candidates, nowMs = Date.now()) {
+      const valid = (candidates || []).filter(candidate => Number.isFinite(Number(candidate?.occurrenceAtMs)));
+      if (!valid.length) return { selected: null, next: null, recent: null };
+      const recent = valid
+        .filter(candidate => candidate.occurrenceAtMs <= nowMs && nowMs - candidate.occurrenceAtMs <= SCHEDULE_PULSE_WINDOW_MS)
+        .sort((a,b) => b.occurrenceAtMs - a.occurrenceAtMs)[0] || null;
+      const next = valid
+        .filter(candidate => candidate.occurrenceAtMs > nowMs)
+        .sort((a,b) => a.occurrenceAtMs - b.occurrenceAtMs)[0] || null;
+      const latestPast = valid
+        .filter(candidate => candidate.occurrenceAtMs <= nowMs)
+        .sort((a,b) => b.occurrenceAtMs - a.occurrenceAtMs)[0] || null;
+      return { selected: recent || next || latestPast, next, recent };
     }
 
     function jsonScheduleAniListBonus(media, candidate, timeZone = DEFAULT_TIMEZONE) {
@@ -2203,16 +2227,42 @@
 
     function bestJsonScheduleCandidate(media, candidates) {
       const variants = titleVariants(media);
-      let best = null, bestScore = 0, bestBonus = -1;
+      const matches = [];
       for (const candidate of candidates || []) {
         const score = scoreMatch(candidate, variants);
         if (score < 70) continue;
-        const bonus = jsonScheduleAniListBonus(media, candidate);
+        matches.push({ candidate, score, bonus: jsonScheduleAniListBonus(media, candidate) });
+      }
+      if (!matches.length) return null;
+
+      // First choose the best SubsPlease show identity. Dated rows for the same
+      // show are then resolved by their actual occurrence date, not by a global
+      // timezone offset or by whichever row happened to appear first.
+      const groups = new Map();
+      for (const match of matches) {
+        const key = jsonCandidateIdentity(match.candidate);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(match);
+      }
+      let bestGroup = null, bestScore = -1, bestBonus = -1;
+      for (const group of groups.values()) {
+        const score = Math.max(...group.map(entry => entry.score));
+        const bonus = Math.max(...group.map(entry => entry.bonus));
         if (score > bestScore || (score === bestScore && bonus > bestBonus)) {
-          best = candidate; bestScore = score; bestBonus = bonus;
+          bestGroup = group; bestScore = score; bestBonus = bonus;
         }
       }
-      return best ? { candidate: best, score: bestScore, scheduleBonus: bestBonus } : null;
+      if (!bestGroup) return null;
+      const occurrence = selectRelevantJsonOccurrence(bestGroup.map(entry => entry.candidate));
+      if (!occurrence.selected) return null;
+      const selectedMeta = bestGroup.find(entry => entry.candidate === occurrence.selected) || bestGroup[0];
+      return {
+        candidate: occurrence.selected,
+        nextCandidate: occurrence.next,
+        recentCandidate: occurrence.recent,
+        score: selectedMeta.score,
+        scheduleBonus: selectedMeta.bonus
+      };
     }
 
     function resolveJsonScheduleOwnership(entries, candidates) {
@@ -2255,13 +2305,21 @@
         }));
       }
       if (!match) return null;
+      const nextCandidate = match.nextCandidate || (match.candidate.occurrenceAtMs > Date.now() ? match.candidate : null);
       return {
         day: match.candidate.day,
         time: match.candidate.time,
         source: "json",
         scheduleOrigin: "json",
         matchedTitle: match.candidate.title,
-        matchScore: match.score
+        matchScore: match.score,
+        jsonOccurrenceDate: match.candidate.date,
+        jsonOccurrenceAtMs: match.candidate.occurrenceAtMs,
+        jsonAired: Boolean(match.candidate.aired),
+        jsonNextDate: nextCandidate?.date || "",
+        jsonNextDay: nextCandidate?.day || "",
+        jsonNextTime: nextCandidate?.time || "",
+        jsonNextOccurrenceAtMs: Number.isFinite(Number(nextCandidate?.occurrenceAtMs)) ? Number(nextCandidate.occurrenceAtMs) : null
       };
     }
 
@@ -2294,7 +2352,7 @@
         els.liveJsonSettingsStatus.style.borderColor = "var(--line)";
       }
       const sorted = values => values.slice().sort((a,b) => WEEKDAYS.indexOf(a.day)-WEEKDAYS.indexOf(b.day) || String(a.time).localeCompare(String(b.time)) || a.title.localeCompare(b.title));
-      const rows = (values,empty) => values.length ? sorted(values).map(item => `<div class="live-json-row"><div class="live-json-name">${escapeHtml(item.title || "Untitled")}</div><div class="live-json-slot">${escapeHtml(`${String(item.day || "").slice(0,3)} ${item.time || "—"}`)}</div><div class="live-json-source">${escapeHtml(item.source === "json" ? `SubsPlease: ${item.matchedTitle || item.title}` : sourceLabel(item))}</div></div>`).join("") : `<div class="live-json-empty">${escapeHtml(empty)}</div>`;
+      const rows = (values,empty) => values.length ? sorted(values).map(item => `<div class="live-json-row"><div class="live-json-name">${escapeHtml(item.title || "Untitled")}</div><div class="live-json-slot">${escapeHtml(`${String(item.day || "").slice(0,3)} ${item.time || "—"}`)}</div><div class="live-json-source">${escapeHtml(item.source === "json" ? `SubsPlease: ${item.matchedTitle || item.title}${item.jsonOccurrenceDate ? ` · ${item.jsonOccurrenceDate}` : ""}` : sourceLabel(item))}</div></div>`).join("") : `<div class="live-json-empty">${escapeHtml(empty)}</div>`;
       els.liveJsonMatchedTitle.textContent = `Live JSON matches (${live.length})`;
       els.liveJsonFallbackTitle.textContent = `Other schedule sources (${other.length})`;
       els.liveJsonMatchedShows.innerHTML = rows(live, "No tracked show currently matches the JSON timetable.");
@@ -2864,8 +2922,8 @@
 
     function schedulePulseAtMs(item, nowMs = Date.now(), timeZone = DEFAULT_TIMEZONE) {
       if (!item || !WEEKDAYS.includes(item.day) || !isValidTime(item.time)) return null;
-      // JSON is the timing source. The pulse is based only on the most recent
-      // occurrence of the published weekday/time; AniList timing is not consulted.
+      const exact = Number(item.jsonOccurrenceAtMs);
+      if (item.source === "json" && Number.isFinite(exact) && exact <= nowMs) return exact;
       return latestScheduledOccurrenceMs(item.day, item.time, nowMs, timeZone);
     }
 
@@ -2883,8 +2941,11 @@
       const hasNextEpisode = Number.isFinite(nextEpisode) && nextEpisode > 0;
       const hasTotal = Number.isFinite(totalEpisode) && totalEpisode > 0;
       const isFinalEpisode = hasNextEpisode && hasTotal && nextEpisode === totalEpisode;
+      const exactFinalAtMs = Number(options.finalTimingAtMs);
       const finalAiredAtMs = isFinalEpisode
-        ? scheduledOccurrenceForAiring(nextAiringAt, options.finalTimingDay || options.day, options.finalTimingTime || options.time, timeZone)
+        ? (Number.isFinite(exactFinalAtMs) && exactFinalAtMs > 0
+            ? exactFinalAtMs
+            : scheduledOccurrenceForAiring(nextAiringAt, options.finalTimingDay || options.day, options.finalTimingTime || options.time, timeZone))
         : null;
       const finalAired = isFinalEpisode && Number.isFinite(finalAiredAtMs) && finalAiredAtMs <= nowMs;
       return {
@@ -3020,6 +3081,7 @@
           nextEpisodeNumber, totalEpisodeNumber, nextAiringAt,
           day: selected.day, time: selected.time,
           finalTimingDay: selected.day, finalTimingTime: selected.time,
+          finalTimingAtMs: selected.jsonOccurrenceAtMs,
           timeZone, nowMs: Date.now()
         });
         const item = {
@@ -3027,6 +3089,13 @@
           day: selected.day, time: selected.time, format: media.format || "",
           source: selected.source || "fallback", scheduleOrigin: selected.scheduleOrigin || selected.source || "fallback",
           matchedTitle: selected.matchedTitle || "", matchScore: selected.matchScore || 0,
+          jsonOccurrenceDate: selected.jsonOccurrenceDate || "",
+          jsonOccurrenceAtMs: Number.isFinite(Number(selected.jsonOccurrenceAtMs)) ? Number(selected.jsonOccurrenceAtMs) : null,
+          jsonAired: Boolean(selected.jsonAired),
+          jsonNextDate: selected.jsonNextDate || "",
+          jsonNextDay: selected.jsonNextDay || "",
+          jsonNextTime: selected.jsonNextTime || "",
+          jsonNextOccurrenceAtMs: Number.isFinite(Number(selected.jsonNextOccurrenceAtMs)) ? Number(selected.jsonNextOccurrenceAtMs) : null,
           isAdded: Boolean(state.addedShows[String(media.id)]), hasNextAiring,
           totalEpisodes, totalEpisodeNumber, aniListNextEpisode: nextEpisodeNumber,
           displayEpisode: episodeState.displayEpisode, episodeBasis: episodeState.episodeBasis,
@@ -3161,6 +3230,9 @@
 
     function resolveNextUpTiming(item, timeZone = DEFAULT_TIMEZONE) {
       if (!item || !WEEKDAYS.includes(item.day) || !isValidTime(item.time)) return null;
+      if (item.source === "json" && Number.isFinite(Number(item.jsonNextOccurrenceAtMs)) && WEEKDAYS.includes(item.jsonNextDay) && isValidTime(item.jsonNextTime)) {
+        return { day: item.jsonNextDay, time: item.jsonNextTime, source: "json", occurrenceAtMs: Number(item.jsonNextOccurrenceAtMs) };
+      }
       return { day: item.day, time: item.time, source: item.source || "fallback" };
     }
 
@@ -3170,6 +3242,10 @@
 
     function resolveNextUpOccurrence(item, timing, timeZone = DEFAULT_TIMEZONE, nowMs = Date.now()) {
       const nextEpisode = episodeNumberFromToken(item.aniListNextEpisode);
+      const exactOccurrenceAtMs = Number(timing?.occurrenceAtMs);
+      if (Number.isFinite(exactOccurrenceAtMs) && exactOccurrenceAtMs > nowMs) {
+        return { occurrenceAtMs: exactOccurrenceAtMs, episodeNumber: nextEpisode };
+      }
       const nextAiringAt = Number(item.nextAiringAt);
       const candidates = [];
       const nextAtMs = releaseOccurrenceForAiring(nextAiringAt, timing, timeZone);
