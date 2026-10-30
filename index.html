@@ -3917,9 +3917,10 @@
         return { saved: false, changed: false, reason: "incomplete" };
     }
 
-    // Keep the beyond-total guard (prevents genuinely invalid data)
+        // Relaxed beyond-total guard: allow absolute-numbered feeds (e.g. Kusuriya
+    // S3 reporting EP 49 on a 12-episode season). Only reject truly absurd values.
     const totalEpisode = episodeNumberFromToken(item?.totalEpisodeNumber);
-    if (totalEpisode !== null && resolvedEpisode > totalEpisode) {
+    if (totalEpisode !== null && resolvedEpisode > totalEpisode * 10) {
         return { saved: false, changed: false, reason: "beyond-total" };
     }
 
