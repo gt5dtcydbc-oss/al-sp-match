@@ -3928,10 +3928,11 @@
 
     entry.history = Array.isArray(entry.history) ? entry.history : [];
 
-    // Keep the ignored-episode guard (respects user's "Drop latest" action)
-    const ignoredRssEpisode = episodeNumberFromToken(entry.ignoredRssEpisode);
-    if (ignoredRssEpisode !== null && ignoredRssEpisode === resolvedEpisode) {
-        return { saved: false, changed: false, reason: "ignored" };
+        // Relaxed beyond-total guard: allow absolute-numbered feeds (e.g. Kusuriya
+    // S3 reporting EP 49 on a 12-episode season). Only reject truly absurd values.
+    const totalEpisode = episodeNumberFromToken(item?.totalEpisodeNumber);
+    if (totalEpisode !== null && resolvedEpisode > totalEpisode * 10) {
+        return { saved: false, changed: false, reason: "beyond-total" };
     }
 
     const episodeToken = rssEpisodeToken(resolvedEpisode);
