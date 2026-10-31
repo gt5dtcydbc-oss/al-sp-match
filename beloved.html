@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Center Media</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background-color: #0a0c11;
+    /* fallback gradient — replaced by images/bg.* when found */
+    background-image: radial-gradient(circle at 50% 25%, #1c2230, #0a0c11 70%);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #stage {
+    display: inline-block;
+    line-height: 0;
+  }
+
+  #media {
+    display: block;
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    -webkit-user-drag: none;
+    user-drag: none;
+    outline: none;
+    background: #000;          /* avoids a white flash before frame 1 */
+  }
+
+  #media.ready    { opacity: 1; }
+  #media.playable { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ================================================================
+     CONFIG
+     ================================================================ */
+  const CONFIG = {
+    folder: "images/",
+
+    // Ordered — first match wins.
+    // "gif" first → gif.gif wins over gif.mp4 if both exist.
+    // Swap "mp4" to the front to prefer video.
+    extensions: ["gif", "mp4", "webm", "webp", "png", "jpg", "jpeg", "avif", "jxl"],
+
+    // Background must be a static image — no video in background-image.
+    bgExtensions: ["jpg", "jpeg", "png", "webp", "gif", "avif", "jxl"],
+
+    mediaName: "love",               // gif.gif, gif.mp4, gif.webp, …
+    fitRatio: 0.86,                 // fills at most 86 % of the viewport
+    allowUpscale: false,            // false = small files stay small
+    videoMuted: true,               // no controls → muted is safer
+
+    bgNames: ["bg"],
+    bgScrim: 0.35
+  };
+
+  const VIDEO_RE = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv)$/i;
+
+  /* ================================================================
+     State
+     ================================================================ */
+  const stage = document.getElementById("stage");
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
+  let media = null;
+  let isVideo = false;
+  let mediaW = 1, mediaH = 1;
+
+  /* ================================================================
+     File discovery
+     ================================================================ */
+  const imageUrl = (name, ext) => `${CONFIG.folder}${name}.${ext}`;
+
+  function exists(url) {
+    return fetch(url, { method: "HEAD" })
+      .then(res => res.ok)
+      .catch(() => existsViaImage(url));
+  }
+
+  function existsViaImage(url) {
+    return new Promise(resolve => {
+      const probe = new Image();
+      probe.onload  = () => resolve(true);
+      probe.onerror = () => resolve(false);
+      probe.src = url;
+    });
+  }
+
+  async function findFile(name, extensions) {
+    const checks = await Promise.all(
+      extensions.map(async ext => {
+        const url = imageUrl(name, ext);
+        return { url, ok: await exists(url) };
+      })
+    );
+    const hit = checks.find(c => c.ok);
+    return hit ? hit.url : null;
+  }
+
+  /* ================================================================
+     Background: images/bg.*
+     ================================================================ */
+  async function applyBackground() {
+    for (const name of CONFIG.bgNames) {
+      const url = await findFile(name, CONFIG.bgExtensions);
+      if (!url) continue;
+
+      await new Promise(resolve => {
+        const pre = new Image();
+        pre.onload = pre.onerror = resolve;
+        pre.src = url;
+      });
+
+      const scrim = clamp(CONFIG.bgScrim, 0, 1);
+      const layers = [];
+
+      if (scrim > 0) {
+        layers.push(`linear-gradient(rgba(0,0,0,${scrim}), rgba(0,0,0,${scrim}))`);
+      }
+      layers.push(`url("${url}")`);
+      layers.push(`radial-gradient(circle at 50% 25%, #1c2230, #0a0c11 70%)`);
+
+      document.body.style.backgroundImage = layers.join(", ");
+      document.body.style.backgroundSize = "cover, cover, cover";
+      document.body.style.backgroundPosition = "center, center, center";
+      document.body.style.backgroundRepeat = "no-repeat, no-repeat, no-repeat";
+      return url;
+    }
+    return null;
+  }
+
+  /* ================================================================
+     Sizing — fit inside the viewport, ratio preserved
+     ================================================================ */
+  function fitMedia() {
+    if (!media) return;
+
+    const maxW = window.innerWidth  * CONFIG.fitRatio;
+    const maxH = window.innerHeight * CONFIG.fitRatio;
+
+    let scale = Math.min(maxW / mediaW, maxH / mediaH);
+    if (!CONFIG.allowUpscale) scale = Math.min(scale, 1);
+
+    media.style.width  = Math.round(mediaW * scale) + "px";
+    media.style.height = Math.round(mediaH * scale) + "px";
+  }
+
+  window.addEventListener("resize", fitMedia);
+
+  /* ================================================================
+     Element factories
+     ================================================================ */
+  function createImage(url) {
+    const img = document.createElement("img");
+    img.id = "media";
+    img.alt = "";
+    img.draggable = false;
+
+    img.addEventListener("error", () => {
+      console.warn("[media] image failed to load:", url);
+    });
+
+    img.addEventListener("load", () => {
+      mediaW = img.naturalWidth  || 1;
+      mediaH = img.naturalHeight || 1;
+      fitMedia();
+      img.classList.add("ready");
+    }, { once: true });
+
+    img.src = url;
+    stage.appendChild(img);
+    media = img;
+  }
+
+  function createVideo(url) {
+    const v = document.createElement("video");
+    v.id = "media";
+    v.src = url;
+    v.loop = true;
+    v.muted = CONFIG.videoMuted;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.controls = false;
+    v.draggable = false;
+    v.classList.add("playable");
+    v.setAttribute("playsinline", "");
+    v.setAttribute("webkit-playsinline", "");
+    v.setAttribute("disablepictureinpicture", "");
+
+    v.addEventListener("error", () => {
+      console.warn("[media] video failed to load:", url);
+    });
+
+    v.addEventListener("loadedmetadata", () => {
+      mediaW = v.videoWidth  || 1;
+      mediaH = v.videoHeight || 1;
+      fitMedia();
+      v.classList.add("ready");
+    }, { once: true });
+
+    stage.appendChild(v);
+    media = v;
+    isVideo = true;
+  }
+
+  /* ================================================================
+     Click to play / pause
+     ================================================================ */
+  stage.addEventListener("click", () => {
+    if (!isVideo || !media) return;
+
+    if (media.paused) {
+      const p = media.play();
+      if (p && typeof p.then === "function") {
+        p.catch(err => console.warn("[media] play failed:", err));
+      }
+    } else {
+      media.pause();
+    }
+  });
+
+  /* ================================================================
+     Go
+     ================================================================ */
+  (async () => {
+    const [, url] = await Promise.all([
+      applyBackground(),
+      findFile(CONFIG.mediaName, CONFIG.extensions)
+    ]);
+
+    if (!url) {
+      console.warn("[media] no", CONFIG.mediaName + ".*", "found in", CONFIG.folder);
+      return;
+    }
+
+    if (VIDEO_RE.test(url)) createVideo(url);
+    else                     createImage(url);
+  })();
+})();
+</script>
+</body>
+</html>
