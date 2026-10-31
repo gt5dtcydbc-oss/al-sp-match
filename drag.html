@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Draggable Image Canvas</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background-color: #0a0c11;
+    /* fallback gradient — replaced by images/bg.* when found */
+    background-image: radial-gradient(circle at 50% 25%, #1c2230, #0a0c11 70%);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .hint {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 0 16px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: center;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+    z-index: 99999;
+  }
+
+  .draggable {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border-radius: 12px;
+    object-fit: cover;
+    cursor: grab;
+    touch-action: none;
+    -webkit-user-drag: none;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    opacity: 0;
+    transition: opacity 0.6s ease, box-shadow 0.2s ease;
+  }
+
+  .draggable:hover {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.65), 0 0 0 2px rgba(120, 190, 255, 0.5);
+  }
+
+  .draggable.dragging {
+    cursor: grabbing;
+    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.75), 0 0 0 2px rgba(120, 190, 255, 0.9);
+    transition: box-shadow 0.15s ease;
+  }
+</style>
+</head>
+<body>
+
+<p class="hint" id="hint">Looking for images…</p>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ================================================================
+     CONFIG
+     ================================================================ */
+  const CONFIG = {
+    folder: "images/",              // relative → works on project pages too
+    start: 1,
+    end: 99,                        // raise to 999 for big galleries
+    extensions: ["jpg", "jpeg", "png", "webp", "gif", "avif", "jxl"],
+    maxConsecutiveMisses: 5,
+    batchSize: 6,
+
+    // ---- sizing: tile edge scales with image count ----
+    targetCoverage: 0.35,           // share of viewport covered (0–1)
+    minSize: 40,                    // px floor on tiny screens
+    maxSize: 320,                   // px ceiling (2 images shouldn't fill screen)
+    gapRatio: 0.12,                 // empty margin inside each cell
+    overlap: 0.35,                  // jitter past the cell, × size
+
+    bgNames: ["bg"],
+    bgScrim: 0.35                   // 0 = no overlay, 1 = black
+  };
+
+  /* ================================================================
+     State
+     ================================================================ */
+  let topZ = 0;
+  const elements = [];
+  const hint = document.getElementById("hint");
+
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
+  // Reflect out-of-range values instead of pinning them to the edge.
+  function scatter(value, min, max) {
+    if (max <= min) return min;
+    const span = max - min;
+    const period = span * 2;
+    let v = (((value - min) % period) + period) % period;
+    if (v > span) v = period - v;
+    return v + min;
+  }
+
+  function updateHint() {
+    if (!elements.length) {
+      hint.textContent = "No images found — add 1.jpg, 2.jpg… to the /images folder";
+      return;
+    }
+    const n = elements.length;
+    hint.textContent = `${n} image${n === 1 ? "" : "s"} — drag them around`;
+  }
+
+  /* ================================================================
+     File discovery
+     ================================================================ */
+  const imageUrl = (name, ext) => `${CONFIG.folder}${name}.${ext}`;
+
+  function exists(url) {
+    return fetch(url, { method: "HEAD" })
+      .then(res => res.ok)
+      .catch(() => existsViaImage(url));
+  }
+
+  function existsViaImage(url) {
+    return new Promise(resolve => {
+      const probe = new Image();
+      probe.onload = () => resolve(true);
+      probe.onerror = () => resolve(false);
+      probe.src = url;
+    });
+  }
+
+  async function findFile(name) {
+    const checks = await Promise.all(
+      CONFIG.extensions.map(async ext => {
+        const url = imageUrl(name, ext);
+        return { url, ok: await exists(url) };
+      })
+    );
+    const hit = checks.find(c => c.ok);
+    return hit ? hit.url : null;
+  }
+
+  /* ================================================================
+     Background: images/bg.(jpg|png|webp|…|jxl)
+     ================================================================ */
+  async function applyBackground() {
+    for (const name of CONFIG.bgNames) {
+      const url = await findFile(name);
+      if (!url) continue;
+
+      // Preload so the swap is instant instead of flashing empty.
+      await new Promise(resolve => {
+        const pre = new Image();
+        pre.onload = pre.onerror = resolve;
+        pre.src = url;
+      });
+
+      const scrim = clamp(CONFIG.bgScrim, 0, 1);
+      const layers = [];
+
+      if (scrim > 0) {
+        layers.push(`linear-gradient(rgba(0,0,0,${scrim}), rgba(0,0,0,${scrim}))`);
+      }
+      layers.push(`url("${url}")`);
+      // Safety net underneath while decoding / if the file fails.
+      layers.push(`radial-gradient(circle at 50% 25%, #1c2230, #0a0c11 70%)`);
+
+      document.body.style.backgroundImage = layers.join(", ");
+      document.body.style.backgroundSize = "cover, cover, cover";
+      document.body.style.backgroundPosition = "center, center, center";
+      document.body.style.backgroundRepeat = "no-repeat, no-repeat, no-repeat";
+      return url;
+    }
+    return null;
+  }
+
+  /* ================================================================
+     Numbered images: 1…N
+     ================================================================ */
+  async function discoverImages() {
+    const found = [];
+    let misses = 0;
+
+    for (let start = CONFIG.start; start <= CONFIG.end; start += CONFIG.batchSize) {
+      if (misses >= CONFIG.maxConsecutiveMisses) break;
+
+      const numbers = [];
+      for (let n = start; n < start + CONFIG.batchSize && n <= CONFIG.end; n++) {
+        numbers.push(n);
+      }
+
+      const results = await Promise.all(
+        numbers.map(async n => ({ n, url: await findFile(String(n)) }))
+      );
+
+      for (const { url } of results) {
+        if (url) { found.push(url); misses = 0; }
+        else misses++;
+      }
+    }
+    return found;
+  }
+
+  /* ================================================================
+     Build draggable elements
+     ================================================================ */
+  function createElements(urls) {
+    urls.forEach(src => {
+      const img = document.createElement("img");
+      img.className = "draggable";
+      img.alt = "";
+      img.draggable = false;
+      img.style.zIndex = ++topZ;
+
+      img.addEventListener("dragstart", e => e.preventDefault());
+
+      // Undecodable file (e.g. .jxl in Chrome) → drop the tile quietly.
+      img.addEventListener("error", () => {
+        img.remove();
+        const i = elements.indexOf(img);
+        if (i !== -1) elements.splice(i, 1);
+        updateHint();
+      });
+
+      makeDraggable(img);
+      img.src = src;
+
+      document.body.appendChild(img);
+      elements.push(img);
+    });
+  }
+
+  /* ================================================================
+     Layout — size scales with count, positions mirror-scattered
+     ================================================================ */
+  function layout() {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const n = elements.length;
+    if (!n) return;
+
+    const cols = Math.max(1, Math.min(n, Math.round(Math.sqrt((n * W) / H))));
+    const rows = Math.ceil(n / cols);
+    const cellW = W / cols;
+    const cellH = H / rows;
+
+    // Largest tile that still fits inside one cell.
+    const fit = Math.min(cellW, cellH) * (1 - CONFIG.gapRatio);
+
+    // Coverage-driven size: sqrt(area × coverage / count)
+    const size = clamp(
+      Math.sqrt((W * H * CONFIG.targetCoverage) / n),
+      CONFIG.minSize,
+      Math.max(CONFIG.minSize, Math.min(CONFIG.maxSize, fit))
+    );
+
+    // Jitter may reach past the cell → deliberate overlaps.
+    const jitterX = Math.max(0, cellW - size) + size * CONFIG.overlap;
+    const jitterY = Math.max(0, cellH - size) + size * CONFIG.overlap;
+
+    elements.forEach((el, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+
+      el.style.width = size + "px";
+      el.style.height = size + "px";
+
+      const x = scatter(col * cellW + Math.random() * jitterX, 0, Math.max(0, W - size));
+      const y = scatter(row * cellH + Math.random() * jitterY, 0, Math.max(0, H - size));
+
+      el.style.left = Math.round(x) + "px";
+      el.style.top = Math.round(y) + "px";
+    });
+
+    elements.forEach((el, i) => {
+      el.style.transitionDelay = i * 40 + "ms";
+      requestAnimationFrame(() => (el.style.opacity = "1"));
+      setTimeout(() => (el.style.transitionDelay = "0ms"), 400 + i * 40);
+    });
+  }
+
+  /* ================================================================
+     Drag logic (Pointer Events: mouse, touch, pen)
+     ================================================================ */
+  function makeDraggable(el) {
+    let pointerId = null;
+    let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+    el.addEventListener("pointerdown", e => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+
+      pointerId = e.pointerId;
+      el.setPointerCapture(pointerId);
+
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = parseFloat(el.style.left) || 0;
+      startTop = parseFloat(el.style.top) || 0;
+
+      el.style.zIndex = ++topZ;
+      el.classList.add("dragging");
+      e.preventDefault();
+    });
+
+    el.addEventListener("pointermove", e => {
+      if (e.pointerId !== pointerId) return;
+
+      const maxX = Math.max(0, window.innerWidth - el.offsetWidth);
+      const maxY = Math.max(0, window.innerHeight - el.offsetHeight);
+
+      el.style.left = clamp(startLeft + (e.clientX - startX), 0, maxX) + "px";
+      el.style.top = clamp(startTop + (e.clientY - startY), 0, maxY) + "px";
+    });
+
+    const stopDragging = e => {
+      if (pointerId === null || e.pointerId !== pointerId) return;
+      if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId);
+      pointerId = null;
+      el.classList.remove("dragging");
+    };
+
+    el.addEventListener("pointerup", stopDragging);
+    el.addEventListener("pointercancel", stopDragging);
+    el.addEventListener("lostpointercapture", () => {
+      pointerId = null;
+      el.classList.remove("dragging");
+    });
+  }
+
+  /* ================================================================
+     Keep tiles on screen on resize
+     ================================================================ */
+  window.addEventListener("resize", () => {
+    elements.forEach(el => {
+      const maxX = Math.max(0, window.innerWidth - el.offsetWidth);
+      const maxY = Math.max(0, window.innerHeight - el.offsetHeight);
+      el.style.left = clamp(parseFloat(el.style.left) || 0, 0, maxX) + "px";
+      el.style.top = clamp(parseFloat(el.style.top) || 0, 0, maxY) + "px";
+    });
+  });
+
+  /* ================================================================
+     Go
+     ================================================================ */
+  (async () => {
+    const [, urls] = await Promise.all([applyBackground(), discoverImages()]);
+
+    if (!urls.length) {
+      updateHint();
+      return;
+    }
+
+    createElements(urls);
+    layout();
+    updateHint();
+  })();
+})();
+</script>
+</body>
+</html>
