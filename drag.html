@@ -24,29 +24,12 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  .hint {
-    position: fixed;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 0;
-    padding: 0 16px;
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    text-align: center;
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
-    pointer-events: none;
-    z-index: 99999;
-  }
-
   .draggable {
     position: fixed;
     top: 0;
     left: 0;
     border-radius: 12px;
-    object-fit: cover;
+    object-fit: cover;           /* dimension == natural ratio → no visible crop */
     cursor: grab;
     touch-action: none;
     -webkit-user-drag: none;
@@ -68,8 +51,6 @@
 </head>
 <body>
 
-<p class="hint" id="hint">Looking for images…</p>
-
 <script>
 (() => {
   "use strict";
@@ -85,12 +66,11 @@
     maxConsecutiveMisses: 5,
     batchSize: 6,
 
-    // ---- sizing: tile edge scales with image count ----
-    targetCoverage: 0.35,           // share of viewport covered (0–1)
-    minSize: 40,                    // px floor on tiny screens
-    maxSize: 320,                   // px ceiling (2 images shouldn't fill screen)
-    gapRatio: 0.12,                 // empty margin inside each cell
-    overlap: 0.35,                  // jitter past the cell, × size
+    // ---- sizing (aspect-ratio preserved) ----
+    targetCoverage: 0.35,           // share of viewport covered by all tiles
+    minSize: 40,                    // px floor on the short edge
+    maxSizeRatio: 0.45,             // max long edge = ratio × min(W, H)
+    overlap: 0.35,                  // jitter past the cell, × tile size
 
     bgNames: ["bg"],
     bgScrim: 0.35                   // 0 = no overlay, 1 = black
@@ -101,7 +81,6 @@
      ================================================================ */
   let topZ = 0;
   const elements = [];
-  const hint = document.getElementById("hint");
 
   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
@@ -113,15 +92,6 @@
     let v = (((value - min) % period) + period) % period;
     if (v > span) v = period - v;
     return v + min;
-  }
-
-  function updateHint() {
-    if (!elements.length) {
-      hint.textContent = "No images found — add 1.jpg, 2.jpg… to the /images folder";
-      return;
-    }
-    const n = elements.length;
-    hint.textContent = `${n} image${n === 1 ? "" : "s"} — drag them around`;
   }
 
   /* ================================================================
@@ -163,7 +133,6 @@
       const url = await findFile(name);
       if (!url) continue;
 
-      // Preload so the swap is instant instead of flashing empty.
       await new Promise(resolve => {
         const pre = new Image();
         pre.onload = pre.onerror = resolve;
@@ -177,7 +146,6 @@
         layers.push(`linear-gradient(rgba(0,0,0,${scrim}), rgba(0,0,0,${scrim}))`);
       }
       layers.push(`url("${url}")`);
-      // Safety net underneath while decoding / if the file fails.
       layers.push(`radial-gradient(circle at 50% 25%, #1c2230, #0a0c11 70%)`);
 
       document.body.style.backgroundImage = layers.join(", ");
@@ -217,26 +185,33 @@
   }
 
   /* ================================================================
-     Build draggable elements
+     Preload (gives us natural dimensions), then build elements
      ================================================================ */
-  function createElements(urls) {
-    urls.forEach(src => {
+  function loadImage(src) {
+    return new Promise(resolve => {
+      const probe = new Image();
+      probe.onload = () => resolve({
+        src,
+        w: probe.naturalWidth,
+        h: probe.naturalHeight
+      });
+      probe.onerror = () => resolve(null);   // undecodable (e.g. .jxl in Chrome)
+      probe.src = src;
+    });
+  }
+
+  async function createElements(urls) {
+    const loaded = (await Promise.all(urls.map(loadImage))).filter(Boolean);
+
+    loaded.forEach(({ src, w, h }) => {
       const img = document.createElement("img");
       img.className = "draggable";
       img.alt = "";
       img.draggable = false;
+      img.dataset.ratio = String(w > 0 && h > 0 ? w / h : 1);
       img.style.zIndex = ++topZ;
 
       img.addEventListener("dragstart", e => e.preventDefault());
-
-      // Undecodable file (e.g. .jxl in Chrome) → drop the tile quietly.
-      img.addEventListener("error", () => {
-        img.remove();
-        const i = elements.indexOf(img);
-        if (i !== -1) elements.splice(i, 1);
-        updateHint();
-      });
-
       makeDraggable(img);
       img.src = src;
 
@@ -246,7 +221,7 @@
   }
 
   /* ================================================================
-     Layout — size scales with count, positions mirror-scattered
+     Layout — equal-area sizing, aspect ratio preserved
      ================================================================ */
   function layout() {
     const W = window.innerWidth;
@@ -259,32 +234,48 @@
     const cellW = W / cols;
     const cellH = H / rows;
 
-    // Largest tile that still fits inside one cell.
-    const fit = Math.min(cellW, cellH) * (1 - CONFIG.gapRatio);
-
-    // Coverage-driven size: sqrt(area × coverage / count)
-    const size = clamp(
-      Math.sqrt((W * H * CONFIG.targetCoverage) / n),
-      CONFIG.minSize,
-      Math.max(CONFIG.minSize, Math.min(CONFIG.maxSize, fit))
-    );
-
-    // Jitter may reach past the cell → deliberate overlaps.
-    const jitterX = Math.max(0, cellW - size) + size * CONFIG.overlap;
-    const jitterY = Math.max(0, cellH - size) + size * CONFIG.overlap;
+    // Each tile gets the same share of the viewport, whatever its shape.
+    const targetArea = (W * H * CONFIG.targetCoverage) / n;
+    const maxLong = Math.min(W, H) * CONFIG.maxSizeRatio;
 
     elements.forEach((el, i) => {
+      const ratio = parseFloat(el.dataset.ratio) || 1;
+
+      // Equal-area solve: w·h = targetArea, w/h = ratio
+      let w = Math.sqrt(targetArea * ratio);
+      let h = Math.sqrt(targetArea / ratio);
+
+      // Cap long edge so a few big images can't swamp the screen.
+      const long = Math.max(w, h);
+      if (long > maxLong) {
+        const k = maxLong / long;
+        w *= k; h *= k;
+      }
+      // Keep the short edge readable.
+      const short = Math.min(w, h);
+      if (short < CONFIG.minSize) {
+        const k = CONFIG.minSize / short;
+        w *= k; h *= k;
+      }
+      // Hard safety: never bigger than 90% of the viewport.
+      if (w > W * 0.9) { const k = (W * 0.9) / w; w *= k; h *= k; }
+      if (h > H * 0.9) { const k = (H * 0.9) / h; w *= k; h *= k; }
+
+      el.style.width = Math.round(w) + "px";
+      el.style.height = Math.round(h) + "px";
+
       const col = i % cols;
       const row = Math.floor(i / cols);
 
-      el.style.width = size + "px";
-      el.style.height = size + "px";
+      // Symmetric jitter around the cell centre, extended by overlap.
+      const spanX = Math.max(0, cellW - w) + w * CONFIG.overlap;
+      const spanY = Math.max(0, cellH - h) + h * CONFIG.overlap;
 
-      const x = scatter(col * cellW + Math.random() * jitterX, 0, Math.max(0, W - size));
-      const y = scatter(row * cellH + Math.random() * jitterY, 0, Math.max(0, H - size));
+      const cx = col * cellW + (cellW - w) / 2 + (Math.random() - 0.5) * spanX;
+      const cy = row * cellH + (cellH - h) / 2 + (Math.random() - 0.5) * spanY;
 
-      el.style.left = Math.round(x) + "px";
-      el.style.top = Math.round(y) + "px";
+      el.style.left = Math.round(scatter(cx, 0, Math.max(0, W - w))) + "px";
+      el.style.top = Math.round(scatter(cy, 0, Math.max(0, H - h))) + "px";
     });
 
     elements.forEach((el, i) => {
@@ -361,13 +352,16 @@
     const [, urls] = await Promise.all([applyBackground(), discoverImages()]);
 
     if (!urls.length) {
-      updateHint();
+      console.warn("[canvas] No images found in", CONFIG.folder);
       return;
     }
 
-    createElements(urls);
+    await createElements(urls);
+    if (!elements.length) {
+      console.warn("[canvas] Files found but none could be decoded");
+      return;
+    }
     layout();
-    updateHint();
   })();
 })();
 </script>
