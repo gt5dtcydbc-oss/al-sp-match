@@ -1123,6 +1123,9 @@
     const RSS_OFFSET_SANITY_BOUND_MS = 12 * 60 * 60 * 1000;
     const RSS_SUBS_LAG_HINT_MS = 60 * 60 * 1000;
     const RSS_MATCH_SCORE_MIN = 80;
+    const SUBSPLEASE_RSS_TIMEZONE = "America/Los_Angeles";
+    const SUBSPLEASE_RSS_TIMESTAMP_BASIS = "subsplease-pacific-v1";
+    const SUBSPLEASE_RSS_EXPLICIT_TIMESTAMP_BASIS = "subsplease-rfc822-v1";
 
     const TITLE_STOPWORDS = new Set([
       "a","an","the","and","of","to","in","on",
@@ -1740,7 +1743,12 @@
         extra += `<br/>Newest RSS release at ${exactLocalTime}`;
       }
 
-      if (state.rssTimeOffsetMs) {
+      const hasDatedSubsPleaseClock = (state.primaryCandidates || []).some(candidate =>
+        (candidate.items || []).some(hasDatedSubsPleaseTimestamp));
+      const hasGenericFeedClock = !hasDatedSubsPleaseClock || (state.primaryCandidates || []).some(candidate =>
+        (candidate.items || []).some(item => !hasDatedSubsPleaseTimestamp(item)));
+      if (hasDatedSubsPleaseClock) extra += `<br/>SubsPlease feed-clock correction follows each release date (summer/winter time).`;
+      if (state.rssTimeOffsetMs && hasGenericFeedClock) {
         const hours = state.rssTimeOffsetMs / 3600000;
         const signed = `${hours > 0 ? "+" : ""}${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)}`;
         extra += `<br/>RSS feed-clock correction: ${signed}h.`;
@@ -2271,10 +2279,70 @@
       return { showTitle, episode: episodeToken };
     }
 
-    function parseXmlFeed(xmlText) {
+    function isSubsPleaseRssSource(sourceUrl) {
+      try {
+        const url = new URL(sourceUrl);
+        return /^(www\.)?subsplease\.org$/i.test(url.hostname) && /^\/rss\/?$/.test(url.pathname);
+      } catch (_) { return false; }
+    }
+
+    function subsPleaseOnlyRssSources() {
+      return getRssUrls().every(isSubsPleaseRssSource);
+    }
+
+    function hasDatedSubsPleaseTimestamp(item) {
+      return item?.timestampBasis === SUBSPLEASE_RSS_TIMESTAMP_BASIS ||
+        item?.timestampBasis === SUBSPLEASE_RSS_EXPLICIT_TIMESTAMP_BASIS;
+    }
+
+    function correctSubsPleaseRssTimestamp(rawDateMs, rawPubDate = "") {
+      if (!Number.isFinite(rawDateMs) || rawDateMs <= 0) return null;
+      // Respect a genuine explicit timezone. The affected SubsPlease feed writes
+      // Pacific wall clocks with a false +0000/GMT label.
+      if (rawPubDate && !/(?:[+-]00:?00|GMT|UTC|Z)\s*$/i.test(rawPubDate)) {
+        return { dateMs: rawDateMs, offsetMs: 0, timestampBasis: SUBSPLEASE_RSS_EXPLICIT_TIMESTAMP_BASIS };
+      }
+
+      const offsets = new Set();
+      for (const delta of [-86400000, 0, 86400000]) {
+        const anchor = rawDateMs + delta;
+        const parts = getTimeZoneParts(new Date(anchor), SUBSPLEASE_RSS_TIMEZONE);
+        offsets.add(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) - Math.floor(anchor / 1000) * 1000);
+      }
+      const candidates = [];
+      for (const offset of offsets) {
+        const dateMs = rawDateMs - offset;
+        const parts = getTimeZoneParts(new Date(dateMs), SUBSPLEASE_RSS_TIMEZONE);
+        const wallMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+        if (wallMs === Math.floor(rawDateMs / 1000) * 1000) candidates.push(dateMs);
+      }
+      // A missing spring hour or repeated autumn hour has no unique instant in
+      // this mislabeled feed. Do not learn an invented timestamp from it.
+      if (candidates.length !== 1) return null;
+      return { dateMs: candidates[0], offsetMs: candidates[0] - rawDateMs, timestampBasis: SUBSPLEASE_RSS_TIMESTAMP_BASIS };
+    }
+
+    function normalizeSubsPleaseRssCandidates(candidates, assumeSubsPlease = false) {
+      return (candidates || []).map(candidate => ({ ...candidate,
+        items: (candidate.items || []).flatMap(item => {
+          if (!assumeSubsPlease && !hasDatedSubsPleaseTimestamp(item)) return [item];
+          const rawDateMs = Number(item.rawDateMs);
+          const clock = correctSubsPleaseRssTimestamp(rawDateMs, String(item.rawPubDate || ""));
+          if (!clock) return [];
+          return [{ ...item, date: new Date(clock.dateMs), offsetMs: clock.offsetMs, timestampBasis: clock.timestampBasis }];
+        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      })).filter(candidate => candidate.items.length);
+    }
+
+    function parseXmlFeed(xmlText, sourceUrl = "") {
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlText, "text/xml");
       if (doc.querySelector("parsererror")) throw new Error("Feed could not be parsed as XML.");
+      const channelLink = doc.querySelector("channel > link")?.textContent?.trim() || "";
+      const channelTitle = doc.querySelector("channel > title")?.textContent?.trim() || "";
+      const subsPleaseClock = sourceUrl
+        ? isSubsPleaseRssSource(sourceUrl)
+        : /^SubsPlease RSS\b/i.test(channelTitle) && /^https?:\/\/(www\.)?subsplease\.org\/?$/i.test(channelLink);
       const rawItems = Array.from(doc.querySelectorAll("item")).map(item => ({
         title: item.querySelector("title")?.textContent?.trim() || "",
         pubDate: item.querySelector("pubDate")?.textContent?.trim() || ""
@@ -2286,10 +2354,13 @@
         if (!parsed) continue;
         const raw = new Date(item.pubDate);
         if (Number.isNaN(raw.getTime())) continue;
-        // Apply the detected offset so RSS pubDate lines up with real-world time
-        // even if SubsPlease's feed stamps items in a shifted timezone.
         const rawDateMs = raw.getTime();
-        const date = offsetMs ? new Date(rawDateMs + offsetMs) : raw;
+        const clock = subsPleaseClock ? correctSubsPleaseRssTimestamp(rawDateMs, item.pubDate) : null;
+        if (subsPleaseClock && !clock) continue;
+        // The SubsPlease correction is +7/+8 per item's Pacific calendar date;
+        // generic feeds retain their existing learned correction.
+        const appliedOffsetMs = clock ? clock.offsetMs : offsetMs;
+        const date = new Date(rawDateMs + appliedOffsetMs);
         const key = `${normalizeTitle(parsed.showTitle)}::${parsed.episode}`;
         const existing = deduped.get(key);
         if (!existing || date.getTime() < existing.date.getTime()) {
@@ -2298,7 +2369,10 @@
             showTitle: parsed.showTitle,
             episode: parsed.episode,
             date,
-            rawDateMs
+            rawDateMs,
+            rawPubDate: item.pubDate,
+            offsetMs: appliedOffsetMs,
+            timestampBasis: clock?.timestampBasis || "learned-offset"
           });
         }
       }
@@ -2314,10 +2388,10 @@
       }));
     }
 
-    function parseGenericFeed(text) {
+    function parseGenericFeed(text, sourceUrl = "") {
       const trimmed = String(text || "").trim();
       if (!trimmed) return [];
-      return parseXmlFeed(trimmed);
+      return parseXmlFeed(trimmed, sourceUrl);
     }
 
     function rawRssTimestampMs(item) {
@@ -2372,6 +2446,7 @@
 
       for (const candidate of primaryCandidates || []) {
         const latest = candidate?.items?.[0];
+        if (hasDatedSubsPleaseTimestamp(latest)) continue;
         const rawMs = rawRssTimestampMs(latest);
         if (!latest?.episode || !Number.isFinite(rawMs)) continue;
 
@@ -2423,6 +2498,7 @@
 
       for (const candidate of primaryCandidates || []) {
         const latest = candidate?.items?.[0];
+        if (hasDatedSubsPleaseTimestamp(latest)) continue;
         const rawMs = rawRssTimestampMs(latest);
         if (!latest?.episode || !Number.isFinite(rawMs)) continue;
 
@@ -2723,7 +2799,13 @@
         matchedEpisode: latestRelease?.episode || null,
         latestReleaseDay: latestSlot?.weekday || null,
         latestReleaseTime: latestSlot?.time || null,
-        latestReleaseDate: releaseDateMs
+        latestReleaseDate: releaseDateMs,
+        latestReleaseClock: latestRelease ? {
+          rawDateMs: latestRelease.rawDateMs,
+          rawPubDate: latestRelease.rawPubDate || "",
+          offsetMs: latestRelease.offsetMs,
+          timestampBasis: latestRelease.timestampBasis
+        } : null
       };
     }
 
@@ -2892,7 +2974,8 @@
         await saveFinalHoldovers(state.userName, state.finalHoldovers);
       }
       state.currentEntries = dedupeEntriesById(snapshot.currentEntries || []);
-      state.primaryCandidates = Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [];
+      state.primaryCandidates = normalizeSubsPleaseRssCandidates(
+        Array.isArray(snapshot.primaryCandidates) ? snapshot.primaryCandidates : [], subsPleaseOnlyRssSources());
       state.totalAniListEntries = Number(snapshot.totalAniListEntries) || state.currentEntries.length;
       state.notes = Array.isArray(snapshot.notes) ? snapshot.notes : [];
       state.healthStatus = snapshot.healthStatus === "unhealthy" || state.notes.length ? "unhealthy" : "healthy";
@@ -3643,7 +3726,8 @@
                   matchedEpisode: primary.matchedEpisode || null,
                   latestReleaseDay: primary.latestReleaseDay || null,
                   latestReleaseTime: primary.latestReleaseTime || null,
-                  latestReleaseDate: primary.latestReleaseDate || null
+                  latestReleaseDate: primary.latestReleaseDate || null,
+                  latestReleaseClock: primary.latestReleaseClock || null
                 };
               }
             }
@@ -3662,6 +3746,7 @@
               latestReleaseDay: primary.latestReleaseDay || null,
               latestReleaseTime: primary.latestReleaseTime || null,
               latestReleaseDate: primary.latestReleaseDate || null,
+              latestReleaseClock: primary.latestReleaseClock || null,
               rssMatchedTitle: primary.matchedTitle || "",
               rssObservationRejectedForDisplay: true
             };
@@ -3761,6 +3846,7 @@
             latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
             latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
             latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
+            latestReleaseClock: rssCandidateForFinal?.latestReleaseClock || null,
             isFreshRss: isFreshRss || false,
             finalAiredAtMs: episodeState.finalAiredAtMs,
             usesRssFinalTiming: episodeState.usesRssFinalTiming,
@@ -3797,6 +3883,7 @@
             latestReleaseDay: rssCandidateForFinal?.latestReleaseDay || null,
             latestReleaseTime: rssCandidateForFinal?.latestReleaseTime || null,
             latestReleaseDate: rssCandidateForFinal?.latestReleaseDate || null,
+            latestReleaseClock: rssCandidateForFinal?.latestReleaseClock || null,
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
             hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
@@ -3844,6 +3931,7 @@
             latestReleaseDay: primary.latestReleaseDay || null,
             latestReleaseTime: primary.latestReleaseTime || null,
             latestReleaseDate: primary.latestReleaseDate || null,
+            latestReleaseClock: primary.latestReleaseClock || null,
             isFreshRss: isFreshRss || false,
             isAdded: Boolean(state.addedShows[String(media.id)]),
             hasNextAiring: shared.hasNextAiring, totalEpisodes: shared.totalEpisodes,
@@ -3894,6 +3982,36 @@
       return Number.isInteger(episode) ? String(episode).padStart(2, "0") : String(episode);
     }
 
+    function repairSubsPleaseRssHistory(entry, assumeSubsPlease = false) {
+      if (!Array.isArray(entry?.history)) return false;
+      let changed = false;
+      const replacements = new Map();
+      entry.history = entry.history.map(sample => {
+        if (!assumeSubsPlease && !hasDatedSubsPleaseTimestamp(sample)) return sample;
+        const savedAtMs = Number(sample?.releaseAtMs);
+        const explicitRawMs = Number(sample?.rawDateMs);
+        const hasSavedOffset = sample && Object.prototype.hasOwnProperty.call(sample, "offsetMs") && Number.isFinite(Number(sample.offsetMs));
+        const rawDateMs = Number.isFinite(explicitRawMs) && explicitRawMs > 0 ? explicitRawMs
+          : (Number.isFinite(savedAtMs) && savedAtMs > 0 && hasSavedOffset ? savedAtMs - Number(sample.offsetMs) : NaN);
+        const clock = correctSubsPleaseRssTimestamp(rawDateMs, String(sample?.rawPubDate || ""));
+        if (!clock) return sample;
+        const local = dateToWeekdayTime(new Date(clock.dateMs), DEFAULT_TIMEZONE);
+        const repaired = { ...sample, day: local.weekday, time: local.time, mins: toMinutes(local.time),
+          releaseAtMs: clock.dateMs, rawDateMs, rawPubDate: String(sample.rawPubDate || ""),
+          offsetMs: clock.offsetMs, timestampBasis: clock.timestampBasis };
+        if (sample.releaseAtMs !== repaired.releaseAtMs || sample.day !== repaired.day || sample.time !== repaired.time ||
+            sample.offsetMs !== repaired.offsetMs || sample.timestampBasis !== repaired.timestampBasis || sample.rawDateMs !== rawDateMs) {
+          changed = true;
+          if (Number.isFinite(savedAtMs)) replacements.set(savedAtMs, clock.dateMs);
+          return repaired;
+        }
+        return sample;
+      });
+      if (replacements.has(Number(entry.latestReleaseDate))) entry.latestReleaseDate = replacements.get(Number(entry.latestReleaseDate));
+      if (changed) entry.updatedAt = new Date().toISOString();
+      return changed;
+    }
+
   function recordMatchedRssObservation(item, entry) {
     const episode = episodeNumberFromToken(item?.matchedEpisode);
     const currentDay = String(item?.latestReleaseDay || "");
@@ -3936,25 +4054,32 @@
     }
 
     const episodeToken = rssEpisodeToken(resolvedEpisode);
+    const releaseClock = item?.latestReleaseClock;
+    const observationOffsetMs = releaseClock && Number.isFinite(Number(releaseClock.offsetMs))
+        ? Number(releaseClock.offsetMs) : (Number(state.rssTimeOffsetMs) || 0);
     const sample = {
         day: currentDay,
         time: currentTime,
         mins: toMinutes(currentTime),
         episode: episodeToken,
         releaseAtMs,
-        offsetMs: Number(state.rssTimeOffsetMs) || 0
+        offsetMs: observationOffsetMs,
+        ...(releaseClock ? { rawDateMs: releaseClock.rawDateMs, rawPubDate: releaseClock.rawPubDate || "",
+            timestampBasis: releaseClock.timestampBasis || "learned-offset" } : {})
     };
 
     const existingHistoryIndex = entry.history.findIndex(
         historySample => episodeNumberFromToken(historySample?.episode) === resolvedEpisode
     );
     let changed = false;
+    let replacedReleaseAtMs = null;
     if (existingHistoryIndex >= 0) {
         // Rebase an already-seen episode if the learned feed-clock correction changes.
         const existing = entry.history[existingHistoryIndex] || {};
         if (existing.day !== sample.day || existing.time !== sample.time ||
             Number(existing.releaseAtMs) !== Number(sample.releaseAtMs) ||
-            Number(existing.offsetMs || 0) !== Number(sample.offsetMs || 0)) {
+            Number(existing.offsetMs || 0) !== Number(sample.offsetMs || 0) || existing.timestampBasis !== sample.timestampBasis) {
+            replacedReleaseAtMs = Number(existing.releaseAtMs);
             entry.history[existingHistoryIndex] = sample;
             changed = true;
         }
@@ -3965,7 +4090,7 @@
     }
 
     const storedLatestRelease = Number(entry.latestReleaseDate);
-    if (!Number.isFinite(storedLatestRelease) || releaseAtMs >= storedLatestRelease) {
+    if (!Number.isFinite(storedLatestRelease) || releaseAtMs >= storedLatestRelease || storedLatestRelease === replacedReleaseAtMs) {
         entry.latestReleaseDate = releaseAtMs;
     }
     if (changed) entry.updatedAt = new Date().toISOString();
@@ -3974,6 +4099,7 @@
 
     async function applyCache(items) {
       const output = [];
+      const assumeSubsPlease = subsPleaseOnlyRssSources();
 
       await mutateSlotCache(state.userName, cache => {
       for (const item of items) {
@@ -3981,6 +4107,7 @@
 
         let entry = cache[key];
         if (!entry || typeof entry !== "object") entry = {};
+        repairSubsPleaseRssHistory(entry, assumeSubsPlease);
 
         // Read the previous cached AniList episode/time before the finale transition
         // helper updates lastAniListNextEpisode. This keeps the ticker gate independent
@@ -5473,7 +5600,7 @@
             if (!feedText) continue;
 
             try {
-              const parsed = parseGenericFeed(feedText);
+              const parsed = parseGenericFeed(feedText, feed.url);
               anyFeedParsed = true;
               if (parsed.length) {
                 allCandidates.push(...parsed);
@@ -5601,7 +5728,7 @@
                 const feedText = String(feed.text || "").trim();
                 if (!feedText) continue;
                 try {
-                  const parsed = parseGenericFeed(feedText);
+                  const parsed = parseGenericFeed(feedText, feed.url);
                   if (parsed.length) {
                     correctedCandidates.push(...parsed);
                     correctedAny = true;
