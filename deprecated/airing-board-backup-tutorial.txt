@@ -1,0 +1,338 @@
+ANIME AIRING BOARD: AUTOMATIC JSON BACKUP TUTORIAL
+Prepared: 2 November 2026
+
+PURPOSE
+
+This tutorial adds two automatic backup triggers per day for your existing
+GitHub workflow. Each successful workflow run rebuilds and publishes the JSON
+schedule used by both the JSON board and the hybrid board.
+
+The backup runs at 06:23 and 18:23 UTC every day:
+- Berlin winter time: 07:23 and 19:23.
+- Berlin summer time: 08:23 and 20:23.
+
+Your existing GitHub schedule remains in place. No workflow code changes are
+needed: it already supports workflow_dispatch, which lets the scheduler start
+the equivalent of a manual "Run workflow" request.
+
+This provides a second way to trigger updates. An outage or a failed workflow
+can still prevent publication, so verify the first run using the steps below.
+
+
+STEP 1: OPEN THE GITHUB TOKEN SETUP PAGE
+
+Sign into the GitHub account that owns the repository, then open:
+
+https://github.com/settings/personal-access-tokens/new?name=Airing-board-backup&target_name=gt5dtcydbc-oss&expires_in=365&actions=write
+
+This link pre-fills:
+- Token name: Airing-board-backup
+- Resource owner: gt5dtcydbc-oss
+- Expiration: 365 days
+- Actions permission: write
+
+If the pre-filled link does not work, open:
+
+https://github.com/settings/personal-access-tokens/new
+
+Or navigate manually:
+Profile picture > Settings > Developer settings > Personal access tokens >
+Fine-grained tokens > Generate new token.
+
+
+STEP 2: RESTRICT THE TOKEN TO YOUR REPOSITORY
+
+Before generating the token, check:
+
+Resource owner:
+  gt5dtcydbc-oss
+
+Repository access:
+  Only select repositories
+
+Selected repository:
+  al-sp-match
+
+Under Permissions / Repository permissions:
+  Actions: Read and write
+
+GitHub may also include Metadata: Read-only automatically. That is expected.
+Other additional permissions are not required for this tutorial.
+
+Check the expiration date. If an account policy prevents a 365-day lifetime,
+choose an allowed expiry and note when you will need to replace the token.
+
+
+STEP 3: GENERATE AND COPY THE TOKEN
+
+Click "Generate token", then copy the generated token.
+
+Keep it available for Step 8. Treat it like a password. Paste it only into the
+scheduler's Authorization header, never into your repository or a chat message.
+The tutorial does not contain a real token.
+
+
+STEP 4: CREATE YOUR CRON-JOB.ORG ACCOUNT
+
+Open:
+
+https://cron-job.org/en/
+
+Click "Sign up", create your account, verify your email, and log in.
+
+Console link:
+
+https://console.cron-job.org/
+
+
+STEP 5: CREATE THE BACKUP JOB
+
+Click:
+  Cronjobs > Create cronjob
+
+You can also open this page after logging in:
+
+https://console.cron-job.org/jobs/create
+
+On the Common tab, enter:
+
+Title:
+  Airing board JSON backup
+
+Enable job:
+  On
+
+URL:
+  Copy the ENTIRE address below into the URL field:
+
+https://api.github.com/repos/gt5dtcydbc-oss/al-sp-match/actions/workflows/deploy-subsplease-schedule.yml/dispatches
+
+This is the GitHub workflow API address. Keep the /dispatches ending.
+
+
+STEP 6: SET THE EXECUTION SCHEDULE
+
+Under "Execution schedule", find the "Crontab expression" field.
+
+Replace its contents with exactly:
+
+23 6,18 * * *
+
+Click outside the field to apply the change.
+
+The execution preview should show two runs each day, at minute 23 of hours
+06 and 18. Step 7 sets the time zone to UTC.
+
+Leave "Schedule expires" switched OFF.
+
+This schedule sends two requests every day. It does not wait for you to change
+or upload a file in GitHub.
+
+
+STEP 7: SET THE REQUEST METHOD AND TIME ZONE
+
+Open the "Advanced" tab.
+
+Set:
+
+Time zone:
+  UTC
+
+Request method:
+  POST
+
+Leave HTTP basic authentication off. The GitHub token goes into a header in
+the next step; it does not go into a username/password field.
+
+
+STEP 8: ADD THE FOUR HEADERS
+
+Find "Headers". Click "Add" once for each row below.
+
+Header 1
+  Key:   Accept
+  Value: application/vnd.github+json
+
+Header 2
+  Key:   Authorization
+  Value: Bearer YOUR_TOKEN
+
+Header 3
+  Key:   Content-Type
+  Value: application/json
+
+Header 4
+  Key:   X-GitHub-Api-Version
+  Value: 2026-03-10
+
+For Header 2, replace YOUR_TOKEN with the token copied from GitHub.
+Keep the word Bearer followed by ONE SPACE before the token.
+
+The pattern is:
+  Bearer [paste your actual token here]
+
+Do not include the square brackets, quotation marks, or the literal text
+YOUR_TOKEN in the final saved value.
+
+
+STEP 9: ADD THE REQUEST BODY
+
+Find "Request body" and paste exactly:
+
+{"ref":"main"}
+
+Keep the braces and double quotation marks. Do not wrap the entire line in
+extra quotation marks.
+
+This tells GitHub to run the workflow from the main branch.
+
+
+STEP 10: SAVE AND TEST THE JOB
+
+Click "Create".
+
+Reopen the saved job by clicking its title.
+
+Click:
+  Test run > Start test run
+
+Complete any verification prompt if one appears.
+
+A successful HTTP 2xx response means GitHub accepted the trigger request.
+The current API version documents HTTP 200 as a successful response.
+
+A successful scheduler test does not by itself prove that the JSON was
+published. Check the workflow and the published file next.
+
+If you edit any settings after creating the job, click "Save" to retain them.
+
+
+STEP 11: VERIFY THE GITHUB WORKFLOW
+
+Open your workflow:
+
+https://github.com/gt5dtcydbc-oss/al-sp-match/actions/workflows/deploy-subsplease-schedule.yml
+
+A new run should appear after the test request. It will be a manually
+triggered / workflow_dispatch run, even though cron-job.org sent the request.
+
+Open that run and wait for completion.
+
+A green checkmark indicates that the workflow completed successfully.
+
+
+STEP 12: VERIFY THAT THE JSON IS FRESH
+
+Open the published JSON:
+
+https://gt5dtcydbc-oss.github.io/al-sp-match/subsplease-schedule.json
+
+Find the field:
+  fetchedAtUtc
+
+Its value should be recent and correspond to the new workflow run.
+A trailing Z means the timestamp is in UTC.
+
+Then refresh your board or click "Sync now". Its published timestamp should
+become recent.
+
+The JSON version and hybrid version read the same published JSON file, so one
+successful publication updates the timetable source for both.
+
+"Sync now" downloads the published file. It does not itself regenerate that
+file; the workflow does the regeneration.
+
+
+AFTER SETUP
+
+Your workflow will have these ways to start:
+- Your existing GitHub schedule, requested at :17 and :47 each hour.
+- File changes committed to main.
+- The GitHub "Run workflow" button.
+- The new cron-job.org backup, requested twice per day.
+
+The backup bypasses GitHub's scheduled trigger by using the workflow API.
+It still depends on the scheduler, GitHub Actions, the upstream schedule
+source, and publishing being available.
+
+Your computer and the board do not need to stay open for these backup requests.
+
+
+TOKEN EXPIRATION: KEEP THE BACKUP WORKING
+
+The pre-filled setup link requests a 365-day token lifetime.
+
+Before the token expires:
+1. Generate a replacement with the same repository and Actions permission.
+2. Edit the cron-job.org job.
+3. Open Advanced > Headers.
+4. Replace the token in the Authorization value, keeping "Bearer " before it.
+5. Click Save.
+6. Run another test and verify publication again.
+
+If the token expires or is revoked, the external backup will stop working.
+The existing GitHub triggers are separate from this token.
+
+
+QUICK TROUBLESHOOTING
+
+HTTP 401 / Bad credentials:
+  Check that the token is correct and has not expired. The Authorization
+  value must contain Bearer, one space, then the full token.
+
+HTTP 403 / Permission denied:
+  Check that the token has Actions: Read and write for al-sp-match.
+  If organization approval is required, the token must be approved.
+
+HTTP 404 / Not Found:
+  Check the entire API URL and workflow filename.
+  Also check the token's selected repository; missing access may appear as 404.
+
+HTTP 422 / Validation failed:
+  Check that the request body is exactly {"ref":"main"} and that the branch
+  and workflow still exist.
+
+Scheduler test succeeds but no fresh JSON:
+  Open the GitHub workflow run. The API request being accepted does not mean
+  every workflow step succeeded. Check the failed step if the run is red.
+
+Board still shows an old published timestamp:
+  First check fetchedAtUtc in the JSON link from Step 12.
+  If the JSON is fresh, refresh the board or use Sync now.
+
+
+USEFUL LINKS AND OFFICIAL REFERENCES
+
+Your repository:
+https://github.com/gt5dtcydbc-oss/al-sp-match
+
+Your workflow:
+https://github.com/gt5dtcydbc-oss/al-sp-match/actions/workflows/deploy-subsplease-schedule.yml
+
+Your published JSON:
+https://gt5dtcydbc-oss.github.io/al-sp-match/subsplease-schedule.json
+
+GitHub fine-grained token setup:
+https://github.com/settings/personal-access-tokens/new
+
+GitHub token management:
+https://github.com/settings/personal-access-tokens
+
+GitHub token instructions:
+https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+
+GitHub workflow API:
+https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event
+
+GitHub scheduled workflow behavior:
+https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+
+cron-job.org:
+https://cron-job.org/en/
+
+cron-job.org console:
+https://console.cron-job.org/
+
+cron-job.org FAQ:
+https://cron-job.org/en/faq/
+
