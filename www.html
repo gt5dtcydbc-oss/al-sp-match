@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyper-Local Store Sign Generator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+
+        .upload-btn:hover { background-color: #0056b3; }
+
+        /* The Container for the Sign */
+        .sign-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Image Area */
+        .image-area {
+            width: 100%;
+            height: 300px;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-bottom: 4px solid #000;
+        }
+
+        .image-area img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Typography Grid Area */
+        .typography-area {
+            display: flex;
+            flex-wrap: wrap;
+            background-color: #000;
+            gap: 2px; /* Black gap to simulate borders */
+            padding: 2px;
+        }
+
+        /* Individual Text Blocks */
+        .text-block {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 5px;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "SimHei", sans-serif;
+            font-weight: 900;
+            line-height: 1.1;
+            overflow: hidden;
+            word-break: break-all;
+        }
+
+        /* Dynamic Classes for the chaotic look */
+        .bg-cyan { background-color: #00FFFF; color: #000; }
+        .bg-pink { background-color: #FFB6C1; color: #000; }
+        .bg-yellow { background-color: #FFFF00; color: #000; }
+        .bg-green { background-color: #98FB98; color: #000; }
+        .bg-red { background-color: #FF4500; color: #FFF; }
+        .bg-white { background-color: #FFF; color: #000; }
+        .bg-dark { background-color: #333; color: #FFF; }
+
+        .text-large { font-size: 42px; flex: 2 1 50%; min-height: 80px; }
+        .text-medium { font-size: 28px; flex: 1 1 30%; min-height: 60px; }
+        .text-small { font-size: 14px; flex: 1 1 20%; min-height: 40px; letter-spacing: 1px; font-weight: bold; font-family: monospace; }
+        
+        /* Specific tweaks for Chinese visual style */
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <label for="imageUpload" class="upload-btn">1. Upload Image</label>
+        <input type="file" id="imageUpload" accept="image/*">
+        <button class="upload-btn" onclick="generateSign()">2. Generate Sign Text</button>
+    </div>
+
+    <div class="sign-container">
+        <!-- Top: Image -->
+        <div class="image-area" id="imagePreview">
+            <span style="color: #999;">Image Preview Will Appear Here</span>
+        </div>
+
+        <!-- Bottom: Typography -->
+        <div class="typography-area" id="typographyArea">
+            <!-- JS will inject text blocks here -->
+        </div>
+    </div>
+
+    <script>
+        // --- MOCK DATA ---
+        // In a real app, you would change this array based on what the image is.
+        const data = {
+            names: ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "鲜到家", "果然生活", "丰收季", "万家果品"],
+            slogans: ["十年老店", "颗颗饱满", "粒粒精选", "香糯可口", "这里的果子真甜", "十里飘香"],
+            phones: ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681"]
+        };
+
+        const colors = ["bg-cyan", "bg-pink", "bg-yellow", "bg-green", "bg-red", "bg-white", "bg-dark"];
+
+        // --- IMAGE UPLOAD PREVIEW ---
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const imgArea = document.getElementById('imagePreview');
+                    imgArea.innerHTML = `<img src="${event.target.result}" alt="Uploaded Image">`;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // --- UTILS ---
+        function getRandomItem(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function getRandomColor() {
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // --- GENERATOR LOGIC ---
+        function generateSign() {
+            const container = document.getElementById('typographyArea');
+            container.innerHTML = ''; // Clear existing
+
+            // We want to generate a random number of blocks (between 8 and 15)
+            const numBlocks = Math.floor(Math.random() * 8) + 8;
+            let currentPhoneIndex = 0;
+
+            for (let i = 0; i < numBlocks; i++) {
+                const block = document.createElement('div');
+                const rand = Math.random();
+
+                // Apply random color
+                block.classList.add('text-block', getRandomColor());
+
+                // Decide what type of text it is based on probability
+                if (rand > 0.6) {
+                    // Large Store Name / Slogan
+                    block.classList.add('text-large');
+                    block.innerText = getRandomItem(data.names);
+                } 
+                else if (rand > 0.3) {
+                    // Medium Slogan
+                    block.classList.add('text-medium');
+                    block.innerText = getRandomItem(data.slogans);
+                } 
+                else {
+                    // Small Phone Number
+                    block.classList.add('text-small');
+                    block.innerText = data.phones[currentPhoneIndex % data.phones.length];
+                    currentPhoneIndex++;
+                    
+                    // Sometimes make phone numbers vertical
+                    if (Math.random() > 0.8) {
+                        block.classList.add('vertical-text');
+                        block.classList.remove('text-small');
+                        block.classList.add('text-medium');
+                    }
+                }
+
+                // Add random inline styles to make it feel organic and chaotic
+                if (Math.random() > 0.7) block.style.flexBasis = "100%"; // Make it a full row
+                if (Math.random() > 0.8) block.style.padding = "20px 5px";
+
+                container.appendChild(block);
+            }
+        }
+
+        // Generate one by default on load
+        generateSign();
+    </script>
+</body>
+</html>
