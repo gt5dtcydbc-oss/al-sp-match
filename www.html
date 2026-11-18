@@ -3,128 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hyper-Local Store Sign Generator</title>
+    <title>Lightweight Sign Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #1a1a1a;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            margin: 0;
-        }
-
-        .controls {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
         input[type="file"] { display: none; }
-
-        .btn {
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
-            border: 1px solid #555;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-
+        .btn { background-color: #333; color: white; padding: 10px 20px; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn:hover { background-color: #555; }
         .btn-primary { background-color: #007bff; border-color: #007bff; }
         .btn-primary:hover { background-color: #0056b3; }
-
-        /* The Sign Container */
-        .sign-container {
-            width: 100%;
-            max-width: 600px;
-            background-color: #fff;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Image Area */
-        .image-area {
-            width: 100%;
-            height: 350px;
-            background-color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .image-area img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            mix-blend-mode: multiply; 
-        }
-
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .sign-container { width: 100%; max-width: 600px; background-color: #fff; box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+        .image-area { width: 100%; height: 350px; background-color: #fff; display: flex; justify-content: center; align-items: center; overflow: hidden; border-bottom: 1px solid #eee; }
+        .image-area img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
         .placeholder-text { color: #aaa; font-size: 16px; }
-
-        /* Typography Area - NO GAPS */
-        .typography-area {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            background-color: #fff;
-            gap: 0; /* Flush edges */
-        }
-
-        /* Text Blocks */
-        .text-block {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 8px;
-            font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif;
-            font-weight: 900;
-            line-height: 1.1;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.1s;
-            border-right: 1px solid rgba(0,0,0,0.1); /* Subtle divider if needed, or remove */
-        }
-
+        .typography-area { display: grid; grid-template-columns: repeat(12, 1fr); background-color: #fff; gap: 0; min-height: 300px; }
+        .text-block { display: flex; justify-content: center; align-items: center; text-align: center; padding: 8px; font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif; font-weight: 900; line-height: 1.1; overflow: hidden; cursor: pointer; transition: transform 0.1s; border-right: 1px solid rgba(0,0,0,0.05); border-bottom: 1px solid rgba(0,0,0,0.05); }
         .text-block:active { transform: scale(0.95); }
         .text-block:hover { filter: brightness(0.9); }
-
-        /* Grid Spans */
         .span-hero { grid-column: span 12; font-size: 56px; padding: 25px 8px; }
         .span-8 { grid-column: span 8; font-size: 42px; }
         .span-6 { grid-column: span 6; font-size: 36px; }
         .span-4 { grid-column: span 4; font-size: 24px; }
         .span-3 { grid-column: span 3; font-size: 20px; }
-        
-        /* Special Phone Number styles */
-        .phone-horizontal {
-            font-size: 16px;
-            font-family: "Courier New", monospace;
-            white-space: nowrap; /* PREVENTS BREAKING MID-NUMBER */
-            letter-spacing: -0.5px;
-        }
-
-        .phone-vertical {
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 18px;
-            letter-spacing: 2px;
-            font-family: "Courier New", monospace;
-            white-space: nowrap;
-            padding: 10px 0;
-        }
-
-        /* The Palette */
+        .phone-horizontal { font-size: 16px; font-family: "Courier New", monospace; white-space: nowrap; letter-spacing: -0.5px; writing-mode: horizontal-tb; }
+        .phone-vertical { writing-mode: vertical-rl; text-orientation: upright; font-size: 18px; letter-spacing: 2px; font-family: "Courier New", monospace; white-space: nowrap; padding: 10px 0; }
         .c-pale-green { background-color: #E6E8C8; color: #111; }
         .c-olive { background-color: #B0B880; color: #111; }
         .c-pale-pink { background-color: #E8C8C8; color: #111; }
@@ -139,9 +43,10 @@
         .c-coral { background-color: #CC3333; color: #fff; }
         .c-white { background-color: #FFF; color: #111; }
         .c-black { background-color: #111; color: #FFF; }
-
         .outlined-text { color: transparent; -webkit-text-stroke: 2px #111; }
         .outlined-text-white { color: transparent; -webkit-text-stroke: 2px #fff; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -149,7 +54,7 @@
     <div class="controls">
         <label for="imageUpload" class="btn">1. Upload Image</label>
         <input type="file" id="imageUpload" accept="image/*">
-        <button class="btn btn-primary" onclick="generateSign()">2. Generate Layout</button>
+        <button class="btn btn-primary" id="generateBtn" onclick="generateSign()" disabled>2. Generate Layout</button>
         <button class="btn" onclick="downloadSign()">⬇️ Download</button>
     </div>
 
@@ -157,15 +62,22 @@
         <div class="image-area" id="imagePreview">
             <span class="placeholder-text">Image Preview</span>
         </div>
-        <div class="typography-area" id="typographyArea"></div>
+        <div class="typography-area" id="typographyArea">
+            <div style="grid-column: span 12;">
+                <div class="loader"></div>
+                <p style="text-align: center; color: #666; font-family: sans-serif;">Fetching random words...</p>
+            </div>
+        </div>
     </div>
 
     <script>
-        const data = {
-            names: ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "鲜到家", "果然生活", "丰收季", "万家果品", "栗语茶香", "板栗工坊"],
-            slogans: ["十年老店", "颗颗饱满", "粒粒精选", "香糯可口", "这里的果子真甜", "十里飘香", "百里挑一", "香飘十里"],
-            phones: ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681", "186-5899-6181"]
-        };
+        // --- STATE ---
+        let dictionaryWords = []; // Will hold the fetched Chinese words
+        let isLoaded = false;
+
+        // Fallback words just in case the API fails
+        const fallbackWords = ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "十年老店", "颗颗饱满", "十里飘香", "万家果品"];
+        const phoneData = ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681", "186-5899-6181"];
 
         const colorClasses = [
             "c-pale-green", "c-olive", "c-pale-pink", "c-beige",
@@ -174,6 +86,35 @@
             "c-white", "c-black"
         ];
 
+        // --- INITIALIZATION ---
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                // Fetch 10 random Chinese words in parallel
+                const promises = Array.from({ length: 10 }, () => 
+                    fetch('https://random-words-api.vercel.app/word/chinese')
+                        .then(res => res.json())
+                        .then(data => data[0].word) // The API returns an array with one word object
+                );
+                
+                const words = await Promise.all(promises);
+                
+                // Filter out very long words that might break the layout
+                dictionaryWords = words.filter(word => word.length <= 4);
+
+                console.log(`Loaded ${dictionaryWords.length} random words:`, dictionaryWords);
+                
+            } catch (error) {
+                console.error("Failed to fetch dictionary. Using fallback.", error);
+                dictionaryWords = fallbackWords;
+            }
+
+            // Enable the button and auto-generate the first sign
+            isLoaded = true;
+            document.getElementById('generateBtn').disabled = false;
+            generateSign();
+        });
+
+        // --- IMAGE UPLOAD ---
         document.getElementById('imageUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -186,25 +127,27 @@
             }
         });
 
+        // --- UTILS ---
         function getRandomItem(arr) {
+            if (!arr || arr.length === 0) return "无数据";
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        // Helper to create a block
+        // --- BLOCK GENERATOR ---
         function createBlock(spanClass, isPhone, isVertical) {
             const block = document.createElement('div');
             block.classList.add('text-block', spanClass, getRandomItem(colorClasses));
             
             if (isPhone) {
-                block.innerText = getRandomItem(data.phones);
+                block.innerText = getRandomItem(phoneData);
                 if (isVertical) {
                     block.classList.add('phone-vertical');
                 } else {
                     block.classList.add('phone-horizontal');
                 }
             } else {
-                // Randomly pick name or slogan
-                block.innerText = Math.random() > 0.5 ? getRandomItem(data.names) : getRandomItem(data.slogans);
+                // Use the fetched dictionary words
+                block.innerText = getRandomItem(dictionaryWords);
                 
                 // Random outline
                 if (Math.random() > 0.8) {
@@ -212,39 +155,35 @@
                 }
             }
 
-            // Click to reroll
+            // Click to reroll this specific block
             block.onclick = function() {
+                // If we only have 10 words, we can cycle through them or pick a random one
                 this.parentNode.replaceChild(createBlock(spanClass, isPhone, isVertical), this);
             };
 
             return block;
         }
 
+        // --- MAIN GENERATOR ---
         function generateSign() {
+            if (!isLoaded) return;
+
             const container = document.getElementById('typographyArea');
             container.innerHTML = ''; 
 
-            // Pre-defined row patterns that always add up to 12 columns
-            // This guarantees NO GAPS.
             const rowPatterns = [
                 [{span: 'span-hero', type: 'text'}],
                 [{span: 'span-8', type: 'text'}, {span: 'span-4', type: 'text'}],
                 [{span: 'span-4', type: 'phone'}, {span: 'span-8', type: 'text'}],
                 [{span: 'span-6', type: 'text'}, {span: 'span-6', type: 'text'}],
-                [{span: 'span-3', type: 'v-phone'}, {span: 'span-9', type: 'text'}], // Vertical phone + big text
+                [{span: 'span-3', type: 'v-phone'}, {span: 'span-9', type: 'text'}],
                 [{span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}],
                 [{span: 'span-8', type: 'text'}, {span: 'span-4', type: 'phone'}],
                 [{span: 'span-3', type: 'phone'}, {span: 'span-3', type: 'phone'}, {span: 'span-6', type: 'text'}]
             ];
 
-            // Let's generate about 6 rows to make a long sign
-            const numRows = 6;
-
-            for (let i = 0; i < numRows; i++) {
-                // Pick a random pattern
+            for (let i = 0; i < 7; i++) {
                 const pattern = getRandomItem(rowPatterns);
-                
-                // Create blocks for that pattern
                 pattern.forEach(item => {
                     const isPhone = item.type === 'phone' || item.type === 'v-phone';
                     const isVertical = item.type === 'v-phone';
@@ -253,6 +192,7 @@
             }
         }
 
+        // --- DOWNLOAD ---
         function downloadSign() {
             const element = document.getElementById('signContainer');
             html2canvas(element, {
@@ -261,13 +201,11 @@
                 backgroundColor: "#ffffff"
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'folk-sign.jpg';
+                link.download = 'lightweight-sign.jpg';
                 link.href = canvas.toDataURL('image/jpeg', 0.9);
                 link.click();
             });
         }
-
-        generateSign();
     </script>
 </body>
 </html>
