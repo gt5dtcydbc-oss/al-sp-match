@@ -3,32 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lightweight Sign Generator</title>
+    <title>Polished Folk Sign Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
         input[type="file"] { display: none; }
-        .btn { background-color: #333; color: white; padding: 10px 20px; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+
+        .btn {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
         .btn:hover { background-color: #555; }
         .btn-primary { background-color: #007bff; border-color: #007bff; }
         .btn-primary:hover { background-color: #0056b3; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .sign-container { width: 100%; max-width: 600px; background-color: #fff; box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
-        .image-area { width: 100%; height: 350px; background-color: #fff; display: flex; justify-content: center; align-items: center; overflow: hidden; border-bottom: 1px solid #eee; }
-        .image-area img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
-        .placeholder-text { color: #aaa; font-size: 16px; }
-        .typography-area { display: grid; grid-template-columns: repeat(12, 1fr); background-color: #fff; gap: 0; min-height: 300px; }
-        .text-block { display: flex; justify-content: center; align-items: center; text-align: center; padding: 8px; font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif; font-weight: 900; line-height: 1.1; overflow: hidden; cursor: pointer; transition: transform 0.1s; border-right: 1px solid rgba(0,0,0,0.05); border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .text-block:active { transform: scale(0.95); }
-        .text-block:hover { filter: brightness(0.9); }
-        .span-hero { grid-column: span 12; font-size: 56px; padding: 25px 8px; }
-        .span-8 { grid-column: span 8; font-size: 42px; }
-        .span-6 { grid-column: span 6; font-size: 36px; }
-        .span-4 { grid-column: span 4; font-size: 24px; }
-        .span-3 { grid-column: span 3; font-size: 20px; }
-        .phone-horizontal { font-size: 16px; font-family: "Courier New", monospace; white-space: nowrap; letter-spacing: -0.5px; writing-mode: horizontal-tb; }
-        .phone-vertical { writing-mode: vertical-rl; text-orientation: upright; font-size: 18px; letter-spacing: 2px; font-family: "Courier New", monospace; white-space: nowrap; padding: 10px 0; }
+
+        /* The Sign Container */
+        .sign-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #fff;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Image Area */
+        .image-area {
+            width: 100%;
+            height: 350px;
+            background-color: #f8f8f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-bottom: 2px solid #000;
+        }
+
+        .image-area img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            mix-blend-mode: multiply; 
+        }
+
+        .placeholder-text { color: #aaa; font-size: 16px; font-weight: bold; letter-spacing: 2px; }
+
+        /* Typography Area - Strict Grid */
+        .typography-area {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-rows: minmax(80px, auto); /* Prevents row collapse */
+            grid-auto-flow: dense; /* Fills gaps automatically */
+            background-color: #000; /* Black background acts as grid borders */
+            gap: 2px; /* Thickness of the border */
+            min-height: 400px;
+        }
+
+        /* Text Blocks */
+        .text-block {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 10px;
+            font-family: "Microsoft YaHei", "SimHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            font-weight: 900;
+            line-height: 1.1;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.2s;
+            background-color: #fff; 
+        }
+
+        .text-block:hover { filter: brightness(0.85); }
+
+        /* Grid Spans */
+        .span-12 { grid-column: span 12; font-size: clamp(36px, 8vw, 64px); padding: 20px; }
+        .span-9 { grid-column: span 9; font-size: clamp(28px, 6vw, 52px); }
+        .span-8 { grid-column: span 8; font-size: clamp(26px, 5vw, 48px); }
+        .span-6 { grid-column: span 6; font-size: clamp(20px, 4vw, 36px); }
+        .span-4 { grid-column: span 4; font-size: clamp(18px, 3vw, 24px); }
+        .span-3 { grid-column: span 3; font-size: clamp(16px, 2.5vw, 20px); }
+
+        /* Phone Number Styling */
+        .phone-horizontal {
+            font-family: "Courier New", monospace;
+            font-weight: bold;
+            white-space: nowrap; /* Forces it to one line */
+            font-size: clamp(10px, 2vw, 18px); /* Shrinks if the box is too small */
+            letter-spacing: -1px;
+        }
+
+        .phone-vertical {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-family: "Courier New", monospace;
+            font-weight: bold;
+            font-size: clamp(12px, 2vw, 18px);
+            letter-spacing: 2px;
+        }
+
+        /* The Palette */
         .c-pale-green { background-color: #E6E8C8; color: #111; }
         .c-olive { background-color: #B0B880; color: #111; }
         .c-pale-pink { background-color: #E8C8C8; color: #111; }
@@ -43,10 +144,16 @@
         .c-coral { background-color: #CC3333; color: #fff; }
         .c-white { background-color: #FFF; color: #111; }
         .c-black { background-color: #111; color: #FFF; }
-        .outlined-text { color: transparent; -webkit-text-stroke: 2px #111; }
-        .outlined-text-white { color: transparent; -webkit-text-stroke: 2px #fff; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Proper CSS Text Outline */
+        .outlined-text {
+            color: transparent;
+            -webkit-text-stroke: 2px #111;
+        }
+        .outlined-text-white {
+            color: transparent;
+            -webkit-text-stroke: 2px #fff;
+        }
     </style>
 </head>
 <body>
@@ -60,23 +167,21 @@
 
     <div class="sign-container" id="signContainer">
         <div class="image-area" id="imagePreview">
-            <span class="placeholder-text">Image Preview</span>
+            <span class="placeholder-text">NO IMAGE</span>
         </div>
         <div class="typography-area" id="typographyArea">
-            <div style="grid-column: span 12;">
-                <div class="loader"></div>
-                <p style="text-align: center; color: #666; font-family: sans-serif;">Fetching random words...</p>
+            <div style="grid-column: span 12; display: flex; justify-content: center; align-items: center; background: #fff; color: #333; font-weight: bold;">
+                FETCHING WORDS...
             </div>
         </div>
     </div>
 
     <script>
-        // --- STATE ---
-        let dictionaryWords = []; // Will hold the fetched Chinese words
+        let dictionaryWords = [];
         let isLoaded = false;
 
-        // Fallback words just in case the API fails
-        const fallbackWords = ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "十年老店", "颗颗饱满", "十里飘香", "万家果品"];
+        // Expanded fallback pool just in case
+        const fallbackWords = ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "十年老店", "颗颗饱满", "十里飘香", "万家果品", "杂货百货", "日用批发", "便民服务", "老字号", "童叟无欺"];
         const phoneData = ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681", "186-5899-6181"];
 
         const colorClasses = [
@@ -89,26 +194,34 @@
         // --- INITIALIZATION ---
         document.addEventListener("DOMContentLoaded", async () => {
             try {
-                // Fetch 10 random Chinese words in parallel
-                const promises = Array.from({ length: 10 }, () => 
+                // Fetch 15 random words. Using allSettled prevents one failure from crashing the whole batch.
+                const promises = Array.from({ length: 15 }, () => 
                     fetch('https://random-words-api.vercel.app/word/chinese')
-                        .then(res => res.json())
-                        .then(data => data[0].word) // The API returns an array with one word object
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => data && data[0] ? data[0].word : null)
+                        .catch(() => null) // Silently handle failed requests
                 );
                 
-                const words = await Promise.all(promises);
+                const results = await Promise.allSettled(promises);
                 
-                // Filter out very long words that might break the layout
-                dictionaryWords = words.filter(word => word.length <= 4);
+                // Extract valid words
+                const words = results
+                    .filter(r => r.status === 'fulfilled' && r.value !== null)
+                    .map(r => r.value);
 
-                console.log(`Loaded ${dictionaryWords.length} random words:`, dictionaryWords);
+                // Filter: Only keep words that are 2, 3, or 4 characters long
+                const validWords = words.filter(word => word.length >= 2 && word.length <= 4);
+                
+                // Use API words if we got at least 5, otherwise fallback
+                dictionaryWords = validWords.length >= 5 ? validWords : fallbackWords;
+
+                console.log(`API loaded. Using ${validWords.length} API words.`);
                 
             } catch (error) {
-                console.error("Failed to fetch dictionary. Using fallback.", error);
+                console.error("API Error. Using fallback.", error);
                 dictionaryWords = fallbackWords;
             }
 
-            // Enable the button and auto-generate the first sign
             isLoaded = true;
             document.getElementById('generateBtn').disabled = false;
             generateSign();
@@ -127,9 +240,7 @@
             }
         });
 
-        // --- UTILS ---
         function getRandomItem(arr) {
-            if (!arr || arr.length === 0) return "无数据";
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
@@ -146,18 +257,25 @@
                     block.classList.add('phone-horizontal');
                 }
             } else {
-                // Use the fetched dictionary words
                 block.innerText = getRandomItem(dictionaryWords);
                 
-                // Random outline
-                if (Math.random() > 0.8) {
-                    block.classList.add(Math.random() > 0.5 ? 'outlined-text' : 'outlined-text-white');
+                // Apply outline only to large blocks to prevent unreadable small text
+                if (Math.random() > 0.8 && (spanClass === 'span-12' || spanClass === 'span-8' || spanClass === 'span-9')) {
+                    // Check if background is light or dark to pick the right outline color
+                    const bg = getRandomItem(colorClasses);
+                    block.classList.remove(...colorClasses); // clear previous
+                    block.classList.add(bg);
+                    
+                    if (bg.includes('dark') || bg.includes('black') || bg.includes('blue') || bg.includes('red')) {
+                        block.classList.add('outlined-text-white');
+                    } else {
+                        block.classList.add('outlined-text');
+                    }
                 }
             }
 
-            // Click to reroll this specific block
+            // Click to reroll
             block.onclick = function() {
-                // If we only have 10 words, we can cycle through them or pick a random one
                 this.parentNode.replaceChild(createBlock(spanClass, isPhone, isVertical), this);
             };
 
@@ -171,21 +289,26 @@
             const container = document.getElementById('typographyArea');
             container.innerHTML = ''; 
 
+            // Every pattern strictly adds up to 12 columns
             const rowPatterns = [
-                [{span: 'span-hero', type: 'text'}],
+                [{span: 'span-12', type: 'text'}],
                 [{span: 'span-8', type: 'text'}, {span: 'span-4', type: 'text'}],
-                [{span: 'span-4', type: 'phone'}, {span: 'span-8', type: 'text'}],
+                [{span: 'span-4', type: 'text'}, {span: 'span-8', type: 'text'}],
                 [{span: 'span-6', type: 'text'}, {span: 'span-6', type: 'text'}],
-                [{span: 'span-3', type: 'v-phone'}, {span: 'span-9', type: 'text'}],
                 [{span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}],
+                [{span: 'span-3', type: 'v-phone'}, {span: 'span-9', type: 'text'}],
+                [{span: 'span-9', type: 'text'}, {span: 'span-3', type: 'v-phone'}],
                 [{span: 'span-8', type: 'text'}, {span: 'span-4', type: 'phone'}],
-                [{span: 'span-3', type: 'phone'}, {span: 'span-3', type: 'phone'}, {span: 'span-6', type: 'text'}]
+                [{span: 'span-4', type: 'phone'}, {span: 'span-8', type: 'text'}],
+                [{span: 'span-4', type: 'phone'}, {span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}]
             ];
 
-            for (let i = 0; i < 7; i++) {
+            // Generate 8 rows
+            for (let i = 0; i < 8; i++) {
                 const pattern = getRandomItem(rowPatterns);
+                
                 pattern.forEach(item => {
-                    const isPhone = item.type === 'phone' || item.type === 'v-phone';
+                    const isPhone = item.type.includes('phone');
                     const isVertical = item.type === 'v-phone';
                     container.appendChild(createBlock(item.span, isPhone, isVertical));
                 });
@@ -195,15 +318,22 @@
         // --- DOWNLOAD ---
         function downloadSign() {
             const element = document.getElementById('signContainer');
+            
+            // Temporarily disable click effects during capture to prevent visual glitches
+            const blocks = document.querySelectorAll('.text-block');
+            blocks.forEach(b => b.style.cursor = 'default');
+
             html2canvas(element, {
-                scale: 2,
+                scale: 2, // High resolution
                 useCORS: true,
                 backgroundColor: "#ffffff"
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'lightweight-sign.jpg';
-                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.download = 'folk-sign.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 0.95); // Higher quality
                 link.click();
+                
+                blocks.forEach(b => b.style.cursor = 'pointer');
             });
         }
     </script>
