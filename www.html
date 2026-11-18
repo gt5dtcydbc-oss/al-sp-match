@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hyper-Local Store Sign Generator</title>
+    <!-- Load html2canvas for the download feature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #111;
+            background-color: #1a1a1a;
             color: white;
             display: flex;
             flex-direction: column;
@@ -22,9 +24,7 @@
             gap: 10px;
         }
 
-        input[type="file"] {
-            display: none;
-        }
+        input[type="file"] { display: none; }
 
         .btn {
             background-color: #333;
@@ -38,8 +38,10 @@
         }
 
         .btn:hover { background-color: #555; }
+        .btn-primary { background-color: #007bff; border-color: #007bff; }
+        .btn-primary:hover { background-color: #0056b3; }
 
-        /* The Container */
+        /* The Sign Container */
         .sign-container {
             width: 100%;
             max-width: 600px;
@@ -47,9 +49,10 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        /* Top Image Area */
+        /* Image Area */
         .image-area {
             width: 100%;
             height: 350px;
@@ -64,75 +67,72 @@
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
-            mix-blend-mode: multiply; /* Helps blend the white backgrounds of standard images */
+            mix-blend-mode: multiply; 
         }
 
-        .placeholder-text {
-            color: #aaa;
-            font-size: 16px;
-        }
+        .placeholder-text { color: #aaa; font-size: 16px; }
 
-        /* Typography Grid Area */
+        /* Typography Area - Now using CSS Grid for perfect tiling */
         .typography-area {
-            display: flex;
-            flex-wrap: wrap;
-            /* The reference images have very tight, zero-gap layouts */
-            gap: 0; 
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-rows: minmax(40px, auto);
+            grid-auto-flow: dense; /* This fills the gaps! */
+            background-color: #000;
+            gap: 1px; /* Tiny black line between blocks like a printed grid */
+            padding: 1px;
         }
 
-        /* Individual Text Blocks */
+        /* Text Blocks */
         .text-block {
             display: flex;
             justify-content: center;
             align-items: center;
             text-align: center;
             padding: 8px;
-            box-sizing: border-box;
-            /* Heavy, blocky font mimicking the reference */
             font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif;
             font-weight: 900;
             line-height: 1.1;
             overflow: hidden;
             word-break: break-all;
-            /* Adding a very subtle inner shadow to mimic printing/ink bleed */
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.1s;
         }
 
-        /* --- THE NEW COLOR PALETTE (Extracted from your images) --- */
-        
-        /* Chestnut Palette */
+        .text-block:active { transform: scale(0.95); }
+        .text-block:hover { filter: brightness(0.9); }
+
+        /* Grid Spans (How many columns/rows they take up) */
+        .span-hero { grid-column: span 12; font-size: 52px; padding: 20px 8px; }
+        .span-large { grid-column: span 8; font-size: 38px; }
+        .span-medium { grid-column: span 6; font-size: 28px; }
+        .span-small { grid-column: span 4; font-size: 16px; font-family: "Courier New", monospace; }
+        .span-vertical { grid-column: span 3; grid-row: span 2; writing-mode: vertical-rl; text-orientation: upright; font-size: 20px; letter-spacing: 2px;}
+
+        /* The Palette */
         .c-pale-green { background-color: #E6E8C8; color: #111; }
         .c-olive { background-color: #B0B880; color: #111; }
         .c-pale-pink { background-color: #E8C8C8; color: #111; }
         .c-beige { background-color: #E0D8C0; color: #111; }
-        
-        /* Mushroom Palette */
         .c-periwinkle { background-color: #A0B0D0; color: #fff; }
         .c-dark-blue { background-color: #3A3A6A; color: #fff; }
         .c-lavender { background-color: #D0C8E0; color: #111; }
         .c-mint { background-color: #B0D8C8; color: #111; }
-        
-        /* Fruit Palette */
         .c-bright-blue { background-color: #0099FF; color: #fff; }
         .c-punch-red { background-color: #FF3366; color: #fff; }
         .c-mustard { background-color: #FFCC00; color: #111; }
         .c-coral { background-color: #CC3333; color: #fff; }
-        
-        /* Utility Colors */
         .c-white { background-color: #FFF; color: #111; }
         .c-black { background-color: #111; color: #FFF; }
 
-        /* Text Sizes */
-        .t-hero { font-size: 48px; flex: 1 1 50%; min-height: 90px; }
-        .t-large { font-size: 36px; flex: 1 1 40%; min-height: 70px; }
-        .t-medium { font-size: 24px; flex: 1 1 30%; min-height: 50px; }
-        .t-small { font-size: 14px; flex: 1 1 25%; min-height: 40px; font-family: "Courier New", monospace; font-weight: bold; }
-        
-        /* Vertical Text for Phone Numbers */
-        .vertical-text {
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            letter-spacing: 2px;
+        /* Special Typography Styles */
+        .outlined-text {
+            color: transparent;
+            -webkit-text-stroke: 2px #111;
+        }
+        .outlined-text-white {
+            color: transparent;
+            -webkit-text-stroke: 2px #fff;
         }
 
     </style>
@@ -142,34 +142,33 @@
     <div class="controls">
         <label for="imageUpload" class="btn">1. Upload Image</label>
         <input type="file" id="imageUpload" accept="image/*">
-        <button class="btn" onclick="generateSign()">2. Generate Typography</button>
+        <button class="btn btn-primary" onclick="generateSign()">2. Generate Layout</button>
+        <button class="btn" onclick="downloadSign()">⬇️ Download</button>
     </div>
 
-    <div class="sign-container">
+    <div class="sign-container" id="signContainer">
         <div class="image-area" id="imagePreview">
             <span class="placeholder-text">Image Preview</span>
         </div>
-
-        <div class="typography-area" id="typographyArea">
-            <!-- JS will inject text blocks here -->
-        </div>
+        <div class="typography-area" id="typographyArea"></div>
     </div>
 
     <script>
-        // MOCK DATA (You can keep this and just change the generator logic)
+        // MOCK DATA
         const data = {
             names: ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "鲜到家", "果然生活", "丰收季", "万家果品", "栗语茶香", "板栗工坊"],
             slogans: ["十年老店", "颗颗饱满", "粒粒精选", "香糯可口", "这里的果子真甜", "十里飘香", "百里挑一", "香飘十里"],
             phones: ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681", "186-5899-6181"]
         };
 
-        // The new extracted palette
         const colorClasses = [
             "c-pale-green", "c-olive", "c-pale-pink", "c-beige",
             "c-periwinkle", "c-dark-blue", "c-lavender", "c-mint",
             "c-bright-blue", "c-punch-red", "c-mustard", "c-coral",
             "c-white", "c-black"
         ];
+
+        const sizeClasses = ["span-hero", "span-large", "span-medium", "span-small", "span-vertical"];
 
         // IMAGE UPLOAD
         document.getElementById('imageUpload').addEventListener('change', function(e) {
@@ -184,60 +183,73 @@
             }
         });
 
-        // UTILS
         function getRandomItem(arr) {
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        // GENERATOR LOGIC
+        // CREATE A SINGLE BLOCK
+        function createBlock() {
+            const block = document.createElement('div');
+            block.classList.add('text-block');
+            
+            // Randomize Color
+            block.classList.add(getRandomItem(colorClasses));
+            
+            // Randomize Size/Layout
+            let size = getRandomItem(sizeClasses);
+            block.classList.add(size);
+
+            // Randomize Content based on size
+            if (size.includes('small') || size.includes('vertical')) {
+                block.innerText = getRandomItem(data.phones);
+            } else if (Math.random() > 0.5) {
+                block.innerText = getRandomItem(data.names);
+            } else {
+                block.innerText = getRandomItem(data.slogans);
+            }
+
+            // Occasional outline effect
+            if (Math.random() > 0.8) {
+                block.classList.add(Math.random() > 0.5 ? 'outlined-text' : 'outlined-text-white');
+            }
+
+            // Click to reroll this specific block
+            block.onclick = function() {
+                const parent = this.parentNode;
+                const newBlock = createBlock();
+                parent.replaceChild(newBlock, this);
+            };
+
+            return block;
+        }
+
+        // GENERATE FULL SIGN
         function generateSign() {
             const container = document.getElementById('typographyArea');
             container.innerHTML = ''; 
 
-            // In the reference images, there are about 12-15 blocks making up the dense grid
-            const numBlocks = Math.floor(Math.random() * 5) + 12; 
-            let phoneIndex = 0;
-
-            for (let i = 0; i < numBlocks; i++) {
-                const block = document.createElement('div');
-                const rand = Math.random();
-
-                // Apply random color from our new palette
-                block.classList.add('text-block', getRandomItem(colorClasses));
-
-                // Decide text content and size based on weighted randomness
-                if (rand > 0.75) {
-                    block.classList.add('t-hero');
-                    block.innerText = getRandomItem(data.names);
-                } 
-                else if (rand > 0.45) {
-                    block.classList.add('t-large');
-                    block.innerText = getRandomItem(data.slogans);
-                } 
-                else if (rand > 0.2) {
-                    block.classList.add('t-medium');
-                    block.innerText = getRandomItem(data.names);
-                } 
-                else {
-                    // Phone numbers are usually smaller and use standard fonts
-                    block.classList.add('t-small');
-                    block.innerText = data.phones[phoneIndex % data.phones.length];
-                    phoneIndex++;
-                    
-                    // 20% chance to make the phone number vertical (like in the fruit image)
-                    if (Math.random() > 0.8) {
-                        block.classList.remove('t-small');
-                        block.classList.add('t-medium', 'vertical-text');
-                    }
-                }
-
-                // Minor layout tweaks to break the grid and make it feel organic
-                if (Math.random() > 0.85) {
-                    block.style.flexBasis = "100%"; // Occasional full-width block
-                }
-
-                container.appendChild(block);
+            // Create roughly 15-20 blocks (CSS grid dense will pack them)
+            for (let i = 0; i < 18; i++) {
+                container.appendChild(createBlock());
             }
+        }
+
+        // DOWNLOAD AS IMAGE
+        function downloadSign() {
+            const element = document.getElementById('signContainer');
+            
+            // html2canvas takes a snapshot of the DOM
+            html2canvas(element, {
+                scale: 2, // High resolution
+                useCORS: true,
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                // Create a temporary link to trigger download
+                const link = document.createElement('a');
+                link.download = 'my-folk-sign.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+            });
         }
 
         // Generate on load
