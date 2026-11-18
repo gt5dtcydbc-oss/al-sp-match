@@ -6,8 +6,8 @@
     <title>Hyper-Local Store Sign Generator</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #111;
             color: white;
             display: flex;
             flex-direction: column;
@@ -18,33 +18,33 @@
 
         .controls {
             margin-bottom: 20px;
-            text-align: center;
+            display: flex;
+            gap: 10px;
         }
 
         input[type="file"] {
             display: none;
         }
 
-        .upload-btn {
-            background-color: #007bff;
+        .btn {
+            background-color: #333;
             color: white;
             padding: 10px 20px;
-            border-radius: 5px;
+            border: 1px solid #555;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            display: inline-block;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
-        .upload-btn:hover { background-color: #0056b3; }
+        .btn:hover { background-color: #555; }
 
-        /* The Container for the Sign */
+        /* The Container */
         .sign-container {
             width: 100%;
             max-width: 600px;
-            background-color: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            overflow: hidden;
+            background-color: #fff;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
         }
@@ -52,28 +52,32 @@
         /* Top Image Area */
         .image-area {
             width: 100%;
-            height: 300px;
-            background-color: #f8f9fa;
+            height: 350px;
+            background-color: #f5f5f5;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            border-bottom: 4px solid #000;
         }
 
         .image-area img {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            mix-blend-mode: multiply; /* Helps blend the white backgrounds of standard images */
+        }
+
+        .placeholder-text {
+            color: #aaa;
+            font-size: 16px;
         }
 
         /* Typography Grid Area */
         .typography-area {
             display: flex;
             flex-wrap: wrap;
-            background-color: #000;
-            gap: 2px; /* Black gap to simulate borders */
-            padding: 2px;
+            /* The reference images have very tight, zero-gap layouts */
+            gap: 0; 
         }
 
         /* Individual Text Blocks */
@@ -82,32 +86,53 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 5px;
+            padding: 8px;
             box-sizing: border-box;
-            font-family: "Microsoft YaHei", "SimHei", sans-serif;
+            /* Heavy, blocky font mimicking the reference */
+            font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif;
             font-weight: 900;
             line-height: 1.1;
             overflow: hidden;
             word-break: break-all;
+            /* Adding a very subtle inner shadow to mimic printing/ink bleed */
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
         }
 
-        /* Dynamic Classes for the chaotic look */
-        .bg-cyan { background-color: #00FFFF; color: #000; }
-        .bg-pink { background-color: #FFB6C1; color: #000; }
-        .bg-yellow { background-color: #FFFF00; color: #000; }
-        .bg-green { background-color: #98FB98; color: #000; }
-        .bg-red { background-color: #FF4500; color: #FFF; }
-        .bg-white { background-color: #FFF; color: #000; }
-        .bg-dark { background-color: #333; color: #FFF; }
-
-        .text-large { font-size: 42px; flex: 2 1 50%; min-height: 80px; }
-        .text-medium { font-size: 28px; flex: 1 1 30%; min-height: 60px; }
-        .text-small { font-size: 14px; flex: 1 1 20%; min-height: 40px; letter-spacing: 1px; font-weight: bold; font-family: monospace; }
+        /* --- THE NEW COLOR PALETTE (Extracted from your images) --- */
         
-        /* Specific tweaks for Chinese visual style */
+        /* Chestnut Palette */
+        .c-pale-green { background-color: #E6E8C8; color: #111; }
+        .c-olive { background-color: #B0B880; color: #111; }
+        .c-pale-pink { background-color: #E8C8C8; color: #111; }
+        .c-beige { background-color: #E0D8C0; color: #111; }
+        
+        /* Mushroom Palette */
+        .c-periwinkle { background-color: #A0B0D0; color: #fff; }
+        .c-dark-blue { background-color: #3A3A6A; color: #fff; }
+        .c-lavender { background-color: #D0C8E0; color: #111; }
+        .c-mint { background-color: #B0D8C8; color: #111; }
+        
+        /* Fruit Palette */
+        .c-bright-blue { background-color: #0099FF; color: #fff; }
+        .c-punch-red { background-color: #FF3366; color: #fff; }
+        .c-mustard { background-color: #FFCC00; color: #111; }
+        .c-coral { background-color: #CC3333; color: #fff; }
+        
+        /* Utility Colors */
+        .c-white { background-color: #FFF; color: #111; }
+        .c-black { background-color: #111; color: #FFF; }
+
+        /* Text Sizes */
+        .t-hero { font-size: 48px; flex: 1 1 50%; min-height: 90px; }
+        .t-large { font-size: 36px; flex: 1 1 40%; min-height: 70px; }
+        .t-medium { font-size: 24px; flex: 1 1 30%; min-height: 50px; }
+        .t-small { font-size: 14px; flex: 1 1 25%; min-height: 40px; font-family: "Courier New", monospace; font-weight: bold; }
+        
+        /* Vertical Text for Phone Numbers */
         .vertical-text {
             writing-mode: vertical-rl;
             text-orientation: upright;
+            letter-spacing: 2px;
         }
 
     </style>
@@ -115,35 +140,38 @@
 <body>
 
     <div class="controls">
-        <label for="imageUpload" class="upload-btn">1. Upload Image</label>
+        <label for="imageUpload" class="btn">1. Upload Image</label>
         <input type="file" id="imageUpload" accept="image/*">
-        <button class="upload-btn" onclick="generateSign()">2. Generate Sign Text</button>
+        <button class="btn" onclick="generateSign()">2. Generate Typography</button>
     </div>
 
     <div class="sign-container">
-        <!-- Top: Image -->
         <div class="image-area" id="imagePreview">
-            <span style="color: #999;">Image Preview Will Appear Here</span>
+            <span class="placeholder-text">Image Preview</span>
         </div>
 
-        <!-- Bottom: Typography -->
         <div class="typography-area" id="typographyArea">
             <!-- JS will inject text blocks here -->
         </div>
     </div>
 
     <script>
-        // --- MOCK DATA ---
-        // In a real app, you would change this array based on what the image is.
+        // MOCK DATA (You can keep this and just change the generator logic)
         const data = {
-            names: ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "鲜到家", "果然生活", "丰收季", "万家果品"],
-            slogans: ["十年老店", "颗颗饱满", "粒粒精选", "香糯可口", "这里的果子真甜", "十里飘香"],
-            phones: ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681"]
+            names: ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "鲜到家", "果然生活", "丰收季", "万家果品", "栗语茶香", "板栗工坊"],
+            slogans: ["十年老店", "颗颗饱满", "粒粒精选", "香糯可口", "这里的果子真甜", "十里飘香", "百里挑一", "香飘十里"],
+            phones: ["199-3239-7640", "138-1506-6483", "177-6021-0449", "150-1513-3043", "139-8600-7681", "186-5899-6181"]
         };
 
-        const colors = ["bg-cyan", "bg-pink", "bg-yellow", "bg-green", "bg-red", "bg-white", "bg-dark"];
+        // The new extracted palette
+        const colorClasses = [
+            "c-pale-green", "c-olive", "c-pale-pink", "c-beige",
+            "c-periwinkle", "c-dark-blue", "c-lavender", "c-mint",
+            "c-bright-blue", "c-punch-red", "c-mustard", "c-coral",
+            "c-white", "c-black"
+        ];
 
-        // --- IMAGE UPLOAD PREVIEW ---
+        // IMAGE UPLOAD
         document.getElementById('imageUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -156,65 +184,63 @@
             }
         });
 
-        // --- UTILS ---
+        // UTILS
         function getRandomItem(arr) {
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        function getRandomColor() {
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
-
-        // --- GENERATOR LOGIC ---
+        // GENERATOR LOGIC
         function generateSign() {
             const container = document.getElementById('typographyArea');
-            container.innerHTML = ''; // Clear existing
+            container.innerHTML = ''; 
 
-            // We want to generate a random number of blocks (between 8 and 15)
-            const numBlocks = Math.floor(Math.random() * 8) + 8;
-            let currentPhoneIndex = 0;
+            // In the reference images, there are about 12-15 blocks making up the dense grid
+            const numBlocks = Math.floor(Math.random() * 5) + 12; 
+            let phoneIndex = 0;
 
             for (let i = 0; i < numBlocks; i++) {
                 const block = document.createElement('div');
                 const rand = Math.random();
 
-                // Apply random color
-                block.classList.add('text-block', getRandomColor());
+                // Apply random color from our new palette
+                block.classList.add('text-block', getRandomItem(colorClasses));
 
-                // Decide what type of text it is based on probability
-                if (rand > 0.6) {
-                    // Large Store Name / Slogan
-                    block.classList.add('text-large');
+                // Decide text content and size based on weighted randomness
+                if (rand > 0.75) {
+                    block.classList.add('t-hero');
                     block.innerText = getRandomItem(data.names);
                 } 
-                else if (rand > 0.3) {
-                    // Medium Slogan
-                    block.classList.add('text-medium');
+                else if (rand > 0.45) {
+                    block.classList.add('t-large');
                     block.innerText = getRandomItem(data.slogans);
                 } 
+                else if (rand > 0.2) {
+                    block.classList.add('t-medium');
+                    block.innerText = getRandomItem(data.names);
+                } 
                 else {
-                    // Small Phone Number
-                    block.classList.add('text-small');
-                    block.innerText = data.phones[currentPhoneIndex % data.phones.length];
-                    currentPhoneIndex++;
+                    // Phone numbers are usually smaller and use standard fonts
+                    block.classList.add('t-small');
+                    block.innerText = data.phones[phoneIndex % data.phones.length];
+                    phoneIndex++;
                     
-                    // Sometimes make phone numbers vertical
+                    // 20% chance to make the phone number vertical (like in the fruit image)
                     if (Math.random() > 0.8) {
-                        block.classList.add('vertical-text');
-                        block.classList.remove('text-small');
-                        block.classList.add('text-medium');
+                        block.classList.remove('t-small');
+                        block.classList.add('t-medium', 'vertical-text');
                     }
                 }
 
-                // Add random inline styles to make it feel organic and chaotic
-                if (Math.random() > 0.7) block.style.flexBasis = "100%"; // Make it a full row
-                if (Math.random() > 0.8) block.style.padding = "20px 5px";
+                // Minor layout tweaks to break the grid and make it feel organic
+                if (Math.random() > 0.85) {
+                    block.style.flexBasis = "100%"; // Occasional full-width block
+                }
 
                 container.appendChild(block);
             }
         }
 
-        // Generate one by default on load
+        // Generate on load
         generateSign();
     </script>
 </body>
