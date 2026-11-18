@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hyper-Local Store Sign Generator</title>
-    <!-- Load html2canvas for the download feature -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
@@ -22,6 +21,8 @@
             margin-bottom: 20px;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         input[type="file"] { display: none; }
@@ -49,14 +50,13 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
-            position: relative;
         }
 
         /* Image Area */
         .image-area {
             width: 100%;
             height: 350px;
-            background-color: #f5f5f5;
+            background-color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -72,15 +72,12 @@
 
         .placeholder-text { color: #aaa; font-size: 16px; }
 
-        /* Typography Area - Now using CSS Grid for perfect tiling */
+        /* Typography Area - NO GAPS */
         .typography-area {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
-            grid-auto-rows: minmax(40px, auto);
-            grid-auto-flow: dense; /* This fills the gaps! */
-            background-color: #000;
-            gap: 1px; /* Tiny black line between blocks like a printed grid */
-            padding: 1px;
+            background-color: #fff;
+            gap: 0; /* Flush edges */
         }
 
         /* Text Blocks */
@@ -94,20 +91,38 @@
             font-weight: 900;
             line-height: 1.1;
             overflow: hidden;
-            word-break: break-all;
             cursor: pointer;
             transition: transform 0.1s;
+            border-right: 1px solid rgba(0,0,0,0.1); /* Subtle divider if needed, or remove */
         }
 
         .text-block:active { transform: scale(0.95); }
         .text-block:hover { filter: brightness(0.9); }
 
-        /* Grid Spans (How many columns/rows they take up) */
-        .span-hero { grid-column: span 12; font-size: 52px; padding: 20px 8px; }
-        .span-large { grid-column: span 8; font-size: 38px; }
-        .span-medium { grid-column: span 6; font-size: 28px; }
-        .span-small { grid-column: span 4; font-size: 16px; font-family: "Courier New", monospace; }
-        .span-vertical { grid-column: span 3; grid-row: span 2; writing-mode: vertical-rl; text-orientation: upright; font-size: 20px; letter-spacing: 2px;}
+        /* Grid Spans */
+        .span-hero { grid-column: span 12; font-size: 56px; padding: 25px 8px; }
+        .span-8 { grid-column: span 8; font-size: 42px; }
+        .span-6 { grid-column: span 6; font-size: 36px; }
+        .span-4 { grid-column: span 4; font-size: 24px; }
+        .span-3 { grid-column: span 3; font-size: 20px; }
+        
+        /* Special Phone Number styles */
+        .phone-horizontal {
+            font-size: 16px;
+            font-family: "Courier New", monospace;
+            white-space: nowrap; /* PREVENTS BREAKING MID-NUMBER */
+            letter-spacing: -0.5px;
+        }
+
+        .phone-vertical {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 18px;
+            letter-spacing: 2px;
+            font-family: "Courier New", monospace;
+            white-space: nowrap;
+            padding: 10px 0;
+        }
 
         /* The Palette */
         .c-pale-green { background-color: #E6E8C8; color: #111; }
@@ -125,16 +140,8 @@
         .c-white { background-color: #FFF; color: #111; }
         .c-black { background-color: #111; color: #FFF; }
 
-        /* Special Typography Styles */
-        .outlined-text {
-            color: transparent;
-            -webkit-text-stroke: 2px #111;
-        }
-        .outlined-text-white {
-            color: transparent;
-            -webkit-text-stroke: 2px #fff;
-        }
-
+        .outlined-text { color: transparent; -webkit-text-stroke: 2px #111; }
+        .outlined-text-white { color: transparent; -webkit-text-stroke: 2px #fff; }
     </style>
 </head>
 <body>
@@ -154,7 +161,6 @@
     </div>
 
     <script>
-        // MOCK DATA
         const data = {
             names: ["果然好吃", "鲜果传奇", "沁心果香", "晨曦果园", "鲜到家", "果然生活", "丰收季", "万家果品", "栗语茶香", "板栗工坊"],
             slogans: ["十年老店", "颗颗饱满", "粒粒精选", "香糯可口", "这里的果子真甜", "十里飘香", "百里挑一", "香飘十里"],
@@ -168,9 +174,6 @@
             "c-white", "c-black"
         ];
 
-        const sizeClasses = ["span-hero", "span-large", "span-medium", "span-small", "span-vertical"];
-
-        // IMAGE UPLOAD
         document.getElementById('imageUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -187,72 +190,83 @@
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        // CREATE A SINGLE BLOCK
-        function createBlock() {
+        // Helper to create a block
+        function createBlock(spanClass, isPhone, isVertical) {
             const block = document.createElement('div');
-            block.classList.add('text-block');
+            block.classList.add('text-block', spanClass, getRandomItem(colorClasses));
             
-            // Randomize Color
-            block.classList.add(getRandomItem(colorClasses));
-            
-            // Randomize Size/Layout
-            let size = getRandomItem(sizeClasses);
-            block.classList.add(size);
-
-            // Randomize Content based on size
-            if (size.includes('small') || size.includes('vertical')) {
+            if (isPhone) {
                 block.innerText = getRandomItem(data.phones);
-            } else if (Math.random() > 0.5) {
-                block.innerText = getRandomItem(data.names);
+                if (isVertical) {
+                    block.classList.add('phone-vertical');
+                } else {
+                    block.classList.add('phone-horizontal');
+                }
             } else {
-                block.innerText = getRandomItem(data.slogans);
+                // Randomly pick name or slogan
+                block.innerText = Math.random() > 0.5 ? getRandomItem(data.names) : getRandomItem(data.slogans);
+                
+                // Random outline
+                if (Math.random() > 0.8) {
+                    block.classList.add(Math.random() > 0.5 ? 'outlined-text' : 'outlined-text-white');
+                }
             }
 
-            // Occasional outline effect
-            if (Math.random() > 0.8) {
-                block.classList.add(Math.random() > 0.5 ? 'outlined-text' : 'outlined-text-white');
-            }
-
-            // Click to reroll this specific block
+            // Click to reroll
             block.onclick = function() {
-                const parent = this.parentNode;
-                const newBlock = createBlock();
-                parent.replaceChild(newBlock, this);
+                this.parentNode.replaceChild(createBlock(spanClass, isPhone, isVertical), this);
             };
 
             return block;
         }
 
-        // GENERATE FULL SIGN
         function generateSign() {
             const container = document.getElementById('typographyArea');
             container.innerHTML = ''; 
 
-            // Create roughly 15-20 blocks (CSS grid dense will pack them)
-            for (let i = 0; i < 18; i++) {
-                container.appendChild(createBlock());
+            // Pre-defined row patterns that always add up to 12 columns
+            // This guarantees NO GAPS.
+            const rowPatterns = [
+                [{span: 'span-hero', type: 'text'}],
+                [{span: 'span-8', type: 'text'}, {span: 'span-4', type: 'text'}],
+                [{span: 'span-4', type: 'phone'}, {span: 'span-8', type: 'text'}],
+                [{span: 'span-6', type: 'text'}, {span: 'span-6', type: 'text'}],
+                [{span: 'span-3', type: 'v-phone'}, {span: 'span-9', type: 'text'}], // Vertical phone + big text
+                [{span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}, {span: 'span-4', type: 'text'}],
+                [{span: 'span-8', type: 'text'}, {span: 'span-4', type: 'phone'}],
+                [{span: 'span-3', type: 'phone'}, {span: 'span-3', type: 'phone'}, {span: 'span-6', type: 'text'}]
+            ];
+
+            // Let's generate about 6 rows to make a long sign
+            const numRows = 6;
+
+            for (let i = 0; i < numRows; i++) {
+                // Pick a random pattern
+                const pattern = getRandomItem(rowPatterns);
+                
+                // Create blocks for that pattern
+                pattern.forEach(item => {
+                    const isPhone = item.type === 'phone' || item.type === 'v-phone';
+                    const isVertical = item.type === 'v-phone';
+                    container.appendChild(createBlock(item.span, isPhone, isVertical));
+                });
             }
         }
 
-        // DOWNLOAD AS IMAGE
         function downloadSign() {
             const element = document.getElementById('signContainer');
-            
-            // html2canvas takes a snapshot of the DOM
             html2canvas(element, {
-                scale: 2, // High resolution
+                scale: 2,
                 useCORS: true,
                 backgroundColor: "#ffffff"
             }).then(canvas => {
-                // Create a temporary link to trigger download
                 const link = document.createElement('a');
-                link.download = 'my-folk-sign.jpg';
+                link.download = 'folk-sign.jpg';
                 link.href = canvas.toDataURL('image/jpeg', 0.9);
                 link.click();
             });
         }
 
-        // Generate on load
         generateSign();
     </script>
 </body>
